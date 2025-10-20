@@ -41,3 +41,31 @@ class IsCourseOwnerOrReadOnly(permissions.BasePermission):
 
         # Default to allowing authenticated users
         return True
+
+
+class IsTeacherOrTA(permissions.BasePermission):
+    """
+    Custom permission to only allow teachers, TAs, and admins.
+    """
+
+    def has_permission(self, request, view):
+        # Allow OPTIONS without auth for CORS
+        if request.method == 'OPTIONS':
+            return True
+
+        # Require authentication
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        # Allow for TEACHER, TA, and SUPERADMIN
+        return request.user.role in ['TEACHER', 'TA', 'SUPERADMIN', 'ADMIN']
+
+    def has_object_permission(self, request, view, obj):
+        # Allow OPTIONS without auth
+        if request.method == 'OPTIONS':
+            return True
+
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        return request.user.role in ['TEACHER', 'TA', 'SUPERADMIN', 'ADMIN']

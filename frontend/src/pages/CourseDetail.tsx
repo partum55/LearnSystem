@@ -18,17 +18,23 @@ import {
   FolderIcon,
   CheckCircleIcon,
   ClockIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
 } from '@heroicons/react/24/outline';
-import { Module, Assignment, Resource } from '../types';
+import { Module, Assignment } from '../types';
+import { TeacherGradebook } from '../components/TeacherGradebook';
+import { CourseGradesTab } from '../components/CourseGradesTab';
+
 
 export const CourseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
   const { user } = useAuthStore();
-  const { currentCourse, modules, assignments, fetchCourseById, fetchModules, fetchAssignments, isLoading } = useCourseStore();
-  const [activeTab, setActiveTab] = useState<'modules' | 'assignments' | 'members'>('modules');
+  const { currentCourse, modules, assignments, fetchCourseById, fetchModules, fetchAssignments, isLoadingCourse } = useCourseStore();
+  const [activeTab, setActiveTab] = useState<'modules' | 'assignments' | 'members' | 'grades'>('modules');
   const [showModuleModal, setShowModuleModal] = useState(false);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (id) {
@@ -50,7 +56,19 @@ export const CourseDetail: React.FC = () => {
     }
   };
 
-  if (isLoading || !currentCourse) {
+  const toggleModule = (moduleId: string) => {
+    setExpandedModules(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(moduleId)) {
+        newSet.delete(moduleId);
+      } else {
+        newSet.add(moduleId);
+      }
+      return newSet;
+    });
+  };
+
+  if (isLoadingCourse || !currentCourse) {
     return <Loading />;
   }
 
@@ -60,6 +78,7 @@ export const CourseDetail: React.FC = () => {
     { id: 'modules', name: t('courses.modules'), icon: FolderIcon },
     { id: 'assignments', name: t('assignments.title'), icon: DocumentTextIcon },
     { id: 'members', name: t('courses.students'), icon: UserGroupIcon },
+    { id: 'grades', name: t('gradebook.title'), icon: AcademicCapIcon },
   ];
 
   return (
@@ -176,14 +195,24 @@ export const CourseDetail: React.FC = () => {
                       </CardBody>
                     </Card>
                   ) : (
-                    (modules || []).map((module: Module) => (
+                    modules.map((module: Module) => (
                       <Card key={module.id}>
                         <CardHeader>
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                              {module.title}
-                            </h3>
-                            {module.published && (
+                          <div
+                            className="flex items-center justify-between cursor-pointer"
+                            onClick={() => toggleModule(module.id)}
+                          >
+                            <div className="flex items-center gap-2">
+                              {expandedModules.has(module.id) ? (
+                                <ChevronDownIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                              ) : (
+                                <ChevronRightIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                              )}
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                {module.title}
+                              </h3>
+                            </div>
+                            {module.is_published && (
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                                 <CheckCircleIcon className="h-4 w-4 mr-1" />
                                 {t('common.published')}
@@ -191,37 +220,113 @@ export const CourseDetail: React.FC = () => {
                             )}
                           </div>
                         </CardHeader>
-                        <CardBody>
-                          {module.description && (
-                            <p className="text-gray-600 dark:text-gray-400 mb-4">
-                              {module.description}
-                            </p>
-                          )}
-                          {module.resources && module.resources.length > 0 ? (
-                            <div className="space-y-2">
-                              {module.resources.map((resource: Resource) => (
-                                <div
-                                  key={resource.id}
-                                  className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700"
-                                >
-                                  <div className="flex items-center">
-                                    <DocumentTextIcon className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-3" />
-                                    <span className="text-sm text-gray-900 dark:text-white">
-                                      {resource.title}
-                                    </span>
-                                  </div>
-                                  <Button variant="ghost" size="sm">
-                                    {t('common.view')}
-                                  </Button>
+                        {expandedModules.has(module.id) && (
+                          <CardBody>
+                            {module.description && (
+                              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                                {module.description}
+                              </p>
+                            )}
+
+                            {/* Resources Section */}
+                            {(module as any).resources && (module as any).resources.length > 0 && (
+                              <div className="mb-6">
+                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+                                  <FolderIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                  <h4 className="font-semibold text-base text-gray-900 dark:text-gray-100">
+                                    {t('modules.resources')}
+                                  </h4>
+                                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                                    ({(module as any).resources.length})
+                                  </span>
                                 </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              {t('modules.noResources')}
-                            </p>
-                          )}
-                        </CardBody>
+                                <div className="space-y-2 pl-2">
+                                  {(module as any).resources.map((resource: any) => (
+                                    <div
+                                      key={resource.id}
+                                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                                    >
+                                      <DocumentTextIcon className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                                      <div className="flex-1 min-w-0">
+                                        <a
+                                          href={resource.file_url || resource.external_url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-blue-600 dark:text-blue-400 hover:underline font-medium block truncate"
+                                        >
+                                          {resource.title}
+                                        </a>
+                                        {resource.description && (
+                                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                            {resource.description}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <span className="text-xs text-gray-400 uppercase tracking-wider">
+                                        {resource.resource_type}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Assignments Section */}
+                            {(module as any).assignments && (module as any).assignments.length > 0 && (
+                              <div className="mb-4">
+                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+                                  <DocumentTextIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                  <h4 className="font-semibold text-base text-gray-900 dark:text-gray-100">
+                                    {t('assignments.title')}
+                                  </h4>
+                                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                                    ({(module as any).assignments.length})
+                                  </span>
+                                </div>
+                                <div className="space-y-2 pl-2">
+                                  {(module as any).assignments.map((assignment: any) => (
+                                    <Link
+                                      key={assignment.id}
+                                      to={`/assignments/${assignment.id}`}
+                                      className="block"
+                                    >
+                                      <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group border border-transparent hover:border-green-200 dark:hover:border-green-800">
+                                        <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                          <div className="font-medium text-gray-900 dark:text-white group-hover:text-green-600 dark:group-hover:text-green-400">
+                                            {assignment.title}
+                                          </div>
+                                          <div className="flex items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                            {assignment.due_date && (
+                                              <span className="flex items-center gap-1">
+                                                <ClockIcon className="h-4 w-4" />
+                                                {new Date(assignment.due_date).toLocaleDateString()}
+                                              </span>
+                                            )}
+                                            <span>{assignment.max_points} {t('assignments.points')}</span>
+                                          </div>
+                                        </div>
+                                        {assignment.is_published && (
+                                          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                            {t('common.published')}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </Link>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Empty State */}
+                            {(!(module as any).resources || (module as any).resources.length === 0) &&
+                             (!(module as any).assignments || (module as any).assignments.length === 0) && (
+                              <p className="text-sm text-gray-500 dark:text-gray-400 italic text-center py-8">
+                                {t('modules.noContent')}
+                              </p>
+                            )}
+                          </CardBody>
+                        )}
                       </Card>
                     ))
                   )}
@@ -295,6 +400,14 @@ export const CourseDetail: React.FC = () => {
                     </p>
                   </CardBody>
                 </Card>
+              )}
+
+              {activeTab === 'grades' && (
+                isInstructor ? (
+                  <TeacherGradebook courseId={id!} />
+                ) : (
+                  <CourseGradesTab courseId={id!} />
+                )
               )}
             </div>
           </div>

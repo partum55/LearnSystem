@@ -1,21 +1,44 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
 export const Login: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { login, error, isLoading } = useAuthStore();
+  const location = useLocation();
+  const { login, error, isLoading, isAuthenticated } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [localError, setLocalError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
+    // Check for success message from registration
+    if (location.state?.message) {
+      setSuccessMessage(location.state.message);
+      if (location.state?.email) {
+        setEmail(location.state.email);
+      }
+      // Clear the state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError('');
+    setSuccessMessage('');
 
     if (!email || !password) {
       setLocalError(t('auth.loginError'));
@@ -24,7 +47,12 @@ export const Login: React.FC = () => {
 
     try {
       await login(email, password);
-      navigate('/dashboard');
+      // Update i18n language based on user preference
+      const savedLanguage = localStorage.getItem('language');
+      if (savedLanguage && (savedLanguage === 'uk' || savedLanguage === 'en')) {
+        i18n.changeLanguage(savedLanguage);
+      }
+      // Navigation will happen automatically via useEffect when isAuthenticated changes
     } catch (err) {
       setLocalError(error || t('auth.loginError'));
     }
@@ -33,6 +61,11 @@ export const Login: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
+        {/* Language Switcher at the top */}
+        <div className="flex justify-end">
+          <LanguageSwitcher />
+        </div>
+
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
             {t('auth.welcome')}
@@ -60,6 +93,14 @@ export const Login: React.FC = () => {
               required
             />
           </div>
+
+          {successMessage && (
+            <div className="rounded-md bg-green-50 dark:bg-green-900/20 p-4">
+              <p className="text-sm text-green-800 dark:text-green-400">
+                {successMessage}
+              </p>
+            </div>
+          )}
 
           {(localError || error) && (
             <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
@@ -97,6 +138,18 @@ export const Login: React.FC = () => {
             {t('auth.login')}
           </Button>
         </form>
+
+        <div className="text-center mt-4">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            {t('auth.register.noAccount')}{' '}
+            <Link
+              to="/register"
+              className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400"
+            >
+              {t('auth.register.createAccount')}
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -5,15 +5,106 @@ from django.utils.translation import gettext_lazy as _
 
 
 class Assignment(models.Model):
-    """Assignment/homework model."""
+    """Assignment/homework model with support for multiple types."""
+
+    ASSIGNMENT_TYPES = [
+        ('QUIZ', 'Quiz/Test'),
+        ('FILE_UPLOAD', 'File Upload'),
+        ('TEXT', 'Text Submission'),
+        ('CODE', 'Code Submission'),
+        ('URL', 'URL/Link Submission'),
+        ('MANUAL_GRADE', 'Manual Grade Only'),
+        ('EXTERNAL', 'External Tool'),
+    ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     course = models.ForeignKey('courses.Course', on_delete=models.CASCADE, related_name='assignments')
 
+    # Link to module - assignments are now part of modules
+    module = models.ForeignKey(
+        'courses.Module',
+        on_delete=models.CASCADE,
+        related_name='assignments',
+        null=True,
+        blank=True,
+        help_text=_('Module this assignment belongs to')
+    )
+
+    # Position within module
+    position = models.PositiveIntegerField(_('position'), default=0)
+
+    # Gradebook category
+    category = models.ForeignKey(
+        'gradebook.GradebookCategory',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assignments',
+        help_text=_('Gradebook category for weighting')
+    )
+
+    # Assignment type
+    assignment_type = models.CharField(
+        _('assignment type'),
+        max_length=20,
+        choices=ASSIGNMENT_TYPES,
+        default='FILE_UPLOAD'
+    )
+
     title = models.CharField(_('title'), max_length=255)
     description = models.TextField(_('description'))
 
+    # Rich content support for description and instructions
+    description_format = models.CharField(
+        _('description format'),
+        max_length=20,
+        choices=[
+            ('PLAIN', 'Plain Text'),
+            ('MARKDOWN', 'Markdown'),
+            ('HTML', 'HTML'),
+            ('RICH', 'Rich Text (with LaTeX & Code)'),
+        ],
+        default='MARKDOWN',
+        help_text=_('Format type for description')
+    )
+
     instructions = models.TextField(_('instructions'), blank=True)
+
+    # Rich content support with LaTeX and code blocks
+    instructions_format = models.CharField(
+        _('instructions format'),
+        max_length=20,
+        choices=[
+            ('PLAIN', 'Plain Text'),
+            ('MARKDOWN', 'Markdown'),
+            ('HTML', 'HTML'),
+            ('RICH', 'Rich Text (with LaTeX & Code)'),
+        ],
+        default='MARKDOWN',
+        help_text=_('Format type for instructions')
+    )
+
+    # Additional resources (attachments, reference materials)
+    resources = models.JSONField(
+        _('resources'),
+        default=list,
+        blank=True,
+        help_text=_('Reference materials, sample files, etc.')
+    )
+
+    # Starter code for code assignments
+    starter_code = models.TextField(
+        _('starter code'),
+        blank=True,
+        help_text=_('Initial code template for students')
+    )
+
+    # Solution code (visible only to instructors)
+    solution_code = models.TextField(
+        _('solution code'),
+        blank=True,
+        help_text=_('Reference solution (instructor only)')
+    )
 
     max_points = models.DecimalField(_('max points'), max_digits=6, decimal_places=2, default=100.00)
 
@@ -33,11 +124,71 @@ class Assignment(models.Model):
         help_text=_('Penalty percentage per day late')
     )
 
+    # Submission settings
     submission_types = models.JSONField(
         _('submission types'),
         default=list,
         help_text=_('Allowed submission types: file, text, url')
     )
+
+    # File upload settings
+    allowed_file_types = models.JSONField(
+        _('allowed file types'),
+        default=list,
+        blank=True,
+        help_text=_('List of allowed file extensions, e.g., [".pdf", ".docx"]')
+    )
+    max_file_size = models.IntegerField(
+        _('max file size'),
+        default=10485760,  # 10 MB
+        help_text=_('Maximum file size in bytes')
+    )
+    max_files = models.IntegerField(
+        _('max files'),
+        default=5,
+        help_text=_('Maximum number of files allowed')
+    )
+
+    # Code submission settings
+    programming_language = models.CharField(
+        _('programming language'),
+        max_length=50,
+        blank=True,
+        help_text=_('For code submissions: python, java, cpp, etc.')
+    )
+    auto_grading_enabled = models.BooleanField(
+        _('auto grading enabled'),
+        default=False,
+        help_text=_('Enable automatic grading for code submissions')
+    )
+    test_cases = models.JSONField(
+        _('test cases'),
+        default=list,
+        blank=True,
+        help_text=_('Test cases for auto-grading code')
+    )
+
+    # Quiz settings (if type is QUIZ)
+    quiz = models.ForeignKey(
+        'Quiz',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assignment'
+    )
+
+    # External tool settings
+    external_tool_url = models.URLField(_('external tool URL'), blank=True, null=True)
+    external_tool_config = models.JSONField(
+        _('external tool config'),
+        default=dict,
+        blank=True
+    )
+
+    # Grading settings
+    grade_anonymously = models.BooleanField(_('grade anonymously'), default=False)
+    peer_review_enabled = models.BooleanField(_('peer review enabled'), default=False)
+    peer_reviews_required = models.IntegerField(_('peer reviews required'), default=0)
 
     is_published = models.BooleanField(_('published'), default=False)
 
@@ -57,7 +208,69 @@ class Assignment(models.Model):
         indexes = [
             models.Index(fields=['course', 'due_date']),
             models.Index(fields=['is_published']),
+            models.Index(fields=['assignment_type']),
         ]
+
+    def __str__(self):
+        return f"{self.course.code} - {self.title}"
+
+    def requires_submission(self):
+        """Check if this assignment type requires a submission."""
+        return self.assignment_type not in ['MANUAL_GRADE', 'QUIZ']
+
+
+class Quiz(models.Model):
+    """Quiz/Test model."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    course = models.ForeignKey('courses.Course', on_delete=models.CASCADE, related_name='quizzes')
+
+    title = models.CharField(_('title'), max_length=255)
+    description = models.TextField(_('description'), blank=True)
+
+    # Quiz settings
+    time_limit = models.IntegerField(
+        _('time limit'),
+        null=True,
+        blank=True,
+        help_text=_('Time limit in minutes')
+    )
+    attempts_allowed = models.IntegerField(_('attempts allowed'), default=1)
+
+    # Question settings
+    shuffle_questions = models.BooleanField(_('shuffle questions'), default=False)
+    shuffle_answers = models.BooleanField(_('shuffle answers'), default=False)
+
+    # Display settings
+    show_correct_answers = models.BooleanField(_('show correct answers'), default=True)
+    show_correct_answers_at = models.DateTimeField(
+        _('show correct answers at'),
+        null=True,
+        blank=True,
+        help_text=_('When to show correct answers to students')
+    )
+
+    # Grading settings
+    pass_percentage = models.DecimalField(
+        _('pass percentage'),
+        max_digits=5,
+        decimal_places=2,
+        default=60.00
+    )
+
+    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='created_quizzes'
+    )
+
+    class Meta:
+        verbose_name = _('quiz')
+        verbose_name_plural = _('quizzes')
+        ordering = ['-created_at']
 
     def __str__(self):
         return f"{self.course.code} - {self.title}"
@@ -75,6 +288,7 @@ class QuestionBank(models.Model):
         ('FORMULA', 'Formula'),
         ('SHORT_ANSWER', 'Short Answer'),
         ('ESSAY', 'Essay'),
+        ('CODE', 'Code Question'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -99,11 +313,6 @@ class QuestionBank(models.Model):
     # Metadata: difficulty, tags, etc.
     metadata = models.JSONField(_('metadata'), default=dict, blank=True)
 
-    # For categorization
-    tags = models.JSONField(_('tags'), default=list, blank=True)
-
-    is_active = models.BooleanField(_('active'), default=True)
-
     created_at = models.DateTimeField(_('created at'), auto_now_add=True)
     updated_at = models.DateTimeField(_('updated at'), auto_now=True)
 
@@ -115,78 +324,19 @@ class QuestionBank(models.Model):
 
     class Meta:
         verbose_name = _('question')
-        verbose_name_plural = _('question bank')
+        verbose_name_plural = _('questions')
         ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['course', 'question_type']),
-            models.Index(fields=['is_active']),
-        ]
 
     def __str__(self):
-        return f"{self.question_type}: {self.stem[:50]}..."
-
-
-class Quiz(models.Model):
-    """Quiz/test model."""
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    course = models.ForeignKey('courses.Course', on_delete=models.CASCADE, related_name='quizzes')
-
-    title = models.CharField(_('title'), max_length=255)
-    description = models.TextField(_('description'), blank=True)
-
-    instructions = models.TextField(_('instructions'), blank=True)
-
-    # Questions can be from question bank or specific to this quiz
-    questions = models.ManyToManyField(
-        QuestionBank,
-        through='QuizQuestion',
-        related_name='quizzes'
-    )
-
-    # Configuration
-    time_limit_minutes = models.IntegerField(_('time limit (minutes)'), null=True, blank=True)
-    max_attempts = models.IntegerField(_('max attempts'), default=1)
-
-    shuffle_questions = models.BooleanField(_('shuffle questions'), default=False)
-    shuffle_answers = models.BooleanField(_('shuffle answers'), default=False)
-
-    show_correct_answers = models.BooleanField(_('show correct answers'), default=True)
-    show_correct_answers_date = models.DateTimeField(_('show correct answers date'), null=True, blank=True)
-
-    # Availability
-    available_from = models.DateTimeField(_('available from'), null=True, blank=True)
-    available_until = models.DateTimeField(_('available until'), null=True, blank=True)
-
-    is_published = models.BooleanField(_('published'), default=False)
-
-    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
-    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
-
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='created_quizzes'
-    )
-
-    class Meta:
-        verbose_name = _('quiz')
-        verbose_name_plural = _('quizzes')
-        ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['course', 'is_published']),
-        ]
-
-    def __str__(self):
-        return f"{self.course.code} - {self.title}"
+        return f"{self.question_type} - {self.stem[:50]}"
 
 
 class QuizQuestion(models.Model):
-    """Through model for Quiz-Question relationship."""
+    """Association between Quiz and Questions."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='quiz_questions')
-    question = models.ForeignKey(QuestionBank, on_delete=models.CASCADE)
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='questions')
+    question = models.ForeignKey(QuestionBank, on_delete=models.CASCADE, related_name='quiz_associations')
 
     position = models.PositiveIntegerField(_('position'), default=0)
     points_override = models.DecimalField(
@@ -195,51 +345,67 @@ class QuizQuestion(models.Model):
         decimal_places=2,
         null=True,
         blank=True,
-        help_text=_('Override default question points')
+        help_text=_('Override the default points for this question in this quiz')
     )
 
     class Meta:
+        verbose_name = _('quiz question')
+        verbose_name_plural = _('quiz questions')
         ordering = ['quiz', 'position']
         unique_together = [['quiz', 'question']]
 
     def __str__(self):
-        return f"{self.quiz.title} - Question {self.position}"
+        return f"{self.quiz.title} - Q{self.position}"
 
 
 class QuizAttempt(models.Model):
-    """Student's quiz attempt."""
-
-    STATUS_CHOICES = [
-        ('IN_PROGRESS', 'In Progress'),
-        ('SUBMITTED', 'Submitted'),
-        ('GRADED', 'Graded'),
-    ]
+    """Student attempt at a quiz."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='attempts')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='quiz_attempts')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='quiz_attempts'
+    )
 
-    attempt_number = models.PositiveIntegerField(_('attempt number'))
-
-    status = models.CharField(_('status'), max_length=20, choices=STATUS_CHOICES, default='IN_PROGRESS')
+    attempt_number = models.IntegerField(_('attempt number'), default=1)
 
     started_at = models.DateTimeField(_('started at'), auto_now_add=True)
     submitted_at = models.DateTimeField(_('submitted at'), null=True, blank=True)
 
-    # Answers stored as JSON: {question_id: answer_data}
+    # Answers stored as JSON
     answers = models.JSONField(_('answers'), default=dict, blank=True)
 
     # Scoring
-    auto_score = models.DecimalField(_('auto score'), max_digits=6, decimal_places=2, null=True, blank=True)
-    manual_score = models.DecimalField(_('manual score'), max_digits=6, decimal_places=2, null=True, blank=True)
-    final_score = models.DecimalField(_('final score'), max_digits=6, decimal_places=2, null=True, blank=True)
+    auto_score = models.DecimalField(
+        _('auto score'),
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
+    manual_score = models.DecimalField(
+        _('manual score'),
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
+    final_score = models.DecimalField(
+        _('final score'),
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
 
     graded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='graded_attempts'
+        related_name='graded_quiz_attempts'
     )
     graded_at = models.DateTimeField(_('graded at'), null=True, blank=True)
 
@@ -250,40 +416,6 @@ class QuizAttempt(models.Model):
         verbose_name_plural = _('quiz attempts')
         ordering = ['-started_at']
         unique_together = [['quiz', 'user', 'attempt_number']]
-        indexes = [
-            models.Index(fields=['quiz', 'user']),
-            models.Index(fields=['status']),
-        ]
 
     def __str__(self):
         return f"{self.user.email} - {self.quiz.title} (Attempt {self.attempt_number})"
-
-
-class Gradebook(models.Model):
-    """Aggregated grades for a student in a course."""
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    course = models.ForeignKey('courses.Course', on_delete=models.CASCADE, related_name='gradebook_entries')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='grades')
-
-    # Aggregated score (computed from assignments and quizzes)
-    aggregated_score = models.DecimalField(_('aggregated score'), max_digits=6, decimal_places=2, null=True, blank=True)
-
-    # Detailed breakdown stored as JSON
-    breakdown = models.JSONField(_('breakdown'), default=dict, blank=True)
-
-    # Letter grade
-    letter_grade = models.CharField(_('letter grade'), max_length=5, blank=True)
-
-    last_calculated = models.DateTimeField(_('last calculated'), auto_now=True)
-
-    class Meta:
-        verbose_name = _('gradebook entry')
-        verbose_name_plural = _('gradebook')
-        unique_together = [['course', 'user']]
-        indexes = [
-            models.Index(fields=['course', 'user']),
-        ]
-
-    def __str__(self):
-        return f"{self.user.email} - {self.course.code}: {self.aggregated_score}"

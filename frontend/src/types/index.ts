@@ -55,39 +55,97 @@ export interface CourseMember {
 // Module and Resource types
 export interface Module {
   id: string;
-  course_id: string;
+  course: string;
   title: string;
   description?: string;
   position: number;
-  published: boolean;
+  is_published: boolean;
+  publish_date?: string;
   created_at: string;
+  updated_at: string;
+  resources_count?: number;
+  content_meta?: Record<string, any>;
   resources?: Resource[];
 }
 
-export type ResourceType = 'video' | 'pdf' | 'slide' | 'link' | 'document';
+export type ResourceType = 'VIDEO' | 'PDF' | 'SLIDE' | 'LINK' | 'TEXT' | 'CODE' | 'OTHER';
 
 export interface Resource {
   id: string;
-  module_id: string;
-  type: ResourceType;
+  module: string;
   title: string;
-  storage_path: string;
+  description?: string;
+  resource_type: ResourceType;
+  file?: string;
+  file_url?: string;
+  file_size?: number;
+  external_url?: string;
+  text_content?: string;
+  storage_path?: string;
   metadata?: Record<string, any>;
+  position: number;
+  is_downloadable: boolean;
   created_at: string;
+  updated_at: string;
+  uploaded_by?: string;
+  uploaded_by_name?: string;
+}
+
+export interface ResourceCreateData {
+  module: string;
+  title: string;
+  description?: string;
+  resource_type: ResourceType;
+  file?: File;
+  external_url?: string;
+  text_content?: string;
+  is_downloadable?: boolean;
 }
 
 // Assignment types
+export type AssignmentType =
+  | 'QUIZ'
+  | 'FILE_UPLOAD'
+  | 'TEXT'
+  | 'CODE'
+  | 'URL'
+  | 'MANUAL_GRADE'
+  | 'EXTERNAL';
+
 export interface Assignment {
   id: string;
   course_id: string;
+  assignment_type: AssignmentType;
   title: string;
   description: string;
-  due_date: string;
+  instructions?: string;
+  due_date?: string;
+  available_from?: string;
+  available_until?: string;
   max_points: number;
   rubric?: Rubric;
+  submission_types?: string[];
+  allowed_file_types?: string[];
+  max_file_size?: number;
+  max_files?: number;
+  programming_language?: string;
+  auto_grading_enabled?: boolean;
+  test_cases?: any[];
+  quiz?: string;
+  external_tool_url?: string;
+  external_tool_config?: any;
+  grade_anonymously?: boolean;
+  peer_review_enabled?: boolean;
+  peer_reviews_required?: number;
+  allow_late_submission?: boolean;
+  late_penalty_percent?: number;
+  is_published?: boolean;
   created_at: string;
   updated_at: string;
+  created_by?: string;
+  created_by_name?: string;
   submission?: Submission;
+  requires_submission?: boolean;
 }
 
 export interface Rubric {

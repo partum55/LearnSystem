@@ -33,12 +33,43 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
-        if (error.response?.status === 401) {
-          // Token expired or invalid
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          window.location.href = '/login';
+        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+        // If error is 401 and we haven't retried yet
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+
+          const refreshToken = localStorage.getItem('refresh_token');
+
+          if (refreshToken) {
+            try {
+              // Try to refresh the token
+              const response = await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {
+                refresh: refreshToken,
+              });
+
+              const newAccessToken = response.data.access;
+              localStorage.setItem('access_token', newAccessToken);
+
+              // Retry the original request with new token
+              if (originalRequest.headers) {
+                originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+              }
+              return this.client(originalRequest);
+            } catch (refreshError) {
+              // Refresh failed, logout user
+              localStorage.removeItem('access_token');
+              localStorage.removeItem('refresh_token');
+              window.location.href = '/login';
+              return Promise.reject(refreshError);
+            }
+          } else {
+            // No refresh token, redirect to login
+            localStorage.removeItem('access_token');
+            window.location.href = '/login';
+          }
         }
+
         return Promise.reject(error);
       }
     );

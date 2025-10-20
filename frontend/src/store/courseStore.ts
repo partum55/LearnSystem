@@ -8,6 +8,9 @@ interface CourseState {
   modules: Module[];
   assignments: Assignment[];
   isLoading: boolean;
+  isLoadingCourse: boolean;
+  isLoadingModules: boolean;
+  isLoadingAssignments: boolean;
   error: string | null;
   fetchCourses: () => Promise<void>;
   fetchCourseById: (id: string) => Promise<void>;
@@ -23,6 +26,9 @@ export const useCourseStore = create<CourseState>((set) => ({
   modules: [],
   assignments: [],
   isLoading: false,
+  isLoadingCourse: false,
+  isLoadingModules: false,
+  isLoadingAssignments: false,
   error: null,
 
   fetchCourses: async () => {
@@ -36,34 +42,34 @@ export const useCourseStore = create<CourseState>((set) => ({
   },
 
   fetchCourseById: async (id: string) => {
-    set({ isLoading: true, error: null });
+    set({ isLoadingCourse: true, error: null });
     try {
       const response = await apiClient.get<Course>(`/courses/${id}/`);
-      set({ currentCourse: response.data, isLoading: false });
+      set({ currentCourse: response.data, isLoadingCourse: false });
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message, isLoadingCourse: false });
     }
   },
 
   fetchModules: async (courseId: string) => {
-    set({ isLoading: true, error: null });
+    set({ isLoadingModules: true, error: null });
     try {
       const response = await apiClient.get<Module[] | { results: Module[] }>(`/courses/modules/?course=${courseId}`);
       const modules = Array.isArray(response.data) ? response.data : response.data.results;
-      set({ modules, isLoading: false });
+      set({ modules, isLoadingModules: false });
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message, isLoadingModules: false });
     }
   },
 
   fetchAssignments: async (courseId: string) => {
-    set({ isLoading: true, error: null });
+    set({ isLoadingAssignments: true, error: null });
     try {
       const response = await apiClient.get<Assignment[] | { results: Assignment[] }>(`/assessments/assignments/?course=${courseId}`);
       const assignments = Array.isArray(response.data) ? response.data : response.data.results;
-      set({ assignments, isLoading: false });
+      set({ assignments, isLoadingAssignments: false });
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message, isLoadingAssignments: false });
     }
   },
 

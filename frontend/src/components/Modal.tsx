@@ -6,10 +6,16 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  size?: 'default' | 'large';
 }
 
-export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
+export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 'default' }) => {
   if (!isOpen) return null;
+
+  const sizeClasses = {
+    default: 'sm:max-w-lg',
+    large: 'sm:max-w-4xl',
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -21,7 +27,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
         />
 
         {/* Modal */}
-        <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div className={`inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle ${sizeClasses[size]} sm:w-full`}>
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -35,7 +41,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
               </button>
             </div>
           </div>
-          <div className="px-6 py-4">
+          <div className="px-6 py-4 max-h-[calc(100vh-200px)] overflow-y-auto">
             {children}
           </div>
         </div>
@@ -43,4 +49,3 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
     </div>
   );
 };
-

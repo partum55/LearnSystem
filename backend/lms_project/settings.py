@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'submissions.apps.SubmissionsConfig',
     'notifications.apps.NotificationsConfig',
     'analytics.apps.AnalyticsConfig',
+    'gradebook.apps.GradebookConfig',
 ]
 
 MIDDLEWARE = [

@@ -65,7 +65,30 @@ class SubmissionCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Submission
-        fields = ['assignment', 'text_answer', 'submission_url', 'metadata']
+        fields = ['assignment', 'text_answer', 'submission_url', 'metadata', 'status']
+        extra_kwargs = {
+            'status': {'default': 'DRAFT'}
+        }
+
+    def validate(self, data):
+        """Validate that user doesn't already have a submission for this assignment."""
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            assignment = data.get('assignment')
+            # Check if submission already exists
+            existing = Submission.objects.filter(
+                assignment=assignment,
+                user=request.user
+            ).first()
+
+            if existing:
+                # Return existing submission ID in error message
+                raise serializers.ValidationError({
+                    'detail': 'Submission already exists for this assignment',
+                    'existing_submission_id': str(existing.id)
+                })
+
+        return data
 
 
 class SubmissionGradeSerializer(serializers.Serializer):
@@ -74,4 +97,3 @@ class SubmissionGradeSerializer(serializers.Serializer):
     grade = serializers.DecimalField(max_digits=6, decimal_places=2, required=True)
     feedback = serializers.CharField(required=False, allow_blank=True)
     rubric_evaluation = serializers.JSONField(required=False)
-
