@@ -158,7 +158,7 @@ git push origin main
 
    | Поле | Значення |
    |------|----------|
-   | **Name** | `learn-system-frontend` |
+   | **Name** | `learn-ucu` |
    | **Region** | **Frankfurt** |
    | **Branch** | `main` |
    | **Root Directory** | `frontend` |
@@ -170,7 +170,7 @@ git push origin main
 4. **Environment Variables**:
 
    ```
-   REACT_APP_API_URL = https://learn-system-backend.onrender.com/api
+   REACT_APP_API_URL = https://learn-ucu-backend.onrender.com/api
    NODE_VERSION = 18.17.0
    ```
 
@@ -184,12 +184,12 @@ git push origin main
 
 Тепер, коли ви знаєте URL обох сервісів, оновіть CORS:
 
-1. Поверніться до **learn-system-backend** → **Environment** tab
+1. Поверніться до **learn-ucu-backend** → **Environment** tab
 
 2. Оновіть змінні:
    ```
-   CORS_ALLOWED_ORIGINS = https://learn-system-frontend.onrender.com,http://localhost:3000
-   CSRF_TRUSTED_ORIGINS = https://learn-system-frontend.onrender.com,https://learn-system-backend.onrender.com
+   CORS_ALLOWED_ORIGINS = https://learn-ucu.onrender.com,http://localhost:3000
+   CSRF_TRUSTED_ORIGINS = https://learn-ucu.onrender.com,https://learn-ucu-backend.onrender.com
    ```
 
 3. Натисніть **"Save Changes"** - Backend автоматично перезапуститься
@@ -198,7 +198,7 @@ git push origin main
 
 ### Крок 6: Створіть суперюзера (адміністратора)
 
-1. Зайдіть в **Dashboard** → **learn-system-backend**
+1. Зайдіть в **Dashboard** → **learn-ucu-backend**
 
 2. Натисніть вкладку **"Shell"** (у верхньому меню)
 
@@ -221,15 +221,15 @@ git push origin main
 ### Крок 7: Перевірте що все працює
 
 1. **Frontend**: 
-   - Відкрийте `https://learn-system-frontend.onrender.com`
+   - Відкрийте `https://learn-ucu.onrender.com`
    - Має відкритись сторінка входу
 
 2. **Backend API**:
-   - Відкрийте `https://learn-system-backend.onrender.com/api/`
+   - Відкрийте `https://learn-ucu-backend.onrender.com/api/`
    - Має показати API endpoints
 
 3. **Admin Panel**:
-   - Відкрийте `https://learn-system-backend.onrender.com/admin/`
+   - Відкрийте `https://learn-ucu-backend.onrender.com/admin/`
    - Увійдіть з даними суперюзера
    - Має відкритись Django Admin панель
 
@@ -239,15 +239,24 @@ git push origin main
 
 ---
 
-## 🎯 ОПЦІОНАЛЬНО: Celery Workers (платні)
+## 🎯 ОПЦІОНАЛЬНО: Celery Workers (платні - НЕ на FREE плані)
 
-Якщо ви хочете автоматичні сповіщення та фонові задачі:
+⚠️ **УВАГА**: Ви використовуєте FREE план, тому Celery Workers **НЕ ДОСТУПНІ**.
+
+Background Workers потребують платного плану Starter ($7/міс за кожен воркер).
+
+Ваша система працюватиме повністю без Celery, просто:
+- ❌ Не буде автоматичних email-сповіщень
+- ❌ Не буде фонових задач
+- ✅ Всі інші функції працюють нормально
+
+**Якщо в майбутньому захочете додати Celery (на платному плані):**
 
 ### Крок 8A: Створіть Celery Worker
 
 1. **New** → **Background Worker**
 2. Налаштування:
-   - **Name**: `learn-system-celery-worker`
+   - **Name**: `learn-ucu-celery-worker`
    - **Region**: Frankfurt
    - **Root Directory**: `backend`
    - **Build Command**: `pip install -r requirements.txt`
@@ -260,24 +269,29 @@ git push origin main
 
 1. **New** → **Background Worker**
 2. Налаштування:
-   - **Name**: `learn-system-celery-beat`
+   - **Name**: `learn-ucu-celery-beat`
    - **Region**: Frankfurt
-   - **Root Directory**: `backend`
+## 📊 Підсумок: Ваші сервіси на Render (FREE план)
    - **Build Command**: `pip install -r requirements.txt`
    - **Start Command**: `celery -A lms_project beat -l info`
    - **Plan**: **Starter** ($7/місяць)
 
 3. **Environment Variables**: скопіюйте ВСІ змінні з Backend
+| PostgreSQL | Database | Internal only | ✅ Free |
+| Redis | Cache (опціонально) | Internal only | ✅ Free |
+| Django Backend | Web Service | `https://learn-ucu-backend.onrender.com` | ✅ Free |
+| React Frontend | Web Service | `https://learn-ucu.onrender.com` | ✅ Free |
+| ~~Celery Worker~~ | ~~Background Worker~~ | - | ❌ Недоступно на Free |
+| ~~Celery Beat~~ | ~~Background Worker~~ | - | ❌ Недоступно на Free |
 
----
+**Загальна вартість на FREE плані**: **$0/місяць** ✅
 
-## 📊 Підсумок: Ваші сервіси на Render
-
-Після налаштування у вас буде:
-
-| Сервіс | Тип | URL | План |
-|--------|-----|-----|------|
-| PostgreSQL | Database | Internal only | Free |
+**Обмеження FREE плану**:
+- Sleep після 15 хв неактивності (використайте UptimeRobot)
+- PostgreSQL: 1 GB storage
+- Redis: 25 MB
+- RAM: 512 MB на сервіс
+- Bandwidth: 100 GB/міс
 | Redis | Cache | Internal only | Free |
 | Django Backend | Web Service | `https://learn-system-backend.onrender.com` | Free |
 | React Frontend | Web Service | `https://learn-system-frontend.onrender.com` | Free |
@@ -380,7 +394,7 @@ python manage.py collectstatic --no-input
 
 **Симптоми**: `could not connect to server`
 
-**Рішення**:
+   - Додайте monitor для `https://learn-ucu-backend.onrender.com/api/health/`
 1. Перевірте що PostgreSQL сервіс запущений
 2. Перевірте що `DATABASE_URL` правильний (Internal URL)
 3. Database та Backend мають бути в одному регіоні (Frankfurt)
@@ -458,7 +472,7 @@ def health_check(request):
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
         db_status = "ok"
-    except:
+Тепер можна пінгувати: `https://learn-ucu-backend.onrender.com/api/health/`
         db_status = "error"
     
     return Response({
