@@ -1,14 +1,20 @@
 #!/bin/sh
+
 # Міграції
-python manage.py makemigrations && python manage.py migrate
+python manage.py migrate
 
 # Створюємо суперюзера якщо не існує
 python - <<END
+import os
 from django.contrib.auth import get_user_model
 User = get_user_model()
-if not User.objects.filter(username="admin").exists():
-    User.objects.create_superuser("admin", "admin@ucu.edu.ya", "secret")
+if not User.objects.filter(username=os.environ.get("DJANGO_SUPERUSER_USERNAME")).exists():
+    User.objects.create_superuser(
+        os.environ.get("DJANGO_SUPERUSER_USERNAME"),
+        os.environ.get("DJANGO_SUPERUSER_EMAIL"),
+        os.environ.get("DJANGO_SUPERUSER_PASSWORD")
+    )
 END
 
-# Запуск gunicorn
+# Запуск Gunicorn
 gunicorn lms_project.wsgi:application --bind 0.0.0.0:$PORT
