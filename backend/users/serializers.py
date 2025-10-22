@@ -46,6 +46,14 @@ class UserCreateSerializer(serializers.ModelSerializer):
             'first_name', 'last_name', 'student_id', 'role'
         ]
     
+    def validate_email(self, value):
+        """Validate that email is from UCU domain."""
+        if not value.lower().endswith('@ucu.edu.ua'):
+            raise serializers.ValidationError(
+                "Only @ucu.edu.ua email addresses are allowed for registration."
+            )
+        return value.lower()
+
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError({"password": "Password fields didn't match."})

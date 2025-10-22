@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
-import { Input } from '../components/Input';
-import { Button } from '../components/Button';
+import { Input } from '../components';
+import { Button } from '../components';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
 export const Login: React.FC = () => {
@@ -42,6 +42,12 @@ export const Login: React.FC = () => {
 
     if (!email || !password) {
       setLocalError(t('auth.loginError'));
+      return;
+    }
+
+    // Валідація UCU email
+    if (!email.toLowerCase().endsWith('@ucu.edu.ua')) {
+      setLocalError(t('auth.ucuEmailRequired', 'Only @ucu.edu.ua email addresses are allowed'));
       return;
     }
 

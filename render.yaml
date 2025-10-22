@@ -1,0 +1,136 @@
+d # Render Blueprint для автоматичного деплою LMS системи
+# Цей файл конфігурує всі сервіси одночасно
+
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: lms-postgres
+    plan: free
+    env: docker
+    image:
+      url: postgres:15
+    envVars:
+      - key: POSTGRES_DB
+        value: lms_db
+      - key: POSTGRES_USER
+        value: postgres
+      - key: POSTGRES_PASSWORD
+        generateValue: true
+    disk:
+      name: lms-postgres-data
+      mountPath: /var/lib/postgresql/data
+      sizeGB: 1
+
+  # Redis Cache
+  - type: pserv
+    name: lms-redis
+    plan: free
+    env: docker
+    image:
+      url: redis:7-alpine
+
+  # Django Backend
+  - type: web
+    name: lms-backend
+    runtime: python
+    plan: free
+    buildCommand: |
+      cd backend
+      pip install -r requirements.txt
+      python manage.py collectstatic --noinput
+      python manage.py migrate --noinput
+    startCommand: cd backend && gunicorn lms_project.wsgi:application --bind 0.0.0.0:$PORT --workers 2
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: False
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lms-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: lms-redis
+          type: pserv
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          name: lms-redis
+          type: pserv
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: 3.12.0
+    healthCheckPath: /api/health/
+
+  # Celery Worker
+  - type: worker
+    name: lms-celery-worker
+    runtime: python
+    plan: free
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend && celery -A lms_project worker -l info
+    envVars:
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lms-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: lms-redis
+          type: pserv
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          name: lms-redis
+          type: pserv
+          property: connectionString
+
+  # Celery Beat (Scheduler)
+  - type: worker
+    name: lms-celery-beat
+    runtime: python
+    plan: free
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend && celery -A lms_project beat -l info
+    envVars:
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lms-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: lms-redis
+          type: pserv
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          name: lms-redis
+          type: pserv
+          property: connectionString
+
+  # React Frontend
+  - type: web
+    name: lms-frontend
+    runtime: node
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build
+    startCommand: cd frontend && npm install -g serve && serve -s build -l $PORT
+    envVars:
+      - key: REACT_APP_API_URL
+        sync: false
+      - key: NODE_VERSION
+        value: 18.17.0
+
+databases:
+  - name: lms-postgres
+    databaseName: lms_db
+    user: postgres
+    plan: free
+

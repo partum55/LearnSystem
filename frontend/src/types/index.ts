@@ -5,9 +5,14 @@ export interface User {
   id: string;
   email: string;
   display_name: string;
+  first_name?: string;
+  last_name?: string;
+  student_id?: string;
   role: UserRole;
   locale: 'uk' | 'en';
   theme: 'light' | 'dark';
+  avatar?: string;
+  bio?: string;
   created_at: string;
   updated_at: string;
 }

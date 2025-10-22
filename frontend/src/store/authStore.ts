@@ -43,7 +43,7 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           });
 
-          // Apply user preferences centrally via UI store
+          // Apply user preferences centrally via the UI store
           const ui = useUIStore.getState();
           if (response.data.user.locale) {
             ui.setLanguage(response.data.user.locale as 'uk' | 'en');
@@ -63,13 +63,43 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
-        try { await apiClient.post('/auth/logout/'); } catch (e) { /* ignore */ }
-        setAccessToken(null);
+        // First, clear all local state IMMEDIATELY
         set({
           user: null,
           isAuthenticated: false,
           error: null,
         });
+
+        // Clear token from memory and localStorage
+        setAccessToken(null);
+        localStorage.removeItem('auth-storage');
+        localStorage.removeItem('access_token');
+
+        // Clear cookies manually with all possible variations
+        const cookieOptions = [
+          'path=/',
+          'path=/; domain=' + window.location.hostname,
+          'path=/; domain=.' + window.location.hostname,
+        ];
+
+        cookieOptions.forEach(options => {
+          document.cookie = `access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; ${options}`;
+          document.cookie = `refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; ${options}`;
+        });
+
+        try {
+          // Call backend logout to clear server-side cookies and blacklist token
+          await apiClient.post('/auth/logout/');
+        } catch (e) {
+          console.error('Logout API error:', e);
+          // Continue with logout even if API call fails
+        }
+
+        // Small delay to ensure state is cleared before redirect
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Force hard reload to clear any remaining state
+        window.location.replace('/login');
       },
 
       fetchCurrentUser: async () => {
@@ -88,7 +118,7 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
           });
 
-          // Apply user preferences centrally via UI store
+          // Apply user preferences centrally via the UI store
           const ui = useUIStore.getState();
           if (response.data.locale) {
             ui.setLanguage(response.data.locale as 'uk' | 'en');

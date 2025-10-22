@@ -25,8 +25,8 @@ export const Sidebar: React.FC = () => {
     { name: t('nav.profile'), href: '/profile', icon: UserIcon },
   ];
 
-  // Add teacher-specific links
-  if (user?.role === 'TEACHER') {
+  // Add teacher and admin-specific links
+  if (user?.role === 'TEACHER' || user?.role === 'SUPERADMIN') {
     navigation.splice(3, 0,
       { name: t('nav.questionBank', 'Question Bank'), href: '/question-bank', icon: ClipboardDocumentListIcon },
       { name: t('nav.quizBuilder', 'Quiz Builder'), href: '/quiz-builder', icon: BeakerIcon }

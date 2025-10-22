@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Input } from '../components/Input';
-import { Button } from '../components/Button';
+import { Input } from '../components';
+import { Button } from '../components';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import apiClient from '../api/client';
 
@@ -34,6 +34,12 @@ export const Register: React.FC = () => {
     // Валідація
     if (!formData.email || !formData.password || !formData.display_name) {
       setError(t('auth.register.allFieldsRequired'));
+      return;
+    }
+
+    // Валідація UCU email
+    if (!formData.email.toLowerCase().endsWith('@ucu.edu.ua')) {
+      setError(t('auth.register.ucuEmailRequired', 'Only @ucu.edu.ua email addresses are allowed'));
       return;
     }
 
@@ -72,7 +78,7 @@ export const Register: React.FC = () => {
       if (err.response?.data) {
         const errorData = err.response.data;
         if (errorData.email) {
-          setError(t('auth.register.emailExists'));
+          setError(Array.isArray(errorData.email) ? errorData.email[0] : errorData.email);
         } else if (errorData.password) {
           setError(Array.isArray(errorData.password) ? errorData.password[0] : errorData.password);
         } else {

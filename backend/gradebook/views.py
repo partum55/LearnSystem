@@ -26,8 +26,11 @@ class GradebookViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         
-        if user.role in ['TEACHER', 'ADMIN']:
-            # Teachers see all entries for their courses
+        if user.role in ['TEACHER', 'SUPERADMIN']:
+            # Teachers and superadmins see all entries for their courses
+            # Superadmins see all entries
+            if user.role == 'SUPERADMIN':
+                return GradebookEntry.objects.all().select_related('student', 'assignment', 'course')
             return GradebookEntry.objects.filter(
                 course__owner=user
             ).select_related('student', 'assignment', 'course')
@@ -46,9 +49,9 @@ class GradebookViewSet(viewsets.ModelViewSet):
         course = get_object_or_404(Course, id=course_id)
         
         # Check permission
-        if request.user.role not in ['TEACHER', 'ADMIN', 'TA']:
+        if request.user.role not in ['TEACHER', 'SUPERADMIN', 'TA']:
             return Response(
-                {'error': 'Only teachers can view full gradebook'},
+                {'error': 'Only teachers and admins can view full gradebook'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
@@ -133,7 +136,7 @@ class GradebookViewSet(viewsets.ModelViewSet):
         return Response({
             'course_id': str(course.id),
             'course_code': course.code,
-            'course_title': course.title,
+            'course_title': course.title_uk or course.title_en,
             'assignments': assignment_info,
             'students': gradebook_data,
         })
@@ -389,9 +392,9 @@ class GradebookViewSet(viewsets.ModelViewSet):
         course = get_object_or_404(Course, id=course_id)
         
         # Check permission
-        if request.user.role not in ['TEACHER', 'ADMIN']:
+        if request.user.role not in ['TEACHER', 'SUPERADMIN']:
             return Response(
-                {'error': 'Only teachers can recalculate grades'},
+                {'error': 'Only teachers and admins can recalculate grades'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
@@ -427,7 +430,9 @@ class GradebookCategoryViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         
-        if user.role in ['TEACHER', 'ADMIN']:
+        if user.role in ['TEACHER', 'SUPERADMIN']:
+            if user.role == 'SUPERADMIN':
+                return GradebookCategory.objects.all()
             return GradebookCategory.objects.filter(
                 course__owner=user
             )
@@ -455,7 +460,9 @@ class CourseGradeSummaryViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         user = self.request.user
         
-        if user.role in ['TEACHER', 'ADMIN']:
+        if user.role in ['TEACHER', 'SUPERADMIN']:
+            if user.role == 'SUPERADMIN':
+                return CourseGradeSummary.objects.all().select_related('student', 'course')
             return CourseGradeSummary.objects.filter(
                 course__owner=user
             ).select_related('student', 'course')

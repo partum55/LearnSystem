@@ -20,8 +20,8 @@ User = get_user_model()
 
 COOKIE_ACCESS_NAME = 'access_token'
 COOKIE_REFRESH_NAME = 'refresh_token'
-COOKIE_MAX_AGE_ACCESS = int(timedelta(hours=1).total_seconds())
-COOKIE_MAX_AGE_REFRESH = int(timedelta(days=7).total_seconds())
+COOKIE_MAX_AGE_ACCESS = int(timedelta(days=1).total_seconds())  # 24 години
+COOKIE_MAX_AGE_REFRESH = int(timedelta(days=30).total_seconds())  # 30 днів
 COOKIE_KWARGS = {
     'httponly': True,
     'secure': not settings.DEBUG,
@@ -42,6 +42,13 @@ class CustomLoginView(APIView):
             return Response(
                 {'error': 'Email and password are required'},
                 status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate UCU email domain
+        if not email.lower().endswith('@ucu.edu.ua'):
+            return Response(
+                {'error': 'Only @ucu.edu.ua email addresses are allowed'},
+                status=status.HTTP_403_FORBIDDEN
             )
 
         user = authenticate(request, username=email, password=password)
@@ -65,7 +72,7 @@ class CustomLoginView(APIView):
         })
         # Ensure CSRF cookie is set for clients that need it
         get_token(request)
-        # Set cookies
+        # Set cookies with longer expiration
         response.set_cookie(COOKIE_ACCESS_NAME, str(access), max_age=COOKIE_MAX_AGE_ACCESS, **COOKIE_KWARGS)
         response.set_cookie(COOKIE_REFRESH_NAME, str(refresh), max_age=COOKIE_MAX_AGE_REFRESH, **COOKIE_KWARGS)
         return response
@@ -91,17 +98,53 @@ class TokenCookieRefreshView(APIView):
 
 
 class CurrentUserView(APIView):
-    """Get current authenticated user."""
+    """Get and update current authenticated user."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
+    def patch(self, request):
+        """Update current user profile."""
+        serializer = UserUpdateSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        # Return full user data after update
+        return Response(UserSerializer(request.user).data)
+
+    def put(self, request):
+        """Update current user profile (full update)."""
+        serializer = UserUpdateSerializer(request.user, data=request.data, partial=False)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(UserSerializer(request.user).data)
+
+
+class PasswordChangeView(APIView):
+    """Change user password."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = PasswordChangeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+        if not user.check_password(serializer.validated_data['old_password']):
+            return Response(
+                {'old_password': ['Wrong password.']},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user.set_password(serializer.validated_data['new_password'])
+        user.save()
+
+        return Response({'message': 'Password changed successfully'}, status=status.HTTP_200_OK)
+
 
 class CustomLogoutView(APIView):
     """Logout view that blacklists the refresh token and clears cookies."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]  # Allow even without auth to clear cookies
 
     def post(self, request):
         try:
@@ -112,12 +155,28 @@ class CustomLogoutView(APIView):
                     token.blacklist()
                 except TokenError:
                     pass
-            response = Response({'message': 'Successfully logged out'}, status=status.HTTP_205_RESET_CONTENT)
-            response.delete_cookie(COOKIE_ACCESS_NAME, path='/' )
-            response.delete_cookie(COOKIE_REFRESH_NAME, path='/')
+
+            response = Response({'message': 'Successfully logged out'}, status=status.HTTP_200_OK)
+
+            # Delete cookies with the same parameters they were set with
+            response.delete_cookie(
+                COOKIE_ACCESS_NAME,
+                path='/',
+                samesite='None' if not settings.DEBUG else 'Lax',
+            )
+            response.delete_cookie(
+                COOKIE_REFRESH_NAME,
+                path='/',
+                samesite='None' if not settings.DEBUG else 'Lax',
+            )
+
             return response
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            # Even if there's an error, still try to clear cookies
+            response = Response({'message': 'Logged out'}, status=status.HTTP_200_OK)
+            response.delete_cookie(COOKIE_ACCESS_NAME, path='/')
+            response.delete_cookie(COOKIE_REFRESH_NAME, path='/')
+            return response
 
 
 class UserViewSet(viewsets.ModelViewSet):

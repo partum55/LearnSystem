@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CopilotDiffPersistence">
+    <option name="pendingDiffs">
+      <map>
+        <entry key="$PROJECT_DIR$/backend/build.sh">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/backend/build.sh" />
+              <option name="updatedContent" value="# Build script for Render&#10;#!/usr/bin/env bash&#10;# exit on error&#10;set -o errexit&#10;&#10;pip install -r requirements.txt&#10;&#10;# Collect static files&#10;python manage.py collectstatic --no-input&#10;&#10;# Run migrations&#10;python manage.py migrate --no-input&#10;&#10;# Create superuser if needed (optional)&#10;# python manage.py shell -c &quot;from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.filter(email='admin@example.com').exists() or User.objects.create_superuser('admin@example.com', 'admin', 'Admin User')&quot;&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>

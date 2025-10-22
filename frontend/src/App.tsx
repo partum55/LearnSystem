@@ -23,6 +23,8 @@ import QuizTaking from './pages/QuizTaking';
 import QuizResults from './pages/QuizResults';
 import QuizDetail from './pages/QuizDetail';
 import QuizBuilder from './pages/QuizBuilder';
+import DashboardCustomize from './pages/DashboardCustomize';
+import ProfileSettings from './pages/ProfileSettings';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -80,6 +82,14 @@ const App: React.FC = () => {
             element={
               <PrivateRoute>
                 <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/dashboard/customize"
+            element={
+              <PrivateRoute>
+                <DashboardCustomize />
               </PrivateRoute>
             }
           />
@@ -168,6 +178,14 @@ const App: React.FC = () => {
             element={
               <PrivateRoute>
                 <Profile />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <PrivateRoute>
+                <ProfileSettings />
               </PrivateRoute>
             }
           />

@@ -16,3 +16,5 @@ export * from './CreateQuestionModal';
 export * from './CreateQuizModal';
 export * from './CourseGradesTab';
 export * from './TeacherGradebook';
+export * from './DashboardBuilder';
+export * from './DashboardWidgets';
