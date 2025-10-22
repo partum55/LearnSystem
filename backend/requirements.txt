@@ -26,3 +26,4 @@ django-csp==3.8
 # Dev & security tooling (optional)
 bandit==1.8.0
 pip-audit==2.7.3
+dj-database-url==2.1.0
