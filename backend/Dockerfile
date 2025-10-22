@@ -15,6 +15,7 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY . .
 
-# Виконуємо міграції і запускаємо gunicorn на порт, який дає Render
-CMD python manage.py migrate && \
-    gunicorn lms_project.wsgi:application --bind 0.0.0.0:$PORT
+COPY docker-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+CMD ["/entrypoint.sh"]
