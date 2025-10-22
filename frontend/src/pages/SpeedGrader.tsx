@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { Header, Card, CardHeader, CardBody, Button, Loading } from '../components';
+import apiClient from '../api/client';
 
 interface Submission {
   id: string;
@@ -80,15 +81,8 @@ export const SpeedGrader: React.FC = () => {
 
   const fetchAssignment = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/assessments/assignments/${assignmentId}/`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setAssignment(data);
-      }
+      const response = await apiClient.get<Assignment>(`/assessments/assignments/${assignmentId}/`);
+      setAssignment(response.data);
     } catch (error) {
       console.error('Failed to fetch assignment:', error);
     }
@@ -96,17 +90,10 @@ export const SpeedGrader: React.FC = () => {
 
   const fetchSubmissions = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/submissions/submissions/speedgrader/?assignment=${assignmentId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        // Combine ungraded and recently graded
-        const allSubmissions = [...(data.ungraded || []), ...(data.recently_graded || [])];
-        setSubmissions(allSubmissions);
-      }
+      const response = await apiClient.get<any>(`/submissions/submissions/speedgrader/?assignment=${assignmentId}`);
+      const data = response.data;
+      const allSubmissions = [...(data.ungraded || []), ...(data.recently_graded || [])];
+      setSubmissions(allSubmissions);
     } catch (error) {
       console.error('Failed to fetch submissions:', error);
     } finally {
@@ -119,32 +106,16 @@ export const SpeedGrader: React.FC = () => {
 
     setSaving(true);
     try {
-      const response = await fetch(
-        `http://localhost:8000/api/submissions/submissions/${currentSubmission.id}/grade/`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          },
-          body: JSON.stringify({
-            grade: parseFloat(grade),
-            feedback,
-            rubric_evaluation: rubricScores,
-          }),
-        }
-      );
+      await apiClient.post(`/submissions/submissions/${currentSubmission.id}/grade/`, {
+        grade: parseFloat(grade),
+        feedback,
+        rubric_evaluation: rubricScores,
+      });
 
-      if (response.ok) {
-        // Move to next submission
-        if (currentIndex < submissions.length - 1) {
-          setCurrentIndex(currentIndex + 1);
-        }
-        // Refresh submissions
-        fetchSubmissions();
-      } else {
-        alert('Failed to save grade');
+      if (currentIndex < submissions.length - 1) {
+        setCurrentIndex(currentIndex + 1);
       }
+      fetchSubmissions();
     } catch (error) {
       console.error('Failed to save grade:', error);
       alert('Failed to save grade');
@@ -157,22 +128,9 @@ export const SpeedGrader: React.FC = () => {
     if (!currentSubmission || !comment.trim()) return;
 
     try {
-      const response = await fetch(
-        `http://localhost:8000/api/submissions/submissions/${currentSubmission.id}/add_comment/`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          },
-          body: JSON.stringify({ comment }),
-        }
-      );
-
-      if (response.ok) {
-        setComment('');
-        fetchSubmissions();
-      }
+      await apiClient.post(`/submissions/submissions/${currentSubmission.id}/add_comment/`, { comment });
+      setComment('');
+      fetchSubmissions();
     } catch (error) {
       console.error('Failed to add comment:', error);
     }

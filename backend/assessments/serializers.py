@@ -4,7 +4,7 @@ from .models import Assignment, Quiz, QuestionBank, QuizQuestion, QuizAttempt
 
 class AssignmentSerializer(serializers.ModelSerializer):
     """Serializer for Assignment model."""
-    
+
     created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
     course_code = serializers.CharField(source='course.code', read_only=True)
     module_title = serializers.CharField(source='module.title', read_only=True)
@@ -12,6 +12,12 @@ class AssignmentSerializer(serializers.ModelSerializer):
     requires_submission = serializers.SerializerMethodField()
     submissions_count = serializers.SerializerMethodField()
     graded_count = serializers.SerializerMethodField()
+    completion_rate = serializers.SerializerMethodField()
+    prerequisites_ids = serializers.PrimaryKeyRelatedField(
+        source='prerequisites',
+        many=True,
+        read_only=True
+    )
 
     class Meta:
         model = Assignment
@@ -25,11 +31,13 @@ class AssignmentSerializer(serializers.ModelSerializer):
             'allowed_file_types', 'max_file_size', 'max_files', 'programming_language',
             'auto_grading_enabled', 'test_cases', 'quiz', 'external_tool_url',
             'external_tool_config', 'grade_anonymously', 'peer_review_enabled',
-            'peer_reviews_required', 'is_published', 'created_at', 'updated_at',
-            'created_by', 'created_by_name', 'requires_submission', 'submissions_count', 'graded_count'
+            'peer_reviews_required', 'tags', 'prerequisites_ids', 'estimated_duration',
+            'is_template', 'is_archived', 'original_assignment', 'is_published',
+            'created_at', 'updated_at', 'created_by', 'created_by_name',
+            'requires_submission', 'submissions_count', 'graded_count', 'completion_rate'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
-    
+
     def get_requires_submission(self, obj):
         return obj.requires_submission()
 
@@ -38,6 +46,9 @@ class AssignmentSerializer(serializers.ModelSerializer):
 
     def get_graded_count(self, obj):
         return obj.submissions.filter(status='GRADED').count()
+
+    def get_completion_rate(self, obj):
+        return obj.get_completion_rate()
 
 
 class QuestionBankSerializer(serializers.ModelSerializer):
@@ -70,9 +81,9 @@ class QuizQuestionSerializer(serializers.ModelSerializer):
 
 class QuizSerializer(serializers.ModelSerializer):
     """Serializer for Quiz model."""
-    
+
     created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
-    questions = QuizQuestionSerializer(many=True, read_only=True)
+    quiz_questions = QuizQuestionSerializer(many=True, read_only=True)
     questions_count = serializers.SerializerMethodField()
     total_points = serializers.SerializerMethodField()
 
@@ -82,16 +93,16 @@ class QuizSerializer(serializers.ModelSerializer):
             'id', 'course', 'title', 'description', 'time_limit', 'attempts_allowed',
             'shuffle_questions', 'shuffle_answers', 'show_correct_answers',
             'show_correct_answers_at', 'pass_percentage', 'created_at', 'updated_at',
-            'created_by', 'created_by_name', 'questions', 'questions_count', 'total_points'
+            'created_by', 'created_by_name', 'quiz_questions', 'questions_count', 'total_points'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
-    
+
     def get_questions_count(self, obj):
-        return obj.questions.count()
+        return obj.quiz_questions.count()
 
     def get_total_points(self, obj):
         total = 0
-        for qq in obj.questions.all():
+        for qq in obj.quiz_questions.all():
             total += qq.points_override if qq.points_override else qq.question.points
         return total
 

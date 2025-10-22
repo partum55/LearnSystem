@@ -4,7 +4,7 @@ import { Modal } from './Modal';
 import { Input } from './Input';
 import { Button } from './Button';
 import { AssignmentType } from '../types';
-import apiClient from '../api/client';
+import { assignmentsApi, quizzesApi } from '../api/assessments';
 
 interface Quiz {
   id: string;
@@ -96,7 +96,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
   const fetchAvailableQuizzes = async () => {
     setLoadingQuizzes(true);
     try {
-      const response = await apiClient.get(`/assessments/quizzes/?course=${courseId}`);
+      const response = await quizzesApi.getAll(courseId);
       const data = response.data as any;
       const quizzes = Array.isArray(data) ? data : data.results || [];
       setAvailableQuizzes(quizzes);
@@ -134,6 +134,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
 
       const payload: any = {
         course: courseId,
+        module: moduleId || null,
         assignment_type: formData.assignment_type,
         title: formData.title,
         description: formData.description,
@@ -169,24 +170,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
         payload.quiz = formData.quiz_id;
       }
 
-      // Include moduleId in payload if available
-      if (moduleId) {
-        payload.module = moduleId;
-      }
-
-      const response = await fetch('http://localhost:8000/api/assessments/assignments/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to create assignment');
-      }
+      await assignmentsApi.create(payload);
 
       // Reset form
       setFormData({

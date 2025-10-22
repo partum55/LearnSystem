@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Modal } from '../components/Modal';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
+import { modulesApi } from '../api/courses';
 
 interface CreateModuleModalProps {
   isOpen: boolean;
@@ -32,29 +33,18 @@ export const CreateModuleModal: React.FC<CreateModuleModalProps> = ({
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/courses/modules/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        body: JSON.stringify({
-          course: courseId,
-          title: formData.title,
-          description: formData.description,
-          is_published: formData.is_published,
-        }),
+      await modulesApi.create({
+        course: courseId,
+        title: formData.title,
+        description: formData.description,
+        is_published: formData.is_published,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to create module');
-      }
 
       setFormData({ title: '', description: '', is_published: false });
       onModuleCreated();
       onClose();
-    } catch (err) {
-      setError(t('modules.errors.createFailed'));
+    } catch (err: any) {
+      setError(err.response?.data?.message || t('modules.errors.createFailed'));
     } finally {
       setLoading(false);
     }

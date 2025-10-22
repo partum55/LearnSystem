@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import DOMPurify from 'dompurify';
 
 interface RichTextEditorProps {
   value: string;
@@ -106,7 +107,9 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     // Line breaks
     html = html.replace(/\n/g, '<br />');
 
-    return html;
+    // Sanitize
+    const clean = DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
+    return clean;
   };
 
   return (

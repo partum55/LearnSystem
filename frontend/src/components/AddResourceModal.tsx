@@ -4,6 +4,7 @@ import { Modal } from './Modal';
 import { Input } from './Input';
 import { Button } from './Button';
 import { ResourceType } from '../types';
+import apiClient from '../api/client';
 import {
   DocumentTextIcon,
   VideoCameraIcon,
@@ -96,29 +97,11 @@ export const AddResourceModal: React.FC<AddResourceModalProps> = ({
         formDataToSend.append('file', formData.file);
       }
 
-      const xhr = new XMLHttpRequest();
-
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) {
+      await apiClient.upload('/courses/resources/upload/', formDataToSend, (e) => {
+        if (e.total) {
           const progress = Math.round((e.loaded / e.total) * 100);
           setUploadProgress(progress);
         }
-      });
-
-      await new Promise<void>((resolve, reject) => {
-        xhr.open('POST', 'http://localhost:8000/api/courses/resources/upload/');
-        xhr.setRequestHeader('Authorization', `Bearer ${localStorage.getItem('access_token')}`);
-
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve();
-          } else {
-            reject(new Error(xhr.statusText));
-          }
-        };
-
-        xhr.onerror = () => reject(new Error('Network error'));
-        xhr.send(formDataToSend);
       });
 
       setFormData({

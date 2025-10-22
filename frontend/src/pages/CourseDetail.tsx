@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Header } from '../components/Header';
-import { Sidebar } from '../components/Sidebar';
-import { Card, CardHeader, CardBody } from '../components/Card';
-import { Button } from '../components/Button';
-import { Loading } from '../components/Loading';
-import { CreateModuleModal } from '../components/CreateModuleModal';
-import { CreateAssignmentModal } from '../components/CreateAssignmentModal';
+import { Header } from '../components';
+import { Sidebar } from '../components';
+import { Card, CardHeader, CardBody } from '../components';
+import { Button } from '../components';
+import { Loading } from '../components';
+import { CreateModuleModal } from '../components';
+import { CreateAssignmentModal } from '../components';
+import { CreateResourceModal } from '../components/CreateResourceModal';
 import { useCourseStore } from '../store/courseStore';
 import { useAuthStore } from '../store/authStore';
 import {
@@ -22,8 +23,8 @@ import {
   ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import { Module, Assignment } from '../types';
-import { TeacherGradebook } from '../components/TeacherGradebook';
-import { CourseGradesTab } from '../components/CourseGradesTab';
+import { TeacherGradebook } from '../components';
+import { CourseGradesTab } from '../components';
 
 
 export const CourseDetail: React.FC = () => {
@@ -34,6 +35,8 @@ export const CourseDetail: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'modules' | 'assignments' | 'members' | 'grades'>('modules');
   const [showModuleModal, setShowModuleModal] = useState(false);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [showResourceModal, setShowResourceModal] = useState(false);
+  const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -53,7 +56,24 @@ export const CourseDetail: React.FC = () => {
   const handleAssignmentCreated = () => {
     if (id) {
       fetchAssignments(id);
+      fetchModules(id);
     }
+  };
+
+  const handleResourceCreated = () => {
+    if (id) {
+      fetchModules(id);
+    }
+  };
+
+  const handleAddResource = (moduleId: string) => {
+    setSelectedModuleId(moduleId);
+    setShowResourceModal(true);
+  };
+
+  const handleAddAssignment = (moduleId: string) => {
+    setSelectedModuleId(moduleId);
+    setShowAssignmentModal(true);
   };
 
   const toggleModule = (moduleId: string) => {
@@ -226,6 +246,34 @@ export const CourseDetail: React.FC = () => {
                               <p className="text-gray-600 dark:text-gray-400 mb-6">
                                 {module.description}
                               </p>
+                            )}
+
+                            {/* Action Buttons for Instructor */}
+                            {isInstructor && (
+                              <div className="flex gap-2 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddResource(module.id);
+                                  }}
+                                >
+                                  <PlusIcon className="h-4 w-4 mr-1" />
+                                  {t('modules.addResource')}
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddAssignment(module.id);
+                                  }}
+                                >
+                                  <PlusIcon className="h-4 w-4 mr-1" />
+                                  {t('assignments.addAssignment')}
+                                </Button>
+                              </div>
                             )}
 
                             {/* Resources Section */}
@@ -425,10 +473,25 @@ export const CourseDetail: React.FC = () => {
           />
           <CreateAssignmentModal
             isOpen={showAssignmentModal}
-            onClose={() => setShowAssignmentModal(false)}
+            onClose={() => {
+              setShowAssignmentModal(false);
+              setSelectedModuleId(null);
+            }}
             courseId={id!}
+            moduleId={selectedModuleId || undefined}
             onAssignmentCreated={handleAssignmentCreated}
           />
+          {selectedModuleId && (
+            <CreateResourceModal
+              isOpen={showResourceModal}
+              onClose={() => {
+                setShowResourceModal(false);
+                setSelectedModuleId(null);
+              }}
+              moduleId={selectedModuleId}
+              onResourceCreated={handleResourceCreated}
+            />
+          )}
         </>
       )}
     </div>

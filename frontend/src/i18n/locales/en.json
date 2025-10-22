@@ -1,0 +1,172 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "close": "Close",
+    "submit": "Submit",
+    "loading": "Loading...",
+    "saving": "Saving...",
+    "search": "Search",
+    "filter": "Filter",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "published": "Published",
+    "draft": "Draft",
+    "moveUp": "Move up",
+    "moveDown": "Move down"
+  },
+  "settings": {
+    "title": "Settings",
+    "appControls": "Application controls",
+    "language": "Language",
+    "lang_en": "English",
+    "lang_uk": "Ukrainian",
+    "size": "Size",
+    "size_sm": "Compact",
+    "size_md": "Comfortable",
+    "size_lg": "Large",
+    "light": "Light",
+    "dark": "Dark",
+    "switchToLight": "Switch to light mode",
+    "switchToDark": "Switch to dark mode"
+  },
+  "modules": {
+    "title": "Modules",
+    "addModule": "Add Module",
+    "createModule": "Create Module",
+    "noModules": "No modules available",
+    "noContent": "No content available",
+    "resources": "Resources",
+    "addResource": "Add Resource",
+    "titlePlaceholder": "Module title",
+    "descriptionPlaceholder": "Module description",
+    "publishImmediately": "Publish immediately",
+    "errors": {
+      "createFailed": "Failed to create module"
+    }
+  },
+  "resources": {
+    "title": "Resources",
+    "createResource": "Add Resource",
+    "type": "Resource Type",
+    "titlePlaceholder": "Resource title",
+    "description": "Description",
+    "descriptionPlaceholder": "Resource description",
+    "file": "File",
+    "selectedFile": "Selected file",
+    "externalUrl": "External URL",
+    "textContent": "Text Content",
+    "textContentPlaceholder": "Enter text or code...",
+    "allowDownload": "Allow download",
+    "errors": {
+      "createFailed": "Failed to add resource"
+    }
+  },
+  "assignments": {
+    "title": "Assignments",
+    "type": "Assignment Type",
+    "createAssignment": "Create Assignment",
+    "addAssignment": "Add Assignment",
+    "noAssignments": "No assignments available",
+    "dueDate": "Due Date",
+    "points": "Points",
+    "types": {
+      "fileUpload": "File Upload",
+      "fileUploadDesc": "Students upload files",
+      "text": "Text Response",
+      "textDesc": "Students enter text",
+      "code": "Code",
+      "codeDesc": "Students write code",
+      "url": "URL Link",
+      "urlDesc": "Students provide a link",
+      "quiz": "Quiz",
+      "quizDesc": "Auto-graded quiz",
+      "manualGrade": "Manual Grade",
+      "manualGradeDesc": "No submission, grade only",
+      "external": "External Tool",
+      "externalDesc": "Integration with external service"
+    },
+    "errors": {
+      "createFailed": "Failed to create assignment",
+      "quizRequired": "Please select a quiz for this assignment"
+    }
+  },
+  "courses": {
+    "title": "Courses",
+    "modules": "Modules",
+    "students": "Students",
+    "instructor": "Instructor",
+    "enrollStudents": "Enroll Students",
+    "createCourse": "Create Course",
+    "membersComingSoon": "Members section coming soon"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "courses": "Courses",
+    "assignments": "Assignments",
+    "grades": "Grades",
+    "profile": "Profile",
+    "questionBank": "Question Bank",
+    "quizBuilder": "Quiz Builder"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "myCourses": "My Courses",
+    "noCourses": "No courses available",
+    "upcomingDeadlines": "Upcoming Deadlines",
+    "noDeadlines": "No upcoming deadlines",
+    "recentActivity": "Recent Activity",
+    "customize": "Customize Dashboard",
+    "customizeTitle": "Customize Your Dashboard",
+    "customizeDesc": "Choose which widgets to display and arrange their order"
+  },
+  "quiz": {
+    "create": "Create Quiz",
+    "createNew": "Create Quiz",
+    "edit": "Edit Quiz",
+    "saved": "Quiz saved successfully!",
+    "saveFailed": "Failed to save quiz",
+    "builderDesc": "Build your quiz by adding questions",
+    "basicInfo": "Basic Information",
+    "title": "Quiz Title",
+    "titlePlaceholder": "Enter quiz title",
+    "description": "Description",
+    "descriptionPlaceholder": "Enter quiz description",
+    "course": "Course",
+    "selectCourse": "Select a course",
+    "timeLimit": "Time Limit (minutes)",
+    "questions": "Questions",
+    "addQuestion": "Add Question",
+    "noQuestions": "No questions yet. Click \"Add Question\" to get started.",
+    "questionNum": "Question {{num}}",
+    "questionType": "Question Type",
+    "points": "Points",
+    "questionText": "Question Text",
+    "questionTextPlaceholder": "Enter your question",
+    "choices": "Answer Choices",
+    "choicePlaceholder": "Choice {{num}}",
+    "correctAnswer": "Correct Answer",
+    "correctAnswerPlaceholder": "Enter the correct answer",
+    "selectAnswer": "Select answer",
+    "multipleChoice": "Multiple Choice",
+    "trueFalse": "True/False",
+    "shortAnswer": "Short Answer",
+    "essay": "Essay",
+    "true": "True",
+    "false": "False"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "noNotifications": "No notifications"
+  },
+  "auth": {
+    "welcome": "Welcome"
+  },
+  "gradebook": {
+    "title": "Gradebook"
+  }
+}

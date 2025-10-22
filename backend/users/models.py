@@ -68,6 +68,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(_('staff status'), default=False)
 
     email_verified = models.BooleanField(_('email verified'), default=False)
+    email_verification_token = models.CharField(_('email verification token'), max_length=255, blank=True, null=True)
+
+    # Password reset tokens
+    password_reset_token = models.CharField(_('password reset token'), max_length=255, blank=True, null=True)
+    password_reset_expires = models.DateTimeField(_('password reset expires'), null=True, blank=True)
+
+    # User preferences (JSON field for flexible storage)
+    preferences = models.JSONField(_('preferences'), default=dict, blank=True)
 
     created_at = models.DateTimeField(_('created at'), auto_now_add=True)
     updated_at = models.DateTimeField(_('updated at'), auto_now=True)

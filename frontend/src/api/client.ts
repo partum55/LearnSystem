@@ -1,9 +1,31 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import { getAccessToken, setAccessToken } from './token';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
+// Helper to delay in ms
+const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
+// Extract a safe, human-readable error message
+const extractErrorMessage = (error: AxiosError): string => {
+  const data: any = error.response?.data;
+  if (data) {
+    if (typeof data === 'string') return data;
+    if (typeof data.message === 'string') return data.message;
+    if (typeof data.error === 'string') return data.error;
+    if (typeof data.detail === 'string') return data.detail;
+    if (typeof data.non_field_errors?.[0] === 'string') return data.non_field_errors[0];
+    if (typeof data.code === 'string' && typeof data.retry_after !== 'undefined') {
+      // e.g., rate-limit object
+      return data.message || 'Too many requests, please try again shortly.';
+    }
+  }
+  return error.message || 'Request failed';
+};
+
 class ApiClient {
   private client: AxiosInstance;
+  private refreshPromise: Promise<string | null> | null = null;
 
   constructor() {
     this.client = axios.create({
@@ -11,16 +33,43 @@ class ApiClient {
       headers: {
         'Content-Type': 'application/json',
       },
+      withCredentials: true,
+      xsrfCookieName: 'csrftoken',
+      xsrfHeaderName: 'X-CSRFToken',
     });
 
     this.setupInterceptors();
   }
 
+  private async refreshAccessToken(): Promise<string | null> {
+    if (this.refreshPromise) return this.refreshPromise;
+    this.refreshPromise = this.client
+      .post<{ access?: string }>('/auth/refresh/')
+      .then((res) => {
+        const access = res.data?.access || null;
+        setAccessToken(access);
+        return access;
+      })
+      .catch((err) => {
+        setAccessToken(null);
+        throw err;
+      })
+      .finally(() => {
+        this.refreshPromise = null;
+      });
+    return this.refreshPromise;
+  }
+
+  private isAuthEndpoint(url?: string) {
+    if (!url) return false;
+    return url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/users');
+  }
+
   private setupInterceptors() {
-    // Request interceptor to add auth token
+    // Add Authorization header from in-memory token (no localStorage)
     this.client.interceptors.request.use(
-      (config: InternalAxiosRequestConfig) => {
-        const token = localStorage.getItem('access_token');
+      (config: InternalAxiosRequestConfig & { _retry?: boolean; _retry429?: boolean }) => {
+        const token = getAccessToken();
         if (token && config.headers) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -29,45 +78,60 @@ class ApiClient {
       (error) => Promise.reject(error)
     );
 
-    // Response interceptor to handle errors
+    // Response interceptor to handle 401/429 and normalize error messages
     this.client.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
-        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+        const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean; _retry429?: boolean }) | undefined;
+        const status = error.response?.status;
+        const url = originalRequest?.url;
 
-        // If error is 401 and we haven't retried yet
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        // 429 Too Many Requests: retry once after delay
+        if (status === 429 && originalRequest && !originalRequest._retry429) {
+          originalRequest._retry429 = true;
+          const retryAfterHeader = error.response?.headers?.['retry-after'] as string | undefined;
+          const retryAfterJson = (error.response?.data as any)?.retry_after as number | undefined;
+          const retrySeconds = Math.min(
+            10,
+            Number(retryAfterHeader) || (typeof retryAfterJson === 'number' ? retryAfterJson : 1)
+          );
+          await delay(retrySeconds * 1000);
+          return this.client(originalRequest);
+        }
+
+        // 401 Unauthorized: attempt refresh once, de-duped, except on auth endpoints
+        if (
+          status === 401 &&
+          originalRequest &&
+          !originalRequest._retry &&
+          !this.isAuthEndpoint(url || '')
+        ) {
           originalRequest._retry = true;
-
-          const refreshToken = localStorage.getItem('refresh_token');
-
-          if (refreshToken) {
-            try {
-              // Try to refresh the token
-              const response = await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {
-                refresh: refreshToken,
-              });
-
-              const newAccessToken = response.data.access;
-              localStorage.setItem('access_token', newAccessToken);
-
-              // Retry the original request with new token
-              if (originalRequest.headers) {
-                originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-              }
-              return this.client(originalRequest);
-            } catch (refreshError) {
-              // Refresh failed, logout user
-              localStorage.removeItem('access_token');
-              localStorage.removeItem('refresh_token');
-              window.location.href = '/login';
-              return Promise.reject(refreshError);
+          try {
+            const access = await this.refreshAccessToken();
+            if (access && originalRequest.headers) {
+              originalRequest.headers['Authorization'] = `Bearer ${access}`;
             }
-          } else {
-            // No refresh token, redirect to login
-            localStorage.removeItem('access_token');
-            window.location.href = '/login';
+            return this.client(originalRequest);
+          } catch (refreshError) {
+            // Redirect to login on refresh failure
+            if (typeof window !== 'undefined') {
+              window.location.href = '/login';
+            }
+            return Promise.reject(refreshError);
           }
+        }
+
+        // Normalize error so consumers don't render objects
+        const normalizedMessage = extractErrorMessage(error);
+        if (error.response?.data && typeof (error.response.data as any) === 'object') {
+          const dataObj = error.response.data as any;
+          if (typeof dataObj.error !== 'string') {
+            dataObj.error = normalizedMessage;
+          }
+        }
+        if (normalizedMessage && normalizedMessage !== error.message) {
+          try { (error as any).message = normalizedMessage; } catch {}
         }
 
         return Promise.reject(error);

@@ -190,6 +190,51 @@ class Assignment(models.Model):
     peer_review_enabled = models.BooleanField(_('peer review enabled'), default=False)
     peer_reviews_required = models.IntegerField(_('peer reviews required'), default=0)
 
+    # Tags for categorization and filtering
+    tags = models.JSONField(
+        _('tags'),
+        default=list,
+        blank=True,
+        help_text=_('Tags for categorization (e.g., ["homework", "lab", "project"])')
+    )
+
+    # Prerequisites - assignments that must be completed first
+    prerequisites = models.ManyToManyField(
+        'self',
+        symmetrical=False,
+        blank=True,
+        related_name='unlocks',
+        help_text=_('Assignments that must be completed before this one')
+    )
+
+    # Completion tracking
+    estimated_duration = models.IntegerField(
+        _('estimated duration'),
+        null=True,
+        blank=True,
+        help_text=_('Estimated time to complete in minutes')
+    )
+
+    # Template and archiving
+    is_template = models.BooleanField(
+        _('is template'),
+        default=False,
+        help_text=_('Mark as template for reuse')
+    )
+    is_archived = models.BooleanField(
+        _('is archived'),
+        default=False,
+        help_text=_('Archived assignments are hidden from students')
+    )
+    original_assignment = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='copies',
+        help_text=_('Original assignment if this is a copy')
+    )
+
     is_published = models.BooleanField(_('published'), default=False)
 
     created_at = models.DateTimeField(_('created at'), auto_now_add=True)
@@ -217,6 +262,80 @@ class Assignment(models.Model):
     def requires_submission(self):
         """Check if this assignment type requires a submission."""
         return self.assignment_type not in ['MANUAL_GRADE', 'QUIZ']
+
+    def check_prerequisites_met(self, user):
+        """Check if user has completed all prerequisites."""
+        if not self.prerequisites.exists():
+            return True
+
+        from submissions.models import Submission
+        for prerequisite in self.prerequisites.all():
+            submission = Submission.objects.filter(
+                assignment=prerequisite,
+                user=user,
+                status='GRADED'
+            ).first()
+            if not submission:
+                return False
+        return True
+
+    def get_completion_rate(self):
+        """Calculate assignment completion rate."""
+        from courses.models import CourseMember
+        from submissions.models import Submission
+
+        total_students = CourseMember.objects.filter(
+            course=self.course,
+            role_in_course='student'
+        ).count()
+
+        if total_students == 0:
+            return 0
+
+        completed = Submission.objects.filter(
+            assignment=self,
+            status__in=['SUBMITTED', 'GRADED']
+        ).count()
+
+        return round((completed / total_students) * 100, 2)
+
+    def duplicate(self, created_by, course=None):
+        """Create a copy of this assignment."""
+        new_assignment = Assignment.objects.create(
+            course=course or self.course,
+            module=self.module,
+            position=self.position,
+            category=self.category,
+            assignment_type=self.assignment_type,
+            title=f"{self.title} (Copy)",
+            description=self.description,
+            description_format=self.description_format,
+            instructions=self.instructions,
+            instructions_format=self.instructions_format,
+            resources=self.resources,
+            starter_code=self.starter_code,
+            solution_code=self.solution_code,
+            max_points=self.max_points,
+            rubric=self.rubric,
+            allow_late_submission=self.allow_late_submission,
+            late_penalty_percent=self.late_penalty_percent,
+            submission_types=self.submission_types,
+            allowed_file_types=self.allowed_file_types,
+            max_file_size=self.max_file_size,
+            max_files=self.max_files,
+            programming_language=self.programming_language,
+            auto_grading_enabled=self.auto_grading_enabled,
+            test_cases=self.test_cases,
+            grade_anonymously=self.grade_anonymously,
+            peer_review_enabled=self.peer_review_enabled,
+            peer_reviews_required=self.peer_reviews_required,
+            tags=self.tags,
+            estimated_duration=self.estimated_duration,
+            original_assignment=self,
+            is_published=False,
+            created_by=created_by
+        )
+        return new_assignment
 
 
 class Quiz(models.Model):
@@ -289,6 +408,11 @@ class QuestionBank(models.Model):
         ('SHORT_ANSWER', 'Short Answer'),
         ('ESSAY', 'Essay'),
         ('CODE', 'Code Question'),
+        # New question types
+        ('FILE_UPLOAD', 'File Upload Question'),
+        ('ORDERING', 'Ordering Question'),
+        ('HOTSPOT', 'Hotspot (Image Selection)'),
+        ('DRAG_DROP', 'Drag and Drop'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -335,7 +459,7 @@ class QuizQuestion(models.Model):
     """Association between Quiz and Questions."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='questions')
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='quiz_questions')
     question = models.ForeignKey(QuestionBank, on_delete=models.CASCADE, related_name='quiz_associations')
 
     position = models.PositiveIntegerField(_('position'), default=0)
@@ -410,6 +534,11 @@ class QuizAttempt(models.Model):
     graded_at = models.DateTimeField(_('graded at'), null=True, blank=True)
 
     feedback = models.TextField(_('feedback'), blank=True)
+
+    # Security and proctoring
+    ip_address = models.GenericIPAddressField(_('IP address'), null=True, blank=True)
+    browser_fingerprint = models.CharField(_('browser fingerprint'), max_length=255, blank=True)
+    proctoring_data = models.JSONField(_('proctoring data'), default=dict, blank=True)
 
     class Meta:
         verbose_name = _('quiz attempt')

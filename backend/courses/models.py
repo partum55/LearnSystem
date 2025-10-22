@@ -43,7 +43,19 @@ class Course(models.Model):
     start_date = models.DateField(_('start date'), null=True, blank=True)
     end_date = models.DateField(_('end date'), null=True, blank=True)
 
+    # Academic tracking
+    academic_year = models.CharField(_('academic year'), max_length=20, blank=True)
+    department_id = models.UUIDField(_('department ID'), null=True, blank=True)
+
     max_students = models.IntegerField(_('max students'), null=True, blank=True)
+
+    # Course status
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('published', 'Published'),
+        ('archived', 'Archived'),
+    ]
+    status = models.CharField(_('status'), max_length=20, choices=STATUS_CHOICES, default='draft')
 
     is_published = models.BooleanField(_('published'), default=False)
 
@@ -97,6 +109,20 @@ class CourseMember(models.Model):
 
     added_at = models.DateTimeField(_('added at'), auto_now_add=True)
     updated_at = models.DateTimeField(_('updated at'), auto_now=True)
+
+    # Enrollment tracking
+    ENROLLMENT_STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('dropped', 'Dropped'),
+        ('completed', 'Completed'),
+    ]
+    enrollment_status = models.CharField(
+        _('enrollment status'),
+        max_length=20,
+        choices=ENROLLMENT_STATUS_CHOICES,
+        default='active'
+    )
+    completion_date = models.DateTimeField(_('completion date'), null=True, blank=True)
 
     # Grade tracking
     final_grade = models.DecimalField(_('final grade'), max_digits=5, decimal_places=2, null=True, blank=True)

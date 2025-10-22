@@ -1,0 +1,172 @@
+{
+  "common": {
+    "save": "Зберегти",
+    "cancel": "Скасувати",
+    "delete": "Видалити",
+    "edit": "Редагувати",
+    "create": "Створити",
+    "close": "Закрити",
+    "submit": "Надіслати",
+    "loading": "Завантаження...",
+    "saving": "Збереження...",
+    "search": "Пошук",
+    "filter": "Фільтр",
+    "back": "Назад",
+    "next": "Далі",
+    "previous": "Назад",
+    "published": "Опубліковано",
+    "draft": "Чернетка",
+    "moveUp": "Перемістити вгору",
+    "moveDown": "Перемістити вниз"
+  },
+  "settings": {
+    "title": "Налаштування",
+    "appControls": "Керування застосунком",
+    "language": "Мова",
+    "lang_en": "Англійська",
+    "lang_uk": "Українська",
+    "size": "Розмір",
+    "size_sm": "Компактний",
+    "size_md": "Зручний",
+    "size_lg": "Великий",
+    "light": "Світла",
+    "dark": "Темна",
+    "switchToLight": "Перемкнути на світлу тему",
+    "switchToDark": "Перемкнути на темну тему"
+  },
+  "modules": {
+    "title": "Модулі",
+    "addModule": "Додати модуль",
+    "createModule": "Створити модуль",
+    "noModules": "Модулі відсутні",
+    "noContent": "Вміст відсутній",
+    "resources": "Матеріали",
+    "addResource": "Додати матеріал",
+    "titlePlaceholder": "Назва модуля",
+    "descriptionPlaceholder": "Опис модуля",
+    "publishImmediately": "Опублікувати одразу",
+    "errors": {
+      "createFailed": "Не вдалося створити модуль"
+    }
+  },
+  "resources": {
+    "title": "Матеріали",
+    "createResource": "Додати матеріал",
+    "type": "Тип матеріалу",
+    "titlePlaceholder": "Назва матеріалу",
+    "description": "Опис",
+    "descriptionPlaceholder": "Опис матеріалу",
+    "file": "Файл",
+    "selectedFile": "Вибрано файл",
+    "externalUrl": "Зовнішнє посилання",
+    "textContent": "Текстовий вміст",
+    "textContentPlaceholder": "Введіть текст або код...",
+    "allowDownload": "Дозволити завантаження",
+    "errors": {
+      "createFailed": "Не вдалося додати матеріал"
+    }
+  },
+  "assignments": {
+    "title": "Завдання",
+    "type": "Тип завдання",
+    "createAssignment": "Створити завдання",
+    "addAssignment": "Додати завдання",
+    "noAssignments": "Завдання відсутні",
+    "dueDate": "Термін здачі",
+    "points": "Бали",
+    "types": {
+      "fileUpload": "Завантаження файлу",
+      "fileUploadDesc": "Студенти завантажують файли",
+      "text": "Текстова відповідь",
+      "textDesc": "Студенти вводять текст",
+      "code": "Код",
+      "codeDesc": "Студенти пишуть код",
+      "url": "URL посилання",
+      "urlDesc": "Студенти надають посилання",
+      "quiz": "Тест",
+      "quizDesc": "Тест з автоматичним оцінюванням",
+      "manualGrade": "Ручне оцінювання",
+      "manualGradeDesc": "Без подання, тільки оцінка",
+      "external": "Зовнішній інструмент",
+      "externalDesc": "Інтеграція з зовнішнім сервісом"
+    },
+    "errors": {
+      "createFailed": "Не вдалося створити завдання",
+      "quizRequired": "Оберіть тест для цього завдання"
+    }
+  },
+  "courses": {
+    "title": "Курси",
+    "modules": "Модулі",
+    "students": "Студенти",
+    "instructor": "Викладач",
+    "enrollStudents": "Записати студентів",
+    "createCourse": "Створити курс",
+    "membersComingSoon": "Розділ студентів в розробці"
+  },
+  "nav": {
+    "dashboard": "Головна",
+    "courses": "Курси",
+    "assignments": "Завдання",
+    "grades": "Оцінки",
+    "profile": "Профіль",
+    "questionBank": "Банк питань",
+    "quizBuilder": "Конструктор тестів"
+  },
+  "dashboard": {
+    "title": "Головна панель",
+    "myCourses": "Мої курси",
+    "noCourses": "Немає курсів",
+    "upcomingDeadlines": "Наближаються дедлайни",
+    "noDeadlines": "Немає найближчих дедлайнів",
+    "recentActivity": "Остання активність",
+    "customize": "Налаштувати панель",
+    "customizeTitle": "Налаштування панелі",
+    "customizeDesc": "Оберіть які віджети показувати та впорядкуйте їх"
+  },
+  "quiz": {
+    "create": "Створити тест",
+    "createNew": "Створити тест",
+    "edit": "Редагувати тест",
+    "saved": "Тест успішно збережено!",
+    "saveFailed": "Не вдалося зберегти тест",
+    "builderDesc": "Створіть свій тест, додаючи питання",
+    "basicInfo": "Основна інформація",
+    "title": "Назва тесту",
+    "titlePlaceholder": "Введіть назву тесту",
+    "description": "Опис",
+    "descriptionPlaceholder": "Введіть опис тесту",
+    "course": "Курс",
+    "selectCourse": "Оберіть курс",
+    "timeLimit": "Ліміт часу (хвилини)",
+    "questions": "Питання",
+    "addQuestion": "Додати питання",
+    "noQuestions": "Питань немає. Натисніть \"Додати питання\", щоб почати.",
+    "questionNum": "Питання {{num}}",
+    "questionType": "Тип питання",
+    "points": "Бали",
+    "questionText": "Текст питання",
+    "questionTextPlaceholder": "Введіть ваше питання",
+    "choices": "Варіанти відповідей",
+    "choicePlaceholder": "Варіант {{num}}",
+    "correctAnswer": "Правильна відповідь",
+    "correctAnswerPlaceholder": "Введіть правильну відповідь",
+    "selectAnswer": "Оберіть відповідь",
+    "multipleChoice": "Множинний вибір",
+    "trueFalse": "Правда/Неправда",
+    "shortAnswer": "Коротка відповідь",
+    "essay": "Есе",
+    "true": "Правда",
+    "false": "Неправда"
+  },
+  "notifications": {
+    "title": "Сповіщення",
+    "noNotifications": "Немає сповіщень"
+  },
+  "auth": {
+    "welcome": "Вітаємо"
+  },
+  "gradebook": {
+    "title": "Журнал оцінок"
+  }
+}

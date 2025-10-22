@@ -6,6 +6,7 @@ import { Sidebar } from '../components/Sidebar';
 import { Card, CardHeader, CardBody } from '../components/Card';
 import { Button } from '../components/Button';
 import { Loading } from '../components/Loading';
+import apiClient from '../api/client';
 
 interface Question {
   id: string;
@@ -78,15 +79,8 @@ export const TakeQuiz: React.FC = () => {
   }, [quiz, attempt]);
   const fetchQuiz = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/assessments/quizzes/${quizId}/`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setQuiz(data);
-      }
+      const response = await apiClient.get<Quiz>(`/assessments/quizzes/${quizId}/`);
+      setQuiz(response.data);
     } catch (error) {
       console.error('Failed to fetch quiz:', error);
     } finally {
@@ -96,17 +90,8 @@ export const TakeQuiz: React.FC = () => {
 
   const startAttempt = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/assessments/quizzes/${quizId}/start_attempt/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setAttempt(data);
-      }
+      const response = await apiClient.post<QuizAttempt>(`/assessments/quizzes/${quizId}/start_attempt/`);
+      setAttempt(response.data);
     } catch (error) {
       console.error('Failed to start attempt:', error);
     }
@@ -114,25 +99,12 @@ export const TakeQuiz: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!attempt) return;
-    
+
     setSubmitting(true);
     try {
-      const response = await fetch(
-        `http://localhost:8000/api/assessments/quiz-attempts/${attempt.id}/submit/`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          },
-          body: JSON.stringify({ answers }),
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        navigate(`/quiz-results/${data.id}`);
-      }
+      const response = await apiClient.post(`/assessments/quiz-attempts/${attempt.id}/submit/`, { answers });
+      const data: any = response.data;
+      navigate(`/quiz-results/${data.id}`);
     } catch (error) {
       console.error('Failed to submit quiz:', error);
     } finally {

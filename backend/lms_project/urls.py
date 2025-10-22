@@ -35,6 +35,7 @@ urlpatterns = [
     path('api/notifications/', include('notifications.urls')),
     path('api/analytics/', include('analytics.urls')),
     path('api/gradebook/', include('gradebook.urls')),
+    path('api/core/', include('core.urls')),
 ]
 
 if settings.DEBUG:

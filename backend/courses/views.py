@@ -9,9 +9,10 @@ from .serializers import (
     ResourceSerializer, AnnouncementSerializer
 )
 from .permissions import IsCourseOwnerOrReadOnly
+from core.bulk_operations import BulkOperationsMixin
 
 
-class CourseViewSet(viewsets.ModelViewSet):
+class CourseViewSet(BulkOperationsMixin, viewsets.ModelViewSet):
     """ViewSet for Course management."""
 
     queryset = Course.objects.select_related('owner').prefetch_related('members__user')

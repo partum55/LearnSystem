@@ -6,6 +6,43 @@
   body {
     @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white;
   }
+
+  /* Root UI size scaling using rem */
+  html.ui-sm { font-size: 14px; }
+  html.ui-md { font-size: 16px; }
+  html.ui-lg { font-size: 18px; }
+
+  /* Focus visibility improvements */
+  :focus-visible {
+    outline: 2px solid theme('colors.blue.500');
+    outline-offset: 2px;
+  }
+
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .skip-link {
+    position: absolute;
+    left: 0.5rem;
+    top: -100%;
+    background: #111827; /* gray-900 */
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    z-index: 50;
+  }
+  .skip-link:focus {
+    top: 0.5rem;
+  }
 }
 
 @layer utilities {

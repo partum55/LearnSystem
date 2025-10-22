@@ -7,6 +7,8 @@ import {
   DocumentTextIcon,
   ChartBarIcon,
   UserIcon,
+  BeakerIcon,
+  ClipboardDocumentListIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../store/authStore';
 import clsx from 'clsx';
@@ -22,6 +24,14 @@ export const Sidebar: React.FC = () => {
     { name: t('nav.grades'), href: '/grades', icon: ChartBarIcon },
     { name: t('nav.profile'), href: '/profile', icon: UserIcon },
   ];
+
+  // Add teacher-specific links
+  if (user?.role === 'TEACHER') {
+    navigation.splice(3, 0,
+      { name: t('nav.questionBank', 'Question Bank'), href: '/question-bank', icon: ClipboardDocumentListIcon },
+      { name: t('nav.quizBuilder', 'Quiz Builder'), href: '/quiz-builder', icon: BeakerIcon }
+    );
+  }
 
   return (
     <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 min-h-screen">

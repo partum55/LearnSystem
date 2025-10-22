@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Course, Module, Assignment, CourseCreateData } from '../types';
-import apiClient from '../api/client';
+import { coursesApi, modulesApi } from '../api/courses';
+import { assignmentsApi } from '../api/assessments';
 
 interface CourseState {
   courses: Course[];
@@ -34,7 +35,7 @@ export const useCourseStore = create<CourseState>((set) => ({
   fetchCourses: async () => {
     set({ isLoading: true, error: null });
     try {
-      const response = await apiClient.get<{ results: Course[] }>('/courses/');
+      const response = await coursesApi.getAll();
       set({ courses: response.data.results, isLoading: false });
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
@@ -44,7 +45,7 @@ export const useCourseStore = create<CourseState>((set) => ({
   fetchCourseById: async (id: string) => {
     set({ isLoadingCourse: true, error: null });
     try {
-      const response = await apiClient.get<Course>(`/courses/${id}/`);
+      const response = await coursesApi.getById(id);
       set({ currentCourse: response.data, isLoadingCourse: false });
     } catch (error: any) {
       set({ error: error.message, isLoadingCourse: false });
@@ -54,7 +55,7 @@ export const useCourseStore = create<CourseState>((set) => ({
   fetchModules: async (courseId: string) => {
     set({ isLoadingModules: true, error: null });
     try {
-      const response = await apiClient.get<Module[] | { results: Module[] }>(`/courses/modules/?course=${courseId}`);
+      const response = await modulesApi.getAll(courseId);
       const modules = Array.isArray(response.data) ? response.data : response.data.results;
       set({ modules, isLoadingModules: false });
     } catch (error: any) {
@@ -65,7 +66,7 @@ export const useCourseStore = create<CourseState>((set) => ({
   fetchAssignments: async (courseId: string) => {
     set({ isLoadingAssignments: true, error: null });
     try {
-      const response = await apiClient.get<Assignment[] | { results: Assignment[] }>(`/assessments/assignments/?course=${courseId}`);
+      const response = await assignmentsApi.getAll(courseId);
       const assignments = Array.isArray(response.data) ? response.data : response.data.results;
       set({ assignments, isLoadingAssignments: false });
     } catch (error: any) {
@@ -76,7 +77,7 @@ export const useCourseStore = create<CourseState>((set) => ({
   createCourse: async (data: CourseCreateData) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await apiClient.post<Course>('/courses/', data);
+      const response = await coursesApi.create(data);
       set((state) => ({
         courses: [...state.courses, response.data],
         isLoading: false,
@@ -91,7 +92,7 @@ export const useCourseStore = create<CourseState>((set) => ({
   updateCourse: async (id: string, data: Partial<Course>) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await apiClient.put<Course>(`/courses/${id}/`, data);
+      const response = await coursesApi.update(id, data);
       set((state) => ({
         courses: state.courses.map((c) => (c.id === id ? response.data : c)),
         currentCourse: state.currentCourse?.id === id ? response.data : state.currentCourse,
@@ -103,3 +104,4 @@ export const useCourseStore = create<CourseState>((set) => ({
     }
   },
 }));
+

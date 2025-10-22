@@ -7,6 +7,7 @@ import { Card, CardHeader, CardBody } from '../components';
 import { Button } from '../components';
 import { Loading } from '../components';
 import { CreateQuestionModal } from '../components';
+import apiClient from '../api/client';
 
 interface Question {
   id: string;
@@ -57,15 +58,8 @@ export const QuizDetail: React.FC = () => {
 
   const fetchQuiz = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/assessments/quizzes/${quizId}/`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setQuiz(data);
-      }
+      const response = await apiClient.get<Quiz>(`/assessments/quizzes/${quizId}/`);
+      setQuiz(response.data);
     } catch (error) {
       console.error('Failed to fetch quiz:', error);
     } finally {
@@ -75,15 +69,9 @@ export const QuizDetail: React.FC = () => {
 
   const fetchAvailableQuestions = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/assessments/questions/?course=${quiz?.course}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setAvailableQuestions(data.results || data);
-      }
+      const response = await apiClient.get<{ results?: Question[] } | Question[]>(`/assessments/questions/?course=${quiz?.course}`);
+      const data: any = response.data;
+      setAvailableQuestions((data.results || data) as Question[]);
     } catch (error) {
       console.error('Failed to fetch questions:', error);
     }
@@ -91,19 +79,9 @@ export const QuizDetail: React.FC = () => {
 
   const handleAddQuestions = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/assessments/quizzes/${quizId}/add_questions/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        body: JSON.stringify({ question_ids: selectedQuestions }),
-      });
-
-      if (response.ok) {
-        setSelectedQuestions([]);
-        fetchQuiz();
-      }
+      await apiClient.post(`/assessments/quizzes/${quizId}/add_questions/`, { question_ids: selectedQuestions });
+      setSelectedQuestions([]);
+      fetchQuiz();
     } catch (error) {
       console.error('Failed to add questions:', error);
     }

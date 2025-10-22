@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User } from '../types';
 import apiClient from '../api/client';
+import { setAccessToken, getAccessToken } from '../api/token';
+import { useUIStore } from './uiStore';
 
 interface AuthState {
   user: User | null;
@@ -9,7 +11,7 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   fetchCurrentUser: () => Promise<void>;
   updateUserPreferences: (locale?: 'uk' | 'en', theme?: 'light' | 'dark') => Promise<void>;
 }
@@ -25,15 +27,15 @@ export const useAuthStore = create<AuthState>()(
       login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await apiClient.post<{ access: string; refresh: string; user: User }>(
+          const response = await apiClient.post<{ access?: string; user: User }>(
             '/auth/login/',
             { email, password }
           );
 
-          localStorage.setItem('access_token', response.data.access);
-          localStorage.setItem('refresh_token', response.data.refresh);
+          if (response.data.access) {
+            setAccessToken(response.data.access);
+          }
 
-          // Immediately update the auth state synchronously
           set({
             user: response.data.user,
             isAuthenticated: true,
@@ -41,18 +43,13 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           });
 
-          // Apply user preferences
+          // Apply user preferences centrally via UI store
+          const ui = useUIStore.getState();
           if (response.data.user.locale) {
-            localStorage.setItem('language', response.data.user.locale);
-            // i18n will be updated by the component
+            ui.setLanguage(response.data.user.locale as 'uk' | 'en');
           }
           if (response.data.user.theme) {
-            localStorage.setItem('theme', response.data.user.theme);
-            if (response.data.user.theme === 'dark') {
-              document.documentElement.classList.add('dark');
-            } else {
-              document.documentElement.classList.remove('dark');
-            }
+            ui.setTheme(response.data.user.theme as 'light' | 'dark');
           }
         } catch (error: any) {
           set({
@@ -65,9 +62,9 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      logout: () => {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
+      logout: async () => {
+        try { await apiClient.post('/auth/logout/'); } catch (e) { /* ignore */ }
+        setAccessToken(null);
         set({
           user: null,
           isAuthenticated: false,
@@ -76,14 +73,14 @@ export const useAuthStore = create<AuthState>()(
       },
 
       fetchCurrentUser: async () => {
-        const token = localStorage.getItem('access_token');
-        if (!token) {
-          set({ isAuthenticated: false, isLoading: false });
-          return;
-        }
-
         set({ isLoading: true });
         try {
+          const token = getAccessToken();
+          if (!token) {
+            // No token: assume logged out without hitting the API
+            set({ user: null, isAuthenticated: false, isLoading: false });
+            return;
+          }
           const response = await apiClient.get<User>('/auth/me/');
           set({
             user: response.data,
@@ -91,22 +88,15 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
           });
 
-          // Apply user preferences
+          // Apply user preferences centrally via UI store
+          const ui = useUIStore.getState();
           if (response.data.locale) {
-            localStorage.setItem('language', response.data.locale);
+            ui.setLanguage(response.data.locale as 'uk' | 'en');
           }
           if (response.data.theme) {
-            localStorage.setItem('theme', response.data.theme);
-            if (response.data.theme === 'dark') {
-              document.documentElement.classList.add('dark');
-            } else {
-              document.documentElement.classList.remove('dark');
-            }
+            ui.setTheme(response.data.theme as 'light' | 'dark');
           }
         } catch (error) {
-          // Token invalid, logout
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
           set({
             user: null,
             isAuthenticated: false,
@@ -123,17 +113,12 @@ export const useAuthStore = create<AuthState>()(
           });
           set({ user: response.data });
 
+          const ui = useUIStore.getState();
           if (locale) {
-            localStorage.setItem('language', locale);
+            ui.setLanguage(locale);
           }
           if (theme) {
-            localStorage.setItem('theme', theme);
-            // Apply theme correctly
-            if (theme === 'dark') {
-              document.documentElement.classList.add('dark');
-            } else {
-              document.documentElement.classList.remove('dark');
-            }
+            ui.setTheme(theme);
           }
         } catch (error) {
           console.error('Failed to update preferences', error);

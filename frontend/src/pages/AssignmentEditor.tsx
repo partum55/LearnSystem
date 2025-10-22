@@ -28,6 +28,10 @@ interface AssignmentFormData {
   rubric: any;
   allow_late_submission: boolean;
   late_penalty_percent: number;
+  tags: string[];
+  estimated_duration: number | null;
+  prerequisites: string[];
+  is_template: boolean;
 }
 
 const AssignmentEditor: React.FC = () => {
@@ -37,7 +41,7 @@ const AssignmentEditor: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'basic' | 'content' | 'settings' | 'grading'>('basic');
+  const [activeTab, setActiveTab] = useState<'basic' | 'content' | 'settings' | 'grading' | 'advanced'>('basic');
 
   const [formData, setFormData] = useState<AssignmentFormData>({
     title: '',
@@ -62,14 +66,57 @@ const AssignmentEditor: React.FC = () => {
     rubric: {},
     allow_late_submission: true,
     late_penalty_percent: 10,
+    tags: [],
+    estimated_duration: null,
+    prerequisites: [],
+    is_template: false,
   });
+
+  const [availableAssignments, setAvailableAssignments] = useState<any[]>([]);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (assignmentId) {
       fetchAssignment();
     }
+    fetchAvailableAssignments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignmentId]);
+
+  const fetchAvailableAssignments = async () => {
+    try {
+      const response = await api.get(`assessments/assignments/?course=${courseId}`);
+      const data = response.data as any;
+      setAvailableAssignments(data.results || data);
+    } catch (err) {
+      console.error('Failed to fetch assignments:', err);
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    if (!formData.title.trim()) {
+      errors.title = t('validation.required');
+    }
+
+    if (!formData.description.trim()) {
+      errors.description = t('validation.required');
+    }
+
+    if (formData.max_points <= 0) {
+      errors.max_points = t('validation.must_be_positive');
+    }
+
+    if (formData.due_date && formData.available_from) {
+      if (new Date(formData.due_date) < new Date(formData.available_from)) {
+        errors.due_date = t('validation.due_before_available');
+      }
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const fetchAssignment = async () => {
     try {
@@ -85,6 +132,12 @@ const AssignmentEditor: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!validateForm()) {
+      setError(t('validation.fix_errors'));
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
@@ -103,6 +156,34 @@ const AssignmentEditor: React.FC = () => {
       setError(err.response?.data?.message || 'Failed to save assignment');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDuplicate = async () => {
+    if (!assignmentId) return;
+
+    try {
+      setSaving(true);
+      const response = await api.post(`assessments/assignments/${assignmentId}/duplicate/`, {
+        course_id: courseId
+      });
+      const data = response.data as any;
+      navigate(`/courses/${courseId}/assignments/${data.id}/edit`);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to duplicate assignment');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!assignmentId) return;
+
+    try {
+      await api.post(`assessments/assignments/${assignmentId}/save_as_template/`);
+      alert(t('assignment.saved_as_template'));
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to save as template');
     }
   };
 
@@ -156,9 +237,14 @@ const AssignmentEditor: React.FC = () => {
           type="text"
           value={formData.title}
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          className={`w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
+            validationErrors.title ? 'border-red-500' : ''
+          }`}
           required
         />
+        {validationErrors.title && (
+          <p className="mt-1 text-sm text-red-600">{validationErrors.title}</p>
+        )}
       </div>
 
       <div>
@@ -458,6 +544,90 @@ const AssignmentEditor: React.FC = () => {
     </div>
   );
 
+  const renderAdvancedTab = () => (
+    <div className="space-y-6">
+      {/* Tags */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          {t('assignment.tags')}
+        </label>
+        <input
+          type="text"
+          value={formData.tags.join(', ')}
+          onChange={(e) => setFormData({
+            ...formData,
+            tags: e.target.value.split(',').map(t => t.trim()).filter(t => t)
+          })}
+          placeholder="homework, lab, project"
+          className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+        />
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Comma-separated tags for categorization
+        </p>
+      </div>
+
+      {/* Estimated Duration */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          {t('assignment.estimated_duration')} (minutes)
+        </label>
+        <input
+          type="number"
+          value={formData.estimated_duration || ''}
+          onChange={(e) => setFormData({
+            ...formData,
+            estimated_duration: e.target.value ? parseInt(e.target.value) : null
+          })}
+          min="0"
+          placeholder="60"
+          className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+        />
+      </div>
+
+      {/* Prerequisites */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          {t('assignment.prerequisites')}
+        </label>
+        <select
+          multiple
+          value={formData.prerequisites}
+          onChange={(e) => {
+            const selected = Array.from(e.target.selectedOptions, option => option.value);
+            setFormData({ ...formData, prerequisites: selected });
+          }}
+          className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+          size={5}
+        >
+          {availableAssignments
+            .filter(a => a.id !== assignmentId)
+            .map(assignment => (
+              <option key={assignment.id} value={assignment.id}>
+                {assignment.title}
+              </option>
+            ))}
+        </select>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Select assignments that must be completed before this one
+        </p>
+      </div>
+
+      {/* Template Setting */}
+      <div className="flex items-center">
+        <input
+          type="checkbox"
+          id="is_template"
+          checked={formData.is_template}
+          onChange={(e) => setFormData({ ...formData, is_template: e.target.checked })}
+          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        />
+        <label htmlFor="is_template" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+          {t('assignment.save_as_template')}
+        </label>
+      </div>
+    </div>
+  );
+
   const renderGradingTab = () => (
     <div className="space-y-6">
       {formData.assignment_type === 'CODE' && (
@@ -555,6 +725,7 @@ const AssignmentEditor: React.FC = () => {
     { id: 'content', label: t('assignment.tabs.content'), icon: '📄' },
     { id: 'settings', label: t('assignment.tabs.settings'), icon: '⚙️' },
     { id: 'grading', label: t('assignment.tabs.grading'), icon: '✓' },
+    { id: 'advanced', label: t('assignment.tabs.advanced'), icon: '🔧' },
   ];
 
   if (loading) {
@@ -606,6 +777,7 @@ const AssignmentEditor: React.FC = () => {
           {activeTab === 'content' && renderContentTab()}
           {activeTab === 'settings' && renderSettingsTab()}
           {activeTab === 'grading' && renderGradingTab()}
+          {activeTab === 'advanced' && renderAdvancedTab()}
         </div>
 
         {/* Actions */}
@@ -617,6 +789,28 @@ const AssignmentEditor: React.FC = () => {
           >
             {saving ? t('common.saving') : t('common.save')}
           </button>
+
+          {assignmentId && (
+            <>
+              <button
+                type="button"
+                onClick={handleDuplicate}
+                disabled={saving}
+                className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg"
+              >
+                {t('assignment.duplicate')}
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAsTemplate}
+                disabled={saving}
+                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white rounded-lg"
+              >
+                {t('assignment.save_as_template')}
+              </button>
+            </>
+          )}
+
           <button
             type="button"
             onClick={() => navigate(`/courses/${courseId}`)}

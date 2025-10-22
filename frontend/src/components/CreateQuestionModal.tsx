@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, Input, Button } from '../components';
+import apiClient from '../api/client';
 
 type QuestionType =
   | 'MULTIPLE_CHOICE'
@@ -98,18 +99,10 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         payload.metadata = { requires_manual_grading: true };
       }
 
-      const response = await fetch('http://localhost:8000/api/assessments/questions/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await apiClient.post('/assessments/questions/', payload);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to create question');
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error('Failed to create question');
       }
 
       // Reset form
@@ -366,4 +359,3 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
     </Modal>
   );
 };
-

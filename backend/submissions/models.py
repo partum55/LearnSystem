@@ -65,6 +65,16 @@ class Submission(models.Model):
     is_late = models.BooleanField(_('late submission'), default=False)
     days_late = models.IntegerField(_('days late'), default=0)
 
+    # Additional tracking fields
+    submission_count = models.IntegerField(_('submission count'), default=1)
+    plagiarism_score = models.DecimalField(
+        _('plagiarism score'),
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
+
     class Meta:
         verbose_name = _('submission')
         verbose_name_plural = _('submissions')

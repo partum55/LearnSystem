@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from './Modal';
 import { Button } from './Button';
+import apiClient from '../api/client';
 import {
   UserPlusIcon,
   DocumentArrowUpIcon,
@@ -64,24 +65,12 @@ export const EnrollStudentsModal: React.FC<EnrollStudentsModalProps> = ({
         return;
       }
 
-      const response = await fetch(`http://localhost:8000/api/courses/${courseId}/enroll_students/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        body: JSON.stringify({
-          student_emails: emails,
-          role: role,
-        }),
+      const response = await apiClient.post<EnrollmentResult>(`/courses/${courseId}/enroll_students/`, {
+        student_emails: emails,
+        role: role,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || t('enrollment.errors.enrollFailed'));
-      }
-
-      const data: EnrollmentResult = await response.json();
+      const data = response.data;
       setResult(data);
 
       if (data.total_enrolled > 0) {
@@ -108,20 +97,9 @@ export const EnrollStudentsModal: React.FC<EnrollStudentsModalProps> = ({
       const formData = new FormData();
       formData.append('file', csvFile);
 
-      const response = await fetch(`http://localhost:8000/api/courses/${courseId}/enroll-csv/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        body: formData,
-      });
+      const response = await apiClient.upload<EnrollmentResult>(`/courses/${courseId}/enroll-csv/`, formData);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || t('enrollment.errors.enrollFailed'));
-      }
-
-      const data: EnrollmentResult = await response.json();
+      const data = response.data as any as EnrollmentResult;
       setResult(data);
 
       if (data.total_enrolled > 0 || (data.total_created && data.total_created > 0)) {
@@ -383,4 +361,3 @@ export const EnrollStudentsModal: React.FC<EnrollStudentsModalProps> = ({
     </Modal>
   );
 };
-

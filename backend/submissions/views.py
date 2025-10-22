@@ -526,6 +526,112 @@ class SubmissionViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED
         )
 
+    @action(detail=True, methods=['post'])
+    def auto_save(self, request, pk=None):
+        """Auto-save draft submission (for periodic saves)."""
+        submission = self.get_object()
+
+        if submission.user != request.user:
+            return Response(
+                {'error': 'You can only edit your own submissions'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if submission.status != 'DRAFT':
+            return Response(
+                {'error': 'Can only auto-save draft submissions'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Update allowed fields
+        text_answer = request.data.get('text_answer')
+        submission_url = request.data.get('submission_url')
+        metadata = request.data.get('metadata')
+
+        if text_answer is not None:
+            submission.text_answer = text_answer
+        if submission_url is not None:
+            submission.submission_url = submission_url
+        if metadata is not None:
+            submission.metadata = metadata
+
+        submission.save()
+
+        return Response({
+            'status': 'saved',
+            'updated_at': submission.updated_at
+        })
+
+    @action(detail=False, methods=['post'])
+    def bulk_grade(self, request):
+        """Bulk grade multiple submissions with the same feedback template."""
+        if not hasattr(request.user, 'role') or request.user.role not in ['SUPERADMIN', 'TEACHER', 'TA']:
+            return Response(
+                {'error': 'Only teachers can grade submissions'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        submission_ids = request.data.get('submission_ids', [])
+        grade_data = request.data.get('grade_data', {})
+        feedback = grade_data.get('feedback', '')
+        apply_grade = grade_data.get('apply_grade', False)
+        grade_value = grade_data.get('grade')
+
+        if not submission_ids:
+            return Response(
+                {'error': 'submission_ids is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        submissions = Submission.objects.filter(id__in=submission_ids)
+        updated_count = 0
+
+        for submission in submissions:
+            if feedback:
+                submission.feedback = feedback
+
+            if apply_grade and grade_value is not None:
+                max_points = submission.assignment.max_points
+                if grade_value > max_points:
+                    continue
+
+                # Apply late penalty if applicable
+                final_grade = grade_value
+                if submission.is_late and submission.assignment.late_penalty_percent > 0:
+                    penalty = (submission.assignment.late_penalty_percent / 100) * submission.days_late
+                    final_grade = grade_value * (1 - min(penalty, 1))
+                    final_grade = round(final_grade, 2)
+
+                submission.grade = final_grade
+                submission.graded_by = request.user
+                submission.graded_at = timezone.now()
+                submission.status = 'GRADED'
+
+            submission.save()
+
+            if submission.status == 'GRADED':
+                self._update_gradebook(submission)
+
+            updated_count += 1
+
+        return Response({
+            'updated': updated_count,
+            'total': len(submission_ids)
+        })
+
+    @action(detail=False, methods=['get'])
+    def canned_responses(self, request):
+        """Get canned feedback responses for quick grading."""
+        # This could be stored in database or configuration
+        responses = [
+            {'id': 1, 'title': 'Great work!', 'text': 'Excellent submission. Well done!'},
+            {'id': 2, 'title': 'Good effort', 'text': 'Good work overall. A few minor improvements could be made.'},
+            {'id': 3, 'title': 'Needs improvement', 'text': 'Please review the assignment requirements and resubmit.'},
+            {'id': 4, 'title': 'Late submission', 'text': 'This submission was received after the deadline. Late penalty applied.'},
+            {'id': 5, 'title': 'Incomplete', 'text': 'This submission is incomplete. Please ensure all requirements are met.'},
+        ]
+        return Response(responses)
+
 
 class SubmissionCommentViewSet(viewsets.ModelViewSet):
     """ViewSet for submission comments."""

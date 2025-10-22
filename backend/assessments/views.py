@@ -40,9 +40,114 @@ class AssignmentViewSet(viewsets.ModelViewSet):
             'average_grade': submissions.filter(grade__isnull=False).aggregate(Avg('grade'))['grade__avg'],
             'on_time_submissions': submissions.filter(is_late=False).count(),
             'late_submissions': submissions.filter(is_late=True).count(),
+            'completion_rate': assignment.get_completion_rate(),
         }
 
         return Response(stats)
+
+    @action(detail=True, methods=['post'])
+    def duplicate(self, request, pk=None):
+        """Duplicate an assignment."""
+        assignment = self.get_object()
+        course_id = request.data.get('course_id')
+
+        # Verify user has permission to create assignments in target course
+        from courses.models import Course
+        if course_id:
+            target_course = Course.objects.get(id=course_id)
+        else:
+            target_course = assignment.course
+
+        new_assignment = assignment.duplicate(
+            created_by=request.user,
+            course=target_course
+        )
+
+        serializer = self.get_serializer(new_assignment)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
+    def archive(self, request, pk=None):
+        """Archive/unarchive an assignment."""
+        assignment = self.get_object()
+        assignment.is_archived = not assignment.is_archived
+        assignment.save()
+
+        serializer = self.get_serializer(assignment)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'])
+    def bulk_publish(self, request):
+        """Bulk publish/unpublish assignments."""
+        assignment_ids = request.data.get('assignment_ids', [])
+        publish = request.data.get('publish', True)
+
+        assignments = Assignment.objects.filter(id__in=assignment_ids)
+        assignments.update(is_published=publish)
+
+        return Response({
+            'updated': assignments.count(),
+            'published': publish
+        })
+
+    @action(detail=False, methods=['post'])
+    def bulk_archive(self, request):
+        """Bulk archive assignments."""
+        assignment_ids = request.data.get('assignment_ids', [])
+        archive = request.data.get('archive', True)
+
+        assignments = Assignment.objects.filter(id__in=assignment_ids)
+        assignments.update(is_archived=archive)
+
+        return Response({
+            'updated': assignments.count(),
+            'archived': archive
+        })
+
+    @action(detail=True, methods=['post'])
+    def save_as_template(self, request, pk=None):
+        """Save assignment as a template."""
+        assignment = self.get_object()
+        assignment.is_template = True
+        assignment.save()
+
+        serializer = self.get_serializer(assignment)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def templates(self, request):
+        """Get all assignment templates."""
+        templates = Assignment.objects.filter(is_template=True)
+        serializer = self.get_serializer(templates, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
+    def check_prerequisites(self, request, pk=None):
+        """Check if user has met prerequisites for this assignment."""
+        assignment = self.get_object()
+        user = request.user
+
+        prerequisites_met = assignment.check_prerequisites_met(user)
+        missing_prerequisites = []
+
+        if not prerequisites_met:
+            for prereq in assignment.prerequisites.all():
+                from submissions.models import Submission
+                submission = Submission.objects.filter(
+                    assignment=prereq,
+                    user=user,
+                    status='GRADED'
+                ).first()
+                if not submission:
+                    missing_prerequisites.append({
+                        'id': str(prereq.id),
+                        'title': prereq.title
+                    })
+
+        return Response({
+            'prerequisites_met': prerequisites_met,
+            'missing_prerequisites': missing_prerequisites
+        })
 
 
 class QuestionBankViewSet(viewsets.ModelViewSet):

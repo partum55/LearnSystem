@@ -3,20 +3,35 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
+from datetime import timedelta
 from .serializers import (
     UserSerializer, UserCreateSerializer, UserUpdateSerializer,
-    PasswordChangeSerializer, UserProfileSerializer
+    PasswordChangeSerializer
 )
 from .models import UserProfile
 import csv
 import io
+from django.middleware.csrf import get_token
 
 User = get_user_model()
 
+COOKIE_ACCESS_NAME = 'access_token'
+COOKIE_REFRESH_NAME = 'refresh_token'
+COOKIE_MAX_AGE_ACCESS = int(timedelta(hours=1).total_seconds())
+COOKIE_MAX_AGE_REFRESH = int(timedelta(days=7).total_seconds())
+COOKIE_KWARGS = {
+    'httponly': True,
+    'secure': not settings.DEBUG,
+    'samesite': 'None' if not settings.DEBUG else 'Lax',
+    'path': '/',
+}
+
 
 class CustomLoginView(APIView):
-    """Custom login view that returns user data with JWT tokens."""
+    """Custom login view that returns user data and sets JWT tokens in HttpOnly cookies."""
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
@@ -39,15 +54,40 @@ class CustomLoginView(APIView):
 
         # Generate tokens
         refresh = RefreshToken.for_user(user)
+        access = refresh.access_token
 
         # Serialize user data
         user_serializer = UserSerializer(user)
 
-        return Response({
-            'access': str(refresh.access_token),
-            'refresh': str(refresh),
+        response = Response({
+            'access': str(access),
             'user': user_serializer.data
         })
+        # Ensure CSRF cookie is set for clients that need it
+        get_token(request)
+        # Set cookies
+        response.set_cookie(COOKIE_ACCESS_NAME, str(access), max_age=COOKIE_MAX_AGE_ACCESS, **COOKIE_KWARGS)
+        response.set_cookie(COOKIE_REFRESH_NAME, str(refresh), max_age=COOKIE_MAX_AGE_REFRESH, **COOKIE_KWARGS)
+        return response
+
+
+class TokenCookieRefreshView(APIView):
+    """Refresh the access token using the refresh token stored in HttpOnly cookie."""
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        refresh_cookie = request.COOKIES.get(COOKIE_REFRESH_NAME)
+        if not refresh_cookie:
+            return Response({'error': 'No refresh token'}, status=status.HTTP_401_UNAUTHORIZED)
+        try:
+            refresh = RefreshToken(refresh_cookie)
+            access = refresh.access_token
+        except TokenError as e:
+            return Response({'error': 'Invalid refresh token'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        response = Response({'access': str(access)})
+        response.set_cookie(COOKIE_ACCESS_NAME, str(access), max_age=COOKIE_MAX_AGE_ACCESS, **COOKIE_KWARGS)
+        return response
 
 
 class CurrentUserView(APIView):
@@ -60,16 +100,22 @@ class CurrentUserView(APIView):
 
 
 class CustomLogoutView(APIView):
-    """Logout view that blacklists the refresh token."""
+    """Logout view that blacklists the refresh token and clears cookies."""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
         try:
-            refresh_token = request.data.get('refresh')
+            refresh_token = request.data.get('refresh') or request.COOKIES.get(COOKIE_REFRESH_NAME)
             if refresh_token:
-                token = RefreshToken(refresh_token)
-                token.blacklist()
-            return Response({'message': 'Successfully logged out'}, status=status.HTTP_205_RESET_CONTENT)
+                try:
+                    token = RefreshToken(refresh_token)
+                    token.blacklist()
+                except TokenError:
+                    pass
+            response = Response({'message': 'Successfully logged out'}, status=status.HTTP_205_RESET_CONTENT)
+            response.delete_cookie(COOKIE_ACCESS_NAME, path='/' )
+            response.delete_cookie(COOKIE_REFRESH_NAME, path='/')
+            return response
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
