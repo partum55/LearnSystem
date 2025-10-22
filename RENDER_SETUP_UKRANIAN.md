@@ -61,7 +61,7 @@ git push origin main
 1. Зайдіть на https://dashboard.render.com
 2. Натисніть **"New"** → **"PostgreSQL"**
 3. Заповніть поля:
-   - **Name**: `learn-system-postgres`
+   - **Name**: `learn-ucu-postgres`
    - **Database**: `lms_db`
    - **User**: `postgres` (автоматично)
    - **Region**: **Frankfurt** (найближче до України)
