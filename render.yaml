@@ -1,37 +1,10 @@
-d # Render Blueprint для автоматичного деплою LMS системи
+# Render Blueprint для автоматичного деплою LMS системи
 # Цей файл конфігурує всі сервіси одночасно
 
 services:
-  # PostgreSQL Database
-  - type: pserv
-    name: lms-postgres
-    plan: free
-    env: docker
-    image:
-      url: postgres:15
-    envVars:
-      - key: POSTGRES_DB
-        value: lms_db
-      - key: POSTGRES_USER
-        value: postgres
-      - key: POSTGRES_PASSWORD
-        generateValue: true
-    disk:
-      name: lms-postgres-data
-      mountPath: /var/lib/postgresql/data
-      sizeGB: 1
-
-  # Redis Cache
-  - type: pserv
-    name: lms-redis
-    plan: free
-    env: docker
-    image:
-      url: redis:7-alpine
-
   # Django Backend
   - type: web
-    name: lms-backend
+    name: learn-ucu-backend
     runtime: python
     plan: free
     buildCommand: |
@@ -49,25 +22,18 @@ services:
         sync: false
       - key: DATABASE_URL
         fromDatabase:
-          name: lms-postgres
+          name: learn-ucu-postgres
           property: connectionString
       - key: REDIS_URL
-        fromService:
-          name: lms-redis
-          type: pserv
-          property: connectionString
+        sync: false
       - key: CELERY_BROKER_URL
-        fromService:
-          name: lms-redis
-          type: pserv
-          property: connectionString
+        sync: false
       - key: PYTHON_VERSION
         value: 3.12.0
-    healthCheckPath: /api/health/
 
   # Celery Worker
   - type: worker
-    name: lms-celery-worker
+    name: learn-ucu-celery-worker
     runtime: python
     plan: free
     buildCommand: cd backend && pip install -r requirements.txt
@@ -77,22 +43,16 @@ services:
         sync: false
       - key: DATABASE_URL
         fromDatabase:
-          name: lms-postgres
+          name: learn-ucu-postgres
           property: connectionString
       - key: REDIS_URL
-        fromService:
-          name: lms-redis
-          type: pserv
-          property: connectionString
+        sync: false
       - key: CELERY_BROKER_URL
-        fromService:
-          name: lms-redis
-          type: pserv
-          property: connectionString
+        sync: false
 
   # Celery Beat (Scheduler)
   - type: worker
-    name: lms-celery-beat
+    name: learn-ucu-celery-beat
     runtime: python
     plan: free
     buildCommand: cd backend && pip install -r requirements.txt
@@ -102,22 +62,16 @@ services:
         sync: false
       - key: DATABASE_URL
         fromDatabase:
-          name: lms-postgres
+          name: learn-ucu-postgres
           property: connectionString
       - key: REDIS_URL
-        fromService:
-          name: lms-redis
-          type: pserv
-          property: connectionString
+        sync: false
       - key: CELERY_BROKER_URL
-        fromService:
-          name: lms-redis
-          type: pserv
-          property: connectionString
+        sync: false
 
   # React Frontend
   - type: web
-    name: lms-frontend
+    name: learn-ucu
     runtime: node
     plan: free
     buildCommand: cd frontend && npm install && npm run build
@@ -129,8 +83,7 @@ services:
         value: 18.17.0
 
 databases:
-  - name: lms-postgres
+  - name: learn-ucu-postgres
     databaseName: lms_db
-    user: postgres
     plan: free
 
