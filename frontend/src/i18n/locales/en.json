@@ -17,7 +17,8 @@
     "published": "Published",
     "draft": "Draft",
     "moveUp": "Move up",
-    "moveDown": "Move down"
+    "moveDown": "Move down",
+    "retry": "Retry"
   },
   "settings": {
     "title": "Settings",
@@ -167,6 +168,23 @@
     "welcome": "Welcome"
   },
   "gradebook": {
-    "title": "Gradebook"
+    "title": "Gradebook",
+    "teacher_view": "Teacher Gradebook",
+    "student": "Student",
+    "total": "Total",
+    "excused": "Excused",
+    "late": "Late",
+    "recalculate": "Recalculate Grades",
+    "recalculate_confirm": "Are you sure you want to recalculate all grades? This may take some time.",
+    "recalculate_success": "Grades recalculated successfully!",
+    "current_grade": "Current Grade",
+    "points_earned": "Points Earned",
+    "assignments_completed": "Assignments Completed",
+    "status": {
+      "graded": "Graded",
+      "submitted": "Submitted",
+      "missing": "Missing",
+      "not_submitted": "Not Submitted"
+    }
   }
 }

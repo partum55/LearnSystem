@@ -23,9 +23,9 @@ class RateLimitMiddleware:
         
         # Rate limit configurations
         self.limits = {
-            'api': {'requests': 100, 'window': 60},  # 100 req/min
-            'auth': {'requests': 5, 'window': 900},  # 5 req/15min
-            'upload': {'requests': 10, 'window': 3600},  # 10 req/hour
+            'api': {'requests': 200, 'window': 60},  # 200 req/min
+            'auth': {'requests': 20, 'window': 300},  # 20 req/5min (more reasonable for development)
+            'upload': {'requests': 20, 'window': 3600},  # 20 req/hour
         }
     
     def __call__(self, request):
