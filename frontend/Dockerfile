@@ -12,7 +12,7 @@ FROM nginx:alpine
 
 COPY --from=build /app/build /usr/share/nginx/html
 
-# Render expects the app to listen on port 10000
+# Use custom nginx config with SPA fallback
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 10000
-RUN sed -i 's/listen 80;/listen 10000;/' /etc/nginx/conf.d/default.conf
 CMD ["nginx", "-g", "daemon off;"]
