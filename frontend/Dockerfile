@@ -11,5 +11,8 @@ RUN npm run build
 FROM nginx:alpine
 
 COPY --from=build /app/build /usr/share/nginx/html
-EXPOSE 80
+
+# Render expects the app to listen on port 10000
+EXPOSE 10000
+RUN sed -i 's/listen 80;/listen 10000;/' /etc/nginx/conf.d/default.conf
 CMD ["nginx", "-g", "daemon off;"]
