@@ -1,7 +1,9 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { getAccessToken, setAccessToken } from './token';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+// Use REACT_APP_API_URL set at build time. If not set, fall back to a relative path '/api'
+// so the frontend can work when served from the same origin as the backend.
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
 // Helper to delay in ms
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));

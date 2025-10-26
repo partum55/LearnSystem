@@ -60,7 +60,8 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - REACT_APP_API_URL=http://localhost:8000/api
+      # Allow overriding REACT_APP_API_URL from the environment; default to local backend for dev
+      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:8000/api}
     depends_on:
       - backend
 
@@ -68,4 +69,3 @@ volumes:
   postgres_data:
   static_volume:
   media_volume:
-
