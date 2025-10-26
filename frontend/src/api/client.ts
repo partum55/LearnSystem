@@ -68,11 +68,27 @@ class ApiClient {
   private setupInterceptors() {
     // Add Authorization header from in-memory token (no localStorage)
     this.client.interceptors.request.use(
-      (config: InternalAxiosRequestConfig & { _retry?: boolean; _retry429?: boolean }) => {
+      async (config: InternalAxiosRequestConfig & { _retry?: boolean; _retry429?: boolean }) => {
         const token = getAccessToken();
         if (token && config.headers) {
           config.headers.Authorization = `Bearer ${token}`;
         }
+
+        // For unsafe methods, ensure CSRF cookie is set by calling the csrf endpoint
+        const method = (config.method || 'get').toLowerCase();
+        const unsafe = ['post', 'put', 'patch', 'delete'];
+        const isAuth = this.isAuthEndpoint(config.url);
+
+        if (unsafe.includes(method) && !isAuth) {
+          try {
+            // Call the backend csrf endpoint to ensure the cookie is present
+            // We don't await long; the server will set cookie in response
+            await this.client.get('/auth/csrf/');
+          } catch (e) {
+            // Ignore errors here; the request will likely fail later with a clearer message
+          }
+        }
+
         return config;
       },
       (error) => Promise.reject(error)

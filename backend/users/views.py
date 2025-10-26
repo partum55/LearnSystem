@@ -179,6 +179,20 @@ class CustomLogoutView(APIView):
             return response
 
 
+class CsrfTokenView(APIView):
+    """Simple view to ensure the CSRF cookie is set for browsers.
+
+    Clients (SPA) can call this anonymous GET endpoint to obtain the
+    CSRF cookie before performing unsafe requests (POST/PUT/PATCH/DELETE).
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        # Calling get_token ensures the CSRF cookie is created on the response
+        get_token(request)
+        return Response({'detail': 'CSRF cookie set'})
+
+
 class UserViewSet(viewsets.ModelViewSet):
     """ViewSet for user management."""
 

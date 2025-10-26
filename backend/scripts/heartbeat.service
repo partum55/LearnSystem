@@ -1,0 +1,13 @@
+[Unit]
+Description=Heartbeat Pinger
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+ExecStart=/usr/bin/env python3 /home/parum/PycharmProjects/learn_system/backend/scripts/heartbeat.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
