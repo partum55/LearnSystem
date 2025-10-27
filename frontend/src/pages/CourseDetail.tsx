@@ -25,6 +25,7 @@ import {
 import { Module, Assignment } from '../types';
 import { TeacherGradebook } from '../components';
 import { CourseGradesTab } from '../components';
+import { EnrollStudentsModal } from '../components';
 
 
 export const CourseDetail: React.FC = () => {
@@ -36,6 +37,7 @@ export const CourseDetail: React.FC = () => {
   const [showModuleModal, setShowModuleModal] = useState(false);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [showResourceModal, setShowResourceModal] = useState(false);
+  const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
 
@@ -139,7 +141,7 @@ export const CourseDetail: React.FC = () => {
                             {t('common.edit')}
                           </Button>
                         </Link>
-                        <Button size="sm">
+                        <Button size="sm" onClick={() => setShowEnrollModal(true)}>
                           <PlusIcon className="h-4 w-4 mr-1" />
                           {t('courses.enrollStudents')}
                         </Button>
@@ -492,6 +494,21 @@ export const CourseDetail: React.FC = () => {
               onResourceCreated={handleResourceCreated}
             />
           )}
+          {/* Enroll students modal */}
+          <EnrollStudentsModal
+            isOpen={showEnrollModal}
+            onClose={() => setShowEnrollModal(false)}
+            courseId={id!}
+            onEnrolled={() => {
+              // Refresh course and lists when new students are enrolled
+              if (id) {
+                fetchCourseById(id);
+                fetchModules(id);
+                fetchAssignments(id);
+              }
+              setShowEnrollModal(false);
+            }}
+          />
         </>
       )}
     </div>
