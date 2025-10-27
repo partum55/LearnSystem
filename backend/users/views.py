@@ -15,6 +15,10 @@ from .models import UserProfile
 import csv
 import io
 from django.middleware.csrf import get_token
+import os
+
+# Get allowed UCU email domain from environment
+UCU_EMAIL_DOMAIN = os.getenv('UCU_EMAIL_DOMAIN', 'ucu.edu.ua').lstrip('@')
 
 User = get_user_model()
 
@@ -45,7 +49,7 @@ class CustomLoginView(APIView):
             )
 
         # Validate UCU email domain
-        if not email.lower().endswith('@ucu.edu.ua'):
+        if not email.lower().endswith(f'@{UCU_EMAIL_DOMAIN}'):
             return Response(
                 {'error': 'Only @ucu.edu.ua email addresses are allowed'},
                 status=status.HTTP_403_FORBIDDEN

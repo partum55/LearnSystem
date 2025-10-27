@@ -114,20 +114,32 @@ DATABASES = {
 }
 
 # Cache configuration (Redis)
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/1'),
-        'OPTIONS': {
-            'db': 1,
-            'socket_connect_timeout': 5,
-            'socket_timeout': 5,
-            'retry_on_timeout': True,
-        },
-        'KEY_PREFIX': 'lms',
-        'TIMEOUT': 300,  # 5 minutes default
+# Cache configuration (Redis optional)
+REDIS_URL = os.getenv("REDIS_URL", None)
+
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "socket_connect_timeout": 5,
+                "socket_timeout": 5,
+                "retry_on_timeout": True,
+            },
+            "KEY_PREFIX": "lms",
+            "TIMEOUT": 300,
+        }
     }
-}
+else:
+    # Fallback: In-memory cache (works fine on Render free)
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "unique-snowflake",
+        }
+    }
+
 
 # Celery Configuration
 CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://127.0.0.1:6379/0')

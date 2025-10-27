@@ -1,6 +1,9 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import UserProfile
+import os
+
+UCU_EMAIL_DOMAIN = os.getenv('UCU_EMAIL_DOMAIN', 'ucu.edu.ua').lstrip('@')
 
 User = get_user_model()
 
@@ -48,9 +51,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
     
     def validate_email(self, value):
         """Validate that email is from UCU domain."""
-        if not value.lower().endswith('@ucu.edu.ua'):
+        if not value.lower().endswith(f'@{UCU_EMAIL_DOMAIN}'):
             raise serializers.ValidationError(
-                "Only @ucu.edu.ua email addresses are allowed for registration."
+                f"Only @{UCU_EMAIL_DOMAIN} email addresses are allowed for registration."
             )
         return value.lower()
 
@@ -94,4 +97,3 @@ class PasswordChangeSerializer(serializers.Serializer):
         if attrs['new_password'] != attrs['new_password_confirm']:
             raise serializers.ValidationError({"new_password": "Password fields didn't match."})
         return attrs
-
