@@ -3,7 +3,21 @@ import { getAccessToken, setAccessToken } from './token';
 
 // Use REACT_APP_API_URL set at build time. If not set, fall back to a relative path '/api'
 // so the frontend can work when served from the same origin as the backend.
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+let API_BASE_URL = process.env.REACT_APP_API_URL || '';
+
+if (!API_BASE_URL) {
+  // If running in a browser, detect the host. For the hosted frontend (learn-system.onrender.com)
+  // the API actually lives at learn-ucu-backend.onrender.com. Make that the default in production.
+  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+    const host = window.location.hostname;
+    if (host === 'learn-system.onrender.com' || host.endsWith('.learn-system.onrender.com')) {
+      API_BASE_URL = 'https://learn-ucu-backend.onrender.com/api';
+    }
+  }
+}
+
+// Final fallback: same-origin relative path
+if (!API_BASE_URL) API_BASE_URL = '/api';
 
 // Helper to delay in ms
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
