@@ -40,7 +40,7 @@ interface Quiz {
   title: string;
   description: string;
   instructions?: string;
-  course?: number;
+  course?: string; // changed from number to string to match Course.id
   time_limit?: number;
   attempts_allowed: number;
   available_from?: string;
@@ -99,7 +99,9 @@ export const QuizBuilder: React.FC = () => {
     try {
       const response = await apiClient.get<Quiz>(`/assessments/quizzes/${quizId}/`);
       setQuiz({
+        // Ensure course id is a string so it matches option values
         ...response.data,
+        course: response.data.course ? String((response.data as any).course) : undefined,
         settings: { ...DEFAULT_QUIZ_SETTINGS, ...response.data.settings },
       });
     } catch (error) {
@@ -115,10 +117,16 @@ export const QuizBuilder: React.FC = () => {
 
     setLoading(true);
     try {
+      // Prepare payload: if course is numeric-like string, send as number to backend
+      const payload: any = {
+        ...quiz,
+        course: quiz.course && !isNaN(Number(quiz.course)) ? Number(quiz.course) : quiz.course,
+      };
+
       if (quizId) {
-        await apiClient.put(`/assessments/quizzes/${quizId}/`, quiz);
+        await apiClient.put(`/assessments/quizzes/${quizId}/`, payload);
       } else {
-        await apiClient.post('/assessments/quizzes/', quiz);
+        await apiClient.post('/assessments/quizzes/', payload);
       }
       alert(t('quiz.saved', 'Quiz saved successfully!'));
       navigate('/question-bank');
@@ -573,7 +581,7 @@ export const QuizBuilder: React.FC = () => {
                       </label>
                       <select
                         value={quiz.course || ''}
-                        onChange={(e) => setQuiz({ ...quiz, course: parseInt(e.target.value) })}
+                        onChange={(e) => setQuiz({ ...quiz, course: e.target.value })} // store as string
                         className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                         required
                       >

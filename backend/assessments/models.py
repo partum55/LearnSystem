@@ -416,7 +416,8 @@ class QuestionBank(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    course = models.ForeignKey('courses.Course', on_delete=models.CASCADE, related_name='question_bank')
+    # Allow questions to be global (not tied to a specific course)
+    course = models.ForeignKey('courses.Course', on_delete=models.CASCADE, related_name='question_bank', null=True, blank=True)
 
     question_type = models.CharField(_('question type'), max_length=30, choices=QUESTION_TYPES)
 

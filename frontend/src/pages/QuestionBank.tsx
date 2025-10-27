@@ -353,13 +353,9 @@ export const QuestionBank: React.FC = () => {
       {/* Create/Edit Question Modal */}
       <CreateQuestionModal
         isOpen={showCreateModal}
-        onClose={() => {
-          setShowCreateModal(false);
-        }}
-        courseId={courseId!}
-        onQuestionCreated={() => {
-          fetchQuestions();
-        }}
+        onClose={() => setShowCreateModal(false)}
+        courseId={courseId} // pass optional courseId (can be undefined) so questions may be global
+        onQuestionCreated={() => fetchQuestions()}
       />
     </div>
   );

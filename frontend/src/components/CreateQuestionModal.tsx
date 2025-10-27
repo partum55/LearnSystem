@@ -13,7 +13,7 @@ type QuestionType =
 interface CreateQuestionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  courseId: string;
+  courseId?: string;
   onQuestionCreated: () => void;
 }
 
@@ -58,7 +58,8 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
 
     try {
       let payload: any = {
-        course: courseId,
+        // Only include course when provided. The Question Bank can hold global questions without a course.
+        ...(courseId ? { course: courseId } : {}),
         question_type: formData.question_type,
         stem: formData.stem,
         points: parseFloat(formData.points),
@@ -121,7 +122,9 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       onQuestionCreated();
       onClose();
     } catch (err: any) {
-      setError(err.message || t('question.errors.createFailed'));
+      // Try to extract a useful error message from the server response
+      const serverMessage = err?.response?.data?.detail || err?.response?.data?.error || err?.response?.data || err?.message;
+      setError(typeof serverMessage === 'string' ? serverMessage : JSON.stringify(serverMessage));
     } finally {
       setLoading(false);
     }
