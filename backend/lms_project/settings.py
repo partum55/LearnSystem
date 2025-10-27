@@ -265,8 +265,8 @@ CSRF_TRUSTED_ORIGINS = os.getenv(
 ).split(',')
 
 # Cookie settings
-SESSION_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SAMESITE = 'None'
 SESSION_COOKIE_HTTPONLY = True
 
 # API Documentation (drf-spectacular)
