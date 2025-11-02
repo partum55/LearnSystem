@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { Header, Card, CardHeader, CardBody, Button, Loading } from '../components';
+import { Card, CardHeader, CardBody, Button, Loading } from '../components';
 import apiClient from '../api/client';
 
 interface Submission {
@@ -164,7 +164,6 @@ export const SpeedGrader: React.FC = () => {
   if (!assignment || submissions.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Header />
         <div className="flex items-center justify-center h-screen">
           <div className="text-center">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
@@ -181,8 +180,7 @@ export const SpeedGrader: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Header />
-      
+      {/* SpeedGrader uses custom layout without sidebar */}
       <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <div className="px-8 py-4">
           <div className="flex items-center justify-between">
