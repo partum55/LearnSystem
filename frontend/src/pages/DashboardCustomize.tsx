@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Header, Sidebar } from '../components';
+import { Layout } from '../components';
 import { DashboardBuilder, DashboardWidgetConfig } from '../components/DashboardBuilder';
 import { Button } from '../components/Button';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
@@ -61,26 +61,19 @@ export const DashboardCustomize: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header />
-          <main className="flex-1 overflow-y-auto p-6">
-            <div className="flex items-center justify-center h-full">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-          </main>
+      <Layout>
+        <div className="p-4 sm:p-6 lg:p-8">
+          <div className="flex items-center justify-center h-96">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto p-6">
+    <Layout>
+      <div className="p-4 sm:p-6 lg:p-8 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="mb-6">
@@ -162,11 +155,10 @@ export const DashboardCustomize: React.FC = () => {
                     );
                   })}
               </div>
-            </div>
           </div>
-        </main>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 
