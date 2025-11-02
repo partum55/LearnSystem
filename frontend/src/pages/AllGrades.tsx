@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Header, Sidebar, Card, CardBody, Loading } from '../components';
+import { Layout, Card, CardBody, Loading } from '../components';
 import apiClient from '../api/client';
 import { AcademicCapIcon, ChartBarIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
@@ -80,24 +80,17 @@ export const AllGrades: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Header />
-        <div className="flex">
-          <Sidebar />
-          <main className="flex-1 p-8">
-            <Loading />
-          </main>
+      <Layout>
+        <div className="p-4 sm:p-6 lg:p-8">
+          <Loading />
         </div>
-      </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-8">
+    <Layout>
+      <div className="p-4 sm:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="mb-8">
@@ -122,7 +115,7 @@ export const AllGrades: React.FC = () => {
             {gradesData && (
               <>
                 {/* Overall Statistics */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                   <Card>
                     <CardBody>
                       <div className="flex items-center">
@@ -276,8 +269,7 @@ export const AllGrades: React.FC = () => {
               </>
             )}
           </div>
-        </main>
       </div>
-    </div>
+    </Layout>
   );
 };

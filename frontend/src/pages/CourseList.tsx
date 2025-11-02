@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Header } from '../components/Header';
-import { Sidebar } from '../components/Sidebar';
+import { Layout } from '../components';
 import { Card, CardHeader, CardBody } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -39,31 +38,29 @@ export const CourseList: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-8">
-          <div className="max-w-7xl mx-auto">
-            {/* Header */}
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {t('courses.title')}
-                </h1>
-                <p className="mt-2 text-gray-600 dark:text-gray-400">
-                  {filteredCourses.length} {t('courses.title').toLowerCase()}
-                </p>
-              </div>
-              {canCreateCourse && (
-                <Link to="/courses/create">
-                  <Button>
-                    <PlusIcon className="h-5 w-5 mr-2" />
-                    {t('courses.createCourse')}
-                  </Button>
-                </Link>
-              )}
+    <Layout>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+                {t('courses.title')}
+              </h1>
+              <p className="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">
+                {filteredCourses.length} {t('courses.title').toLowerCase()}
+              </p>
             </div>
+            {canCreateCourse && (
+              <Link to="/courses/create">
+                <Button>
+                  <PlusIcon className="h-5 w-5 mr-2" />
+                  <span className="hidden sm:inline">{t('courses.createCourse')}</span>
+                  <span className="sm:hidden">{t('courses.create', 'Create')}</span>
+                </Button>
+              </Link>
+            )}
+          </div>
 
             {/* Search and Filter */}
             <Card className="mb-6">
@@ -164,10 +161,9 @@ export const CourseList: React.FC = () => {
                 ))}
               </div>
             )}
-          </div>
-        </main>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

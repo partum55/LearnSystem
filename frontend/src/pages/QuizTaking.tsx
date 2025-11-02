@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Header, Sidebar, Card, CardHeader, CardBody, Button, Loading } from '../components';
+import { Layout, Card, CardHeader, CardBody, Button, Loading } from '../components';
 import apiClient from '../api/client';
 import { ClockIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
@@ -242,19 +242,15 @@ export const QuizTaking: React.FC = () => {
 
   if (!quiz || !attempt) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Header />
-        <div className="flex">
-          <Sidebar />
-          <main className="flex-1 p-8">
-            <Card>
-              <CardBody>
-                <p className="text-center text-red-600 dark:text-red-400">{error || t('quiz.errors.notFound')}</p>
-              </CardBody>
-            </Card>
-          </main>
+      <Layout>
+        <div className="p-4 sm:p-6 lg:p-8">
+          <Card>
+            <CardBody>
+              <p className="text-center text-red-600 dark:text-red-400">{error || t('quiz.errors.notFound')}</p>
+            </CardBody>
+          </Card>
         </div>
-      </div>
+      </Layout>
     );
   }
 
@@ -264,12 +260,9 @@ export const QuizTaking: React.FC = () => {
   const answeredCount = Object.keys(answers).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-8">
-          <div className="max-w-4xl mx-auto">
+    <Layout>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="max-w-4xl mx-auto">
             {/* Quiz Header */}
             <Card className="mb-6">
               <CardHeader>
@@ -372,10 +365,9 @@ export const QuizTaking: React.FC = () => {
                 </Button>
               )}
             </div>
-          </div>
-        </main>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

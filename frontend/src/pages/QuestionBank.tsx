@@ -2,8 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  Header,
-  Sidebar,
+  Layout,
   Card,
   CardBody,
   Button,
@@ -130,12 +129,9 @@ export const QuestionBank: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-8">
-          <div className="max-w-7xl mx-auto">
+    <Layout>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
             {/* Page Header */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
@@ -346,8 +342,7 @@ export const QuestionBank: React.FC = () => {
                 {t('questionBank.showing')} {filteredQuestions.length} {t('questionBank.of')} {questions.length} {t('questionBank.questions')}
               </div>
             )}
-          </div>
-        </main>
+        </div>
       </div>
 
       {/* Create/Edit Question Modal */}
@@ -357,7 +352,7 @@ export const QuestionBank: React.FC = () => {
         courseId={courseId} // pass optional courseId (can be undefined) so questions may be global
         onQuestionCreated={() => fetchQuestions()}
       />
-    </div>
+    </Layout>
   );
 };
 

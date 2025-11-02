@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Header } from '../components';
-import { Sidebar } from '../components';
+import { Layout } from '../components';
 import { Loading } from '../components';
 import { Button } from '../components';
 import { DashboardWidgetConfig } from '../components';
@@ -75,18 +74,15 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-8">
-          <div className="max-w-7xl mx-auto">
-            <div className="mb-8 flex justify-between items-start">
+    <Layout>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
+            <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
                   {t('dashboard.title')}
                 </h1>
-                <p className="mt-2 text-gray-600 dark:text-gray-400">
+                <p className="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">
                   {t('auth.welcome')}, {user?.display_name}!
                 </p>
               </div>
@@ -98,7 +94,8 @@ export const Dashboard: React.FC = () => {
                   className="flex items-center gap-2"
                 >
                   <Cog6ToothIcon className="h-4 w-4" />
-                  {t('dashboard.customize', 'Customize Dashboard')}
+                  <span className="hidden sm:inline">{t('dashboard.customize', 'Customize Dashboard')}</span>
+                  <span className="sm:hidden">{t('dashboard.customize.short', 'Customize')}</span>
                 </Button>
               </div>
             </div>
@@ -132,10 +129,9 @@ export const Dashboard: React.FC = () => {
                 </Button>
               </div>
             )}
-          </div>
-        </main>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Header } from '../components';
-import { Sidebar } from '../components';
+import { Layout } from '../components';
 import { Card, CardHeader, CardBody } from '../components';
 import { Button } from '../components';
 import { Loading } from '../components';
@@ -104,33 +103,30 @@ export const CourseDetail: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-8">
-          <div className="max-w-7xl mx-auto">
+    <Layout>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
             {/* Course Header */}
-            <div className="mb-8">
-              <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-4">
+            <div className="mb-6 sm:mb-8">
+              <div className="flex items-center text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-4">
                 <Link to="/courses" className="hover:text-blue-600 dark:hover:text-blue-400">
                   {t('courses.title')}
                 </Link>
                 <span className="mx-2">/</span>
-                <span>{currentCourse.code}</span>
+                <span className="truncate">{currentCourse.code}</span>
               </div>
 
               <Card>
                 <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="flex items-center gap-3 mb-2">
-                        <AcademicCapIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                        <AcademicCapIcon className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                        <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white truncate">
                           {currentCourse.code}
                         </h1>
                       </div>
-                      <h2 className="text-xl text-gray-700 dark:text-gray-300">
+                      <h2 className="text-base sm:text-xl text-gray-700 dark:text-gray-300">
                         {currentCourse.title}
                       </h2>
                     </div>
@@ -138,12 +134,13 @@ export const CourseDetail: React.FC = () => {
                       <div className="flex gap-2">
                         <Link to={`/courses/${id}/edit`}>
                           <Button variant="secondary" size="sm">
-                            {t('common.edit')}
+                            <span className="hidden sm:inline">{t('common.edit')}</span>
+                            <span className="sm:hidden">Edit</span>
                           </Button>
                         </Link>
                         <Button size="sm" onClick={() => setShowEnrollModal(true)}>
-                          <PlusIcon className="h-4 w-4 mr-1" />
-                          {t('courses.enrollStudents')}
+                          <PlusIcon className="h-4 w-4 sm:mr-1" />
+                          <span className="hidden sm:inline">{t('courses.enrollStudents')}</span>
                         </Button>
                       </div>
                     )}
@@ -174,14 +171,14 @@ export const CourseDetail: React.FC = () => {
             </div>
 
             {/* Tabs */}
-            <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
-              <nav className="flex space-x-8">
+            <div className="border-b border-gray-200 dark:border-gray-700 mb-6 overflow-x-auto">
+              <nav className="flex space-x-4 sm:space-x-8 min-w-max sm:min-w-0">
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
                     className={`
-                      flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors
+                      flex items-center py-3 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap
                       ${
                         activeTab === tab.id
                           ? 'border-blue-500 text-blue-600 dark:text-blue-400'
@@ -189,7 +186,7 @@ export const CourseDetail: React.FC = () => {
                       }
                     `}
                   >
-                    <tab.icon className="h-5 w-5 mr-2" />
+                    <tab.icon className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2" />
                     {tab.name}
                   </button>
                 ))}
@@ -460,58 +457,57 @@ export const CourseDetail: React.FC = () => {
                 )
               )}
             </div>
-          </div>
-        </main>
-      </div>
 
-      {/* Modals */}
-      {isInstructor && (
-        <>
-          <CreateModuleModal
-            isOpen={showModuleModal}
-            onClose={() => setShowModuleModal(false)}
-            courseId={id!}
-            onModuleCreated={handleModuleCreated}
-          />
-          <CreateAssignmentModal
-            isOpen={showAssignmentModal}
-            onClose={() => {
-              setShowAssignmentModal(false);
-              setSelectedModuleId(null);
-            }}
-            courseId={id!}
-            moduleId={selectedModuleId || undefined}
-            onAssignmentCreated={handleAssignmentCreated}
-          />
-          {selectedModuleId && (
-            <CreateResourceModal
-              isOpen={showResourceModal}
-              onClose={() => {
-                setShowResourceModal(false);
-                setSelectedModuleId(null);
-              }}
-              moduleId={selectedModuleId}
-              onResourceCreated={handleResourceCreated}
-            />
-          )}
-          {/* Enroll students modal */}
-          <EnrollStudentsModal
-            isOpen={showEnrollModal}
-            onClose={() => setShowEnrollModal(false)}
-            courseId={id!}
-            onEnrolled={() => {
-              // Refresh course and lists when new students are enrolled
-              if (id) {
-                fetchCourseById(id);
-                fetchModules(id);
-                fetchAssignments(id);
-              }
-              setShowEnrollModal(false);
-            }}
-          />
-        </>
-      )}
-    </div>
+            {/* Modals */}
+            {isInstructor && (
+              <>
+                <CreateModuleModal
+                  isOpen={showModuleModal}
+                  onClose={() => setShowModuleModal(false)}
+                  courseId={id!}
+                  onModuleCreated={handleModuleCreated}
+                />
+                <CreateAssignmentModal
+                  isOpen={showAssignmentModal}
+                  onClose={() => {
+                    setShowAssignmentModal(false);
+                    setSelectedModuleId(null);
+                  }}
+                  courseId={id!}
+                  moduleId={selectedModuleId || undefined}
+                  onAssignmentCreated={handleAssignmentCreated}
+                />
+                {selectedModuleId && (
+                  <CreateResourceModal
+                    isOpen={showResourceModal}
+                    onClose={() => {
+                      setShowResourceModal(false);
+                      setSelectedModuleId(null);
+                    }}
+                    moduleId={selectedModuleId}
+                    onResourceCreated={handleResourceCreated}
+                  />
+                )}
+                {/* Enroll students modal */}
+                <EnrollStudentsModal
+                  isOpen={showEnrollModal}
+                  onClose={() => setShowEnrollModal(false)}
+                  courseId={id!}
+                  onEnrolled={() => {
+                    // Refresh course and lists when new students are enrolled
+                    if (id) {
+                      fetchCourseById(id);
+                      fetchModules(id);
+                      fetchAssignments(id);
+                    }
+                    setShowEnrollModal(false);
+                  }}
+                />
+              </>
+            )}
+        </div>
+      </div>
+    </Layout>
   );
 };
 

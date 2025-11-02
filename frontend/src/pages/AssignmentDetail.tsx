@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
 import api from '../api/client';
-import { Header } from '../components';
-import { Sidebar } from '../components';
+import { Layout } from '../components';
 import { Card, CardHeader, CardBody } from '../components';
 import { Button } from '../components';
 import { Loading } from '../components';
@@ -118,12 +117,9 @@ export const AssignmentDetail: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-8">
-          <div className="max-w-7xl mx-auto">
+    <Layout>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
             {/* Assignment Header */}
             <div className="mb-8">
               <div className="flex items-center justify-between">
@@ -390,11 +386,10 @@ export const AssignmentDetail: React.FC = () => {
                   )}
                 </CardBody>
               </Card>
-            )}
-          </div>
-        </main>
+          )}
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 
