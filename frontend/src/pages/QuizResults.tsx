@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Header, Sidebar, Card, CardHeader, CardBody, Button, Loading } from '../components';
+import { Layout, Card, CardHeader, CardBody, Button, Loading } from '../components';
 import apiClient from '../api/client';
 import { CheckCircleIcon, XCircleIcon, ClockIcon, TrophyIcon } from '@heroicons/react/24/outline';
 
@@ -151,21 +151,17 @@ export const QuizResults: React.FC = () => {
 
   if (!result) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Header />
-        <div className="flex">
-          <Sidebar />
-          <main className="flex-1 p-8">
-            <Card>
-              <CardBody>
-                <p className="text-center text-red-600 dark:text-red-400">
-                  {error || t('quiz.errors.resultNotFound')}
-                </p>
-              </CardBody>
-            </Card>
-          </main>
+      <Layout>
+        <div className="p-4 sm:p-6 lg:p-8">
+          <Card>
+            <CardBody>
+              <p className="text-center text-red-600 dark:text-red-400">
+                {error || t('quiz.errors.resultNotFound')}
+              </p>
+            </CardBody>
+          </Card>
         </div>
-      </div>
+      </Layout>
     );
   }
 
@@ -176,12 +172,9 @@ export const QuizResults: React.FC = () => {
     result.questions.some(q => ['SHORT_ANSWER', 'ESSAY'].includes(q.question.question_type));
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-8">
-          <div className="max-w-4xl mx-auto">
+    <Layout>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="max-w-4xl mx-auto">
             {/* Results Header */}
             <Card className="mb-6">
               <CardBody>
@@ -388,11 +381,10 @@ export const QuizResults: React.FC = () => {
               <Button onClick={() => navigate('/assignments')}>
                 {t('quiz.viewAllAssignments')}
               </Button>
-            </div>
           </div>
-        </main>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

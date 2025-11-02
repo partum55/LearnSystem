@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { Header } from '../components';
-import { Sidebar } from '../components';
+import { Layout } from '../components';
 import { Card, CardHeader, CardBody } from '../components';
 import { Button } from '../components';
 import { Loading } from '../components';
@@ -111,12 +110,9 @@ export const QuizDetail: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-8">
-          <div className="max-w-7xl mx-auto">
+    <Layout>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
             {/* Quiz Header */}
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -293,9 +289,8 @@ export const QuizDetail: React.FC = () => {
                   </>
                 )}
               </CardBody>
-            </Card>
-          </div>
-        </main>
+          </Card>
+        </div>
       </div>
 
       <CreateQuestionModal
@@ -306,7 +301,7 @@ export const QuizDetail: React.FC = () => {
           fetchAvailableQuestions();
         }}
       />
-    </div>
+    </Layout>
   );
 };
 
