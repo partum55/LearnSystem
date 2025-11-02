@@ -2,11 +2,15 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Menu, Transition } from '@headlessui/react';
-import { BellIcon, UserCircleIcon, SunIcon, MoonIcon, LanguageIcon } from '@heroicons/react/24/outline';
+import { BellIcon, UserCircleIcon, SunIcon, MoonIcon, LanguageIcon, Bars3Icon } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../store/authStore';
 import { useNotificationStore } from '../store/notificationStore';
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  onMenuClick?: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { t, i18n } = useTranslation();
   const { user, logout, updateUserPreferences } = useAuthStore();
   const { unreadCount } = useNotificationStore();
@@ -42,22 +46,31 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="bg-white dark:bg-gray-800 shadow-md border-b border-gray-200 dark:border-gray-700">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <header className="bg-white dark:bg-gray-800 shadow-md border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30">
+      <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link to="/dashboard" className="flex items-center space-x-2">
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              LMS
-            </div>
-          </Link>
+          {/* Mobile menu button and Logo */}
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={onMenuClick}
+              className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              aria-label="Toggle menu"
+            >
+              <Bars3Icon className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+            </button>
+            <Link to="/dashboard" className="flex items-center space-x-2">
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                LMS
+              </div>
+            </Link>
+          </div>
 
           {/* Right side actions */}
-          <div className="flex items-center space-x-4">
-            {/* Theme toggle */}
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            {/* Theme toggle - Hidden on smallest screens */}
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               aria-label="Toggle theme"
             >
               {theme === 'light' ? (
@@ -67,8 +80,8 @@ export const Header: React.FC = () => {
               )}
             </button>
 
-            {/* Language toggle */}
-            <Menu as="div" className="relative">
+            {/* Language toggle - Hidden on smallest screens */}
+            <Menu as="div" className="relative hidden sm:block">
               <Menu.Button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 <LanguageIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
               </Menu.Button>
