@@ -1,17 +1,15 @@
-import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig, AxiosProgressEvent } from 'axios';
 import { getAccessToken, setAccessToken } from './token';
 
-// Use REACT_APP_API_URL set at build time. If not set, fall back to a relative path '/api'
-// so the frontend can work when served from the same origin as the backend.
+// Prefer explicit REACT_APP_API_URL, otherwise default to local Spring backend in dev
 let API_BASE_URL = process.env.REACT_APP_API_URL || '';
 
 if (!API_BASE_URL) {
-  // If running in a browser, detect the host. For the hosted frontend (learn-system.onrender.com)
-  // the API actually lives at learn-ucu-backend.onrender.com. Make that the default in production.
   if (typeof window !== 'undefined' && window.location && window.location.hostname) {
     const host = window.location.hostname;
-    if (host === 'learn-system.onrender.com' || host.endsWith('.learn-system.onrender.com')) {
-      API_BASE_URL = 'https://learn-ucu-backend.onrender.com/api';
+    // Local dev default
+    if (host === 'localhost' || host === '127.0.0.1') {
+      API_BASE_URL = 'http://localhost:8080/api';
     }
   }
 }
@@ -49,36 +47,22 @@ class ApiClient {
       headers: {
         'Content-Type': 'application/json',
       },
-      withCredentials: true,
-      xsrfCookieName: 'csrftoken',
-      xsrfHeaderName: 'X-CSRFToken',
+      withCredentials: false,
     });
 
     this.setupInterceptors();
   }
 
+  // Disable refresh flow for now (backend exposes refresh but UI can re-login)
   private async refreshAccessToken(): Promise<string | null> {
     if (this.refreshPromise) return this.refreshPromise;
-    this.refreshPromise = this.client
-      .post<{ access?: string }>('/auth/refresh/')
-      .then((res) => {
-        const access = res.data?.access || null;
-        setAccessToken(access);
-        return access;
-      })
-      .catch((err) => {
-        setAccessToken(null);
-        throw err;
-      })
-      .finally(() => {
-        this.refreshPromise = null;
-      });
+    this.refreshPromise = Promise.resolve(null).finally(() => { this.refreshPromise = null; });
     return this.refreshPromise;
   }
 
   private isAuthEndpoint(url?: string) {
     if (!url) return false;
-    return url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/users');
+    return url.includes('/auth/login') || url.includes('/auth/refresh');
   }
 
   private setupInterceptors() {
@@ -89,22 +73,6 @@ class ApiClient {
         if (token && config.headers) {
           config.headers.Authorization = `Bearer ${token}`;
         }
-
-        // For unsafe methods, ensure CSRF cookie is set by calling the csrf endpoint
-        const method = (config.method || 'get').toLowerCase();
-        const unsafe = ['post', 'put', 'patch', 'delete'];
-        const isAuth = this.isAuthEndpoint(config.url);
-
-        if (unsafe.includes(method) && !isAuth) {
-          try {
-            // Call the backend csrf endpoint to ensure the cookie is present
-            // We don't await long; the server will set cookie in response
-            await this.client.get('/auth/csrf/');
-          } catch (e) {
-            // Ignore errors here; the request will likely fail later with a clearer message
-          }
-        }
-
         return config;
       },
       (error) => Promise.reject(error)
@@ -116,41 +84,29 @@ class ApiClient {
       async (error: AxiosError) => {
         const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean; _retry429?: boolean }) | undefined;
         const status = error.response?.status;
-        const url = originalRequest?.url;
 
         // 429 Too Many Requests: retry once after delay
         if (status === 429 && originalRequest && !originalRequest._retry429) {
           originalRequest._retry429 = true;
           const retryAfterHeader = error.response?.headers?.['retry-after'] as string | undefined;
           const retryAfterJson = (error.response?.data as any)?.retry_after as number | undefined;
-          const retrySeconds = Math.min(
-            10,
-            Number(retryAfterHeader) || (typeof retryAfterJson === 'number' ? retryAfterJson : 1)
-          );
+          const retrySeconds = Math.min(10, Number(retryAfterHeader) || (typeof retryAfterJson === 'number' ? retryAfterJson : 1));
           await delay(retrySeconds * 1000);
           return this.client(originalRequest);
         }
 
         // 401 Unauthorized: attempt refresh once, de-duped, except on auth endpoints
-        if (
-          status === 401 &&
-          originalRequest &&
-          !originalRequest._retry &&
-          !this.isAuthEndpoint(url || '')
-        ) {
+        if (status === 401 && originalRequest && !originalRequest._retry && !this.isAuthEndpoint(originalRequest.url || '')) {
           originalRequest._retry = true;
           try {
             const access = await this.refreshAccessToken();
             if (access && originalRequest.headers) {
               originalRequest.headers['Authorization'] = `Bearer ${access}`;
+              setAccessToken(access);
+              return this.client(originalRequest);
             }
-            return this.client(originalRequest);
-          } catch (refreshError) {
-            // Redirect to login on refresh failure
-            if (typeof window !== 'undefined') {
-              window.location.href = '/login';
-            }
-            return Promise.reject(refreshError);
+          } catch {
+            // fall through
           }
         }
 
@@ -171,31 +127,15 @@ class ApiClient {
     );
   }
 
-  public get<T>(url: string, config = {}) {
-    return this.client.get<T>(url, config);
-  }
+  public get<T>(url: string, config = {}) { return this.client.get<T>(url, config); }
+  public post<T>(url: string, data?: any, config = {}) { return this.client.post<T>(url, data, config); }
+  public put<T>(url: string, data?: any, config = {}) { return this.client.put<T>(url, data, config); }
+  public patch<T>(url: string, data?: any, config = {}) { return this.client.patch<T>(url, data, config); }
+  public delete<T>(url: string, config = {}) { return this.client.delete<T>(url, config); }
 
-  public post<T>(url: string, data?: any, config = {}) {
-    return this.client.post<T>(url, data, config);
-  }
-
-  public put<T>(url: string, data?: any, config = {}) {
-    return this.client.put<T>(url, data, config);
-  }
-
-  public patch<T>(url: string, data?: any, config = {}) {
-    return this.client.patch<T>(url, data, config);
-  }
-
-  public delete<T>(url: string, config = {}) {
-    return this.client.delete<T>(url, config);
-  }
-
-  public upload<T>(url: string, formData: FormData, onUploadProgress?: (progressEvent: any) => void) {
+  public upload<T>(url: string, formData: FormData, onUploadProgress?: (progressEvent: AxiosProgressEvent) => void) {
     return this.client.post<T>(url, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress,
     });
   }

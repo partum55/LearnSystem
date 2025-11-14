@@ -6,6 +6,8 @@ import { Input } from '../components';
 import { Button } from '../components';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
+const REQUIRE_UCU_EMAIL = process.env.REACT_APP_REQUIRE_UCU_EMAIL === 'true';
+
 export const Login: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -45,8 +47,8 @@ export const Login: React.FC = () => {
       return;
     }
 
-    // Валідація UCU email
-    if (!email.toLowerCase().endsWith('@ucu.edu.ua')) {
+    // Optional UCU-only validation (enabled only if env flag is true)
+    if (REQUIRE_UCU_EMAIL && !email.toLowerCase().endsWith('@ucu.edu.ua')) {
       setLocalError(t('auth.ucuEmailRequired', 'Only @ucu.edu.ua email addresses are allowed'));
       return;
     }

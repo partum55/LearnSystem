@@ -5,6 +5,7 @@ import { Input } from './Input';
 import { Button } from './Button';
 import { ResourceType } from '../types';
 import apiClient from '../api/client';
+import type { AxiosProgressEvent } from 'axios';
 import {
   DocumentTextIcon,
   VideoCameraIcon,
@@ -97,7 +98,7 @@ export const AddResourceModal: React.FC<AddResourceModalProps> = ({
         formDataToSend.append('file', formData.file);
       }
 
-      await apiClient.upload('/courses/resources/upload/', formDataToSend, (e) => {
+      await apiClient.upload('/courses/resources/upload/', formDataToSend, (e: AxiosProgressEvent) => {
         if (e.total) {
           const progress = Math.round((e.loaded / e.total) * 100);
           setUploadProgress(progress);

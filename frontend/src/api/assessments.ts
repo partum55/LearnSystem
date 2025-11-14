@@ -89,3 +89,5 @@ export const attemptsApi = {
     apiClient.get(`/assessments/attempts/${id}/results/`),
 };
 
+// Ensure paths do not include redundant /api prefix; client baseURL already includes /api
+export const getQuizzes = (courseId: string) => apiClient.get(`/courses/${courseId}/quizzes`);

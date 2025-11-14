@@ -1,16 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Header } from '../components/Header';
-import { Sidebar } from '../components/Sidebar';
-import { Card, CardHeader, CardBody } from '../components/Card';
-import { Button } from '../components/Button';
-import { Input } from '../components/Input';
-import { Loading } from '../components/Loading';
+import {
+  Header,
+  Sidebar,
+  Card,
+  CardHeader,
+  CardBody,
+  Button,
+  Input,
+  Loading
+} from '../components';
 import { useCourseStore } from '../store/courseStore';
 import { useAuthStore } from '../store/authStore';
-import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, MagnifyingGlassIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { Course } from '../types';
+import { AICourseGenerator } from '../components/AICourseGenerator';
 
 export const CourseList: React.FC = () => {
   const { t } = useTranslation();
@@ -18,6 +23,7 @@ export const CourseList: React.FC = () => {
   const { courses, fetchCourses, isLoading } = useCourseStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterVisibility, setFilterVisibility] = useState<string>('all');
+  const [showAIGenerator, setShowAIGenerator] = useState(false);
 
   useEffect(() => {
     fetchCourses();
@@ -56,12 +62,21 @@ export const CourseList: React.FC = () => {
                 </p>
               </div>
               {canCreateCourse && (
-                <Link to="/courses/create">
-                  <Button>
-                    <PlusIcon className="h-5 w-5 mr-2" />
-                    {t('courses.createCourse')}
+                <div className="flex gap-3">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowAIGenerator(true)}
+                  >
+                    <SparklesIcon className="h-5 w-5 mr-2" />
+                    🤖 AI Generator
                   </Button>
-                </Link>
+                  <Link to="/courses/create">
+                    <Button>
+                      <PlusIcon className="h-5 w-5 mr-2" />
+                      {t('courses.createCourse')}
+                    </Button>
+                  </Link>
+                </div>
               )}
             </div>
 
@@ -167,6 +182,22 @@ export const CourseList: React.FC = () => {
           </div>
         </main>
       </div>
+
+      {/* AI Course Generator Modal */}
+      {showAIGenerator && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-screen overflow-y-auto">
+            <AICourseGenerator
+              onCourseGenerated={(course) => {
+                console.log('AI generated course:', course);
+                setShowAIGenerator(false);
+                fetchCourses(); // Refresh course list
+              }}
+              onClose={() => setShowAIGenerator(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

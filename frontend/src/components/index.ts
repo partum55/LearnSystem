@@ -18,3 +18,5 @@ export * from './CourseGradesTab';
 export * from './TeacherGradebook';
 export * from './DashboardBuilder';
 export * from './DashboardWidgets';
+export * from './AICourseGenerator';
+export * from './AIElementGenerator';

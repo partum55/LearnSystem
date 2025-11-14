@@ -1,0 +1,29 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: lms-ai-service
+
+# Llama API Configuration
+llama:
+  api:
+    url: ${LLAMA_API_URL:https://api.groq.com/openai/v1}
+    key: ${LLAMA_API_KEY:}  # API ключ (для Groq, Together AI, etc.)
+    model: ${LLAMA_MODEL:llama-3.1-70b-versatile}
+    timeout: 120000  # 2 minutes for long generations
+    max-retries: 3
+
+# Other services
+services:
+  course-service:
+    url: ${COURSE_SERVICE_URL:http://localhost:8081}
+  assessment-service:
+    url: ${ASSESSMENT_SERVICE_URL:http://localhost:8083}
+
+# Logging
+logging:
+  level:
+    com.university.lms.ai: DEBUG
+    org.springframework.web.reactive: INFO
+

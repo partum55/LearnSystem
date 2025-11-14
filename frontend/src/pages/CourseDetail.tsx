@@ -25,7 +25,8 @@ import {
 import { Module, Assignment } from '../types';
 import { TeacherGradebook } from '../components';
 import { CourseGradesTab } from '../components';
-import { EnrollStudentsModal } from '../components';
+import { EnrollStudentsModal, AIElementGenerator } from '../components';
+import { SparklesIcon } from '@heroicons/react/24/outline';
 
 
 export const CourseDetail: React.FC = () => {
@@ -38,7 +39,10 @@ export const CourseDetail: React.FC = () => {
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [showResourceModal, setShowResourceModal] = useState(false);
   const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const [showAIModuleGenerator, setShowAIModuleGenerator] = useState(false);
+  const [showAIAssignmentGenerator, setShowAIAssignmentGenerator] = useState(false);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
+  const [selectedModuleContext, setSelectedModuleContext] = useState<string>('');
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -201,7 +205,14 @@ export const CourseDetail: React.FC = () => {
               {activeTab === 'modules' && (
                 <div className="space-y-4">
                   {isInstructor && (
-                    <div className="flex justify-end mb-4">
+                    <div className="flex justify-end gap-3 mb-4">
+                      <Button
+                        variant="secondary"
+                        onClick={() => setShowAIModuleGenerator(true)}
+                      >
+                        <SparklesIcon className="h-4 w-4 mr-2" />
+                        🤖 AI Генерація
+                      </Button>
                       <Button onClick={() => setShowModuleModal(true)}>
                         <PlusIcon className="h-4 w-4 mr-2" />
                         {t('modules.addModule')}
@@ -253,6 +264,19 @@ export const CourseDetail: React.FC = () => {
                             {/* Action Buttons for Instructor */}
                             {isInstructor && (
                               <div className="flex gap-2 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedModuleId(module.id);
+                                    setSelectedModuleContext(`${module.title}: ${module.description || ''}`);
+                                    setShowAIAssignmentGenerator(true);
+                                  }}
+                                >
+                                  <SparklesIcon className="h-4 w-4 mr-1" />
+                                  🤖 AI Завдання
+                                </Button>
                                 <Button
                                   variant="secondary"
                                   size="sm"
@@ -509,6 +533,54 @@ export const CourseDetail: React.FC = () => {
               setShowEnrollModal(false);
             }}
           />
+
+          {/* AI Module Generator Modal */}
+          {showAIModuleGenerator && currentCourse && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+              <div className="bg-white rounded-lg max-w-3xl w-full max-h-screen overflow-y-auto">
+                <AIElementGenerator
+                  elementType="module"
+                  courseId={id}
+                  courseContext={`${currentCourse.code}: ${currentCourse.title} - ${currentCourse.description}`}
+                  onGenerated={(data) => {
+                    console.log('AI generated modules:', data);
+                    setShowAIModuleGenerator(false);
+                    if (id) {
+                      fetchModules(id);
+                    }
+                  }}
+                  onClose={() => setShowAIModuleGenerator(false)}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* AI Assignment Generator Modal */}
+          {showAIAssignmentGenerator && selectedModuleId && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+              <div className="bg-white rounded-lg max-w-3xl w-full max-h-screen overflow-y-auto">
+                <AIElementGenerator
+                  elementType="assignment"
+                  moduleId={selectedModuleId}
+                  courseContext={currentCourse ? `${currentCourse.code}: ${currentCourse.title}` : ''}
+                  moduleContext={selectedModuleContext}
+                  onGenerated={(data) => {
+                    console.log('AI generated assignments:', data);
+                    setShowAIAssignmentGenerator(false);
+                    setSelectedModuleId(null);
+                    if (id) {
+                      fetchAssignments(id);
+                      fetchModules(id);
+                    }
+                  }}
+                  onClose={() => {
+                    setShowAIAssignmentGenerator(false);
+                    setSelectedModuleId(null);
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

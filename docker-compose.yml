@@ -1,71 +1,241 @@
 services:
-  db:
-    image: postgres:15
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: lms-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_NAME:-lms_db}
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-lms_db}
+      POSTGRES_USER: ${POSTGRES_USER:-lms_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lms_password}
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - lms-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lms_user} -d ${POSTGRES_DB:-lms_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  # Redis Cache
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
-
-  backend:
-    build: ./backend
-    command: gunicorn lms_project.wsgi:application --bind 0.0.0.0:8000 --workers 4
+    container_name: lms-redis
+    restart: unless-stopped
     volumes:
-      - ./backend:/app
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
+      - redis_data:/data
+    networks:
+      - lms-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Spring Boot Backend (User Service)
+  backend-spring:
+    build:
+      context: ./backend-spring
+      dockerfile: Dockerfile
+    container_name: lms-backend-spring
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-lms_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-lms_user}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-lms_password}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-key-change-in-production-must-be-at-least-256-bits-long-for-hs256}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-2592000000}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - spring_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - lms-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/api/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Django Backend (Optional - for migration purposes)
+  backend-python:
+    build:
+      context: ./backend-python
+      dockerfile: Dockerfile
+    container_name: lms-backend-python
+    restart: unless-stopped
     ports:
       - "8000:8000"
-    env_file:
-      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-lms_user}:${POSTGRES_PASSWORD:-lms_password}@postgres:5432/${POSTGRES_DB:-lms_db}
+      REDIS_URL: redis://redis:6379/0
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-change-me-in-production}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,backend-python
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+    volumes:
+      - ./backend-python:/app
+      - python_static:/app/staticfiles
+      - python_media:/app/media
     depends_on:
-      - db
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - lms-network
+    profiles:
+      - python  # Запускається тільки якщо вказати --profile python
 
+  # Celery Worker (for Django backend)
   celery:
-    build: ./backend
+    build:
+      context: ./backend-python
+      dockerfile: Dockerfile
+    container_name: lms-celery
+    restart: unless-stopped
     command: celery -A lms_project worker -l info
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-lms_user}:${POSTGRES_PASSWORD:-lms_password}@postgres:5432/${POSTGRES_DB:-lms_db}
+      REDIS_URL: redis://redis:6379/0
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-change-me-in-production}
     volumes:
-      - ./backend:/app
-    env_file:
-      - ./backend/.env
+      - ./backend-python:/app
     depends_on:
-      - db
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - lms-network
+    profiles:
+      - python
 
+  # Celery Beat (for Django backend)
   celery-beat:
-    build: ./backend
+    build:
+      context: ./backend-python
+      dockerfile: Dockerfile
+    container_name: lms-celery-beat
+    restart: unless-stopped
     command: celery -A lms_project beat -l info
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-lms_user}:${POSTGRES_PASSWORD:-lms_password}@postgres:5432/${POSTGRES_DB:-lms_db}
+      REDIS_URL: redis://redis:6379/0
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-change-me-in-production}
     volumes:
-      - ./backend:/app
-    env_file:
-      - ./backend/.env
+      - ./backend-python:/app
     depends_on:
-      - db
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - lms-network
+    profiles:
+      - python
 
+  # Ollama Service (опціонально, якщо хочете локальну модель)
+  # Для використання: змініть LLAMA_API_URL на http://ollama:11434
+  ollama:
+    image: ollama/ollama:latest
+    container_name: lms-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - lms-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    profiles:
+      - ollama  # Окремий профіль для локальної моделі
+
+  # AI Service (Llama Integration via API)
+  ai-service:
+    build:
+      context: ./backend-spring/lms-ai-service
+      dockerfile: ../Dockerfile
+    container_name: lms-ai-service
+    restart: unless-stopped
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      LLAMA_API_URL: ${LLAMA_API_URL:-https://api.groq.com/openai/v1}
+      LLAMA_API_KEY: ${LLAMA_API_KEY}
+      LLAMA_MODEL: ${LLAMA_MODEL:-llama-3.1-70b-versatile}
+      COURSE_SERVICE_URL: http://backend-spring:8081
+      ASSESSMENT_SERVICE_URL: http://backend-spring:8083
+    depends_on:
+      - backend-spring
+    networks:
+      - lms-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8084/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    profiles:
+      - ai  # Запускається з --profile ai
+
+  # React Frontend
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: lms-frontend
+    restart: unless-stopped
     ports:
       - "3000:3000"
+    environment:
+      REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:8080/api}
+      REACT_APP_AI_SERVICE_URL: ${REACT_APP_AI_SERVICE_URL:-http://localhost:8084/api}
+      CHOKIDAR_USEPOLLING: "true"  # For hot reload in Docker
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    environment:
-      # Allow overriding REACT_APP_API_URL from the environment; default to local backend for dev
-      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:8000/api}
     depends_on:
-      - backend
+      - backend-spring
+    networks:
+      - lms-network
+    stdin_open: true
+    tty: true
 
 volumes:
   postgres_data:
-  static_volume:
-  media_volume:
+    driver: local
+  redis_data:
+    driver: local
+  spring_logs:
+    driver: local
+  python_static:
+    driver: local
+  python_media:
+    driver: local
+  ollama_data:
+    driver: local
+
+networks:
+  lms-network:
+    driver: bridge

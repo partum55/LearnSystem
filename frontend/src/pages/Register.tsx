@@ -56,21 +56,20 @@ export const Register: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await apiClient.post('/auth/users/', {
+      // Spring endpoint: POST /api/auth/register
+      const response = await apiClient.post('/auth/register', {
         email: formData.email,
         password: formData.password,
-        password_confirm: formData.confirmPassword,
-        display_name: formData.display_name,
+        displayName: formData.display_name,
         role: formData.role,
       });
 
-      if (response.status === 201) {
-        // Успішна реєстрація - перенаправляємо на сторінку входу
-        navigate('/login', { 
-          state: { 
+      if (response.status === 201 || response.status === 200) {
+        navigate('/login', {
+          state: {
             message: t('auth.register.success'),
-            email: formData.email 
-          } 
+            email: formData.email,
+          },
         });
       }
     } catch (err: any) {
@@ -81,6 +80,8 @@ export const Register: React.FC = () => {
           setError(Array.isArray(errorData.email) ? errorData.email[0] : errorData.email);
         } else if (errorData.password) {
           setError(Array.isArray(errorData.password) ? errorData.password[0] : errorData.password);
+        } else if (errorData.error) {
+          setError(errorData.error);
         } else {
           setError(t('auth.register.error'));
         }
