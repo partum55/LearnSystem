@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Header } from '../components/Header';
-import { Sidebar } from '../components/Sidebar';
+import { Layout } from '../components';
 import { Card, CardHeader, CardBody } from '../components/Card';
 import { Loading } from '../components/Loading';
 import { useCourseStore } from '../store/courseStore';
@@ -19,22 +18,19 @@ export const Assignments: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-8">
-          <div className="max-w-7xl mx-auto">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                {t('assignments.title')}
-              </h1>
-              <p className="mt-2 text-gray-600 dark:text-gray-400">
-                All your assignments in one place
-              </p>
-            </div>
+    <Layout>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+              {t('assignments.title')}
+            </h1>
+            <p className="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">
+              All your assignments in one place
+            </p>
+          </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
               <Card>
                 <CardBody>
                   <div className="text-center">
@@ -79,10 +75,9 @@ export const Assignments: React.FC = () => {
                 </p>
               </CardBody>
             </Card>
-          </div>
-        </main>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

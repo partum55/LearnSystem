@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Header, Sidebar, Card, CardHeader, CardBody, Button } from '../components';
+import { Layout, Card, CardHeader, CardBody, Button } from '../components';
 import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import apiClient from '../api/client';
@@ -107,21 +107,18 @@ export const ProfileSettings: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-8">
-          <div className="max-w-4xl mx-auto">
-            {/* Header */}
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                {t('settings.title', 'Settings')}
-              </h1>
-              <p className="mt-2 text-gray-600 dark:text-gray-400">
-                {t('settings.description', 'Manage your account settings and preferences')}
-              </p>
-            </div>
+    <Layout>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+              {t('settings.title', 'Settings')}
+            </h1>
+            <p className="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">
+              {t('settings.description', 'Manage your account settings and preferences')}
+            </p>
+          </div>
 
             {/* Message */}
             {message && (
@@ -417,11 +414,10 @@ export const ProfileSettings: React.FC = () => {
                   </div>
                 </div>
               </CardBody>
-            </Card>
-          </div>
-        </main>
+          </Card>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

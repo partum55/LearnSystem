@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Header } from '../components/Header';
-import { Sidebar } from '../components/Sidebar';
+import { Layout } from '../components';
 import { Card, CardHeader, CardBody } from '../components/Card';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
@@ -92,12 +91,9 @@ export const CourseCreate: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-8">
-          <div className="max-w-4xl mx-auto">
+    <Layout>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="max-w-4xl mx-auto">
             {/* Breadcrumb */}
             <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-4">
               <button
@@ -272,11 +268,10 @@ export const CourseCreate: React.FC = () => {
                   {t('courses.createCourse')}
                 </Button>
               </div>
-            </form>
-          </div>
-        </main>
+          </form>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Header } from '../components/Header';
-import { Sidebar } from '../components/Sidebar';
+import { Layout } from '../components';
 import { Card, CardHeader, CardBody } from '../components/Card';
 import { Button } from '../components/Button';
 import { Loading } from '../components/Loading';
@@ -335,12 +334,9 @@ export const TakeQuiz: React.FC = () => {
 
   // Show quiz questions
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-8">
-          <div className="max-w-4xl mx-auto">
+    <Layout>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="max-w-4xl mx-auto">
             {/* Timer */}
             {timeRemaining !== null && (
               <div className="mb-6 sticky top-4 z-10">
@@ -401,11 +397,10 @@ export const TakeQuiz: React.FC = () => {
                   </Button>
                 </CardBody>
               </Card>
-            </div>
           </div>
-        </main>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

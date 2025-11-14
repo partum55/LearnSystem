@@ -1,7 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Header } from '../components/Header';
-import { Sidebar } from '../components/Sidebar';
+import { Layout } from '../components';
 import { Card, CardHeader, CardBody } from '../components/Card';
 import { useAuthStore } from '../store/authStore';
 
@@ -10,20 +9,17 @@ export const Profile: React.FC = () => {
   const { user } = useAuthStore();
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                {t('nav.profile')}
-              </h1>
-              <p className="mt-2 text-gray-600 dark:text-gray-400">
-                Manage your account settings and preferences
-              </p>
-            </div>
+    <Layout>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+              {t('nav.profile')}
+            </h1>
+            <p className="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">
+              Manage your account settings and preferences
+            </p>
+          </div>
 
             <div className="space-y-6">
               <Card>
@@ -83,11 +79,10 @@ export const Profile: React.FC = () => {
                   </div>
                 </CardBody>
               </Card>
-            </div>
           </div>
-        </main>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 
