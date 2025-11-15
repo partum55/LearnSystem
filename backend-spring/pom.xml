@@ -35,6 +35,7 @@
         <module>lms-user-service</module>
         <module>lms-course-service</module>
         <module>lms-assessment-service</module>
+        <module>lms-gradebook-service</module>
         <module>lms-ai-service</module>
     </modules>
     <dependencyManagement>

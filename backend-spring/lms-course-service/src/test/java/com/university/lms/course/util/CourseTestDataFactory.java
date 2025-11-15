@@ -23,7 +23,7 @@ public class CourseTestDataFactory {
                 .titleEn("Introduction to Programming")
                 .descriptionUk("Базовий курс програмування")
                 .descriptionEn("Basic programming course")
-                .visibility(CourseVisibility.UNIVERSITY)
+                .visibility(CourseVisibility.PUBLIC)
                 .startDate(LocalDate.now().plusDays(7))
                 .endDate(LocalDate.now().plusMonths(3))
                 .academicYear("2025-2026")
@@ -36,7 +36,7 @@ public class CourseTestDataFactory {
                 .titleUk(titleEn)
                 .titleEn(titleEn)
                 .descriptionEn("Test course description")
-                .visibility(CourseVisibility.UNIVERSITY)
+                .visibility(CourseVisibility.PUBLIC)
                 .startDate(LocalDate.now().plusDays(1))
                 .endDate(LocalDate.now().plusMonths(3))
                 .build();
@@ -49,7 +49,7 @@ public class CourseTestDataFactory {
                 .titleEn(title)
                 .titleUk(title)
                 .ownerId(ownerId)
-                .visibility(CourseVisibility.UNIVERSITY)
+                .visibility(CourseVisibility.PUBLIC)
                 .status(CourseStatus.DRAFT)
                 .currentEnrollment(0)
                 .build();
@@ -63,7 +63,7 @@ public class CourseTestDataFactory {
         course.setTitleUk("Тестовий курс");
         course.setDescriptionEn("Test Description");
         course.setOwnerId(ownerId);
-        course.setVisibility(CourseVisibility.UNIVERSITY);
+        course.setVisibility(CourseVisibility.PUBLIC);
         course.setStatus(CourseStatus.DRAFT);
         course.setStartDate(LocalDate.now().plusDays(7));
         course.setEndDate(LocalDate.now().plusMonths(3));
@@ -72,21 +72,21 @@ public class CourseTestDataFactory {
 
     public static CreateModuleRequest createValidModuleRequest() {
         return CreateModuleRequest.builder()
-                .titleUk("Модуль 1")
-                .titleEn("Module 1")
-                .descriptionEn("Module description")
-                .orderIndex(1)
+                .title("Module 1")
+                .description("Module description")
+                .position(1)
+                .isPublished(true)
                 .build();
     }
 
     public static Module createModule(UUID courseId, int orderIndex) {
         Module module = new Module();
         module.setId(UUID.randomUUID());
-        module.setCourseId(courseId);
-        module.setTitleEn("Module " + orderIndex);
-        module.setTitleUk("Модуль " + orderIndex);
-        module.setOrderIndex(orderIndex);
+        Course courseRef = new Course();
+        courseRef.setId(courseId);
+        module.setCourse(courseRef);
+        module.setTitle("Module " + orderIndex);
+        module.setPosition(orderIndex);
         return module;
     }
 }
-

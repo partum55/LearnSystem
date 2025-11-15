@@ -5,6 +5,7 @@ import com.university.lms.common.domain.CourseVisibility;
 import com.university.lms.course.domain.Course;
 import com.university.lms.course.dto.CreateCourseRequest;
 import com.university.lms.course.dto.CourseDto;
+import com.university.lms.course.dto.UpdateCourseRequest;
 import com.university.lms.course.repository.CourseRepository;
 import com.university.lms.course.util.CourseTestDataFactory;
 import org.junit.jupiter.api.Test;
@@ -112,40 +113,29 @@ class CourseServiceTest {
 
     @Test
     void getAllCourses_ShouldReturnPagedCourses() {
-        // Given
         Pageable pageable = PageRequest.of(0, 20);
         Page<Course> coursePage = new PageImpl<>(Collections.emptyList(), pageable, 0);
-
         when(courseRepository.findAll(pageable)).thenReturn(coursePage);
-
-        // When
         var result = courseService.getAllCourses(pageable);
-
-        // Then
-        assertThat(result).isNotNull();
         assertThat(result.getContent()).isEmpty();
-        assertThat(result.getPage()).isEqualTo(0);
-
-        verify(courseRepository).findAll(pageable);
+        assertThat(result.getPageNumber()).isEqualTo(0);
+        assertThat(result.getPageSize()).isEqualTo(20);
     }
 
     @Test
     void updateCourse_WhenOwnerMatches_ShouldUpdateAndReturn() {
-        // Given
         UUID courseId = UUID.randomUUID();
         UUID ownerId = UUID.randomUUID();
         Course existingCourse = CourseTestDataFactory.createCourse(ownerId);
         existingCourse.setId(courseId);
-
-        CreateCourseRequest updateRequest = CourseTestDataFactory.createCourseRequest("CS102", "Advanced Programming");
-
+        UpdateCourseRequest updateRequest = UpdateCourseRequest.builder()
+            .titleEn("Advanced Programming")
+            .titleUk("Поглиблене програмування")
+            .visibility(CourseVisibility.PUBLIC)
+            .build();
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(existingCourse));
         when(courseRepository.save(any(Course.class))).thenReturn(existingCourse);
-
-        // When
         CourseDto result = courseService.updateCourse(courseId, updateRequest, ownerId);
-
-        // Then
         assertThat(result).isNotNull();
         verify(courseRepository).findById(courseId);
         verify(courseRepository).save(any(Course.class));
@@ -170,4 +160,3 @@ class CourseServiceTest {
         verify(courseRepository).delete(course);
     }
 }
-

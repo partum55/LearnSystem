@@ -19,12 +19,13 @@ public class AssessmentTestDataFactory {
         quiz.setCourseId(courseId);
         quiz.setTitle(title);
         quiz.setDescription("Test quiz description");
-        quiz.setMaxScore(BigDecimal.valueOf(100));
-        quiz.setPassingScore(BigDecimal.valueOf(60));
-        quiz.setTimeLimit(60); // 60 minutes
-        quiz.setMaxAttempts(3);
+        quiz.setTimeLimit(60); // minutes
+        quiz.setAttemptsAllowed(3);
         quiz.setShuffleQuestions(false);
+        quiz.setShuffleAnswers(false);
         quiz.setShowCorrectAnswers(true);
+        quiz.setPassPercentage(BigDecimal.valueOf(60));
+        quiz.setCreatedBy(UUID.randomUUID());
         return quiz;
     }
 
@@ -34,10 +35,14 @@ public class AssessmentTestDataFactory {
             .courseId(courseId)
             .title(title)
             .description("Test quiz description")
-            .maxScore(BigDecimal.valueOf(100))
-            .passingScore(BigDecimal.valueOf(60))
             .timeLimit(60)
-            .maxAttempts(3)
+            .attemptsAllowed(3)
+            .shuffleQuestions(false)
+            .shuffleAnswers(false)
+            .showCorrectAnswers(true)
+            .passPercentage(BigDecimal.valueOf(60))
+            .totalQuestions(0)
+            .totalPoints(BigDecimal.ZERO)
             .build();
     }
 
@@ -47,11 +52,12 @@ public class AssessmentTestDataFactory {
         assignment.setCourseId(courseId);
         assignment.setTitle(title);
         assignment.setDescription("Test assignment description");
-        assignment.setMaxScore(BigDecimal.valueOf(100));
+        assignment.setMaxPoints(BigDecimal.valueOf(100));
         assignment.setDueDate(LocalDateTime.now().plusDays(7));
         assignment.setAllowLateSubmission(true);
         assignment.setLatePenaltyPercent(BigDecimal.valueOf(10));
+        assignment.setAssignmentType("FILE_UPLOAD");
+        assignment.setCreatedBy(UUID.randomUUID());
         return assignment;
     }
 }
-

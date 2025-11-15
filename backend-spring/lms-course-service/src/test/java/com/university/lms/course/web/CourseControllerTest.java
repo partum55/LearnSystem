@@ -1,18 +1,22 @@
 package com.university.lms.course.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.university.lms.common.domain.CourseStatus;
 import com.university.lms.common.domain.CourseVisibility;
 import com.university.lms.common.dto.PageResponse;
 import com.university.lms.course.dto.CourseDto;
 import com.university.lms.course.dto.CreateCourseRequest;
+import com.university.lms.course.dto.UpdateCourseRequest;
 import com.university.lms.course.service.CourseService;
 import com.university.lms.course.service.EnrollmentService;
 import com.university.lms.course.util.CourseTestDataFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -30,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Unit tests for CourseController.
  */
-@WebMvcTest(CourseController.class)
+@WebMvcTest(controllers = CourseController.class, excludeAutoConfiguration = SecurityAutoConfiguration.class)
 class CourseControllerTest {
 
     @Autowired
@@ -49,9 +53,15 @@ class CourseControllerTest {
     @WithMockUser
     void getAllCourses_ShouldReturnPagedCourses() throws Exception {
         // Given
-        PageResponse<CourseDto> pageResponse = new PageResponse<>(
-            Collections.emptyList(), 0, 20, 0, 0
-        );
+        PageResponse<CourseDto> pageResponse = PageResponse.<CourseDto>builder()
+            .content(Collections.emptyList())
+            .pageNumber(0)
+            .pageSize(20)
+            .totalElements(0)
+            .totalPages(0)
+            .first(true)
+            .last(true)
+            .build();
         when(courseService.getAllCourses(any(Pageable.class))).thenReturn(pageResponse);
 
         // When & Then
@@ -60,8 +70,8 @@ class CourseControllerTest {
                 .param("size", "20"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content").isArray())
-            .andExpect(jsonPath("$.page").value(0))
-            .andExpect(jsonPath("$.size").value(20));
+            .andExpect(jsonPath("$.pageNumber").value(0))
+            .andExpect(jsonPath("$.pageSize").value(20));
     }
 
     @Test
@@ -139,11 +149,16 @@ class CourseControllerTest {
     @WithMockUser
     void searchCourses_WithQuery_ShouldReturnMatchingCourses() throws Exception {
         // Given
-        PageResponse<CourseDto> pageResponse = new PageResponse<>(
-            Collections.emptyList(), 0, 20, 0, 0
-        );
-        when(courseService.searchCourses(eq("programming"), any(Pageable.class)))
-            .thenReturn(pageResponse);
+        PageResponse<CourseDto> pageResponse = PageResponse.<CourseDto>builder()
+            .content(Collections.emptyList())
+            .pageNumber(0)
+            .pageSize(20)
+            .totalElements(0)
+            .totalPages(0)
+            .first(true)
+            .last(true)
+            .build();
+        when(courseService.searchCourses(eq("programming"), any(Pageable.class))).thenReturn(pageResponse);
 
         // When & Then
         mockMvc.perform(get("/courses/search")
@@ -160,13 +175,17 @@ class CourseControllerTest {
         // Given
         UUID courseId = UUID.randomUUID();
         UUID ownerId = UUID.randomUUID();
-        CreateCourseRequest updateRequest = CourseTestDataFactory.createValidCourseRequest();
+        UpdateCourseRequest updateRequest = UpdateCourseRequest.builder()
+            .titleEn("Updated Title")
+            .titleUk("Оновлена назва")
+            .visibility(CourseVisibility.PUBLIC)
+            .build();
 
         CourseDto updatedCourse = CourseTestDataFactory.createCourseDto(
-            courseId, updateRequest.getCode(), updateRequest.getTitleEn(), ownerId
+            courseId, "CS101", "Updated Title", ownerId
         );
 
-        when(courseService.updateCourse(eq(courseId), any(CreateCourseRequest.class), any(UUID.class)))
+        when(courseService.updateCourse(eq(courseId), any(UpdateCourseRequest.class), any(UUID.class)))
             .thenReturn(updatedCourse);
 
         // When & Then
@@ -192,9 +211,15 @@ class CourseControllerTest {
     @WithMockUser
     void getPublishedCourses_ShouldReturnPublishedOnly() throws Exception {
         // Given
-        PageResponse<CourseDto> pageResponse = new PageResponse<>(
-            Collections.emptyList(), 0, 20, 0, 0
-        );
+        PageResponse<CourseDto> pageResponse = PageResponse.<CourseDto>builder()
+            .content(Collections.emptyList())
+            .pageNumber(0)
+            .pageSize(20)
+            .totalElements(0)
+            .totalPages(0)
+            .first(true)
+            .last(true)
+            .build();
         when(courseService.getActiveCourses(any(Pageable.class))).thenReturn(pageResponse);
 
         // When & Then
@@ -205,4 +230,3 @@ class CourseControllerTest {
             .andExpect(jsonPath("$.content").isArray());
     }
 }
-

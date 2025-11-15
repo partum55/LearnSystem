@@ -5,16 +5,23 @@ import com.university.lms.assessment.dto.QuizDto;
 import com.university.lms.assessment.service.QuizService;
 import com.university.lms.assessment.util.AssessmentTestDataFactory;
 import com.university.lms.common.dto.PageResponse;
+import com.university.lms.common.security.JwtService;
+import com.university.lms.common.security.JwtTokenBlacklistService;
+import com.university.lms.common.security.SecurityAuditLogger;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.AuditorAware;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Collections;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -26,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Unit tests for QuizController.
  */
-@WebMvcTest(QuizController.class)
+@WebMvcTest(controllers = QuizController.class)
 class QuizControllerTest {
 
     @Autowired
@@ -37,6 +44,24 @@ class QuizControllerTest {
 
     @MockBean
     private QuizService quizService;
+
+    // Mock security dependencies required by JWT filter to load context
+    @MockBean
+    private JwtService jwtService;
+
+    @MockBean
+    private JwtTokenBlacklistService jwtTokenBlacklistService;
+
+    @MockBean
+    private SecurityAuditLogger securityAuditLogger;
+
+    // Mock JPA mapping context required by JPA auditing to avoid metamodel errors in slice tests
+    @MockBean
+    private JpaMetamodelMappingContext jpaMetamodelMappingContext;
+
+    // Optional auditor aware to satisfy auditing if needed
+    @MockBean
+    private AuditorAware<UUID> auditorAware;
 
     @Test
     @WithMockUser
@@ -60,9 +85,15 @@ class QuizControllerTest {
     void getQuizzesByCourse_ShouldReturnPagedQuizzes() throws Exception {
         // Given
         UUID courseId = UUID.randomUUID();
-        PageResponse<QuizDto> pageResponse = new PageResponse<>(
-            Collections.emptyList(), 0, 20, 0, 0
-        );
+        PageResponse<QuizDto> pageResponse = PageResponse.<QuizDto>builder()
+            .content(Collections.emptyList())
+            .pageNumber(0)
+            .pageSize(20)
+            .totalElements(0)
+            .totalPages(0)
+            .first(true)
+            .last(true)
+            .build();
 
         when(quizService.getQuizzesByCourse(eq(courseId), any(Pageable.class)))
             .thenReturn(pageResponse);
@@ -73,7 +104,7 @@ class QuizControllerTest {
                 .param("size", "20"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content").isArray())
-            .andExpect(jsonPath("$.page").value(0));
+            .andExpect(jsonPath("$.pageNumber").value(0));
     }
 
     @Test
@@ -139,4 +170,3 @@ class QuizControllerTest {
             .andExpect(status().isUnauthorized());
     }
 }
-
