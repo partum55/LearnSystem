@@ -88,6 +88,10 @@ export const AssignmentDetail: React.FC = () => {
     navigate(`/assignments/${assignmentId}/submit`);
   };
 
+  const openVirtualLab = () => {
+    navigate(`/virtual-lab/${assignmentId}`);
+  };
+
   const openSpeedGrader = () => {
     navigate(`/speedgrader/${assignmentId}`);
   };
@@ -135,7 +139,11 @@ export const AssignmentDetail: React.FC = () => {
                 {/* Submit Button for Students */}
                 {isStudent && (
                   <div className="flex gap-3">
-                    {mySubmission && mySubmission.status !== 'DRAFT' ? (
+                    {assignment.assignment_type === 'VIRTUAL_LAB' ? (
+                      <Button onClick={openVirtualLab} className="bg-green-600 hover:bg-green-700">
+                        {t('assignment.open_virtual_lab')}
+                      </Button>
+                    ) : mySubmission && mySubmission.status !== 'DRAFT' ? (
                       <div className="text-right">
                         <div className="flex items-center gap-2 mb-2">
                           {mySubmission.status === 'SUBMITTED' && (

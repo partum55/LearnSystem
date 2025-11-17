@@ -23,6 +23,7 @@
     "max_file_size": "Max file size",
     "max_files": "Max files",
     "max_points": "Max points",
+    "open_virtual_lab": "Open Virtual Lab",
     "prerequisites": "Prerequisites",
     "programming_language": "Programming language",
     "resource_name": "Resource name",
@@ -48,7 +49,8 @@
       "file_upload": "File upload",
       "quiz": "Quiz",
       "text": "Text",
-      "url": "URL"
+      "url": "URL",
+      "virtual_lab": "Virtual Programming Lab"
     }
   },
   "assignments": {

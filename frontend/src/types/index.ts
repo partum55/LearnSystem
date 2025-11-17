@@ -115,7 +115,8 @@ export type AssignmentType =
   | 'CODE'
   | 'URL'
   | 'MANUAL_GRADE'
-  | 'EXTERNAL';
+  | 'EXTERNAL'
+  | 'VIRTUAL_LAB';
 
 export interface Assignment {
   id: string;
@@ -134,6 +135,7 @@ export interface Assignment {
   max_file_size?: number;
   max_files?: number;
   programming_language?: string;
+  starter_code?: string;
   auto_grading_enabled?: boolean;
   test_cases?: any[];
   quiz?: string;
