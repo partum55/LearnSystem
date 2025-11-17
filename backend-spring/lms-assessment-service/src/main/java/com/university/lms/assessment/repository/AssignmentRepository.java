@@ -97,5 +97,6 @@ public interface AssignmentRepository extends JpaRepository<Assignment, UUID> {
     Page<Assignment> searchAssignments(@Param("courseId") UUID courseId,
                                        @Param("searchTerm") String searchTerm,
                                        Pageable pageable);
-}
 
+    List<Assignment> findByCourseId(UUID courseId);
+}

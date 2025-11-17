@@ -32,6 +32,10 @@ spring:
           uri: lb://lms-ai-service
           predicates:
             - Path=/api/ai/**
+        - id: analytics-service
+          uri: lb://lms-analytics-service
+          predicates:
+            - Path=/api/analytics/**
 
 eureka:
   client:
@@ -42,4 +46,3 @@ eureka:
 
 server:
   port: 8080
-

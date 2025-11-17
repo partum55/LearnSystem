@@ -165,12 +165,8 @@ public class CourseController {
      * Delete a course.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCourse(
-            @PathVariable UUID id,
-            Authentication authentication) {
-
-        UUID userId = extractUserId(authentication);
-        courseService.deleteCourse(id, userId);
+    public ResponseEntity<Void> deleteCourse(@PathVariable UUID id) {
+        courseService.deleteCourse(id);
         return ResponseEntity.noContent().build();
     }
 
@@ -289,14 +285,19 @@ public class CourseController {
         return ResponseEntity.ok(enrolled);
     }
 
+    /**
+     * Get student IDs by course ID.
+     */
+    @GetMapping("/{id}/students")
+    public ResponseEntity<java.util.List<Long>> getStudentIdsByCourseId(@PathVariable UUID id) {
+        return ResponseEntity.ok(enrollmentService.getStudentIdsByCourseId(id));
+    }
+
     // Helper method to extract user ID from authentication
     private UUID extractUserId(Authentication authentication) {
-        // This will be implemented based on your JWT token structure
-        // For now, assuming the principal contains the user ID
-        if (authentication != null && authentication.getPrincipal() != null) {
-            return UUID.fromString(authentication.getName());
+        if (authentication == null || authentication.getPrincipal() == null) {
+            throw new RuntimeException("User not authenticated");
         }
-        throw new RuntimeException("User not authenticated");
+        return UUID.fromString(authentication.getName());
     }
 }
-

@@ -160,73 +160,20 @@ public class AssignmentController {
      * Delete assignment.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAssignment(
-            @PathVariable UUID id,
-            Authentication authentication) {
-
-        UUID userId = extractUserId(authentication);
-        assignmentService.deleteAssignment(id, userId);
+    public ResponseEntity<Void> deleteAssignment(@PathVariable UUID id) {
+        assignmentService.deleteAssignment(id);
         return ResponseEntity.noContent().build();
     }
 
-    /**
-     * Publish assignment.
-     */
-    @PostMapping("/{id}/publish")
-    public ResponseEntity<AssignmentDto> publishAssignment(
-            @PathVariable UUID id,
-            Authentication authentication) {
-
-        UUID userId = extractUserId(authentication);
-        AssignmentDto assignment = assignmentService.publishAssignment(id, userId);
-        return ResponseEntity.ok(assignment);
+    @GetMapping
+    public ResponseEntity<List<AssignmentDto>> getAssessmentsByCourseId(@RequestParam("courseId") UUID courseId) {
+        return ResponseEntity.ok(assignmentService.getAssignmentsByCourse(courseId));
     }
 
-    /**
-     * Unpublish assignment.
-     */
-    @PostMapping("/{id}/unpublish")
-    public ResponseEntity<AssignmentDto> unpublishAssignment(
-            @PathVariable UUID id,
-            Authentication authentication) {
-
-        UUID userId = extractUserId(authentication);
-        AssignmentDto assignment = assignmentService.unpublishAssignment(id, userId);
-        return ResponseEntity.ok(assignment);
-    }
-
-    /**
-     * Archive assignment.
-     */
-    @PostMapping("/{id}/archive")
-    public ResponseEntity<AssignmentDto> archiveAssignment(
-            @PathVariable UUID id,
-            Authentication authentication) {
-
-        UUID userId = extractUserId(authentication);
-        AssignmentDto assignment = assignmentService.archiveAssignment(id, userId);
-        return ResponseEntity.ok(assignment);
-    }
-
-    /**
-     * Duplicate assignment.
-     */
-    @PostMapping("/{id}/duplicate")
-    public ResponseEntity<AssignmentDto> duplicateAssignment(
-            @PathVariable UUID id,
-            Authentication authentication) {
-
-        UUID userId = extractUserId(authentication);
-        AssignmentDto assignment = assignmentService.duplicateAssignment(id, userId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(assignment);
-    }
-
-    // Helper method
     private UUID extractUserId(Authentication authentication) {
-        if (authentication != null && authentication.getPrincipal() != null) {
-            return UUID.fromString(authentication.getName());
+        if (authentication == null || authentication.getPrincipal() == null) {
+            return null;
         }
-        throw new RuntimeException("User not authenticated");
+        return UUID.fromString(authentication.getName());
     }
 }
-

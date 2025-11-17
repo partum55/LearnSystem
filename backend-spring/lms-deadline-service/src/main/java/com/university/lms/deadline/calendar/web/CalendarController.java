@@ -50,5 +50,13 @@ public class CalendarController {
                 .contentType(MediaType.parseMediaType("text/calendar"))
                 .body(bytes);
     }
-}
 
+    @GetMapping("/student/{studentGroupId}/subscribe")
+    @PreAuthorize("hasAnyRole('STUDENT','TEACHER','SUPERADMIN')")
+    public ResponseEntity<byte[]> subscribeIcs(@PathVariable Long studentGroupId) {
+        var bytes = icsExporter.export(deadlineRepository.findByStudentGroupId(studentGroupId));
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/calendar"))
+                .body(bytes);
+    }
+}

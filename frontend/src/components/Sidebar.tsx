@@ -10,6 +10,7 @@ import {
   BeakerIcon,
   ClipboardDocumentListIcon,
   XMarkIcon,
+  CalendarIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../store/authStore';
 import clsx from 'clsx';
@@ -26,6 +27,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
   const navigation = [
     { name: t('nav.dashboard'), href: '/dashboard', icon: HomeIcon },
     { name: t('nav.courses'), href: '/courses', icon: AcademicCapIcon },
+    { name: t('nav.calendar'), href: '/calendar', icon: CalendarIcon },
     { name: t('nav.assignments'), href: '/assignments', icon: DocumentTextIcon },
     { name: t('nav.grades'), href: '/grades', icon: ChartBarIcon },
     { name: t('nav.profile'), href: '/profile', icon: UserIcon },

@@ -79,5 +79,7 @@ public interface CourseMemberRepository extends JpaRepository<CourseMember, UUID
      * Delete member by course and user.
      */
     void deleteByCourseIdAndUserId(UUID courseId, UUID userId);
-}
 
+    @Query("SELECT m.userId FROM CourseMember m WHERE m.course.id = :courseId AND m.roleInCourse = 'STUDENT'")
+    java.util.List<Long> findStudentIdsByCourseId(@Param("courseId") UUID courseId);
+}

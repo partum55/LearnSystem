@@ -25,6 +25,7 @@ import QuizDetail from './pages/QuizDetail';
 import QuizBuilder from './pages/QuizBuilder';
 import DashboardCustomize from './pages/DashboardCustomize';
 import ProfileSettings from './pages/ProfileSettings';
+import CalendarPage from './pages/CalendarPage';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -98,6 +99,14 @@ const App: React.FC = () => {
             element={
               <PrivateRoute>
                 <CourseList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/calendar"
+            element={
+              <PrivateRoute>
+                <CalendarPage />
               </PrivateRoute>
             }
           />

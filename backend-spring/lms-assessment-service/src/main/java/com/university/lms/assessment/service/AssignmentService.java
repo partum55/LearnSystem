@@ -120,10 +120,16 @@ public class AssignmentService {
     /**
      * Search assignments.
      */
-    public PageResponse<AssignmentDto> searchAssignments(UUID courseId, String searchTerm, Pageable pageable) {
-        log.debug("Searching assignments in course {} with term: {}", courseId, searchTerm);
-        Page<Assignment> assignments = assignmentRepository.searchAssignments(courseId, searchTerm, pageable);
+    public PageResponse<AssignmentDto> searchAssignments(UUID courseId, String query, Pageable pageable) {
+        log.debug("Searching assignments in course {}: {}", courseId, query);
+        Page<Assignment> assignments = assignmentRepository.searchInCourse(courseId, query, pageable);
         return mapToPageResponse(assignments);
+    }
+
+    public List<AssignmentDto> getAssignmentsByCourse(UUID courseId) {
+        return assignmentRepository.findByCourseId(courseId).stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -346,4 +352,3 @@ public class AssignmentService {
             .build();
     }
 }
-

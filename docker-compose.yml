@@ -112,6 +112,35 @@ services:
     networks:
       - lms-network
 
+  # Analytics Service
+  analytics-service:
+    build:
+      context: ./backend-spring
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: lms-analytics-service
+    container_name: lms-analytics-service
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8088
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-lms_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-lms_user}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-lms_password}
+      SPRING_DATA_REDIS_HOST: redis
+      EUREKA_URI: http://eureka-server:8761/eureka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - lms-network
+
   # Course Service
   course-service:
     build:

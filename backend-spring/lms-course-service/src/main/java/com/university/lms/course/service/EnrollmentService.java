@@ -190,32 +190,14 @@ public class EnrollmentService {
         return courseMemberRepository.existsByCourseIdAndUserId(courseId, userId);
     }
 
-    /**
-     * Check if user can manage course.
-     */
-    public boolean canUserManageCourse(UUID courseId, UUID userId) {
-        Course course = findCourseById(courseId);
-        return course.getOwnerId().equals(userId) ||
-               courseMemberRepository.canUserManageCourse(courseId, userId);
-    }
-
-    /**
-     * Get enrollment for user in course.
-     */
-    public CourseMemberDto getEnrollment(UUID courseId, UUID userId) {
-        log.debug("Fetching enrollment for user {} in course {}", userId, courseId);
-
-        CourseMember member = courseMemberRepository.findByCourseIdAndUserId(courseId, userId)
-            .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found"));
-
-        return courseMapper.toDto(member);
+    public java.util.List<Long> getStudentIdsByCourseId(UUID courseId) {
+        return courseMemberRepository.findStudentIdsByCourseId(courseId);
     }
 
     // Helper methods
-
-    private Course findCourseById(UUID id) {
-        return courseRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Course", "id", id));
+    private Course findCourseById(UUID courseId) {
+        return courseRepository.findById(courseId)
+            .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
     }
 
     private PageResponse<CourseMemberDto> mapToPageResponse(Page<CourseMember> page) {
