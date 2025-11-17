@@ -93,6 +93,29 @@ public class SecurityConfig {
                         // User management - role-based access
                         .requestMatchers(HttpMethod.DELETE, "/users/**").hasAnyRole("SUPERADMIN", "ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/users/*/role").hasRole("SUPERADMIN")
+                        // Static resources and non-API paths (for SPA fallback) - permit but will 404
+                        .requestMatchers(
+                                "/",
+                                "/index.html",
+                                "/favicon.ico",
+                                "/static/**",
+                                "/assets/**",
+                                "/*.js",
+                                "/*.css",
+                                "/*.png",
+                                "/*.jpg",
+                                "/*.svg",
+                                "/courses",
+                                "/courses/**",
+                                "/notifications",
+                                "/notifications/**",
+                                "/assignments/**",
+                                "/modules/**",
+                                "/quizzes/**",
+                                "/dashboard/**",
+                                "/profile/**",
+                                "/settings/**"
+                        ).permitAll()
                         // All other requests require authentication
                         .anyRequest().authenticated()
                 )

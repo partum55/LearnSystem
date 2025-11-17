@@ -83,8 +83,10 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refreshToken(@RequestHeader("Authorization") String refreshToken) {
         log.info("Token refresh request");
-        // TODO: Implement token refresh logic
-        return ResponseEntity.ok().build();
+        // Remove "Bearer " prefix if present
+        String token = refreshToken.startsWith("Bearer ") ? refreshToken.substring(7) : refreshToken;
+        AuthResponse response = userService.refreshToken(token);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -92,9 +94,11 @@ public class AuthController {
      * POST /api/auth/logout
      */
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout() {
+    public ResponseEntity<Void> logout(@RequestHeader("Authorization") String authHeader) {
         log.info("Logout request");
-        // TODO: Implement logout (invalidate token in Redis)
+        // Remove "Bearer " prefix if present
+        String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+        userService.logout(token);
         return ResponseEntity.ok().build();
     }
 }

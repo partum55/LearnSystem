@@ -9,13 +9,14 @@ import {
   CardBody,
   Button,
   Input,
-  Loading
+  Loading,
+  AICourseGenerator,
 } from '../components';
 import { useCourseStore } from '../store/courseStore';
 import { useAuthStore } from '../store/authStore';
+import { getAccessToken } from '../api/token';
 import { PlusIcon, MagnifyingGlassIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { Course } from '../types';
-import { AICourseGenerator } from '../components/AICourseGenerator';
 
 export const CourseList: React.FC = () => {
   const { t } = useTranslation();
@@ -185,18 +186,17 @@ export const CourseList: React.FC = () => {
 
       {/* AI Course Generator Modal */}
       {showAIGenerator && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-screen overflow-y-auto">
-            <AICourseGenerator
-              onCourseGenerated={(course) => {
-                console.log('AI generated course:', course);
-                setShowAIGenerator(false);
-                fetchCourses(); // Refresh course list
-              }}
-              onClose={() => setShowAIGenerator(false)}
-            />
-          </div>
-        </div>
+        <AICourseGenerator
+          isOpen={showAIGenerator}
+          onClose={() => setShowAIGenerator(false)}
+          userId={user?.id}
+          authToken={getAccessToken() || ''}
+          onCourseGenerated={(course) => {
+            console.log('AI generated course:', course);
+            setShowAIGenerator(false);
+            fetchCourses(); // Refresh course list
+          }}
+        />
       )}
     </div>
   );

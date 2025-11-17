@@ -13,6 +13,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -145,6 +146,25 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handle static resource not found (SPA routes) - return 404 without logging as ERROR
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFound(
+            NoResourceFoundException ex, HttpServletRequest request) {
+        // Don't log as ERROR - these are expected for SPA routing
+        log.debug("Static resource not found (expected for SPA): {}", request.getRequestURI());
+
+        ErrorResponse error = ErrorResponse.of(
+                "NOT_FOUND",
+                "Resource not found",
+                request.getRequestURI(),
+                HttpStatus.NOT_FOUND.value()
+        );
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    /**
      * Handle all other exceptions.
      */
     @ExceptionHandler(Exception.class)
@@ -162,4 +182,3 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 }
-

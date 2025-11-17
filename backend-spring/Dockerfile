@@ -1,33 +1,44 @@
 # Multi-stage build for Spring Boot application
 FROM maven:3.9-eclipse-temurin-21-alpine AS build
 
+# ARG to specify which service to build (default: lms-user-service)
+ARG SERVICE_NAME=lms-user-service
+
 WORKDIR /app
 
-# Copy parent POM and common module first for better caching
+# Copy parent POM and all module POMs for reactor build
 COPY pom.xml .
 COPY lms-common/pom.xml ./lms-common/
 COPY lms-user-service/pom.xml ./lms-user-service/
-# Add newly added modules so parent reactor sees them
 COPY lms-course-service/pom.xml ./lms-course-service/
 COPY lms-assessment-service/pom.xml ./lms-assessment-service/
+COPY lms-gradebook-service/pom.xml ./lms-gradebook-service/
+COPY lms-deadline-service/pom.xml ./lms-deadline-service/
 COPY lms-ai-service/pom.xml ./lms-ai-service/
+COPY lms-api-gateway/pom.xml ./lms-api-gateway/
+COPY lms-eureka-server/pom.xml ./lms-eureka-server/
 
 # Download dependencies
 RUN mvn dependency:go-offline -B
 
-# Copy source code
+# Copy all source code
 COPY lms-common/src ./lms-common/src
 COPY lms-user-service/src ./lms-user-service/src
-# Also copy sources of additional modules to satisfy reactor layout (even if not built here)
 COPY lms-course-service/src ./lms-course-service/src
 COPY lms-assessment-service/src ./lms-assessment-service/src
+COPY lms-gradebook-service/src ./lms-gradebook-service/src
+COPY lms-deadline-service/src ./lms-deadline-service/src
 COPY lms-ai-service/src ./lms-ai-service/src
+COPY lms-api-gateway/src ./lms-api-gateway/src
+COPY lms-eureka-server/src ./lms-eureka-server/src
 
-# Build the application
-RUN mvn clean package -pl lms-user-service -am -DskipTests
+# Build the specified service
+RUN mvn clean package -pl ${SERVICE_NAME} -am -DskipTests
 
 # Runtime stage
 FROM eclipse-temurin:21-jre-alpine
+
+ARG SERVICE_NAME=lms-user-service
 
 WORKDIR /app
 
@@ -35,15 +46,15 @@ WORKDIR /app
 RUN addgroup -S spring && adduser -S spring -G spring
 USER spring:spring
 
-# Copy the JAR from build stage
-COPY --from=build /app/lms-user-service/target/*.jar app.jar
+# Copy the JAR from build stage (use wildcard to match any service)
+COPY --from=build /app/${SERVICE_NAME}/target/*.jar app.jar
 
-# Expose port
+# Expose port (will be overridden by docker-compose)
 EXPOSE 8080
 
-# Health check
+# Health check (generic - works for any service)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/actuator/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
 
 # Run the application
 ENTRYPOINT ["java", \

@@ -21,3 +21,6 @@ export * from './DashboardBuilder';
 export * from './DashboardWidgets';
 export * from './AICourseGenerator';
 export * from './AIElementGenerator';
+export * from './AIContentEditor';
+export * from './AIAssistantPanel';
+export * from './TemplateSelection';

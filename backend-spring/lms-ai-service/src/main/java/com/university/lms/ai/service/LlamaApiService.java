@@ -34,23 +34,27 @@ public class LlamaApiService {
      * @return Generated text response
      */
     public String generate(String prompt, String systemPrompt) {
-        log.info("Sending generation request to Llama API");
+        log.info("Sending generation request to Llama API (Groq)");
+
+        // Build messages array for OpenAI-compatible API
+        var messages = new java.util.ArrayList<Map<String, String>>();
+        if (systemPrompt != null && !systemPrompt.isEmpty()) {
+            messages.add(Map.of("role", "system", "content", systemPrompt));
+        }
+        messages.add(Map.of("role", "user", "content", prompt));
 
         Map<String, Object> requestBody = Map.of(
             "model", llamaApiProperties.getModel(),
-            "prompt", prompt,
-            "system", systemPrompt != null ? systemPrompt : "",
-            "stream", false,
-            "options", Map.of(
-                "temperature", 0.7,
-                "top_p", 0.9,
-                "top_k", 40
-            )
+            "messages", messages,
+            "temperature", 0.7,
+            "max_tokens", 4000,
+            "top_p", 0.9,
+            "stream", false
         );
 
         try {
             String response = llamaWebClient.post()
-                    .uri("/api/generate")
+                    .uri("/chat/completions")  // OpenAI-compatible endpoint
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestBody)
                     .retrieve()
@@ -61,9 +65,9 @@ public class LlamaApiService {
                                 log.warn("Retrying Llama API call. Attempt: {}", retrySignal.totalRetries() + 1)))
                     .block();
 
-            // Parse response to extract generated text
+            // Parse OpenAI-compatible response
             JsonNode jsonNode = objectMapper.readTree(response);
-            String generatedText = jsonNode.get("response").asText();
+            String generatedText = jsonNode.get("choices").get(0).get("message").get("content").asText();
 
             log.info("Successfully received response from Llama API");
             return generatedText;

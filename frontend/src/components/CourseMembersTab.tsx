@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardBody } from './Card';
 import { Button } from './Button';
@@ -33,7 +33,7 @@ export const CourseMembersTab: React.FC<CourseMembers> = ({ courseId, canManage,
   const [loading, setLoading] = useState(true);
   const [filterRole, setFilterRole] = useState<'ALL' | 'STUDENT' | 'TA' | 'TEACHER'>('ALL');
 
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     setLoading(true);
     try {
       const roleParam = filterRole !== 'ALL' ? `?role=${filterRole}` : '';
@@ -45,11 +45,11 @@ export const CourseMembersTab: React.FC<CourseMembers> = ({ courseId, canManage,
     } finally {
       setLoading(false);
     }
-  };
+  }, [courseId, filterRole]);
 
   useEffect(() => {
     fetchMembers();
-  }, [courseId, filterRole]);
+  }, [fetchMembers]);
 
   const handleUnenroll = async (memberId: string, userId: string) => {
     if (!window.confirm(t('enrollment.confirmUnenroll'))) {
@@ -246,4 +246,3 @@ export const CourseMembersTab: React.FC<CourseMembers> = ({ courseId, canManage,
     </div>
   );
 };
-

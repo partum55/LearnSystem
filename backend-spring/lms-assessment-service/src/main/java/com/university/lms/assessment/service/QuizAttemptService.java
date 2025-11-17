@@ -2,6 +2,7 @@ package com.university.lms.assessment.service;
 
 import com.university.lms.assessment.domain.Quiz;
 import com.university.lms.assessment.domain.QuizAttempt;
+import com.university.lms.assessment.domain.QuestionBank;
 import com.university.lms.assessment.repository.QuizAttemptRepository;
 import com.university.lms.assessment.repository.QuizRepository;
 import com.university.lms.common.exception.ResourceNotFoundException;
@@ -176,9 +177,192 @@ public class QuizAttemptService {
      * Calculate auto score for objective questions.
      */
     private BigDecimal calculateAutoScore(QuizAttempt attempt) {
-        // TODO: Implement auto-grading logic for objective questions
-        // For now, return null to indicate manual grading needed
-        return null;
+        Quiz quiz = attempt.getQuiz();
+        Map<String, Object> userAnswers = attempt.getAnswers();
+
+        if (userAnswers == null || userAnswers.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal totalScore = BigDecimal.ZERO;
+
+        try {
+            // Iterate through all questions in the quiz
+            for (var quizQuestion : quiz.getQuizQuestions()) {
+                QuestionBank question = quizQuestion.getQuestion();
+                String questionId = question.getId().toString();
+
+                // Get user's answer for this question
+                Object userAnswer = userAnswers.get(questionId);
+                if (userAnswer == null) {
+                    continue; // Skip unanswered questions
+                }
+
+                // Calculate score based on question type
+                BigDecimal questionScore = gradeQuestion(question, userAnswer);
+                BigDecimal questionPoints = quizQuestion.getEffectivePoints();
+
+                // Add to total score
+                totalScore = totalScore.add(questionScore.multiply(questionPoints));
+
+                log.debug("Question {} scored: {} / {}", questionId, questionScore, questionPoints);
+            }
+
+            log.info("Auto-grading complete. Total score: {}", totalScore);
+            return totalScore;
+
+        } catch (Exception e) {
+            log.error("Error during auto-grading: {}", e.getMessage(), e);
+            // Return null to indicate manual grading needed
+            return null;
+        }
+    }
+
+    /**
+     * Grade a single question based on its type.
+     * Returns a score between 0 and 1 (percentage correct).
+     */
+    private BigDecimal gradeQuestion(QuestionBank question, Object userAnswer) {
+        String questionType = question.getQuestionType();
+        Map<String, Object> correctAnswer = question.getCorrectAnswer();
+
+        if (correctAnswer == null || correctAnswer.isEmpty()) {
+            log.warn("No correct answer defined for question: {}", question.getId());
+            return BigDecimal.ZERO;
+        }
+
+        switch (questionType.toUpperCase()) {
+            case "MULTIPLE_CHOICE":
+                return gradeMultipleChoice(userAnswer, correctAnswer);
+
+            case "TRUE_FALSE":
+                return gradeTrueFalse(userAnswer, correctAnswer);
+
+            case "NUMERICAL":
+                return gradeNumerical(userAnswer, correctAnswer);
+
+            case "FILL_BLANK":
+                return gradeFillBlank(userAnswer, correctAnswer);
+
+            case "MATCHING":
+                return gradeMatching(userAnswer, correctAnswer);
+
+            case "ORDERING":
+                return gradeOrdering(userAnswer, correctAnswer);
+
+            // Essay, short answer, code, and file upload need manual grading
+            case "SHORT_ANSWER":
+            case "ESSAY":
+            case "CODE":
+            case "FILE_UPLOAD":
+                log.debug("Question type {} requires manual grading", questionType);
+                return BigDecimal.ZERO;
+
+            default:
+                log.warn("Unknown question type: {}", questionType);
+                return BigDecimal.ZERO;
+        }
+    }
+
+    private BigDecimal gradeMultipleChoice(Object userAnswer, Map<String, Object> correctAnswer) {
+        String correctChoice = (String) correctAnswer.get("choice");
+        if (correctChoice != null && correctChoice.equals(userAnswer.toString())) {
+            return BigDecimal.ONE;
+        }
+        return BigDecimal.ZERO;
+    }
+
+    private BigDecimal gradeTrueFalse(Object userAnswer, Map<String, Object> correctAnswer) {
+        Boolean correctValue = (Boolean) correctAnswer.get("value");
+        if (correctValue != null) {
+            String userAnswerStr = userAnswer.toString().toLowerCase();
+            boolean userBool = userAnswerStr.equals("true") || userAnswerStr.equals("yes") || userAnswerStr.equals("1");
+            return correctValue == userBool ? BigDecimal.ONE : BigDecimal.ZERO;
+        }
+        return BigDecimal.ZERO;
+    }
+
+    private BigDecimal gradeNumerical(Object userAnswer, Map<String, Object> correctAnswer) {
+        try {
+            Double correctValue = ((Number) correctAnswer.get("value")).doubleValue();
+            Double tolerance = correctAnswer.containsKey("tolerance")
+                ? ((Number) correctAnswer.get("tolerance")).doubleValue()
+                : 0.01; // Default 1% tolerance
+
+            Double userValue = Double.parseDouble(userAnswer.toString());
+            double diff = Math.abs(correctValue - userValue);
+            double allowedDiff = Math.abs(correctValue * tolerance);
+
+            return diff <= allowedDiff ? BigDecimal.ONE : BigDecimal.ZERO;
+        } catch (Exception e) {
+            log.error("Error grading numerical question: {}", e.getMessage());
+            return BigDecimal.ZERO;
+        }
+    }
+
+    private BigDecimal gradeFillBlank(Object userAnswer, Map<String, Object> correctAnswer) {
+        @SuppressWarnings("unchecked")
+        List<String> correctAnswers = (List<String>) correctAnswer.get("answers");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> userAnswerMap = (Map<String, Object>) userAnswer;
+        @SuppressWarnings("unchecked")
+        List<String> userAnswers = (List<String>) userAnswerMap.get("answers");
+
+        if (correctAnswers == null || userAnswers == null) {
+            return BigDecimal.ZERO;
+        }
+
+        int correct = 0;
+        for (int i = 0; i < Math.min(correctAnswers.size(), userAnswers.size()); i++) {
+            if (correctAnswers.get(i).trim().equalsIgnoreCase(userAnswers.get(i).trim())) {
+                correct++;
+            }
+        }
+
+        return BigDecimal.valueOf(correct).divide(
+            BigDecimal.valueOf(correctAnswers.size()),
+            2,
+            java.math.RoundingMode.HALF_UP
+        );
+    }
+
+    private BigDecimal gradeMatching(Object userAnswer, Map<String, Object> correctAnswer) {
+        @SuppressWarnings("unchecked")
+        Map<String, String> correctPairs = (Map<String, String>) correctAnswer.get("pairs");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> userAnswerMap = (Map<String, Object>) userAnswer;
+        @SuppressWarnings("unchecked")
+        Map<String, String> userPairs = (Map<String, String>) userAnswerMap.get("pairs");
+
+        if (correctPairs == null || userPairs == null) {
+            return BigDecimal.ZERO;
+        }
+
+        int correct = 0;
+        for (Map.Entry<String, String> entry : correctPairs.entrySet()) {
+            if (entry.getValue().equals(userPairs.get(entry.getKey()))) {
+                correct++;
+            }
+        }
+
+        return BigDecimal.valueOf(correct).divide(
+            BigDecimal.valueOf(correctPairs.size()),
+            2,
+            java.math.RoundingMode.HALF_UP
+        );
+    }
+
+    private BigDecimal gradeOrdering(Object userAnswer, Map<String, Object> correctAnswer) {
+        @SuppressWarnings("unchecked")
+        List<String> correctOrder = (List<String>) correctAnswer.get("order");
+        @SuppressWarnings("unchecked")
+        List<String> userOrder = (List<String>) userAnswer;
+
+        if (correctOrder == null || userOrder == null || correctOrder.size() != userOrder.size()) {
+            return BigDecimal.ZERO;
+        }
+
+        return correctOrder.equals(userOrder) ? BigDecimal.ONE : BigDecimal.ZERO;
     }
 
     // Helper methods
@@ -193,4 +377,3 @@ public class QuizAttemptService {
             .orElseThrow(() -> new ResourceNotFoundException("QuizAttempt", "id", id));
     }
 }
-

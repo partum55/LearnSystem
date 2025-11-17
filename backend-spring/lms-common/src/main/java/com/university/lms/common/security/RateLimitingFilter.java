@@ -80,8 +80,10 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
     private String getClientIdentifier(HttpServletRequest request) {
         // Try to get authenticated user
-        String userId = (String) request.getAttribute("userId");
-        if (userId != null) {
+        Object userIdObj = request.getAttribute("userId");
+        if (userIdObj != null) {
+            // Convert UUID or String to String
+            String userId = userIdObj.toString();
             return "user:" + userId;
         }
 

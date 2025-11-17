@@ -49,32 +49,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByPasswordResetToken(String token);
 
     /**
-     * Find all users by role with pagination.
-     */
-    Page<User> findByRole(UserRole role, Pageable pageable);
-
-    /**
-     * Find all active users with pagination.
-     */
-    Page<User> findByIsActive(boolean isActive, Pageable pageable);
-
-    /**
-     * Search users by email, name or student ID.
-     */
-    @Query("SELECT u FROM User u WHERE " +
-           "LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(u.displayName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(u.studentId) LIKE LOWER(CONCAT('%', :query, '%'))")
-    Page<User> searchUsers(@Param("query") String query, Pageable pageable);
-
-    /**
-     * Find users by role and active status.
-     */
-    Page<User> findByRoleAndIsActive(UserRole role, boolean isActive, Pageable pageable);
-
-    /**
      * Count users by role.
      */
     long countByRole(UserRole role);
@@ -83,5 +57,20 @@ public interface UserRepository extends JpaRepository<User, UUID> {
      * Count active users.
      */
     long countByIsActive(boolean isActive);
-}
 
+    /**
+     * Find users by role with pagination.
+     */
+    Page<User> findByRole(UserRole role, Pageable pageable);
+
+    /**
+     * Search users by email, name or student ID.
+     */
+    @Query("SELECT u FROM User u WHERE " +
+           "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(u.displayName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(u.studentId) LIKE LOWER(CONCAT('%', :search, '%'))")
+    Page<User> searchUsers(@Param("search") String search, Pageable pageable);
+}

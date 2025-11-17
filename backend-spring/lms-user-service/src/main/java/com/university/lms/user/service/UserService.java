@@ -7,7 +7,8 @@ import com.university.lms.common.exception.ValidationException;
 import com.university.lms.user.domain.User;
 import com.university.lms.user.dto.*;
 import com.university.lms.user.repository.UserRepository;
-import com.university.lms.user.security.JwtService;
+import com.university.lms.common.security.JwtService;
+import com.university.lms.common.security.JwtTokenBlacklistService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -20,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Service layer for user management operations.
@@ -34,6 +37,8 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final UserMapper userMapper;
+    private final EmailService emailService;
+    private final JwtTokenBlacklistService tokenBlacklistService;
 
     /**
      * Register a new user.
@@ -72,7 +77,8 @@ public class UserService {
         user = userRepository.save(user);
         log.info("User registered successfully with ID: {}", user.getId());
 
-        // TODO: Send verification email asynchronously
+        // Send verification email asynchronously
+        emailService.sendVerificationEmail(user);
 
         return userMapper.toDto(user);
     }
@@ -96,9 +102,12 @@ public class UserService {
             throw new ValidationException("Invalid email or password");
         }
 
-        // Generate tokens
-        String accessToken = jwtService.generateToken(user);
-        String refreshToken = jwtService.generateRefreshToken(user);
+        // Generate tokens using common JwtService
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", user.getId().toString());
+        claims.put("role", user.getRole() != null ? user.getRole().name() : null);
+        String accessToken = jwtService.generateToken(claims, user.getEmail());
+        String refreshToken = jwtService.generateRefreshToken(claims, user.getEmail());
 
         log.info("User logged in successfully: {}", user.getId());
 
@@ -108,6 +117,66 @@ public class UserService {
                 jwtService.getExpirationTime(),
                 userMapper.toDto(user)
         );
+    }
+
+    /**
+     * Refresh access token using refresh token.
+     */
+    @Transactional(readOnly = true)
+    public AuthResponse refreshToken(String refreshToken) {
+        log.info("Refreshing access token");
+
+        // Validate refresh token
+        if (!jwtService.validateToken(refreshToken)) {
+            throw new ValidationException("Invalid or expired refresh token");
+        }
+
+        // Extract user ID from token
+        UUID userId = jwtService.extractUserId(refreshToken);
+
+        // Get user
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId.toString()));
+
+        if (!user.isActive()) {
+            throw new ValidationException("Account is inactive");
+        }
+
+        // Generate new tokens
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", user.getId().toString());
+        claims.put("role", user.getRole() != null ? user.getRole().name() : null);
+        String newAccessToken = jwtService.generateToken(claims, user.getEmail());
+        String newRefreshToken = jwtService.generateRefreshToken(claims, user.getEmail());
+
+        log.info("Tokens refreshed for user: {}", user.getId());
+
+        return AuthResponse.of(
+                newAccessToken,
+                newRefreshToken,
+                jwtService.getExpirationTime(),
+                userMapper.toDto(user)
+        );
+    }
+
+    /**
+     * Logout user by blacklisting the token.
+     */
+    public void logout(String token) {
+        log.info("Logging out user");
+
+        try {
+            // Validate token before blacklisting
+            if (jwtService.validateToken(token)) {
+                tokenBlacklistService.blacklistToken(token);
+                log.info("Token blacklisted successfully");
+            } else {
+                log.warn("Attempted to blacklist invalid token");
+            }
+        } catch (Exception e) {
+            log.error("Error during logout: {}", e.getMessage());
+            // Don't throw exception - logout should always succeed from user perspective
+        }
     }
 
     /**
@@ -207,7 +276,8 @@ public class UserService {
 
         userRepository.save(user);
 
-        // TODO: Send password reset email asynchronously
+        // Send password reset email asynchronously
+        emailService.sendPasswordResetEmail(user);
 
         log.info("Password reset token generated for user: {}", user.getId());
     }
@@ -347,4 +417,3 @@ public class UserService {
         return UUID.randomUUID().toString();
     }
 }
-

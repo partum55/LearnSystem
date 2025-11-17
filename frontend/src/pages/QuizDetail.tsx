@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { Layout } from '../components';
@@ -50,12 +50,8 @@ export const QuizDetail: React.FC = () => {
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
 
-  useEffect(() => {
-    fetchQuiz();
-    fetchAvailableQuestions();
-  }, [quizId]);
-
-  const fetchQuiz = async () => {
+  const fetchQuiz = useCallback(async () => {
+    if (!quizId) return;
     try {
       const response = await apiClient.get<Quiz>(`/assessments/quizzes/${quizId}/`);
       setQuiz(response.data);
@@ -64,17 +60,28 @@ export const QuizDetail: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [quizId]);
 
-  const fetchAvailableQuestions = async () => {
+  const fetchAvailableQuestions = useCallback(async () => {
+    if (!quiz?.course) return;
     try {
       const response = await apiClient.get<{ results?: Question[] } | Question[]>(`/assessments/questions/?course=${quiz?.course}`);
-      const data: any = response.data;
-      setAvailableQuestions((data.results || data) as Question[]);
+      const data = Array.isArray(response.data) ? response.data : response.data.results || [];
+      setAvailableQuestions(data);
     } catch (error) {
       console.error('Failed to fetch questions:', error);
     }
-  };
+  }, [quiz?.course]);
+
+  useEffect(() => {
+    fetchQuiz();
+  }, [fetchQuiz]);
+
+  useEffect(() => {
+    if (quiz?.course) {
+      fetchAvailableQuestions();
+    }
+  }, [quiz?.course, fetchAvailableQuestions]);
 
   const handleAddQuestions = async () => {
     try {

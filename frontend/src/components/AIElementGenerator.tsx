@@ -95,29 +95,36 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
             moduleTopic: promptWithContext,
             language: formData.language,
             assignmentCount: formData.count,
-            maxScore: formData.maxScore,
-            submissionType: formData.submissionType,
           });
           break;
 
         case 'quiz':
-          if (!moduleId) {
-            throw new Error('Module ID required for quiz generation');
+          if (!courseId) {
+            throw new Error('Course ID required for quiz generation');
           }
           result = await aiApi.generateQuiz({
-            moduleId,
+            courseId,
             topic: promptWithContext,
             language: formData.language,
             questionCount: formData.count,
             timeLimit: formData.timeLimit,
-            difficulty: formData.difficulty,
           });
           break;
       }
 
-      setGeneratedData(result.data);
-      if (onGenerated) {
-        onGenerated(result.data);
+      // Extract data based on element type with type narrowing
+      let extractedData;
+      if (elementType === 'module' && 'modules' in result) {
+        extractedData = result.modules;
+      } else if (elementType === 'assignment' && 'assignments' in result) {
+        extractedData = result.assignments;
+      } else if (elementType === 'quiz' && 'quizzes' in result) {
+        extractedData = result.quizzes;
+      }
+
+      setGeneratedData(extractedData);
+      if (onGenerated && extractedData) {
+        onGenerated(extractedData);
       }
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Помилка генерації');

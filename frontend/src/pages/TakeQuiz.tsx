@@ -284,51 +284,47 @@ export const TakeQuiz: React.FC = () => {
   // Show quiz start screen
   if (!attempt) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Header />
-        <div className="flex">
-          <Sidebar />
-          <main className="flex-1 p-8">
-            <div className="max-w-4xl mx-auto">
-              <Card>
-                <CardHeader>
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {quiz.title}
-                  </h1>
-                </CardHeader>
-                <CardBody>
-                  <div className="space-y-4">
-                    <p className="text-gray-700 dark:text-gray-300">
-                      {quiz.description}
-                    </p>
-                    
-                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg space-y-2">
-                      <p className="text-sm text-blue-900 dark:text-blue-300">
-                        <strong>{t('quiz.questions')}:</strong> {quiz.questions.length}
-                      </p>
-                      <p className="text-sm text-blue-900 dark:text-blue-300">
-                        <strong>{t('quiz.totalPoints')}:</strong> {quiz.total_points}
-                      </p>
-                      {quiz.time_limit && (
-                        <p className="text-sm text-blue-900 dark:text-blue-300">
-                          <strong>{t('quiz.timeLimit')}:</strong> {quiz.time_limit} {t('quiz.minutes')}
-                        </p>
-                      )}
-                      <p className="text-sm text-blue-900 dark:text-blue-300">
-                        <strong>{t('quiz.attemptsAllowed')}:</strong> {quiz.attempts_allowed}
-                      </p>
-                    </div>
+      <Layout>
+        <div className="p-4 sm:p-6 lg:p-8">
+          <div className="max-w-4xl mx-auto">
+            <Card>
+              <CardHeader>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {quiz.title}
+                </h1>
+              </CardHeader>
+              <CardBody>
+                <div className="space-y-4">
+                  <p className="text-gray-700 dark:text-gray-300">
+                    {quiz.description}
+                  </p>
 
-                    <Button onClick={startAttempt} className="w-full">
-                      {t('quiz.startQuiz')}
-                    </Button>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg space-y-2">
+                    <p className="text-sm text-blue-900 dark:text-blue-300">
+                      <strong>{t('quiz.questions')}:</strong> {quiz.questions.length}
+                    </p>
+                    <p className="text-sm text-blue-900 dark:text-blue-300">
+                      <strong>{t('quiz.totalPoints')}:</strong> {quiz.total_points}
+                    </p>
+                    {quiz.time_limit && (
+                      <p className="text-sm text-blue-900 dark:text-blue-300">
+                        <strong>{t('quiz.timeLimit')}:</strong> {quiz.time_limit} {t('quiz.minutes')}
+                      </p>
+                    )}
+                    <p className="text-sm text-blue-900 dark:text-blue-300">
+                      <strong>{t('quiz.attemptsAllowed')}:</strong> {quiz.attempts_allowed}
+                    </p>
                   </div>
-                </CardBody>
-              </Card>
-            </div>
-          </main>
+
+                  <Button onClick={startAttempt} className="w-full">
+                    {t('quiz.startQuiz')}
+                  </Button>
+                </div>
+              </CardBody>
+            </Card>
+          </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 

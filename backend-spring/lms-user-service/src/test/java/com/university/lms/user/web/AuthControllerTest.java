@@ -1,9 +1,9 @@
 package com.university.lms.user.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.university.lms.common.security.JwtService;
 import com.university.lms.common.domain.UserRole;
 import com.university.lms.user.dto.*;
-import com.university.lms.user.security.JwtService;
 import com.university.lms.user.service.UserService;
 import com.university.lms.user.util.TestDataFactory;
 import org.junit.jupiter.api.Test;
@@ -249,4 +249,3 @@ class AuthControllerTest {
             .andExpect(status().isOk());
     }
 }
-

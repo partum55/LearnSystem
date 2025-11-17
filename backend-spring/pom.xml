@@ -36,7 +36,10 @@
         <module>lms-course-service</module>
         <module>lms-assessment-service</module>
         <module>lms-gradebook-service</module>
+        <module>lms-deadline-service</module>
         <module>lms-ai-service</module>
+        <module>lms-api-gateway</module>
+        <module>lms-eureka-server</module>
     </modules>
     <dependencyManagement>
         <dependencies>

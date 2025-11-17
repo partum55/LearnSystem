@@ -16,6 +16,23 @@
 - [x] Documentation - Cleaned and organized
 - [x] Testing - Core tests passing (7/7)
 ## 🚧 Phase 2: Core Services (IN PROGRESS)
+### Smart Deadlines & Calendar Service ✅ (COMPLETE)
+- [x] Design domain model (Deadline, WorkloadSnapshot, DeadlineType)
+- [x] Create JPA entities with auditing & Flyway migrations
+- [x] Implement repositories (DeadlineRepository, WorkloadSnapshotRepository)
+- [x] Create DTOs & MapStruct mappers
+- [x] Deadline ingestion service (Feign clients, cron scheduler, webhook endpoint)
+- [x] Workload engine (aggregation, snapshot scheduler)
+- [x] Conflict detection (overload, major overflow, simultaneous deadlines)
+- [x] Calendar API (month view, conflicts, ICS export via ical4j)
+- [x] Notification service (JavaMailSender, WebSocket/STOMP, scheduler)
+- [x] REST controllers with RBAC (@PreAuthorize)
+- [x] Global exception handling
+- [x] Security config (JWT, rate limiting, headers from lms-common)
+- [x] Unit tests (deadline ingestion, conflict detection - 4 tests passing)
+- [x] Documentation (comprehensive README with API docs, config, deployment)
+- [ ] Integration tests (Testcontainers, future enhancement)
+- [ ] Adaptive notification logic (ML-based frequency adjustment, future)
 ### Assessment Service
 - [ ] Design domain model
 - [ ] Create JPA entities

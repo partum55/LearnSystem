@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 /**
  * Service for generating course content using AI
  */
@@ -18,12 +20,32 @@ public class CourseGenerationService {
 
     private final LlamaApiService llamaApiService;
     private final ObjectMapper objectMapper;
+    private final AIGenerationCacheService cacheService;
 
     /**
      * Generate a complete course structure from a prompt
      */
     public GeneratedCourseResponse generateCourse(CourseGenerationRequest request) {
         log.info("Generating course from prompt: {}", request.getPrompt());
+
+        // Build cache key from request
+        String cacheKey = buildCacheKey(request);
+
+        // Check cache first
+        Optional<String> cached = cacheService.getCached(cacheKey);
+        if (cached.isPresent()) {
+            try {
+                GeneratedCourseResponse response = objectMapper.readValue(
+                    cached.get(),
+                    GeneratedCourseResponse.class
+                );
+                log.info("Returning cached course generation result");
+                return response;
+            } catch (Exception e) {
+                log.warn("Failed to parse cached result, regenerating", e);
+                cacheService.invalidate(cacheKey);
+            }
+        }
 
         String systemPrompt = buildCourseSystemPrompt(request);
         String userPrompt = buildCourseUserPrompt(request);
@@ -35,6 +57,9 @@ public class CourseGenerationService {
             jsonResponse = cleanJsonResponse(jsonResponse);
 
             GeneratedCourseResponse response = objectMapper.readValue(jsonResponse, GeneratedCourseResponse.class);
+
+            // Cache the result
+            cacheService.cache(cacheKey, jsonResponse);
 
             log.info("Successfully generated course structure");
             return response;
@@ -51,12 +76,27 @@ public class CourseGenerationService {
     public String editCourseContent(CourseEditRequest request) {
         log.info("Editing {} content with prompt: {}", request.getEntityType(), request.getPrompt());
 
+        // Build cache key
+        String cacheKey = request.getEntityType() + ":" +
+                          request.getPrompt() + ":" +
+                          (request.getCurrentData() != null ? request.getCurrentData().hashCode() : "");
+
+        // Check cache
+        Optional<String> cached = cacheService.getCached(cacheKey);
+        if (cached.isPresent()) {
+            log.info("Returning cached edit result");
+            return cached.get();
+        }
+
         String systemPrompt = buildEditSystemPrompt(request);
         String userPrompt = buildEditUserPrompt(request);
 
         try {
             String jsonResponse = llamaApiService.generateJson(userPrompt, systemPrompt);
             jsonResponse = cleanJsonResponse(jsonResponse);
+
+            // Cache the result
+            cacheService.cache(cacheKey, jsonResponse);
 
             log.info("Successfully edited {} content", request.getEntityType());
             return jsonResponse;
@@ -65,6 +105,20 @@ public class CourseGenerationService {
             log.error("Error editing content", e);
             throw new RuntimeException("Failed to edit content: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Build cache key from request
+     */
+    private String buildCacheKey(CourseGenerationRequest request) {
+        return String.format("%s|lang:%s|modules:%b|assignments:%b|quizzes:%b|year:%s",
+            request.getPrompt(),
+            request.getLanguage(),
+            request.getIncludeModules(),
+            request.getIncludeAssignments(),
+            request.getIncludeQuizzes(),
+            request.getAcademicYear()
+        );
     }
 
     private String buildCourseSystemPrompt(CourseGenerationRequest request) {
@@ -208,4 +262,3 @@ public class CourseGenerationService {
         return response.trim();
     }
 }
-

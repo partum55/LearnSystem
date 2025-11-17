@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardBody, Button, Loading } from '../components';
 import apiClient from '../api/client';
@@ -57,11 +57,6 @@ export const SpeedGrader: React.FC = () => {
   const currentSubmission = submissions[currentIndex];
 
   useEffect(() => {
-    fetchAssignment();
-    fetchSubmissions();
-  }, [assignmentId]);
-
-  useEffect(() => {
     const submissionId = searchParams.get('submission');
     if (submissionId && submissions.length > 0) {
       const index = submissions.findIndex(s => s.id === submissionId);
@@ -79,16 +74,18 @@ export const SpeedGrader: React.FC = () => {
     }
   }, [currentSubmission]);
 
-  const fetchAssignment = async () => {
+  const fetchAssignment = useCallback(async () => {
+    if (!assignmentId) return;
     try {
       const response = await apiClient.get<Assignment>(`/assessments/assignments/${assignmentId}/`);
       setAssignment(response.data);
     } catch (error) {
       console.error('Failed to fetch assignment:', error);
     }
-  };
+  }, [assignmentId]);
 
-  const fetchSubmissions = async () => {
+  const fetchSubmissions = useCallback(async () => {
+    if (!assignmentId) return;
     try {
       const response = await apiClient.get<any>(`/submissions/submissions/speedgrader/?assignment=${assignmentId}`);
       const data = response.data;
@@ -99,7 +96,12 @@ export const SpeedGrader: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [assignmentId]);
+
+  useEffect(() => {
+    fetchAssignment();
+    fetchSubmissions();
+  }, [fetchAssignment, fetchSubmissions]);
 
   const handleSaveGrade = async () => {
     if (!currentSubmission) return;

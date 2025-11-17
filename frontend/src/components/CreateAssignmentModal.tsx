@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from './Modal';
 import { Input } from './Input';
@@ -86,14 +86,8 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
   });
   const [error, setError] = useState('');
 
-  // Fetch available quizzes when QUIZ type is selected
-  useEffect(() => {
-    if (formData.assignment_type === 'QUIZ' && isOpen) {
-      fetchAvailableQuizzes();
-    }
-  }, [formData.assignment_type, isOpen, courseId]);
-
-  const fetchAvailableQuizzes = async () => {
+  // Fetch available quizzes when the QUIZ type is selected
+  const fetchAvailableQuizzes = useCallback(async () => {
     setLoadingQuizzes(true);
     try {
       const response = await quizzesApi.getAll(courseId);
@@ -105,7 +99,13 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
     } finally {
       setLoadingQuizzes(false);
     }
-  };
+  }, [courseId]);
+
+  useEffect(() => {
+    if (formData.assignment_type === 'QUIZ' && isOpen) {
+      fetchAvailableQuizzes();
+    }
+  }, [formData.assignment_type, isOpen, fetchAvailableQuizzes]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

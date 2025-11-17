@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.university.lms.common.domain.UserRole;
 import com.university.lms.user.dto.UpdateUserRequest;
 import com.university.lms.user.dto.UserDto;
-import com.university.lms.user.security.JwtService;
+import com.university.lms.common.security.JwtService;
 import com.university.lms.user.security.SecurityConfig;
 import com.university.lms.user.service.UserService;
 import com.university.lms.user.util.JwtTestHelper;
@@ -173,4 +173,3 @@ class UserControllerTest {
             .andExpect(status().isForbidden());
     }
 }
-

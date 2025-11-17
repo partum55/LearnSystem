@@ -1,16 +1,20 @@
 package com.university.lms.ai.web;
 
+import com.university.lms.ai.dto.AIProgressEvent;
 import com.university.lms.ai.dto.CourseEditRequest;
 import com.university.lms.ai.dto.CourseGenerationRequest;
 import com.university.lms.ai.dto.GeneratedCourseResponse;
 import com.university.lms.ai.service.CourseGenerationService;
 import com.university.lms.ai.service.CoursePersistenceService;
+import com.university.lms.ai.service.StreamingGenerationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
 
 import java.util.Map;
 import java.util.UUID;
@@ -26,6 +30,7 @@ public class AiCourseController {
 
     private final CourseGenerationService courseGenerationService;
     private final CoursePersistenceService coursePersistenceService;
+    private final StreamingGenerationService streamingGenerationService;
 
     /**
      * Generate course structure from prompt (preview only, not saved)
@@ -39,6 +44,34 @@ public class AiCourseController {
         log.info("Received course generation request");
         GeneratedCourseResponse response = courseGenerationService.generateCourse(request);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Generate course with streaming progress updates
+     *
+     * POST /api/ai/courses/generate-stream
+     */
+    @PostMapping(value = "/courses/generate-stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<AIProgressEvent> generateCourseStream(
+            @Valid @RequestBody CourseGenerationRequest request) {
+
+        log.info("Received streaming course generation request");
+        return streamingGenerationService.generateCourseWithProgress(request);
+    }
+
+    /**
+     * Generate modules with streaming
+     *
+     * POST /api/ai/modules/generate-stream
+     */
+    @PostMapping(value = "/modules/generate-stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<AIProgressEvent> generateModulesStream(
+            @RequestParam String courseId,
+            @RequestParam String prompt,
+            @RequestParam(defaultValue = "4") int moduleCount) {
+
+        log.info("Streaming module generation for course: {}", courseId);
+        return streamingGenerationService.generateModulesWithProgress(courseId, prompt, moduleCount);
     }
 
     /**
@@ -188,4 +221,3 @@ public class AiCourseController {
         ));
     }
 }
-

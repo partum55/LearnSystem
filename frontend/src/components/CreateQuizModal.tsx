@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, Input, Button } from '../components';
 import apiClient from '../api/client';
@@ -43,13 +43,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({
     pass_percentage: '60',
   });
 
-  useEffect(() => {
-    if (isOpen && step === 'questions') {
-      fetchQuestions();
-    }
-  }, [isOpen, step, courseId]);
-
-  const fetchQuestions = async () => {
+  const fetchQuestions = useCallback(async () => {
     setLoadingQuestions(true);
     try {
       const response = await apiClient.get(`/assessments/questions/?course=${courseId}`);
@@ -61,7 +55,13 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({
     } finally {
       setLoadingQuestions(false);
     }
-  };
+  }, [courseId]);
+
+  useEffect(() => {
+    if (isOpen && step === 'questions') {
+      fetchQuestions();
+    }
+  }, [isOpen, step, fetchQuestions]);
 
   const handleBasicSubmit = (e: React.FormEvent) => {
     e.preventDefault();

@@ -5,9 +5,9 @@ spring:
   application:
     name: lms-gradebook-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/lms_gradebook
-    username: lms_user
-    password: change_me
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/lms_db}
+    username: ${SPRING_DATASOURCE_USERNAME:lms_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:lms_password}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -23,8 +23,9 @@ spring:
     type: redis
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
   cloud:
     openfeign:
       client:
@@ -57,3 +58,13 @@ services:
     base-url: http://localhost:8083
   submission:
     base-url: http://localhost:8085
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}

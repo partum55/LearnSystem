@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Layout, Card, CardHeader, CardBody, Button, Loading } from '../components';
@@ -45,31 +45,9 @@ export const QuizTaking: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (quizId) {
-      startQuiz();
-    }
-  }, [quizId]);
 
-  // Timer countdown
-  useEffect(() => {
-    if (!quiz?.time_limit || timeRemaining === null) return;
-
-    const timer = setInterval(() => {
-      setTimeRemaining(prev => {
-        if (prev === null || prev <= 0) {
-          clearInterval(timer);
-          handleAutoSubmit();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [quiz, timeRemaining]);
-
-  const startQuiz = async () => {
+  const startQuiz = useCallback(async () => {
+    if (!quizId) return;
     setLoading(true);
     try {
       // Fetch quiz details
@@ -97,7 +75,13 @@ export const QuizTaking: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [quizId, t]);
+
+  useEffect(() => {
+    if (quizId) {
+      startQuiz();
+    }
+  }, [quizId, startQuiz]);
 
   const handleAnswerChange = (questionId: string, answer: any) => {
     setAnswers(prev => ({
@@ -106,13 +90,8 @@ export const QuizTaking: React.FC = () => {
     }));
   };
 
-  const handleAutoSubmit = () => {
-    if (submitting) return;
-    handleSubmit();
-  };
-
-  const handleSubmit = async () => {
-    if (!attempt) return;
+  const handleSubmit = useCallback(async () => {
+    if (!attempt || submitting) return;
 
     const unansweredCount = (quiz?.questions.length || 0) - Object.keys(answers).length;
     if (unansweredCount > 0) {
@@ -134,7 +113,32 @@ export const QuizTaking: React.FC = () => {
       setError(err.response?.data?.error || t('quiz.errors.submitFailed'));
       setSubmitting(false);
     }
-  };
+  }, [attempt, submitting, quiz?.questions.length, answers, t, navigate, quizId]);
+
+  // Timer countdown
+  useEffect(() => {
+    if (!quiz?.time_limit || timeRemaining === null) return;
+
+    const timer = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev === null || prev <= 0) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [quiz, timeRemaining]);
+
+  // Auto-submit when time runs out
+  useEffect(() => {
+    if (timeRemaining === 0 && !submitting && attempt) {
+      handleSubmit();
+    }
+  }, [timeRemaining, submitting, attempt, handleSubmit]);
+
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

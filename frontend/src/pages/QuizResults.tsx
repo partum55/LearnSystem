@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Layout, Card, CardHeader, CardBody, Button, Loading } from '../components';
@@ -51,13 +51,8 @@ export const QuizResults: React.FC = () => {
   const [error, setError] = useState('');
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    if (attemptId) {
-      fetchResults();
-    }
-  }, [attemptId]);
-
-  const fetchResults = async () => {
+  const fetchResults = useCallback(async () => {
+    if (!attemptId) return;
     setLoading(true);
     try {
       const response = await apiClient.get(`/assessments/attempts/${attemptId}/`);
@@ -68,7 +63,13 @@ export const QuizResults: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [attemptId, t]);
+
+  useEffect(() => {
+    if (attemptId) {
+      fetchResults();
+    }
+  }, [attemptId, fetchResults]);
 
   const toggleQuestion = (questionId: string) => {
     setExpandedQuestions(prev => {

@@ -7,7 +7,7 @@ import com.university.lms.user.dto.RegisterRequest;
 import com.university.lms.user.dto.UserDto;
 import com.university.lms.user.dto.AuthResponse;
 import com.university.lms.user.repository.UserRepository;
-import com.university.lms.user.security.JwtService;
+import com.university.lms.common.security.JwtService;
 import com.university.lms.user.util.TestDataFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -201,4 +201,3 @@ class UserServiceTest {
         verify(userRepository).findById(userId);
     }
 }
-

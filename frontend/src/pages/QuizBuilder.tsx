@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout, Card, CardHeader, CardBody, Button } from '../components';
@@ -79,13 +79,6 @@ export const QuizBuilder: React.FC = () => {
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchCourses();
-    if (quizId) {
-      fetchQuiz();
-    }
-  }, [quizId]);
-
   const fetchCourses = async () => {
     try {
       const response = await apiClient.get<any>('/courses/');
@@ -95,7 +88,8 @@ export const QuizBuilder: React.FC = () => {
     }
   };
 
-  const fetchQuiz = async () => {
+  const fetchQuiz = useCallback(async () => {
+    if (!quizId) return;
     try {
       const response = await apiClient.get<Quiz>(`/assessments/quizzes/${quizId}/`);
       setQuiz({
@@ -107,7 +101,14 @@ export const QuizBuilder: React.FC = () => {
     } catch (error) {
       console.error('Failed to fetch quiz:', error);
     }
-  };
+  }, [quizId]);
+
+  useEffect(() => {
+    fetchCourses();
+    if (quizId) {
+      fetchQuiz();
+    }
+  }, [quizId, fetchQuiz]);
 
   const handleSave = async () => {
     if (!quiz.title || !quiz.course) {

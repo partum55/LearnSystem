@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: lms-api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: user-service
+          uri: lb://lms-user-service
+          predicates:
+            - Path=/api/users/**, /api/auth/**
+        - id: course-service
+          uri: lb://lms-course-service
+          predicates:
+            - Path=/api/courses/**
+        - id: assessment-service
+          uri: lb://lms-assessment-service
+          predicates:
+            - Path=/api/assessments/**
+        - id: submission-service
+          uri: lb://lms-submission-service
+          predicates:
+            - Path=/api/submissions/**
+        - id: gradebook-service
+          uri: lb://lms-gradebook-service
+          predicates:
+            - Path=/api/gradebook/**
+        - id: notification-service
+          uri: lb://lms-notification-service
+          predicates:
+            - Path=/api/notifications/**
+        - id: ai-service
+          uri: lb://lms-ai-service
+          predicates:
+            - Path=/api/ai/**
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+
+server:
+  port: 8080
+

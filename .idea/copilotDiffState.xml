@@ -3,6 +3,15 @@
   <component name="CopilotDiffPersistence">
     <option name="pendingDiffs">
       <map>
+        <entry key="$PROJECT_DIR$/backend-spring/lms-eureka-server/src/main/java/com/university/lms/eurekaserver/EurekaServerApplication.java">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/backend-spring/lms-eureka-server/src/main/java/com/university/lms/eurekaserver/EurekaServerApplication.java" />
+              <option name="originalContent" value="package com.university.lms.eurekaserver;&#10;&#10;import org.springframework.boot.SpringApplication;&#10;import org.springframework.boot.autoconfigure.SpringBootApplication;&#10;import org.springframework.cloud.netflix.eureka.server.EnableEurekaServer;&#10;&#10;@SpringBootApplication&#10;@EnableEurekaServer&#10;public class EurekaServerApplication {&#10;&#10;    public static void main(String[] args) {&#10;        SpringApplication.run(EurekaServerApplication.class, args);&#10;    }&#10;&#10;}" />
+              <option name="updatedContent" value="package com.university.lms.eurekaserver;&#10;&#10;import org.springframework.boot.SpringApplication;&#10;import org.springframework.boot.autoconfigure.SpringBootApplication;&#10;import org.springframework.cloud.netflix.eureka.server.EnableEurekaServer;&#10;&#10;@SpringBootApplication&#10;@EnableEurekaServer&#10;public class EurekaServerApplication {&#10;&#10;    public static void main(String[] args) {&#10;        SpringApplication.run(EurekaServerApplication.class, args);&#10;    }&#10;&#10;}" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
         <entry key="$PROJECT_DIR$/backend-spring/lms-gradebook-service/src/main/java/com/university/lms/gradebook/web/GradebookCategoryController.java">
           <value>
             <PendingDiffInfo>

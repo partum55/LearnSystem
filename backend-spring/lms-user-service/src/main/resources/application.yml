@@ -29,6 +29,24 @@ spring:
           batch_size: 20
         order_inserts: true
         order_updates: true
+
+  # Mail Configuration
+  mail:
+    enabled: ${SPRING_MAIL_ENABLED:false}  # Set to true in production
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
     open-in-view: false
 
   data:
@@ -82,7 +100,7 @@ management:
         include: health,info,prometheus,metrics
   endpoint:
     health:
-      show-details: when-authorized
+      show-details: always
   metrics:
     export:
       prometheus:
@@ -102,6 +120,13 @@ logging:
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
   file:
     name: logs/lms-user-service.log
+
+# Application Configuration
+app:
+  mail:
+    from: ${APP_MAIL_FROM:noreply@lms.ucu.edu.ua}
+    base-url: ${APP_BASE_URL:http://localhost:3000}
+    name: logs/lms-user-service.log
     max-size: 10MB
     max-history: 30
     total-size-cap: 1GB
@@ -115,3 +140,13 @@ app:
     verification-url: ${EMAIL_VERIFICATION_URL:http://localhost:3000/verify-email}
     reset-password-url: ${EMAIL_RESET_PASSWORD_URL:http://localhost:3000/reset-password}
 
+# Eureka Client Configuration
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
