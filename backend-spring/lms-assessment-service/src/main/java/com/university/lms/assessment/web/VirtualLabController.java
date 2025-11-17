@@ -3,7 +3,6 @@ package com.university.lms.assessment.web;
 import com.university.lms.assessment.dto.CodeExecutionRequest;
 import com.university.lms.assessment.dto.CodeExecutionResult;
 import com.university.lms.assessment.service.VirtualLabService;
-import com.university.lms.common.security.CurrentUser;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +31,7 @@ public class VirtualLabController {
             @Valid @RequestBody CodeExecutionRequest request,
             Authentication authentication) {
         
-        UUID userId = getCurrentUserId(authentication);
+        UUID userId = extractUserId(authentication);
         log.info("Code execution request from user: {}", userId);
         
         CodeExecutionResult result = virtualLabService.executeCode(request, userId);
@@ -40,13 +39,12 @@ public class VirtualLabController {
     }
 
     /**
-     * Get current user ID from authentication.
+     * Extract user ID from authentication.
      */
-    private UUID getCurrentUserId(Authentication authentication) {
-        if (authentication != null && authentication.getPrincipal() instanceof CurrentUser) {
-            return ((CurrentUser) authentication.getPrincipal()).getId();
+    private UUID extractUserId(Authentication authentication) {
+        if (authentication == null || authentication.getPrincipal() == null) {
+            return null;
         }
-        // For testing purposes, return a dummy UUID if not authenticated
-        return UUID.randomUUID();
+        return UUID.fromString(authentication.getName());
     }
 }

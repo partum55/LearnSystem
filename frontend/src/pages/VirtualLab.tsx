@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import api from '../api/client';
 import CodeEditor from '../components/CodeEditor';
 import { Assignment } from '../types';
@@ -27,7 +26,6 @@ interface ExecutionResult {
 
 const VirtualLab: React.FC = () => {
   const { assignmentId } = useParams<{ assignmentId: string }>();
-  const { t } = useTranslation();
   
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [code, setCode] = useState<string>('');
@@ -37,10 +35,6 @@ const VirtualLab: React.FC = () => {
   const [executing, setExecuting] = useState(false);
   const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchAssignment();
-  }, [assignmentId]);
 
   const fetchAssignment = async () => {
     try {
@@ -60,6 +54,11 @@ const VirtualLab: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchAssignment();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignmentId]);
 
   const executeCode = async () => {
     if (!assignment) return;
