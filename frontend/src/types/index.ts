@@ -115,7 +115,8 @@ export type AssignmentType =
   | 'CODE'
   | 'URL'
   | 'MANUAL_GRADE'
-  | 'EXTERNAL';
+  | 'EXTERNAL'
+  | 'VIRTUAL_LAB';
 
 export interface Assignment {
   id: string;

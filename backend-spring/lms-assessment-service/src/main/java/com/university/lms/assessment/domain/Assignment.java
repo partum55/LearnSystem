@@ -48,7 +48,7 @@ public class Assignment {
     private Integer position = 0;
 
     @Column(name = "assignment_type", nullable = false, length = 20)
-    private String assignmentType; // QUIZ, FILE_UPLOAD, TEXT, CODE, URL, MANUAL_GRADE, EXTERNAL
+    private String assignmentType; // QUIZ, FILE_UPLOAD, TEXT, CODE, URL, MANUAL_GRADE, EXTERNAL, VIRTUAL_LAB
 
     @Column(nullable = false, length = 255)
     private String title;

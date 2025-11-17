@@ -259,6 +259,7 @@ const AssignmentEditor: React.FC = () => {
           <option value="FILE_UPLOAD">{t('assignment.types.file_upload')}</option>
           <option value="TEXT">{t('assignment.types.text')}</option>
           <option value="CODE">{t('assignment.types.code')}</option>
+          <option value="VIRTUAL_LAB">{t('assignment.types.virtual_lab')}</option>
           <option value="URL">{t('assignment.types.url')}</option>
           <option value="QUIZ">{t('assignment.types.quiz')}</option>
         </select>
@@ -448,6 +449,64 @@ const AssignmentEditor: React.FC = () => {
           </div>
         </>
       )}
+
+      {/* Virtual Lab-specific fields */}
+      {formData.assignment_type === 'VIRTUAL_LAB' && (
+        <>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t('assignment.programming_language')}
+            </label>
+            <select
+              value={formData.programming_language}
+              onChange={(e) => setFormData({ ...formData, programming_language: e.target.value })}
+              className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            >
+              <option value="python">Python</option>
+              <option value="javascript">JavaScript</option>
+              <option value="java">Java</option>
+              <option value="cpp">C++</option>
+              <option value="c">C</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t('assignment.starter_code')}
+            </label>
+            <CodeEditor
+              value={formData.starter_code}
+              onChange={(value: string) => setFormData({ ...formData, starter_code: value })}
+              language={formData.programming_language}
+              height="300px"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t('assignment.solution_code')} ({t('assignment.instructor_only')})
+            </label>
+            <CodeEditor
+              value={formData.solution_code}
+              onChange={(value: string) => setFormData({ ...formData, solution_code: value })}
+              language={formData.programming_language}
+              height="300px"
+            />
+          </div>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              checked={formData.auto_grading_enabled}
+              onChange={(e) => setFormData({ ...formData, auto_grading_enabled: e.target.checked })}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+              {t('assignment.enable_auto_grading')}
+            </label>
+          </div>
+        </>
+      )}
     </div>
   );
 
@@ -630,7 +689,7 @@ const AssignmentEditor: React.FC = () => {
 
   const renderGradingTab = () => (
     <div className="space-y-6">
-      {formData.assignment_type === 'CODE' && (
+      {(formData.assignment_type === 'CODE' || formData.assignment_type === 'VIRTUAL_LAB') && (
         <>
           <div className="flex items-center">
             <input
