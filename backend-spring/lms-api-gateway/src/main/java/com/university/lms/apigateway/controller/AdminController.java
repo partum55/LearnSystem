@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin")
-@CrossOrigin(origins = "*")
 public class AdminController {
 
     private final DiscoveryClient discoveryClient;
@@ -30,10 +29,12 @@ public class AdminController {
         for (String serviceName : serviceNames) {
             List<ServiceInstance> instances = discoveryClient.getInstances(serviceName);
             for (ServiceInstance instance : instances) {
+                // Service is registered in discovery, mark as UP
+                // In production, consider implementing actual health check calls
                 ServiceStatusDto status = new ServiceStatusDto(
                     serviceName,
                     instance.getInstanceId(),
-                    "UP", // Service is registered, assume UP
+                    "UP",
                     instance.getHost(),
                     instance.getPort(),
                     instance.getUri().toString() + "/actuator/health",
@@ -43,9 +44,10 @@ public class AdminController {
             }
         }
         
-        int healthyCount = services.size();
+        int totalCount = services.size();
+        int healthyCount = totalCount; // All registered services assumed UP
         int unhealthyCount = 0;
-        String overallStatus = healthyCount > 0 ? "HEALTHY" : "UNKNOWN";
+        String overallStatus = totalCount > 0 ? "HEALTHY" : "UNKNOWN";
         
         Map<String, Object> systemInfo = new HashMap<>();
         systemInfo.put("javaVersion", System.getProperty("java.version"));
@@ -59,7 +61,7 @@ public class AdminController {
         
         SystemHealthDto response = new SystemHealthDto(
             overallStatus,
-            services.size(),
+            totalCount,
             healthyCount,
             unhealthyCount,
             services,

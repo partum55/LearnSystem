@@ -305,8 +305,8 @@ export const AdminDashboard: React.FC = () => {
                           {t('admin.services.memory', 'Memory (Used/Max)')}
                         </p>
                         <p className="font-medium text-gray-900 dark:text-white">
-                          {systemHealth.systemInfo?.totalMemoryMB 
-                            ? `${systemHealth.systemInfo.totalMemoryMB - systemHealth.systemInfo.freeMemoryMB} MB / ${systemHealth.systemInfo.maxMemoryMB} MB`
+                          {systemHealth.systemInfo?.totalMemoryMB && systemHealth.systemInfo?.freeMemoryMB && systemHealth.systemInfo?.maxMemoryMB
+                            ? `${Math.round(systemHealth.systemInfo.totalMemoryMB - systemHealth.systemInfo.freeMemoryMB)} MB / ${systemHealth.systemInfo.maxMemoryMB} MB`
                             : 'N/A'}
                         </p>
                       </div>
@@ -347,8 +347,8 @@ export const AdminDashboard: React.FC = () => {
                             </tr>
                           </thead>
                           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                            {systemHealth.services.map((service: ServiceStatus, index: number) => (
-                              <tr key={`${service.serviceName}-${service.instanceId}-${index}`}>
+                            {systemHealth.services.map((service: ServiceStatus) => (
+                              <tr key={`${service.serviceName}-${service.instanceId || service.host}-${service.port}`}>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div className="flex items-center">
                                     <ServerIcon className="h-5 w-5 text-gray-400 mr-2" />
