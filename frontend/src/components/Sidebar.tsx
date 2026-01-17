@@ -11,6 +11,7 @@ import {
   ClipboardDocumentListIcon,
   XMarkIcon,
   CalendarIcon,
+  Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../store/authStore';
 import clsx from 'clsx';
@@ -38,6 +39,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
     navigation.splice(3, 0,
       { name: t('nav.questionBank', 'Question Bank'), href: '/question-bank', icon: ClipboardDocumentListIcon },
       { name: t('nav.quizBuilder', 'Quiz Builder'), href: '/quiz-builder', icon: BeakerIcon }
+    );
+  }
+
+  // Add admin-only link
+  if (user?.role === 'SUPERADMIN') {
+    navigation.push(
+      { name: t('nav.admin', 'Admin Panel'), href: '/admin', icon: Cog6ToothIcon }
     );
   }
 

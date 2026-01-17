@@ -27,10 +27,18 @@ import DashboardCustomize from './pages/DashboardCustomize';
 import ProfileSettings from './pages/ProfileSettings';
 import CalendarPage from './pages/CalendarPage';
 import VirtualLab from './pages/VirtualLab';
+import AdminDashboard from './pages/AdminDashboard';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
+};
+
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, user } = useAuthStore();
+  if (!isAuthenticated) return <Navigate to="/login" />;
+  if (user?.role !== 'SUPERADMIN') return <Navigate to="/dashboard" />;
+  return <>{children}</>;
 };
 
 const App: React.FC = () => {
@@ -253,6 +261,14 @@ const App: React.FC = () => {
               <PrivateRoute>
                 <StudentGradebook />
               </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
             }
           />
           <Route path="*" element={<Navigate to="/dashboard" />} />
