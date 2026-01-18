@@ -172,12 +172,12 @@ export const useConfirmModal = () => {
   const handleClose = React.useCallback(() => {
     modalState.resolve?.(false);
     setModalState((prev) => ({ ...prev, isOpen: false, resolve: null }));
-  }, [modalState.resolve]);
+  }, [modalState]);
 
   const handleConfirm = React.useCallback(() => {
     modalState.resolve?.(true);
     setModalState((prev) => ({ ...prev, isOpen: false, resolve: null }));
-  }, [modalState.resolve]);
+  }, [modalState]);
 
   const ConfirmModalComponent = React.useMemo(
     () => (
