@@ -4,6 +4,7 @@ import com.university.lms.course.dto.CreateResourceRequest;
 import com.university.lms.course.dto.ResourceDto;
 import com.university.lms.course.dto.UpdateResourceRequest;
 import com.university.lms.course.service.ResourceService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,7 @@ import java.util.UUID;
 
 /**
  * REST Controller for resource management.
+ * Note: Context path is /api, so paths here are relative to /api
  */
 @RestController
 @RequiredArgsConstructor
@@ -24,11 +26,25 @@ import java.util.UUID;
 public class ResourceController {
 
     private final ResourceService resourceService;
+    private final HttpServletRequest request;
+
+    /**
+     * Get all resources for a course.
+     */
+    @GetMapping("/courses/{courseId}/resources")
+    public ResponseEntity<List<ResourceDto>> getAllCourseResources(
+            @PathVariable UUID courseId,
+            Authentication authentication) {
+
+        UUID userId = extractUserId(authentication);
+        List<ResourceDto> resources = resourceService.getResourcesByCourse(courseId, userId);
+        return ResponseEntity.ok(resources);
+    }
 
     /**
      * Get all resources for a module.
      */
-    @GetMapping("/api/courses/{courseId}/modules/{moduleId}/resources")
+    @GetMapping("/courses/{courseId}/modules/{moduleId}/resources")
     public ResponseEntity<List<ResourceDto>> getResources(
             @PathVariable UUID courseId,
             @PathVariable UUID moduleId,
@@ -40,23 +56,12 @@ public class ResourceController {
     }
 
     /**
-     * Get all resources for a course.
-     */
-    @GetMapping("/api/courses/{courseId}/resources")
-    public ResponseEntity<List<ResourceDto>> getAllCourseResources(
-            @PathVariable UUID courseId,
-            Authentication authentication) {
-
-        UUID userId = extractUserId(authentication);
-        List<ResourceDto> resources = resourceService.getResourcesByCourse(courseId, userId);
-        return ResponseEntity.ok(resources);
-    }
-
-    /**
      * Get resource by ID.
      */
-    @GetMapping("/api/resources/{resourceId}")
+    @GetMapping("/courses/{courseId}/modules/{moduleId}/resources/{resourceId}")
     public ResponseEntity<ResourceDto> getResource(
+            @PathVariable UUID courseId,
+            @PathVariable UUID moduleId,
             @PathVariable UUID resourceId,
             Authentication authentication) {
 
@@ -68,7 +73,7 @@ public class ResourceController {
     /**
      * Create a new resource.
      */
-    @PostMapping("/api/courses/{courseId}/modules/{moduleId}/resources")
+    @PostMapping("/courses/{courseId}/modules/{moduleId}/resources")
     public ResponseEntity<ResourceDto> createResource(
             @PathVariable UUID courseId,
             @PathVariable UUID moduleId,
@@ -83,8 +88,10 @@ public class ResourceController {
     /**
      * Update a resource.
      */
-    @PutMapping("/api/resources/{resourceId}")
+    @PutMapping("/courses/{courseId}/modules/{moduleId}/resources/{resourceId}")
     public ResponseEntity<ResourceDto> updateResource(
+            @PathVariable UUID courseId,
+            @PathVariable UUID moduleId,
             @PathVariable UUID resourceId,
             @Valid @RequestBody UpdateResourceRequest request,
             Authentication authentication) {
@@ -97,8 +104,10 @@ public class ResourceController {
     /**
      * Delete a resource.
      */
-    @DeleteMapping("/api/resources/{resourceId}")
+    @DeleteMapping("/courses/{courseId}/modules/{moduleId}/resources/{resourceId}")
     public ResponseEntity<Void> deleteResource(
+            @PathVariable UUID courseId,
+            @PathVariable UUID moduleId,
             @PathVariable UUID resourceId,
             Authentication authentication) {
 
@@ -110,7 +119,7 @@ public class ResourceController {
     /**
      * Reorder resources within a module.
      */
-    @PutMapping("/api/courses/{courseId}/modules/{moduleId}/resources/reorder")
+    @PutMapping("/courses/{courseId}/modules/{moduleId}/resources/reorder")
     public ResponseEntity<Void> reorderResources(
             @PathVariable UUID courseId,
             @PathVariable UUID moduleId,
@@ -125,9 +134,11 @@ public class ResourceController {
     // Helper method
     private UUID extractUserId(Authentication authentication) {
         if (authentication != null && authentication.getPrincipal() != null) {
-            return UUID.fromString(authentication.getName());
+            Object userId = request.getAttribute("userId");
+            if (userId instanceof UUID) {
+                return (UUID) userId;
+            }
         }
         throw new RuntimeException("User not authenticated");
     }
 }
-

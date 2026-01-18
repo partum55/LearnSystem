@@ -1,15 +1,11 @@
 -- V001__Create_users_table.sql
--- Migration script to create users table matching Django User model
+-- Migration script to create users table for Spring Boot LMS
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Create enum types
-CREATE TYPE user_role AS ENUM ('SUPERADMIN', 'TEACHER', 'STUDENT', 'TA');
-CREATE TYPE user_locale AS ENUM ('UK', 'EN');
-
--- Create users table
-CREATE TABLE users (
+-- Create users table (using VARCHAR instead of ENUM for Hibernate compatibility)
+CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
     -- Authentication
@@ -24,9 +20,9 @@ CREATE TABLE users (
     bio TEXT,
     avatar_url TEXT,
 
-    -- Role and Permissions
-    role user_role NOT NULL DEFAULT 'STUDENT',
-    locale user_locale NOT NULL DEFAULT 'UK',
+    -- Role and Permissions (VARCHAR with CHECK constraint)
+    role VARCHAR(20) NOT NULL DEFAULT 'STUDENT',
+    locale VARCHAR(5) NOT NULL DEFAULT 'UK',
     theme VARCHAR(10) DEFAULT 'light',
 
     -- Status
@@ -44,19 +40,23 @@ CREATE TABLE users (
 
     -- Audit fields
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+    -- Constraints
+    CONSTRAINT check_user_role CHECK (role IN ('SUPERADMIN', 'TEACHER', 'STUDENT', 'TA')),
+    CONSTRAINT check_user_locale CHECK (locale IN ('UK', 'EN'))
 );
 
 -- Create indexes for performance
-CREATE INDEX idx_user_email ON users(email);
-CREATE INDEX idx_user_role ON users(role);
-CREATE INDEX idx_user_student_id ON users(student_id);
-CREATE INDEX idx_user_email_verified ON users(email_verified);
-CREATE INDEX idx_user_is_active ON users(is_active);
-CREATE INDEX idx_user_email_verification_token ON users(email_verification_token);
-CREATE INDEX idx_user_password_reset_token ON users(password_reset_token);
+CREATE INDEX IF NOT EXISTS idx_user_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_user_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_user_student_id ON users(student_id);
+CREATE INDEX IF NOT EXISTS idx_user_email_verified ON users(email_verified);
+CREATE INDEX IF NOT EXISTS idx_user_is_active ON users(is_active);
+CREATE INDEX IF NOT EXISTS idx_user_email_verification_token ON users(email_verification_token);
+CREATE INDEX IF NOT EXISTS idx_user_password_reset_token ON users(password_reset_token);
 
--- Create trigger for updated_at
+-- Create trigger function for updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -65,14 +65,17 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER update_users_updated_at
-    BEFORE UPDATE ON users
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
-
--- Add constraints
-ALTER TABLE users ADD CONSTRAINT users_email_check
-    CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
+-- Create trigger only if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_users_updated_at') THEN
+        CREATE TRIGGER update_users_updated_at
+            BEFORE UPDATE ON users
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END
+$$;
 
 -- Comments for documentation
 COMMENT ON TABLE users IS 'User accounts with role-based access control';

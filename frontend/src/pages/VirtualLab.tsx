@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api/client';
 import CodeEditor from '../components/CodeEditor';
 import { Assignment } from '../types';
-import { PlayIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { PlayIcon, CheckCircleIcon, XCircleIcon, StopIcon } from '@heroicons/react/24/outline';
+
+const EXECUTION_TIMEOUT_SECONDS = 30; // Maximum execution time
 
 interface TestCaseResult {
   name: string;
@@ -35,6 +37,9 @@ const VirtualLab: React.FC = () => {
   const [executing, setExecuting] = useState(false);
   const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [timeoutRemaining, setTimeoutRemaining] = useState<number | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timeoutIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchAssignment = async () => {
     try {
@@ -60,20 +65,60 @@ const VirtualLab: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignmentId]);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutIntervalRef.current) {
+        clearInterval(timeoutIntervalRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  const handleAbortExecution = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    if (timeoutIntervalRef.current) {
+      clearInterval(timeoutIntervalRef.current);
+    }
+    setExecuting(false);
+    setTimeoutRemaining(null);
+    setError('Execution cancelled by user');
+  };
+
   const executeCode = async () => {
     if (!assignment) return;
 
     try {
+      // Create abort controller
+      abortControllerRef.current = new AbortController();
+
       setExecuting(true);
       setOutput('');
       setError('');
       setExecutionResult(null);
+      setTimeoutRemaining(EXECUTION_TIMEOUT_SECONDS);
+
+      // Start countdown timer
+      timeoutIntervalRef.current = setInterval(() => {
+        setTimeoutRemaining((prev) => {
+          if (prev === null || prev <= 1) {
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
 
       const response = await api.post('/assessments/virtual-lab/execute', {
         assignmentId: assignment.id,
         code,
         language: assignment.programming_language || 'python',
         input,
+      }, {
+        signal: abortControllerRef.current.signal,
       });
 
       const result = response.data as ExecutionResult;
@@ -85,10 +130,25 @@ const VirtualLab: React.FC = () => {
         setError(result.error || 'Execution failed');
       }
     } catch (err: any) {
-      console.error('Code execution failed:', err);
-      setError(err.response?.data?.message || 'Failed to execute code');
+      if (err.name === 'AbortError' || err.name === 'CanceledError') {
+        // Already handled in handleAbortExecution
+        if (!error) {
+          setError('Execution cancelled');
+        }
+      } else if (err.response?.status === 408 || err.message?.includes('timeout')) {
+        setError(`⏱️ Execution timed out after ${EXECUTION_TIMEOUT_SECONDS} seconds. Your code may contain an infinite loop or be too slow.`);
+      } else {
+        console.error('Code execution failed:', err);
+        setError(err.response?.data?.message || 'Failed to execute code');
+      }
     } finally {
       setExecuting(false);
+      setTimeoutRemaining(null);
+      if (timeoutIntervalRef.current) {
+        clearInterval(timeoutIntervalRef.current);
+        timeoutIntervalRef.current = null;
+      }
+      abortControllerRef.current = null;
     }
   };
 
@@ -175,14 +235,43 @@ const VirtualLab: React.FC = () => {
             />
           </div>
 
-          <button
-            onClick={executeCode}
-            disabled={executing || !code.trim()}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors"
-          >
-            <PlayIcon className="w-5 h-5" />
-            {executing ? 'Running...' : 'Run Code'}
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={executeCode}
+              disabled={executing || !code.trim()}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors"
+            >
+              <PlayIcon className="w-5 h-5" />
+              {executing ? (
+                <>
+                  Running...
+                  {timeoutRemaining !== null && (
+                    <span className="ml-2 text-green-200">
+                      ({timeoutRemaining}s)
+                    </span>
+                  )}
+                </>
+              ) : 'Run Code'}
+            </button>
+
+            {executing && (
+              <button
+                onClick={handleAbortExecution}
+                className="px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+              >
+                <StopIcon className="w-5 h-5" />
+                Stop
+              </button>
+            )}
+          </div>
+
+          {executing && (
+            <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                ⏱️ Timeout in {timeoutRemaining} seconds. Code will be terminated if it runs too long.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Output */}

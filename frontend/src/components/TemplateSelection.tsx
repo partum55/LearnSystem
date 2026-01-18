@@ -36,6 +36,7 @@ export const TemplateSelection: React.FC<TemplateSelectionProps> = ({
 
   useEffect(() => {
     fetchTemplates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory]);
 
   const fetchTemplates = async () => {

@@ -9,6 +9,7 @@ import {
   Loading,
   CreateQuestionModal,
 } from '../components';
+import { ConfirmModal } from '../components/common/ConfirmModal';
 import apiClient from '../api/client';
 import { PlusIcon, PencilIcon, TrashIcon, FunnelIcon } from '@heroicons/react/24/outline';
 
@@ -34,6 +35,11 @@ export const QuestionBank: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filterType, setFilterType] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; questionId: string | null }>({
+    isOpen: false,
+    questionId: null,
+  });
+  const [deleting, setDeleting] = useState(false);
   const dataLoadedRef = useRef<string | undefined>(undefined); // Allow undefined to match courseId type
 
   useEffect(() => {
@@ -66,14 +72,22 @@ export const QuestionBank: React.FC = () => {
   };
 
   const handleDeleteQuestion = async (questionId: string) => {
-    if (!window.confirm(t('question.confirmDelete'))) return;
+    setDeleteConfirm({ isOpen: true, questionId });
+  };
 
+  const confirmDelete = async () => {
+    if (!deleteConfirm.questionId) return;
+
+    setDeleting(true);
     try {
-      await apiClient.delete(`/assessments/questions/${questionId}/`);
+      await apiClient.delete(`/assessments/questions/${deleteConfirm.questionId}/`);
+      setDeleteConfirm({ isOpen: false, questionId: null });
       fetchQuestions();
     } catch (error) {
       console.error('Failed to delete question:', error);
       alert(t('question.deleteFailed'));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -351,6 +365,20 @@ export const QuestionBank: React.FC = () => {
         onClose={() => setShowCreateModal(false)}
         courseId={courseId} // pass optional courseId (can be undefined) so questions may be global
         onQuestionCreated={() => fetchQuestions()}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, questionId: null })}
+        onConfirm={confirmDelete}
+        title={t('question.confirmDeleteTitle', 'Delete Question')}
+        message={t('question.confirmDelete', 'Are you sure you want to delete this question?')}
+        details={t('question.deleteWarning', 'This action cannot be undone. The question will be permanently removed from all quizzes that use it.')}
+        variant="danger"
+        confirmText={t('common.delete', 'Delete')}
+        cancelText={t('common.cancel', 'Cancel')}
+        isLoading={deleting}
       />
     </Layout>
   );

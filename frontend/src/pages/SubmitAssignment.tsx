@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '../api/client';
+import { UnsavedChangesPrompt } from '../components/common/UnsavedChangesPrompt';
+import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning';
 
 interface Assignment {
   id: string;
@@ -50,6 +52,30 @@ const SubmitAssignment: React.FC = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
 
+  // Track initial values for dirty checking
+  const [initialValues, setInitialValues] = useState({ textAnswer: '', codeAnswer: '', urlAnswer: '' });
+
+  // Check if form has unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    if (submitting) return false;
+    const hasTextChanges = textAnswer !== initialValues.textAnswer;
+    const hasCodeChanges = codeAnswer !== initialValues.codeAnswer;
+    const hasUrlChanges = urlAnswer !== initialValues.urlAnswer;
+    const hasFileChanges = files.length > 0;
+    return hasTextChanges || hasCodeChanges || hasUrlChanges || hasFileChanges;
+  }, [textAnswer, codeAnswer, urlAnswer, files, initialValues, submitting]);
+
+  // Unsaved changes warning
+  const {
+    isPromptOpen,
+    handleSaveAndLeave,
+    handleLeaveWithoutSaving,
+    handleStay,
+  } = useUnsavedChangesWarning({
+    isDirty: hasUnsavedChanges,
+    message: t('assignment.unsavedWarning', 'You have unsaved changes to your submission. Are you sure you want to leave?'),
+  });
+
   useEffect(() => {
     fetchAssignment();
     fetchOrCreateSubmission();
@@ -82,9 +108,15 @@ const SubmitAssignment: React.FC = () => {
         if (existingSub.text_answer) {
           setTextAnswer(existingSub.text_answer);
           setCodeAnswer(existingSub.text_answer);
+          setInitialValues(prev => ({
+            ...prev,
+            textAnswer: existingSub.text_answer,
+            codeAnswer: existingSub.text_answer
+          }));
         }
         if (existingSub.submission_url) {
           setUrlAnswer(existingSub.submission_url);
+          setInitialValues(prev => ({ ...prev, urlAnswer: existingSub.submission_url }));
         }
       } else {
         // Create new draft submission
@@ -371,7 +403,18 @@ const SubmitAssignment: React.FC = () => {
   const isSubmitted = submission?.status === 'SUBMITTED' || submission?.status === 'GRADED';
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <>
+      {/* Unsaved Changes Warning Modal */}
+      <UnsavedChangesPrompt
+        isOpen={isPromptOpen}
+        onSaveAndLeave={handleSaveAndLeave}
+        onLeaveWithoutSaving={handleLeaveWithoutSaving}
+        onStay={handleStay}
+        title={t('assignment.unsavedChangesTitle', 'Unsaved Submission')}
+        message={t('assignment.unsavedWarning', 'You have unsaved changes to your submission. Are you sure you want to leave?')}
+      />
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-6">
         <button
@@ -515,7 +558,8 @@ const SubmitAssignment: React.FC = () => {
           </div>
         </form>
       )}
-    </div>
+      </div>
+    </>
   );
 };
 

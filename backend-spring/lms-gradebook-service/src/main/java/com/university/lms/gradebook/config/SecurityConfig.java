@@ -44,11 +44,21 @@ public class SecurityConfig {
     @Value("${security.cors.allowed-origins:http://localhost:3000,http://localhost:8080}")
     private String allowedOriginsStr;
 
+    @Value("${security.cors.enabled:false}")
+    private boolean corsEnabled;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                // CORS is disabled by default - handled by API Gateway
+                .cors(cors -> {
+                    if (corsEnabled) {
+                        cors.configurationSource(corsConfigurationSource());
+                    } else {
+                        cors.disable();
+                    }
+                })
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                         .maximumSessions(1)

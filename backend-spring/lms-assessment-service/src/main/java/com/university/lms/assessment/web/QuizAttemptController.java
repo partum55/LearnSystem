@@ -25,6 +25,7 @@ import java.util.UUID;
 public class QuizAttemptController {
 
     private final QuizAttemptService quizAttemptService;
+    private final HttpServletRequest httpRequest;
 
     /**
      * Start a new quiz attempt.
@@ -128,7 +129,10 @@ public class QuizAttemptController {
     // Helper method
     private UUID extractUserId(Authentication authentication) {
         if (authentication != null && authentication.getPrincipal() != null) {
-            return UUID.fromString(authentication.getName());
+            Object userId = httpRequest.getAttribute("userId");
+            if (userId instanceof UUID) {
+                return (UUID) userId;
+            }
         }
         throw new RuntimeException("User not authenticated");
     }

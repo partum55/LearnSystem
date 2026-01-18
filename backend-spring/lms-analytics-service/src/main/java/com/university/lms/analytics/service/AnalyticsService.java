@@ -4,6 +4,7 @@ import com.university.lms.analytics.dto.*;
 import com.university.lms.analytics.feign.*;
 import com.university.lms.common.dto.GradeDto;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -41,6 +42,7 @@ public class AnalyticsService {
         return new CourseStatsDto(studentIds.size(), (int) activeStudents, averageGrade, 0, 0, 0);
     }
 
+    @Cacheable(value = "studentProgress", key = "#courseId")
     public List<StudentProgressDto> getStudentProgress(String courseId) {
         List<Long> studentIds = courseServiceClient.getStudentIdsByCourseId(courseId);
         var assessments = assessmentServiceClient.getAssessmentsByCourseId(courseId);

@@ -1,4 +1,4 @@
-package com.university.lms.analytics.dto;
+package com.university.lms.common.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -14,4 +14,5 @@ public class UserDto {
     private String firstName;
     private String lastName;
 }
+
 

@@ -3,6 +3,7 @@ package com.university.lms.assessment.web;
 import com.university.lms.assessment.dto.QuizDto;
 import com.university.lms.assessment.service.QuizService;
 import com.university.lms.common.dto.PageResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -27,6 +28,7 @@ import java.util.UUID;
 public class QuizController {
 
     private final QuizService quizService;
+    private final HttpServletRequest request;
 
     /**
      * Get quiz by ID.
@@ -149,7 +151,10 @@ public class QuizController {
     // Helper method
     private UUID extractUserId(Authentication authentication) {
         if (authentication != null && authentication.getPrincipal() != null) {
-            return UUID.fromString(authentication.getName());
+            Object userId = request.getAttribute("userId");
+            if (userId instanceof UUID) {
+                return (UUID) userId;
+            }
         }
         throw new RuntimeException("User not authenticated");
     }

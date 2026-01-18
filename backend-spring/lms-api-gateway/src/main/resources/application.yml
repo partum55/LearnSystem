@@ -1,41 +1,99 @@
 spring:
   application:
     name: lms-api-gateway
+  # Redis for rate limiting
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
   cloud:
     gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials Access-Control-Allow-Methods Access-Control-Allow-Headers, RETAIN_UNIQUE
+        - name: Retry
+          args:
+            retries: 3
+            statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+            methods: GET
+            backoff:
+              firstBackoff: 100ms
+              maxBackoff: 500ms
+              factor: 2
       routes:
         - id: user-service
           uri: lb://lms-user-service
           predicates:
-            - Path=/api/users/**, /api/auth/**
+            - Path=/api/v1/users/**, /api/users/**, /api/v1/auth/**, /api/auth/**
         - id: course-service
           uri: lb://lms-course-service
           predicates:
-            - Path=/api/courses/**
+            - Path=/api/v1/courses/**, /api/courses/**
         - id: assessment-service
           uri: lb://lms-assessment-service
           predicates:
-            - Path=/api/assessments/**
+            - Path=/api/v1/assessments/**, /api/assessments/**
         - id: submission-service
           uri: lb://lms-submission-service
           predicates:
-            - Path=/api/submissions/**
+            - Path=/api/v1/submissions/**, /api/submissions/**
         - id: gradebook-service
           uri: lb://lms-gradebook-service
           predicates:
-            - Path=/api/gradebook/**
-        - id: notification-service
-          uri: lb://lms-notification-service
+            - Path=/api/v1/gradebook/**, /api/gradebook/**
+        - id: deadline-service
+          uri: lb://lms-deadline-service
           predicates:
-            - Path=/api/notifications/**
+            - Path=/api/v1/calendar/**, /api/calendar/**, /api/v1/deadlines/**, /api/deadlines/**, /api/v1/notifications/**, /api/notifications/**
+        - id: ai-service-v1
+          uri: lb://lms-ai-service
+          predicates:
+            - Path=/api/v1/ai/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: aiServiceCircuitBreaker
+                fallbackUri: forward:/fallback/ai
         - id: ai-service
           uri: lb://lms-ai-service
           predicates:
             - Path=/api/ai/**
+          filters:
+            - RewritePath=/api/ai/(?<segment>.*), /api/v1/ai/${segment}
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: aiServiceCircuitBreaker
+                fallbackUri: forward:/fallback/ai
         - id: analytics-service
           uri: lb://lms-analytics-service
           predicates:
-            - Path=/api/analytics/**
+            - Path=/api/v1/analytics/**, /api/analytics/**
+
+# Circuit Breaker Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      aiServiceCircuitBreaker:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+  timelimiter:
+    instances:
+      aiServiceCircuitBreaker:
+        timeoutDuration: 60s
 
 eureka:
   client:

@@ -190,6 +190,18 @@ public class EnrollmentService {
         return courseMemberRepository.existsByCourseIdAndUserId(courseId, userId);
     }
 
+    /**
+     * Get user's enrollment in a course.
+     */
+    public CourseMemberDto getEnrollment(UUID courseId, UUID userId) {
+        log.debug("Fetching enrollment for user {} in course {}", userId, courseId);
+
+        CourseMember member = courseMemberRepository.findByCourseIdAndUserId(courseId, userId)
+            .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found"));
+
+        return courseMapper.toDto(member);
+    }
+
     public java.util.List<Long> getStudentIdsByCourseId(UUID courseId) {
         return courseMemberRepository.findStudentIdsByCourseId(courseId);
     }
@@ -211,4 +223,3 @@ public class EnrollmentService {
             .build();
     }
 }
-

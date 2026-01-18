@@ -1,3 +1,15 @@
+/**
+ * @deprecated This store is deprecated and will be removed in a future version.
+ * Please migrate to React Query hooks:
+ *
+ * - useCourseStore().fetchCourses() → useCoursesQuery()
+ * - useCourseStore().fetchCourseById() → useCourseQuery(id)
+ * - useCourseStore().fetchModules() → useModulesQuery(courseId)
+ * - useCourseStore().createCourse() → useCreateCourseMutation()
+ * - useCourseStore().updateCourse() → useUpdateCourseMutation()
+ *
+ * Import from '@/queries/useCourseQueries'
+ */
 import { create } from 'zustand';
 import { Course, Module, Assignment, CourseCreateData } from '../types';
 import { coursesApi, modulesApi } from '../api/courses';
@@ -36,7 +48,7 @@ export const useCourseStore = create<CourseState>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await coursesApi.getAll();
-      set({ courses: response.data.results, isLoading: false });
+      set({ courses: Array.isArray(response.data) ? response.data : [], isLoading: false });
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
     }
@@ -56,7 +68,10 @@ export const useCourseStore = create<CourseState>((set) => ({
     set({ isLoadingModules: true, error: null });
     try {
       const response = await modulesApi.getAll(courseId);
-      const modules = Array.isArray(response.data) ? response.data : response.data.results;
+      // Handle both array response and object with results property
+      const data = response.data as any;
+      const modules = Array.isArray(data) ? data :
+        (data?.results ? data.results : []);
       set({ modules, isLoadingModules: false });
     } catch (error: any) {
       set({ error: error.message, isLoadingModules: false });
@@ -67,7 +82,11 @@ export const useCourseStore = create<CourseState>((set) => ({
     set({ isLoadingAssignments: true, error: null });
     try {
       const response = await assignmentsApi.getAll(courseId);
-      const assignments = Array.isArray(response.data) ? response.data : response.data.results;
+      // Handle both array response and PageResponse with content property
+      const data = response.data as any;
+      const assignments = Array.isArray(data) ? data :
+        (data?.content ? data.content :
+          (data?.results ? data.results : []));
       set({ assignments, isLoadingAssignments: false });
     } catch (error: any) {
       set({ error: error.message, isLoadingAssignments: false });

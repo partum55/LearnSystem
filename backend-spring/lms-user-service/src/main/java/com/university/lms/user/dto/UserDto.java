@@ -1,5 +1,6 @@
 package com.university.lms.user.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.university.lms.common.domain.UserLocale;
 import com.university.lms.common.domain.UserRole;
@@ -35,9 +36,14 @@ public class UserDto implements Serializable {
     private String avatarUrl;
     private String bio;
     private boolean isActive;
+    private boolean isStaff;
     private boolean emailVerified;
     private Map<String, Object> preferences;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime updatedAt;
 
     /**
@@ -53,4 +59,3 @@ public class UserDto implements Serializable {
         return email;
     }
 }
-

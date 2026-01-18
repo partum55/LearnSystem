@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout, Card, CardHeader, CardBody, Button } from '../components';
-import { 
+import { UnsavedChangesPrompt } from '../components/common/UnsavedChangesPrompt';
+import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning';
+import {
   TrashIcon,
   ArrowUpIcon, 
   ArrowDownIcon,
@@ -78,6 +80,25 @@ export const QuizBuilder: React.FC = () => {
   });
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const initialQuizRef = useRef<string>(JSON.stringify(quiz));
+
+  // Check if form has unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    if (loading || saving) return false;
+    return JSON.stringify(quiz) !== initialQuizRef.current;
+  }, [quiz, loading, saving]);
+
+  // Unsaved changes warning
+  const {
+    isPromptOpen,
+    handleSaveAndLeave,
+    handleLeaveWithoutSaving,
+    handleStay,
+  } = useUnsavedChangesWarning({
+    isDirty: hasUnsavedChanges,
+    message: t('quiz.unsavedBuilderWarning', 'You have unsaved changes to this quiz. Are you sure you want to leave?'),
+  });
 
   const fetchCourses = async () => {
     try {
@@ -91,15 +112,21 @@ export const QuizBuilder: React.FC = () => {
   const fetchQuiz = useCallback(async () => {
     if (!quizId) return;
     try {
+      setLoading(true);
       const response = await apiClient.get<Quiz>(`/assessments/quizzes/${quizId}/`);
-      setQuiz({
+      const loadedQuiz = {
         // Ensure course id is a string so it matches option values
         ...response.data,
         course: response.data.course ? String((response.data as any).course) : undefined,
         settings: { ...DEFAULT_QUIZ_SETTINGS, ...response.data.settings },
-      });
+      };
+      setQuiz(loadedQuiz);
+      // Update initial quiz reference after loading
+      initialQuizRef.current = JSON.stringify(loadedQuiz);
     } catch (error) {
       console.error('Failed to fetch quiz:', error);
+    } finally {
+      setLoading(false);
     }
   }, [quizId]);
 
@@ -116,7 +143,7 @@ export const QuizBuilder: React.FC = () => {
       return;
     }
 
-    setLoading(true);
+    setSaving(true);
     try {
       // Prepare payload: if course is numeric-like string, send as number to backend
       const payload: any = {
@@ -129,13 +156,15 @@ export const QuizBuilder: React.FC = () => {
       } else {
         await apiClient.post('/assessments/quizzes/', payload);
       }
+      // Update initial quiz reference after successful save
+      initialQuizRef.current = JSON.stringify(quiz);
       alert(t('quiz.saved', 'Quiz saved successfully!'));
       navigate('/question-bank');
     } catch (error) {
       console.error('Failed to save quiz:', error);
       alert(t('quiz.saveFailed', 'Failed to save quiz'));
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -462,6 +491,17 @@ export const QuizBuilder: React.FC = () => {
 
   return (
     <Layout>
+      {/* Unsaved Changes Warning Modal */}
+      <UnsavedChangesPrompt
+        isOpen={isPromptOpen}
+        onSaveAndLeave={handleSaveAndLeave}
+        onLeaveWithoutSaving={handleLeaveWithoutSaving}
+        onStay={handleStay}
+        isSaving={saving}
+        title={t('quiz.unsavedChangesTitle', 'Unsaved Quiz Changes')}
+        message={t('quiz.unsavedBuilderWarning', 'You have unsaved changes to this quiz. Are you sure you want to leave?')}
+      />
+
       <div className="p-4 sm:p-6 lg:p-8">
         <div className="max-w-6xl mx-auto">
             {/* Header */}
@@ -478,8 +518,8 @@ export const QuizBuilder: React.FC = () => {
                 <Button variant="secondary" onClick={() => navigate('/question-bank')}>
                   {t('common.cancel', 'Cancel')}
                 </Button>
-                <Button onClick={handleSave} disabled={loading}>
-                  {loading ? t('common.saving', 'Saving...') : t('common.save', 'Save Quiz')}
+                <Button onClick={handleSave} disabled={saving}>
+                  {saving ? t('common.saving', 'Saving...') : t('common.save', 'Save Quiz')}
                 </Button>
               </div>
             </div>

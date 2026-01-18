@@ -39,12 +39,19 @@ logging:
   level:
     com.university.lms.deadline: INFO
 
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:dev-secret-key-change-in-production-must-be-at-least-256-bits-long-for-hs256}
+  expiration: ${JWT_EXPIRATION:86400000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:2592000000}
+
 eureka:
   client:
+    enabled: ${EUREKA_ENABLED:true}
     serviceUrl:
       defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
-    register-with-eureka: true
-    fetch-registry: true
+    register-with-eureka: ${EUREKA_ENABLED:true}
+    fetch-registry: ${EUREKA_ENABLED:true}
   instance:
     prefer-ip-address: true
     instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}

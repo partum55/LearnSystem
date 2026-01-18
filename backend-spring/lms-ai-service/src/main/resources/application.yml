@@ -1,5 +1,7 @@
 server:
   port: 8085
+  servlet:
+    context-path: /api
 
 spring:
   application:
@@ -22,10 +24,13 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
-  # Flyway Configuration - Disabled (shared DB with other services)
+  # Flyway Configuration
   flyway:
-    enabled: false
-    # AI service uses shared database, migrations are handled by user-service
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
+    table: ai_flyway_schema_history
 
   # Redis Configuration
   data:
@@ -40,14 +45,20 @@ spring:
           max-idle: 8
           min-idle: 0
 
-# Llama API Configuration
+# Llama/Groq API Configuration (Primary and only LLM provider)
 llama:
   api:
     url: ${LLAMA_API_URL:https://api.groq.com/openai/v1}
-    key: ${LLAMA_API_KEY:}  # API ключ (для Groq, Together AI, etc.)
+    key: ${LLAMA_API_KEY:}  # Groq API key - required for AI generation
     model: ${LLAMA_MODEL:llama-3.3-70b-versatile}  # Updated to v3.3
     timeout: 120000  # 2 minutes for long generations
     max-retries: 3
+
+# JWT Configuration (for common JwtService)
+jwt:
+  secret: ${JWT_SECRET:dev-secret-key-change-in-production-must-be-at-least-256-bits-long-for-hs256}
+  expiration: ${JWT_EXPIRATION:86400000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:2592000000}
 
 # Other services
 services:
@@ -61,6 +72,54 @@ logging:
   level:
     com.university.lms.ai: DEBUG
     org.springframework.web.reactive: INFO
+    io.github.resilience4j: INFO
+
+# Actuator & Prometheus Metrics
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,circuitbreakers
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    export:
+      prometheus:
+        enabled: true
+
+# Resilience4j Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      llamaApi:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        slidingWindowType: COUNT_BASED
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        recordExceptions:
+          - java.lang.Exception
+  retry:
+    instances:
+      llamaApi:
+        maxAttempts: 3
+        waitDuration: 2s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+  timelimiter:
+    instances:
+      llamaApi:
+        timeoutDuration: 60s
+        cancelRunningFuture: true
 
 eureka:
   client:
@@ -71,3 +130,41 @@ eureka:
   instance:
     prefer-ip-address: true
     instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+
+# Kafka Configuration
+spring.kafka:
+  bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  producer:
+    acks: all
+    retries: 3
+    key-serializer: org.apache.kafka.common.serialization.StringSerializer
+    value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+kafka:
+  enabled: ${KAFKA_ENABLED:false}
+  topics:
+    ai-content-generated: lms.ai.content.generated
+    ai-generation-failed: lms.ai.generation.failed
+
+# OpenAI Fallback Provider - DISABLED (only Groq is used)
+# To enable OpenAI as fallback:
+# 1. Uncomment @Component in OpenAIProvider.java
+# 2. Set OPENAI_API_KEY environment variable
+# openai:
+#   api:
+#     key: ${OPENAI_API_KEY:}
+#   model: ${OPENAI_MODEL:gpt-4o-mini}
+
+# AI Cache Configuration
+ai:
+  cache:
+    enabled: ${AI_CACHE_ENABLED:true}
+    ttl-minutes: ${AI_CACHE_TTL_MINUTES:60}
+    max-tokens-to-cache: ${AI_CACHE_MAX_TOKENS:8000}
+  pricing:
+    prompt-per-million: ${AI_PRICING_PROMPT:0.05}
+    completion-per-million: ${AI_PRICING_COMPLETION:0.10}
+  usage:
+    monthly-limit-tokens: ${AI_MONTHLY_TOKEN_LIMIT:1000000}
+
+

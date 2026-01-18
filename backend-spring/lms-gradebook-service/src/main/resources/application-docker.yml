@@ -1,0 +1,45 @@
+# Docker profile for gradebook-service
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/lms_db}
+    username: ${SPRING_DATASOURCE_USERNAME:lms_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:lms_password}
+
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:redis}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
+    table: gradebook_flyway_schema_history
+    validate-on-migrate: false
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+# Disable CORS - API Gateway handles CORS for all services
+security:
+  cors:
+    enabled: false
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_URI:http://eureka-server:8761/eureka}
+  instance:
+    prefer-ip-address: true
+    hostname: gradebook-service
+
+services:
+  course:
+    base-url: http://course-service:8082
+  assessment:
+    base-url: http://assessment-service:8083
+  submission:
+    base-url: http://ai-service:8085
+

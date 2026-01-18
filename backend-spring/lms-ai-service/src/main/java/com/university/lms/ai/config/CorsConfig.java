@@ -1,7 +1,5 @@
 package com.university.lms.ai.config;
 
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
@@ -9,12 +7,17 @@ import org.springframework.web.filter.CorsFilter;
 import java.util.Arrays;
 
 /**
- * CORS configuration for AI Service
+ * CORS configuration for AI Service.
+ *
+ * NOTE: CORS is now handled by the API Gateway.
+ * This class is kept for reference but disabled.
+ * If direct access to AI service is needed (not through gateway),
+ * add @Configuration annotation back.
  */
-@Configuration
+// @Configuration - Disabled: CORS is handled by API Gateway
 public class CorsConfig {
 
-    @Bean
+    // @Bean - Disabled: CORS is handled by API Gateway
     public CorsFilter corsFilter() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();

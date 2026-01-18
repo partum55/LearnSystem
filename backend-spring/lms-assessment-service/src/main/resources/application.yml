@@ -31,7 +31,9 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    baseline-version: 0
     locations: classpath:db/migration
+    table: assessment_flyway_schema_history
     schemas: public
 
   data:
@@ -60,6 +62,12 @@ spring:
         jwt:
           issuer-uri: ${JWT_ISSUER_URI:http://localhost:8080}
           jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8080/.well-known/jwks.json}
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:dev-secret-key-change-in-production-must-be-at-least-256-bits-long-for-hs256}
+  expiration: ${JWT_EXPIRATION:86400000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:2592000000}
 
 server:
   port: ${PORT:8082}

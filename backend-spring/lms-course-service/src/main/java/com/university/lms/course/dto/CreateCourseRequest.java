@@ -39,10 +39,8 @@ public class CreateCourseRequest {
     private CourseVisibility visibility;
     private String thumbnailUrl;
     
-    @Future(message = "Start date must be in the future")
     private LocalDate startDate;
     
-    @Future(message = "End date must be in the future")
     private LocalDate endDate;
     
     @Size(max = 20, message = "Academic year must not exceed 20 characters")

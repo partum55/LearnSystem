@@ -3,6 +3,7 @@ package com.university.lms.assessment.web;
 import com.university.lms.assessment.dto.CodeExecutionRequest;
 import com.university.lms.assessment.dto.CodeExecutionResult;
 import com.university.lms.assessment.service.VirtualLabService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,7 @@ import java.util.UUID;
 public class VirtualLabController {
 
     private final VirtualLabService virtualLabService;
+    private final HttpServletRequest request;
 
     /**
      * Execute code for a virtual lab assignment.
@@ -45,6 +47,10 @@ public class VirtualLabController {
         if (authentication == null || authentication.getPrincipal() == null) {
             return null;
         }
-        return UUID.fromString(authentication.getName());
+        Object userId = request.getAttribute("userId");
+        if (userId instanceof UUID) {
+            return (UUID) userId;
+        }
+        return null;
     }
 }

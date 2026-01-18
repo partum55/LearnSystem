@@ -8,10 +8,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * REST controller for AI content generation
+ * REST controller for AI content generation.
+ * API Version: v1
  */
 @RestController
-@RequestMapping("/api/ai/generate")
+@RequestMapping("/v1/ai/generate")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")

@@ -5,6 +5,7 @@ import com.university.lms.assessment.dto.CreateAssignmentRequest;
 import com.university.lms.assessment.dto.UpdateAssignmentRequest;
 import com.university.lms.assessment.service.AssignmentService;
 import com.university.lms.common.dto.PageResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,7 @@ import java.util.UUID;
 public class AssignmentController {
 
     private final AssignmentService assignmentService;
+    private final HttpServletRequest request;
 
     /**
      * Get assignment by ID.
@@ -160,8 +162,9 @@ public class AssignmentController {
      * Delete assignment.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAssignment(@PathVariable UUID id) {
-        assignmentService.deleteAssignment(id);
+    public ResponseEntity<Void> deleteAssignment(@PathVariable UUID id, Authentication authentication) {
+        UUID userId = extractUserId(authentication);
+        assignmentService.deleteAssignment(id, userId);
         return ResponseEntity.noContent().build();
     }
 
@@ -174,6 +177,10 @@ public class AssignmentController {
         if (authentication == null || authentication.getPrincipal() == null) {
             return null;
         }
-        return UUID.fromString(authentication.getName());
+        Object userId = request.getAttribute("userId");
+        if (userId instanceof UUID) {
+            return (UUID) userId;
+        }
+        return null;
     }
 }

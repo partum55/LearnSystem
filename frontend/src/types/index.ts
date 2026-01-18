@@ -97,6 +97,7 @@ export interface Resource {
 }
 
 export interface ResourceCreateData {
+  courseId: string;
   module: string;
   title: string;
   description?: string;

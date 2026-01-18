@@ -1,4 +1,4 @@
-package com.university.lms.analytics.dto;
+package com.university.lms.common.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -16,4 +16,5 @@ public class GradeDto {
     private String assessmentId;
     private BigDecimal score;
 }
+
 

@@ -122,7 +122,7 @@ public class AssignmentService {
      */
     public PageResponse<AssignmentDto> searchAssignments(UUID courseId, String query, Pageable pageable) {
         log.debug("Searching assignments in course {}: {}", courseId, query);
-        Page<Assignment> assignments = assignmentRepository.searchInCourse(courseId, query, pageable);
+        Page<Assignment> assignments = assignmentRepository.searchAssignments(courseId, query, pageable);
         return mapToPageResponse(assignments);
     }
 

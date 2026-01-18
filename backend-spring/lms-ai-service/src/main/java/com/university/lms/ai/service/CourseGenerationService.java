@@ -136,9 +136,9 @@ public class CourseGenerationService {
         sb.append("    \"descriptionUk\": \"Опис українською\",\n");
         sb.append("    \"descriptionEn\": \"Description in English\",\n");
         sb.append("    \"syllabus\": \"Детальний силабус курсу\",\n");
-        sb.append("    \"startDate\": \"2024-09-01\",\n");
-        sb.append("    \"endDate\": \"2024-12-20\",\n");
-        sb.append("    \"academicYear\": \"2024-2025\",\n");
+        sb.append("    \"startDate\": \"2025-09-01\",\n");
+        sb.append("    \"endDate\": \"2026-06-30\",\n");
+        sb.append("    \"academicYear\": \"2025-2026\",\n");
         sb.append("    \"maxStudents\": 30\n");
         sb.append("  },\n");
 

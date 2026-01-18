@@ -3,6 +3,7 @@ package com.university.lms.assessment.web;
 import com.university.lms.assessment.dto.QuestionDto;
 import com.university.lms.assessment.service.QuestionService;
 import com.university.lms.common.dto.PageResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,7 @@ import java.util.UUID;
 public class QuestionController {
 
     private final QuestionService questionService;
+    private final HttpServletRequest request;
 
     /**
      * Get question by ID.
@@ -162,7 +164,10 @@ public class QuestionController {
     // Helper method
     private UUID extractUserId(Authentication authentication) {
         if (authentication != null && authentication.getPrincipal() != null) {
-            return UUID.fromString(authentication.getName());
+            Object userId = request.getAttribute("userId");
+            if (userId instanceof UUID) {
+                return (UUID) userId;
+            }
         }
         throw new RuntimeException("User not authenticated");
     }

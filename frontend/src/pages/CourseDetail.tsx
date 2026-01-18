@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../components';
 import { Sidebar } from '../components';
@@ -31,10 +31,37 @@ import { SparklesIcon } from '@heroicons/react/24/outline';
 
 export const CourseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation();
   const { user } = useAuthStore();
   const { currentCourse, modules, assignments, fetchCourseById, fetchModules, fetchAssignments, isLoadingCourse } = useCourseStore();
-  const [activeTab, setActiveTab] = useState<'modules' | 'assignments' | 'members' | 'grades'>('modules');
+
+  // Restore tab from URL or localStorage
+  const getInitialTab = (): 'modules' | 'assignments' | 'members' | 'grades' => {
+    const urlTab = searchParams.get('tab');
+    if (urlTab && ['modules', 'assignments', 'members', 'grades'].includes(urlTab)) {
+      return urlTab as 'modules' | 'assignments' | 'members' | 'grades';
+    }
+    // Try localStorage fallback for this course
+    const storedTab = sessionStorage.getItem(`course_${id}_tab`);
+    if (storedTab && ['modules', 'assignments', 'members', 'grades'].includes(storedTab)) {
+      return storedTab as 'modules' | 'assignments' | 'members' | 'grades';
+    }
+    return 'modules';
+  };
+
+  // Restore expanded modules from sessionStorage
+  const getInitialExpandedModules = (): Set<string> => {
+    try {
+      const stored = sessionStorage.getItem(`course_${id}_expanded`);
+      if (stored) {
+        return new Set(JSON.parse(stored));
+      }
+    } catch (e) {}
+    return new Set();
+  };
+
+  const [activeTab, setActiveTab] = useState<'modules' | 'assignments' | 'members' | 'grades'>(getInitialTab);
   const [showModuleModal, setShowModuleModal] = useState(false);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [showResourceModal, setShowResourceModal] = useState(false);
@@ -43,7 +70,19 @@ export const CourseDetail: React.FC = () => {
   const [showAIAssignmentGenerator, setShowAIAssignmentGenerator] = useState(false);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [selectedModuleContext, setSelectedModuleContext] = useState<string>('');
-  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(getInitialExpandedModules);
+
+  // Persist tab state to URL and sessionStorage
+  const handleTabChange = useCallback((tab: 'modules' | 'assignments' | 'members' | 'grades') => {
+    setActiveTab(tab);
+    setSearchParams({ tab });
+    sessionStorage.setItem(`course_${id}_tab`, tab);
+  }, [id, setSearchParams]);
+
+  // Persist expanded modules state
+  useEffect(() => {
+    sessionStorage.setItem(`course_${id}_expanded`, JSON.stringify([...expandedModules]));
+  }, [expandedModules, id]);
 
   useEffect(() => {
     if (id) {
@@ -183,7 +222,7 @@ export const CourseDetail: React.FC = () => {
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
+                    onClick={() => handleTabChange(tab.id as 'modules' | 'assignments' | 'members' | 'grades')}
                     className={`
                       flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors
                       ${
@@ -514,6 +553,7 @@ export const CourseDetail: React.FC = () => {
                 setShowResourceModal(false);
                 setSelectedModuleId(null);
               }}
+              courseId={id!}
               moduleId={selectedModuleId}
               onResourceCreated={handleResourceCreated}
             />

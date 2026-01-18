@@ -16,7 +16,11 @@ public interface DeadlineRepository extends JpaRepository<Deadline, Long> {
 
     List<Deadline> findByStudentGroupIdAndDueAtBetween(Long studentGroupId, OffsetDateTime from, OffsetDateTime to);
 
-    @Query("select d from Deadline d where d.studentGroupId = :studentGroupId and d.dueAt::date = :date")
+    List<Deadline> findByDueAtBetween(OffsetDateTime from, OffsetDateTime to);
+
+    long countByDueAtBetween(OffsetDateTime from, OffsetDateTime to);
+
+    @Query("select d from Deadline d where d.studentGroupId = :studentGroupId and CAST(d.dueAt AS DATE) = :date")
     List<Deadline> findByStudentGroupIdAndDate(Long studentGroupId, java.time.LocalDate date);
 
     List<Deadline> findByStudentGroupIdAndType(Long studentGroupId, DeadlineType type);

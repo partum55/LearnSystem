@@ -5,6 +5,7 @@ import com.university.lms.common.dto.PageResponse;
 import com.university.lms.course.dto.*;
 import com.university.lms.course.service.CourseService;
 import com.university.lms.course.service.EnrollmentService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,11 +30,12 @@ public class CourseController {
 
     private final CourseService courseService;
     private final EnrollmentService enrollmentService;
+    private final HttpServletRequest request;
 
     /**
      * Get all courses with pagination.
      */
-    @GetMapping
+    @GetMapping({"", "/"})
     public ResponseEntity<PageResponse<CourseDto>> getAllCourses(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -165,8 +167,9 @@ public class CourseController {
      * Delete a course.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCourse(@PathVariable UUID id) {
-        courseService.deleteCourse(id);
+    public ResponseEntity<Void> deleteCourse(@PathVariable UUID id, Authentication authentication) {
+        UUID userId = extractUserId(authentication);
+        courseService.deleteCourse(id, userId);
         return ResponseEntity.noContent().build();
     }
 
@@ -293,11 +296,16 @@ public class CourseController {
         return ResponseEntity.ok(enrollmentService.getStudentIdsByCourseId(id));
     }
 
-    // Helper method to extract user ID from authentication
+    // Helper method to extract user ID from request attribute (set by JwtAuthenticationFilter)
     private UUID extractUserId(Authentication authentication) {
         if (authentication == null || authentication.getPrincipal() == null) {
             throw new RuntimeException("User not authenticated");
         }
-        return UUID.fromString(authentication.getName());
+        // userId is set as request attribute by JwtAuthenticationFilter
+        Object userId = request.getAttribute("userId");
+        if (userId instanceof UUID) {
+            return (UUID) userId;
+        }
+        throw new RuntimeException("User ID not found in request");
     }
 }

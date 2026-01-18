@@ -10,8 +10,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * REST controller for AI predictions.
+ * API Version: v1
+ */
 @RestController
-@RequestMapping("/api/ai")
+@RequestMapping("/v1/ai")
 @RequiredArgsConstructor
 public class PredictionController {
 

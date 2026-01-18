@@ -1,31 +1,8 @@
 services:
-  # API Gateway
-  api-gateway:
-    build:
-      context: ./backend-spring
-      dockerfile: Dockerfile
-      args:
-        SERVICE_NAME: lms-api-gateway
-    container_name: lms-api-gateway
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    environment:
-      SPRING_PROFILES_ACTIVE: docker
-      EUREKA_URI: http://eureka-server:8761/eureka
-    depends_on:
-      eureka-server:
-        condition: service_healthy
-    networks:
-      - lms-network
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
+  # ==========================================
+  # DATABASE & CACHE
+  # ==========================================
 
-  # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
     container_name: lms-postgres
@@ -45,12 +22,15 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
-  # Redis Cache
   redis:
     image: redis:7-alpine
     container_name: lms-redis
     restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6380:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -60,8 +40,12 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+      start_period: 5s
 
-  # Eureka Server
+  # ==========================================
+  # SERVICE DISCOVERY
+  # ==========================================
+
   eureka-server:
     build:
       context: ./backend-spring
@@ -72,16 +56,22 @@ services:
     restart: unless-stopped
     ports:
       - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JAVA_OPTS=-Xmx512m -Xms256m
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8761/ || exit 1"]
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 60s
 
-  # User Service
+  # ==========================================
+  # MICROSERVICES
+  # ==========================================
+
   user-service:
     build:
       context: ./backend-spring
@@ -93,15 +83,17 @@ services:
     ports:
       - "8081:8081"
     environment:
-      SPRING_PROFILES_ACTIVE: docker
-      SERVER_PORT: 8081
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-lms_db}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-lms_user}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-lms_password}
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET:-dev-secret-key-change-in-production-must-be-at-least-256-bits-long-for-hs256}
-      EUREKA_URI: http://eureka-server:8761/eureka
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8081
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-lms_db}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-lms_user}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-lms_password}
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key-change-in-production-must-be-at-least-256-bits-long-for-hs256}
+      - JWT_EXPIRATION=${JWT_EXPIRATION:-86400000}
+      - EUREKA_URI=http://eureka-server:8761/eureka
+      - JAVA_OPTS=-Xmx512m -Xms256m
     depends_on:
       postgres:
         condition: service_healthy
@@ -111,37 +103,13 @@ services:
         condition: service_healthy
     networks:
       - lms-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/api/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
 
-  # Analytics Service
-  analytics-service:
-    build:
-      context: ./backend-spring
-      dockerfile: Dockerfile
-      args:
-        SERVICE_NAME: lms-analytics-service
-    container_name: lms-analytics-service
-    restart: unless-stopped
-    ports:
-      - "8088:8088"
-    environment:
-      SPRING_PROFILES_ACTIVE: docker
-      SERVER_PORT: 8088
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-lms_db}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-lms_user}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-lms_password}
-      SPRING_DATA_REDIS_HOST: redis
-      EUREKA_URI: http://eureka-server:8761/eureka
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      eureka-server:
-        condition: service_healthy
-    networks:
-      - lms-network
-
-  # Course Service
   course-service:
     build:
       context: ./backend-spring
@@ -153,22 +121,32 @@ services:
     ports:
       - "8082:8082"
     environment:
-      SPRING_PROFILES_ACTIVE: docker
-      SERVER_PORT: 8082
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-lms_db}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-lms_user}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-lms_password}
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      EUREKA_URI: http://eureka-server:8761/eureka
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8082
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-lms_db}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-lms_user}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-lms_password}
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key-change-in-production-must-be-at-least-256-bits-long-for-hs256}
+      - EUREKA_URI=http://eureka-server:8761/eureka
+      - JAVA_OPTS=-Xmx512m -Xms256m
     depends_on:
-      - postgres
-      - redis
-      - eureka-server
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
     networks:
       - lms-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/api/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
 
-  # Assessment Service
   assessment-service:
     build:
       context: ./backend-spring
@@ -180,22 +158,32 @@ services:
     ports:
       - "8083:8083"
     environment:
-      SPRING_PROFILES_ACTIVE: docker
-      SERVER_PORT: 8083
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-lms_db}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-lms_user}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-lms_password}
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      EUREKA_URI: http://eureka-server:8761/eureka
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8083
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-lms_db}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-lms_user}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-lms_password}
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key-change-in-production-must-be-at-least-256-bits-long-for-hs256}
+      - EUREKA_URI=http://eureka-server:8761/eureka
+      - JAVA_OPTS=-Xmx512m -Xms256m
     depends_on:
-      - postgres
-      - redis
-      - eureka-server
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
     networks:
       - lms-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/api/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
 
-  # Gradebook Service
   gradebook-service:
     build:
       context: ./backend-spring
@@ -207,22 +195,32 @@ services:
     ports:
       - "8084:8084"
     environment:
-      SPRING_PROFILES_ACTIVE: docker
-      SERVER_PORT: 8084
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-lms_db}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-lms_user}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-lms_password}
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      EUREKA_URI: http://eureka-server:8761/eureka
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8084
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-lms_db}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-lms_user}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-lms_password}
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key-change-in-production-must-be-at-least-256-bits-long-for-hs256}
+      - EUREKA_URI=http://eureka-server:8761/eureka
+      - JAVA_OPTS=-Xmx512m -Xms256m
     depends_on:
-      - postgres
-      - redis
-      - eureka-server
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
     networks:
       - lms-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/api/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
 
-  # Deadline Service
   deadline-service:
     build:
       context: ./backend-spring
@@ -234,19 +232,36 @@ services:
     ports:
       - "8086:8086"
     environment:
-      SPRING_PROFILES_ACTIVE: docker
-      SERVER_PORT: 8086
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-lms_db}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-lms_user}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-lms_password}
-      EUREKA_URI: http://eureka-server:8761/eureka
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8086
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-lms_db}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-lms_user}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-lms_password}
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key-change-in-production-must-be-at-least-256-bits-long-for-hs256}
+      - EUREKA_URI=http://eureka-server:8761/eureka
+      - JAVA_OPTS=-Xmx512m -Xms256m
     depends_on:
-      - postgres
-      - eureka-server
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
     networks:
       - lms-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
 
-  # AI Service
+  # ==========================================
+  # AI SERVICE - Special Configuration
+  # ==========================================
+
   ai-service:
     build:
       context: ./backend-spring
@@ -258,63 +273,150 @@ services:
     ports:
       - "8085:8085"
     environment:
-      SPRING_PROFILES_ACTIVE: docker
-      SERVER_PORT: 8085
-      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-lms_db}
-      DB_USERNAME: ${POSTGRES_USER:-lms_user}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-lms_password}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      LLAMA_API_URL: ${LLAMA_API_URL:-https://api.groq.com/openai/v1}
-      LLAMA_API_KEY: ${LLAMA_API_KEY}
-      LLAMA_MODEL: ${LLAMA_MODEL:-llama-3.1-70b-versatile}
-      EUREKA_URI: http://eureka-server:8761/eureka
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8085
+      # Database
+      - DB_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-lms_db}
+      - DB_USERNAME=${POSTGRES_USER:-lms_user}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-lms_password}
+      # Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Llama API Configuration
+      - LLAMA_API_URL=${LLAMA_API_URL:-https://api.groq.com/openai/v1}
+      - LLAMA_API_KEY=${LLAMA_API_KEY}
+      - LLAMA_MODEL=${LLAMA_MODEL:-llama-3.3-70b-versatile}
+      # Eureka
+      - EUREKA_URI=http://eureka-server:8761/eureka
+      # JVM Options - More memory for AI processing
+      - JAVA_OPTS=-Xmx1g -Xms512m -XX:+UseG1GC
     depends_on:
-      - postgres
-      - redis
-      - eureka-server
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
     networks:
       - lms-network
-    profiles:
-      - ai
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/api/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s  # Longer startup time for AI service
 
-  # React Frontend
+  analytics-service:
+    build:
+      context: ./backend-spring
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: lms-analytics-service
+    container_name: lms-analytics-service
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8088
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-lms_db}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-lms_user}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-lms_password}
+      - SPRING_FLYWAY_ENABLED=false
+      - SPRING_DATA_REDIS_HOST=redis
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key-change-in-production-must-be-at-least-256-bits-long-for-hs256}
+      - EUREKA_URI=http://eureka-server:8761/eureka
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - lms-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/api/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  # ==========================================
+  # API GATEWAY
+  # ==========================================
+
+  api-gateway:
+    build:
+      context: ./backend-spring
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: lms-api-gateway
+    container_name: lms-api-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_URI=http://eureka-server:8761/eureka
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - lms-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ==========================================
+  # FRONTEND
+  # ==========================================
+
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     container_name: lms-frontend
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3000:80"
     environment:
-      REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:8080/api}
-      REACT_APP_AI_SERVICE_URL: ${REACT_APP_AI_SERVICE_URL:-http://localhost:8080/api/ai}
-      CHOKIDAR_USEPOLLING: "true"  # For hot reload in Docker
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:8080/api}
+      - REACT_APP_AI_SERVICE_URL=${REACT_APP_AI_SERVICE_URL:-http://localhost:8080/api/ai}
     depends_on:
       - api-gateway
     networks:
       - lms-network
-    stdin_open: true
-    tty: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+# ==========================================
+# VOLUMES
+# ==========================================
 
 volumes:
   postgres_data:
     driver: local
   redis_data:
     driver: local
-  spring_logs:
-    driver: local
-  python_static:
-    driver: local
-  python_media:
-    driver: local
-  ollama_data:
-    driver: local
+
+# ==========================================
+# NETWORKS
+# ==========================================
 
 networks:
   lms-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+

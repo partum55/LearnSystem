@@ -9,6 +9,7 @@ import { ResourceType } from '../types';
 interface CreateResourceModalProps {
   isOpen: boolean;
   onClose: () => void;
+  courseId: string;
   moduleId: string;
   onResourceCreated: () => void;
 }
@@ -16,6 +17,7 @@ interface CreateResourceModalProps {
 export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
   isOpen,
   onClose,
+  courseId,
   moduleId,
   onResourceCreated,
 }) => {
@@ -51,6 +53,7 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
 
     try {
       const resourceData = {
+        courseId: courseId,
         module: moduleId,
         title: formData.title,
         description: formData.description,

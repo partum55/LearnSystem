@@ -26,4 +26,3 @@ public interface UserMapper {
     @Mapping(target = "passwordResetExpires", ignore = true)
     User toEntity(UserDto dto);
 }
-

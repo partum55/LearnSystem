@@ -1,5 +1,7 @@
 server:
   port: 8084
+  servlet:
+    context-path: /api
 
 spring:
   application:
@@ -18,7 +20,10 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
     locations: classpath:db/migration
+    table: gradebook_flyway_schema_history
   cache:
     type: redis
   data:
@@ -50,6 +55,12 @@ security:
     allowed-origins: "http://localhost:3000,http://localhost:8080"
   jwt:
     issuer: "lms-gradebook"
+
+# JWT Configuration (for common JwtService)
+jwt:
+  secret: ${JWT_SECRET:dev-secret-key-change-in-production-must-be-at-least-256-bits-long-for-hs256}
+  expiration: ${JWT_EXPIRATION:86400000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:2592000000}
 
 services:
   course:

@@ -1,0 +1,5 @@
+# Docker profile for eureka-server
+eureka:
+  instance:
+    hostname: eureka-server
+

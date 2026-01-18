@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '../api/client';
 import RichTextEditor from '../components/RichTextEditor';
 import CodeEditor from '../components/CodeEditor';
+import { UnsavedChangesPrompt } from '../components/common/UnsavedChangesPrompt';
+import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning';
 
 interface AssignmentFormData {
   title: string;
@@ -74,6 +76,24 @@ const AssignmentEditor: React.FC = () => {
 
   const [availableAssignments, setAvailableAssignments] = useState<any[]>([]);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const initialFormDataRef = useRef<string>(JSON.stringify(formData));
+
+  // Check if form has unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    if (saving) return false;
+    return JSON.stringify(formData) !== initialFormDataRef.current;
+  }, [formData, saving]);
+
+  // Unsaved changes warning
+  const {
+    isPromptOpen,
+    handleSaveAndLeave,
+    handleLeaveWithoutSaving,
+    handleStay,
+  } = useUnsavedChangesWarning({
+    isDirty: hasUnsavedChanges,
+    message: t('assignment.unsavedEditorWarning', 'You have unsaved changes to this assignment. Are you sure you want to leave?'),
+  });
 
   useEffect(() => {
     if (assignmentId) {
@@ -123,6 +143,8 @@ const AssignmentEditor: React.FC = () => {
       setLoading(true);
       const response = await api.get<AssignmentFormData>(`assessments/assignments/${assignmentId}/`);
       setFormData(response.data);
+      // Update initial form data reference after loading
+      initialFormDataRef.current = JSON.stringify(response.data);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load assignment');
     } finally {
@@ -796,7 +818,19 @@ const AssignmentEditor: React.FC = () => {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <>
+      {/* Unsaved Changes Warning Modal */}
+      <UnsavedChangesPrompt
+        isOpen={isPromptOpen}
+        onSaveAndLeave={handleSaveAndLeave}
+        onLeaveWithoutSaving={handleLeaveWithoutSaving}
+        onStay={handleStay}
+        isSaving={saving}
+        title={t('assignment.unsavedChangesTitle', 'Unsaved Assignment Changes')}
+        message={t('assignment.unsavedEditorWarning', 'You have unsaved changes to this assignment. Are you sure you want to leave?')}
+      />
+
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
           {assignmentId ? t('assignment.edit') : t('assignment.create_new')}
@@ -879,7 +913,8 @@ const AssignmentEditor: React.FC = () => {
           </button>
         </div>
       </form>
-    </div>
+      </div>
+    </>
   );
 };
 

@@ -24,15 +24,17 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                // Disable CORS here - handled by API Gateway
+                .cors(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints - AI generation should be accessible
+                        // Note: context-path is /api, so paths here are relative to that
                         .requestMatchers(
-                                "/api/ai/**",
-                                "/actuator/health",
-                                "/actuator/info",
+                                "/v1/ai/**",
+                                "/ai/**",
+                                "/actuator/**",
                                 "/error"
                         ).permitAll()
                         // All other requests require authentication
@@ -42,20 +44,25 @@ public class SecurityConfig {
         return http.build();
     }
 
+    // CORS is disabled - handled by API Gateway
+    // Keeping this method commented in case direct access is needed in the future
+    /*
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Allow all origins in development
-        configuration.setAllowedOrigins(Arrays.asList("*"));
+        // Allow specific origins for development and production
+        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setExposedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(false);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
 
         return source;
     }
+    */
 }
 

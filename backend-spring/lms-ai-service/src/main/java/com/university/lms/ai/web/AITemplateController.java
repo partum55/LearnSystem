@@ -15,10 +15,11 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * REST controller for AI course templates
+ * REST controller for AI course templates.
+ * API Version: v1
  */
 @RestController
-@RequestMapping("/api/ai/templates")
+@RequestMapping("/v1/ai/templates")
 @RequiredArgsConstructor
 @Slf4j
 public class AITemplateController {

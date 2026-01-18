@@ -1,54 +1,80 @@
-import React, { useEffect } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { queryClient } from './api/queryClient';
 import { useAuthStore } from './store/authStore';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import './i18n/config';
 
-// Pages
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import CourseList from './pages/CourseList';
-import CourseDetail from './pages/CourseDetail';
-import CourseCreate from './pages/CourseCreate';
-import Assignments from './pages/Assignments';
-import AssignmentDetail from './pages/AssignmentDetail';
-import AssignmentEditor from './pages/AssignmentEditor';
-import SubmitAssignment from './pages/SubmitAssignment';
-import StudentGradebook from './pages/StudentGradebook';
-import SpeedGrader from './pages/SpeedGrader';
-import QuestionBank from './pages/QuestionBank';
-import { AllGrades } from './pages/AllGrades';
-import Profile from './pages/Profile';
-import QuizTaking from './pages/QuizTaking';
-import QuizResults from './pages/QuizResults';
-import QuizDetail from './pages/QuizDetail';
-import QuizBuilder from './pages/QuizBuilder';
-import DashboardCustomize from './pages/DashboardCustomize';
-import ProfileSettings from './pages/ProfileSettings';
-import CalendarPage from './pages/CalendarPage';
-import VirtualLab from './pages/VirtualLab';
+// Loading component for lazy-loaded routes
+const PageLoader: React.FC = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" aria-label="Loading page"></div>
+  </div>
+);
 
+// Lazy load pages for code splitting
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const CourseList = lazy(() => import('./pages/CourseList'));
+const CourseDetail = lazy(() => import('./pages/CourseDetail'));
+const CourseCreate = lazy(() => import('./pages/CourseCreate'));
+const Assignments = lazy(() => import('./pages/Assignments'));
+const AssignmentDetail = lazy(() => import('./pages/AssignmentDetail'));
+const AssignmentEditor = lazy(() => import('./pages/AssignmentEditor'));
+const SubmitAssignment = lazy(() => import('./pages/SubmitAssignment'));
+const StudentGradebook = lazy(() => import('./pages/StudentGradebook'));
+const SpeedGrader = lazy(() => import('./pages/SpeedGrader'));
+const QuestionBank = lazy(() => import('./pages/QuestionBank'));
+const AllGrades = lazy(() => import('./pages/AllGrades').then(m => ({ default: m.AllGrades })));
+const Profile = lazy(() => import('./pages/Profile'));
+const QuizTaking = lazy(() => import('./pages/QuizTaking'));
+const QuizResults = lazy(() => import('./pages/QuizResults'));
+const QuizDetail = lazy(() => import('./pages/QuizDetail'));
+const QuizBuilder = lazy(() => import('./pages/QuizBuilder'));
+const DashboardCustomize = lazy(() => import('./pages/DashboardCustomize'));
+const ProfileSettings = lazy(() => import('./pages/ProfileSettings'));
+const CalendarPage = lazy(() => import('./pages/CalendarPage'));
+const VirtualLab = lazy(() => import('./pages/VirtualLab'));
+
+// Private route wrapper with auth check
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
 };
 
-const App: React.FC = () => {
+// Wrapper for lazy routes with Suspense
+const LazyRoute: React.FC<{ children: React.ReactNode; isPrivate?: boolean }> = ({
+  children,
+  isPrivate = false
+}) => {
+  const content = (
+    <Suspense fallback={<PageLoader />}>
+      <ErrorBoundary>
+        {children}
+      </ErrorBoundary>
+    </Suspense>
+  );
+
+  return isPrivate ? <PrivateRoute>{content}</PrivateRoute> : content;
+};
+
+const AppOptimized: React.FC = () => {
   const { fetchCurrentUser, isLoading } = useAuthStore();
   const [isInitialized, setIsInitialized] = React.useState(false);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const initializeAuth = async () => {
       await fetchCurrentUser();
       setIsInitialized(true);
     };
-
     initializeAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchCurrentUser]);
 
   // Apply theme from localStorage on mount
-  useEffect(() => {
+  React.useEffect(() => {
     const theme = (localStorage.getItem('theme') || 'light') as 'light' | 'dark';
     const lang = (localStorage.getItem('language') || 'uk') as 'en' | 'uk';
 
@@ -64,202 +90,55 @@ const App: React.FC = () => {
 
   // Show loading spinner while initializing
   if (!isInitialized || isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" aria-label="Loading"></div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (
-    <BrowserRouter>
-      <a href="#main-content" className="skip-link">Skip to content</a>
-      <main id="main-content" tabIndex={-1} className="focus:outline-none">
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route
-            path="/dashboard"
-            element={
-              <PrivateRoute>
-                <Dashboard />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/dashboard/customize"
-            element={
-              <PrivateRoute>
-                <DashboardCustomize />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/courses"
-            element={
-              <PrivateRoute>
-                <CourseList />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/calendar"
-            element={
-              <PrivateRoute>
-                <CalendarPage />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/courses/create"
-            element={
-              <PrivateRoute>
-                <CourseCreate />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/courses/:id"
-            element={
-              <PrivateRoute>
-                <CourseDetail />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/assignments"
-            element={
-              <PrivateRoute>
-                <Assignments />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/assignments/:assignmentId"
-            element={
-              <PrivateRoute>
-                <AssignmentDetail />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/virtual-lab/:assignmentId"
-            element={
-              <PrivateRoute>
-                <VirtualLab />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/speedgrader/:assignmentId"
-            element={
-              <PrivateRoute>
-                <SpeedGrader />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/quizzes/:quizId"
-            element={
-              <PrivateRoute>
-                <QuizDetail />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/quiz/:quizId"
-            element={
-              <PrivateRoute>
-                <QuizTaking />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/quiz/:quizId/attempt/:attemptId/results"
-            element={
-              <PrivateRoute>
-                <QuizResults />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/grades"
-            element={
-              <PrivateRoute>
-                <AllGrades />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <PrivateRoute>
-                <Profile />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <PrivateRoute>
-                <ProfileSettings />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/question-bank"
-            element={
-              <PrivateRoute>
-                <QuestionBank />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/quiz-builder"
-            element={
-              <PrivateRoute>
-                <QuizBuilder />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/quiz-builder/:quizId"
-            element={
-              <PrivateRoute>
-                <QuizBuilder />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/assignments/:assignmentId/editor"
-            element={
-              <PrivateRoute>
-                <AssignmentEditor />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/assignments/:assignmentId/submit"
-            element={
-              <PrivateRoute>
-                <SubmitAssignment />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/gradebook"
-            element={
-              <PrivateRoute>
-                <StudentGradebook />
-              </PrivateRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/dashboard" />} />
-        </Routes>
-      </main>
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <a href="#main-content" className="skip-link">Skip to content</a>
+        <main id="main-content" tabIndex={-1} className="focus:outline-none">
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" />} />
+            <Route path="/login" element={<LazyRoute><Login /></LazyRoute>} />
+            <Route path="/register" element={<LazyRoute><Register /></LazyRoute>} />
+
+            <Route path="/dashboard" element={<LazyRoute isPrivate><Dashboard /></LazyRoute>} />
+            <Route path="/dashboard/customize" element={<LazyRoute isPrivate><DashboardCustomize /></LazyRoute>} />
+
+            <Route path="/courses" element={<LazyRoute isPrivate><CourseList /></LazyRoute>} />
+            <Route path="/courses/create" element={<LazyRoute isPrivate><CourseCreate /></LazyRoute>} />
+            <Route path="/courses/:id" element={<LazyRoute isPrivate><CourseDetail /></LazyRoute>} />
+
+            <Route path="/calendar" element={<LazyRoute isPrivate><CalendarPage /></LazyRoute>} />
+
+            <Route path="/assignments" element={<LazyRoute isPrivate><Assignments /></LazyRoute>} />
+            <Route path="/assignments/:id" element={<LazyRoute isPrivate><AssignmentDetail /></LazyRoute>} />
+            <Route path="/assignments/:id/edit" element={<LazyRoute isPrivate><AssignmentEditor /></LazyRoute>} />
+            <Route path="/assignments/:id/submit" element={<LazyRoute isPrivate><SubmitAssignment /></LazyRoute>} />
+
+            <Route path="/grades" element={<LazyRoute isPrivate><AllGrades /></LazyRoute>} />
+            <Route path="/gradebook" element={<LazyRoute isPrivate><StudentGradebook /></LazyRoute>} />
+            <Route path="/speed-grader" element={<LazyRoute isPrivate><SpeedGrader /></LazyRoute>} />
+
+            <Route path="/question-bank" element={<LazyRoute isPrivate><QuestionBank /></LazyRoute>} />
+
+            <Route path="/quiz/:id" element={<LazyRoute isPrivate><QuizDetail /></LazyRoute>} />
+            <Route path="/quiz/:id/take" element={<LazyRoute isPrivate><QuizTaking /></LazyRoute>} />
+            <Route path="/quiz/:id/results" element={<LazyRoute isPrivate><QuizResults /></LazyRoute>} />
+            <Route path="/quiz-builder" element={<LazyRoute isPrivate><QuizBuilder /></LazyRoute>} />
+
+            <Route path="/profile" element={<LazyRoute isPrivate><Profile /></LazyRoute>} />
+            <Route path="/profile/settings" element={<LazyRoute isPrivate><ProfileSettings /></LazyRoute>} />
+
+            <Route path="/virtual-lab" element={<LazyRoute isPrivate><VirtualLab /></LazyRoute>} />
+          </Routes>
+        </main>
+      </BrowserRouter>
+      {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}
+    </QueryClientProvider>
   );
 };
 
-export default App;
+export default AppOptimized;
+

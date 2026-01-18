@@ -1,6 +1,9 @@
 import apiClient from './client';
 
-const AI_BASE_URL = process.env.REACT_APP_AI_SERVICE_URL || 'http://localhost:8085/api/ai';
+// Use API gateway for AI calls - the gateway routes /api/ai/** to the AI service
+// The gateway rewrites /api/ai/** to /api/v1/ai/** before forwarding to AI service
+const AI_BASE_URL = process.env.REACT_APP_AI_SERVICE_URL || '/api/ai';
+
 
 export interface CourseGenerationRequest {
   prompt: string;
@@ -143,7 +146,7 @@ export const aiApi = {
   /**
    * Generate and save course to database
    */
-  generateAndSaveCourse: async (request: CourseGenerationRequest, userId: string, token: string) => {
+  generateAndSaveCourse: async (request: CourseGenerationRequest, userId: string, _token?: string) => {
     const response = await apiClient.post<{
       courseId: string;
       modulesCreated: number;
@@ -155,7 +158,7 @@ export const aiApi = {
       {
         headers: {
           'X-User-Id': userId,
-          Authorization: token,
+          // Note: Authorization header is automatically added by apiClient interceptor
         },
       }
     );

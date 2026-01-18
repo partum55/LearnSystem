@@ -4,6 +4,7 @@ import com.university.lms.deadline.deadline.entity.Deadline;
 import com.university.lms.deadline.deadline.repository.DeadlineRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -13,13 +14,19 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class NotificationService {
 
     private final DeadlineRepository deadlineRepository;
-    private final JavaMailSender mailSender;
     private final SimpMessagingTemplate messagingTemplate;
+
+    @Autowired(required = false)
+    private JavaMailSender mailSender;
+
+    public NotificationService(DeadlineRepository deadlineRepository, SimpMessagingTemplate messagingTemplate) {
+        this.deadlineRepository = deadlineRepository;
+        this.messagingTemplate = messagingTemplate;
+    }
 
     public void dispatchDueSoon(Long studentGroupId) {
         OffsetDateTime now = OffsetDateTime.now();
@@ -34,11 +41,19 @@ public class NotificationService {
     }
 
     private void sendEmail(Deadline deadline) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo("student+" + deadline.getStudentGroupId() + "@lms.edu");
-        message.setSubject("Upcoming deadline: " + deadline.getTitle());
-        message.setText("Deadline due at " + deadline.getDueAt());
-        mailSender.send(message);
+        if (mailSender == null) {
+            log.debug("Mail sender not configured, skipping email for deadline: {}", deadline.getTitle());
+            return;
+        }
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo("student+" + deadline.getStudentGroupId() + "@lms.edu");
+            message.setSubject("Upcoming deadline: " + deadline.getTitle());
+            message.setText("Deadline due at " + deadline.getDueAt());
+            mailSender.send(message);
+        } catch (Exception e) {
+            log.warn("Failed to send email for deadline {}: {}", deadline.getTitle(), e.getMessage());
+        }
     }
 
     private void sendWebsocket(Deadline deadline) {

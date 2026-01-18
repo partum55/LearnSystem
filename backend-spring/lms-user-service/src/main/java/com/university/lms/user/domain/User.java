@@ -151,4 +151,3 @@ public class User {
             && passwordResetExpires.isAfter(LocalDateTime.now());
     }
 }
-

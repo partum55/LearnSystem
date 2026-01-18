@@ -30,11 +30,11 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
     // Different rate limits for different endpoint types
     private static final Map<String, RateLimit> RATE_LIMITS = Map.of(
-            "/auth/login", new RateLimit(5, Duration.ofMinutes(15)),      // 5 attempts per 15 min
-            "/auth/register", new RateLimit(3, Duration.ofHours(1)),      // 3 attempts per hour
-            "/auth/forgot-password", new RateLimit(3, Duration.ofHours(1)),
-            "/auth/reset-password", new RateLimit(3, Duration.ofHours(1)),
-            "default", new RateLimit(100, Duration.ofMinutes(1))          // 100 requests per minute
+            "/auth/login", new RateLimit(50, Duration.ofMinutes(1)),      // 50 attempts per minute (dev)
+            "/auth/register", new RateLimit(20, Duration.ofMinutes(1)),   // 20 attempts per minute (dev)
+            "/auth/forgot-password", new RateLimit(10, Duration.ofMinutes(1)),
+            "/auth/reset-password", new RateLimit(10, Duration.ofMinutes(1)),
+            "default", new RateLimit(200, Duration.ofMinutes(1))          // 200 requests per minute
     );
 
     @Override

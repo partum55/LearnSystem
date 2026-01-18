@@ -9,7 +9,10 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 /**
  * Entry point for the Smart Deadlines & Intelligent Calendar microservice.
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {
+    "com.university.lms.deadline",
+    "com.university.lms.common"
+})
 @EnableScheduling
 @EnableFeignClients(basePackages = "com.university.lms.deadline.feign")
 @EnableDiscoveryClient

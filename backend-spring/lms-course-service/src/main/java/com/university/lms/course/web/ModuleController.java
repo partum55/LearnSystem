@@ -4,6 +4,7 @@ import com.university.lms.course.dto.CreateModuleRequest;
 import com.university.lms.course.dto.ModuleDto;
 import com.university.lms.course.dto.UpdateModuleRequest;
 import com.university.lms.course.service.ModuleService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ import java.util.UUID;
 public class ModuleController {
 
     private final ModuleService moduleService;
+    private final HttpServletRequest request;
 
     /**
      * Get all modules for a course.
@@ -141,7 +143,10 @@ public class ModuleController {
     // Helper method
     private UUID extractUserId(Authentication authentication) {
         if (authentication != null && authentication.getPrincipal() != null) {
-            return UUID.fromString(authentication.getName());
+            Object userId = request.getAttribute("userId");
+            if (userId instanceof UUID) {
+                return (UUID) userId;
+            }
         }
         throw new RuntimeException("User not authenticated");
     }

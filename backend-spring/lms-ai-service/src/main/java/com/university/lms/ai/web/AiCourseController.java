@@ -20,10 +20,11 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * REST controller for AI-powered course generation
+ * REST controller for AI-powered course generation.
+ * API Version: v1
  */
 @RestController
-@RequestMapping("/api/ai")
+@RequestMapping("/v1/ai")
 @RequiredArgsConstructor
 @Slf4j
 public class AiCourseController {
@@ -207,17 +208,6 @@ public class AiCourseController {
             "quizzes", response.getModules().isEmpty() || response.getModules().get(0).getQuizzes().isEmpty() ?
                 java.util.Collections.emptyList() :
                 response.getModules().get(0).getQuizzes()
-        ));
-    }
-
-    /**
-     * Health check endpoint
-     */
-    @GetMapping("/health")
-    public ResponseEntity<Map<String, String>> health() {
-        return ResponseEntity.ok(Map.of(
-            "status", "UP",
-            "service", "AI Service"
         ));
     }
 }

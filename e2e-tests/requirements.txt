@@ -1,0 +1,22 @@
+# E2E Testing Requirements for LearnSystemUCU
+# Python 3.9+ required
+
+# Core testing framework
+pytest==8.3.4
+pytest-asyncio==0.24.0
+pytest-html==4.1.1
+pytest-xdist==3.6.1  # Parallel test execution
+
+# Browser automation - Playwright
+playwright==1.49.1
+
+# Test utilities
+python-dotenv==1.0.1  # Environment variable management
+Faker==33.1.0  # Test data generation
+
+# Reporting
+allure-pytest==2.13.5  # Advanced reporting (optional)
+
+# Type hints
+types-requests==2.32.0.20241016
+

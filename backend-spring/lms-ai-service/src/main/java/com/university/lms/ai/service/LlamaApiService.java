@@ -3,19 +3,25 @@ package com.university.lms.ai.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.university.lms.ai.config.LlamaApiProperties;
+import com.university.lms.ai.exception.AIServiceUnavailableException;
+import com.university.lms.ai.infrastructure.metrics.AIMetricsCollector;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
+import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
-import reactor.util.retry.Retry;
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
- * Service for communicating with Llama API
+ * Service for communicating with Llama API (via Groq).
+ * Includes circuit breaker, retry, and observability.
  */
 @Service
 @RequiredArgsConstructor
@@ -25,17 +31,41 @@ public class LlamaApiService {
     private final WebClient llamaWebClient;
     private final LlamaApiProperties llamaApiProperties;
     private final ObjectMapper objectMapper;
+    private final AIMetricsCollector metricsCollector;
+
+    private static final String PROVIDER_NAME = "groq";
+    private static final String CIRCUIT_BREAKER_NAME = "llamaApi";
 
     /**
-     * Generate text using Llama API
+     * Generate text using Llama API with resilience patterns.
      *
-     * @param prompt The prompt to send to Llama
+     * @param prompt       The prompt to send to Llama
      * @param systemPrompt Optional system prompt for context
      * @return Generated text response
      */
+    @CircuitBreaker(name = CIRCUIT_BREAKER_NAME, fallbackMethod = "generateFallback")
+    @Retry(name = CIRCUIT_BREAKER_NAME)
     public String generate(String prompt, String systemPrompt) {
         log.info("Sending generation request to Llama API (Groq)");
 
+        Timer.Sample timerSample = metricsCollector.startTimer();
+        long startTime = System.currentTimeMillis();
+        boolean success = false;
+
+        try {
+            String result = doGenerate(prompt, systemPrompt);
+            success = true;
+            return result;
+        } finally {
+            long latencyMs = System.currentTimeMillis() - startTime;
+            metricsCollector.recordGeneration("text", PROVIDER_NAME, latencyMs, success);
+        }
+    }
+
+    /**
+     * Internal method that performs the actual API call.
+     */
+    private String doGenerate(String prompt, String systemPrompt) {
         // Build messages array for OpenAI-compatible API
         var messages = new java.util.ArrayList<Map<String, String>>();
         if (systemPrompt != null && !systemPrompt.isEmpty()) {
@@ -54,19 +84,25 @@ public class LlamaApiService {
 
         try {
             String response = llamaWebClient.post()
-                    .uri("/chat/completions")  // OpenAI-compatible endpoint
+                    .uri("/chat/completions")
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestBody)
                     .retrieve()
                     .bodyToMono(String.class)
-                    .retryWhen(Retry.backoff(llamaApiProperties.getMaxRetries(), Duration.ofSeconds(2))
-                            .maxBackoff(Duration.ofSeconds(10))
-                            .doBeforeRetry(retrySignal ->
-                                log.warn("Retrying Llama API call. Attempt: {}", retrySignal.totalRetries() + 1)))
+                    .timeout(Duration.ofSeconds(60))
                     .block();
 
             // Parse OpenAI-compatible response
             JsonNode jsonNode = objectMapper.readTree(response);
+
+            // Extract token usage if available
+            if (jsonNode.has("usage")) {
+                JsonNode usage = jsonNode.get("usage");
+                int promptTokens = usage.has("prompt_tokens") ? usage.get("prompt_tokens").asInt() : 0;
+                int completionTokens = usage.has("completion_tokens") ? usage.get("completion_tokens").asInt() : 0;
+                metricsCollector.recordTokenUsage(PROVIDER_NAME, promptTokens, completionTokens);
+            }
+
             String generatedText = jsonNode.get("choices").get(0).get("message").get("content").asText();
 
             log.info("Successfully received response from Llama API");
@@ -79,9 +115,44 @@ public class LlamaApiService {
     }
 
     /**
-     * Generate text with JSON format constraint
+     * Fallback method when circuit breaker is open or retries exhausted.
+     */
+    public String generateFallback(String prompt, String systemPrompt, Exception e) {
+        log.warn("Circuit breaker fallback triggered for Llama API", e);
+        metricsCollector.recordFallback(PROVIDER_NAME, "circuit_breaker");
+
+        throw new AIServiceUnavailableException(
+            "AI service temporarily unavailable. Please try again later.", e);
+    }
+
+    /**
+     * Async generation with CompletableFuture for non-blocking calls.
      *
-     * @param prompt The prompt to send
+     * @param prompt       The prompt to send
+     * @param systemPrompt System prompt for context
+     * @return CompletableFuture containing the generated text
+     */
+    @CircuitBreaker(name = CIRCUIT_BREAKER_NAME, fallbackMethod = "generateAsyncFallback")
+    @TimeLimiter(name = CIRCUIT_BREAKER_NAME)
+    public CompletableFuture<String> generateAsync(String prompt, String systemPrompt) {
+        return CompletableFuture.supplyAsync(() -> generate(prompt, systemPrompt));
+    }
+
+    /**
+     * Async fallback method.
+     */
+    public CompletableFuture<String> generateAsyncFallback(String prompt, String systemPrompt, Exception e) {
+        log.warn("Async circuit breaker fallback triggered for Llama API", e);
+        metricsCollector.recordFallback(PROVIDER_NAME, "async_circuit_breaker");
+
+        return CompletableFuture.failedFuture(
+            new AIServiceUnavailableException("AI service temporarily unavailable. Please try again later.", e));
+    }
+
+    /**
+     * Generate text with JSON format constraint.
+     *
+     * @param prompt       The prompt to send
      * @param systemPrompt System prompt with JSON format instructions
      * @return Generated JSON text
      */

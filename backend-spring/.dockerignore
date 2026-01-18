@@ -1,0 +1,15 @@
+# Backend .dockerignore
+target/
+.mvn/
+mvnw
+mvnw.cmd
+*.iml
+.idea/
+.vscode/
+.git/
+.gitignore
+*.md
+logs/
+*.log
+.DS_Store
+

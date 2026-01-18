@@ -71,7 +71,9 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    baseline-version: 0
     locations: classpath:db/migration
+    table: user_flyway_schema_history
     validate-on-migrate: true
 
 # JWT Configuration
@@ -101,6 +103,9 @@ management:
   endpoint:
     health:
       show-details: always
+  health:
+    mail:
+      enabled: false
   metrics:
     export:
       prometheus:
@@ -123,22 +128,20 @@ logging:
 
 # Application Configuration
 app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
   mail:
     from: ${APP_MAIL_FROM:noreply@lms.ucu.edu.ua}
     base-url: ${APP_BASE_URL:http://localhost:3000}
-    name: logs/lms-user-service.log
-    max-size: 10MB
-    max-history: 30
-    total-size-cap: 1GB
-
-# Application Configuration
-app:
-  cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
   email:
     from: ${EMAIL_FROM:noreply@lms.ucu.edu.ua}
     verification-url: ${EMAIL_VERIFICATION_URL:http://localhost:3000/verify-email}
     reset-password-url: ${EMAIL_RESET_PASSWORD_URL:http://localhost:3000/reset-password}
+  logging:
+    name: logs/lms-user-service.log
+    max-size: 10MB
+    max-history: 30
+    total-size-cap: 1GB
 
 # Eureka Client Configuration
 eureka:

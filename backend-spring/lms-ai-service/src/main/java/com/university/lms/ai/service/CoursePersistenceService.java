@@ -116,10 +116,10 @@ public class CoursePersistenceService {
     }
 
     private Map<String, Object> createCourse(Map<String, Object> courseData, String authToken) {
-        WebClient webClient = webClientBuilder.baseUrl(courseServiceUrl).build();
+        WebClient webClient = webClientBuilder.baseUrl(courseServiceUrl + "/api").build();
 
         return webClient.post()
-                .uri("/api/courses")
+                .uri("/courses")
                 .header("Authorization", authToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(courseData)
@@ -138,10 +138,10 @@ public class CoursePersistenceService {
         data.put("position", moduleData.getPosition());
         data.put("isPublished", false);
 
-        WebClient webClient = webClientBuilder.baseUrl(courseServiceUrl).build();
+        WebClient webClient = webClientBuilder.baseUrl(courseServiceUrl + "/api").build();
 
         return webClient.post()
-                .uri("/api/modules")
+                .uri("/courses/{courseId}/modules", courseId)
                 .header("Authorization", authToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(data)
@@ -169,10 +169,10 @@ public class CoursePersistenceService {
             data.put("timeLimit", assignmentData.getTimeLimit());
         }
 
-        WebClient webClient = webClientBuilder.baseUrl(assessmentServiceUrl).build();
+        WebClient webClient = webClientBuilder.baseUrl(assessmentServiceUrl + "/api").build();
 
         webClient.post()
-                .uri("/api/assignments")
+                .uri("/assignments")
                 .header("Authorization", authToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(data)
@@ -201,10 +201,10 @@ public class CoursePersistenceService {
             data.put("shuffleQuestions", quizData.getShuffleQuestions());
         }
 
-        WebClient webClient = webClientBuilder.baseUrl(assessmentServiceUrl).build();
+        WebClient webClient = webClientBuilder.baseUrl(assessmentServiceUrl + "/api").build();
 
         Map<String, Object> savedQuiz = webClient.post()
-                .uri("/api/quizzes")
+                .uri("/quizzes")
                 .header("Authorization", authToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(data)
@@ -243,10 +243,10 @@ public class CoursePersistenceService {
             data.put("answerOptions", options);
         }
 
-        WebClient webClient = webClientBuilder.baseUrl(assessmentServiceUrl).build();
+        WebClient webClient = webClientBuilder.baseUrl(assessmentServiceUrl + "/api").build();
 
         webClient.post()
-                .uri("/api/quiz-questions")
+                .uri("/quiz-questions")
                 .header("Authorization", authToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(data)

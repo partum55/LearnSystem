@@ -1,0 +1,85 @@
+# Docker profile for api-gateway
+spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+  cloud:
+    gateway:
+      # Global filters to handle duplicate headers from downstream services
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials Access-Control-Allow-Methods Access-Control-Allow-Headers, RETAIN_UNIQUE
+      routes:
+        # User service - includes auth endpoints
+        - id: user-service
+          uri: lb://lms-user-service
+          predicates:
+            - Path=/api/v1/users/**, /api/users/**, /api/v1/auth/**, /api/auth/**
+        # Course service
+        - id: course-service
+          uri: lb://lms-course-service
+          predicates:
+            - Path=/api/v1/courses/**, /api/courses/**
+        # Assessment service
+        - id: assessment-service
+          uri: lb://lms-assessment-service
+          predicates:
+            - Path=/api/v1/assessments/**, /api/assessments/**
+        # Gradebook service
+        - id: gradebook-service
+          uri: lb://lms-gradebook-service
+          predicates:
+            - Path=/api/v1/gradebook/**, /api/gradebook/**
+        # Deadline service
+        - id: deadline-service
+          uri: lb://lms-deadline-service
+          predicates:
+            - Path=/api/v1/calendar/**, /api/calendar/**, /api/v1/deadlines/**, /api/deadlines/**, /api/v1/notifications/**, /api/notifications/**
+        # AI service - uses direct URL because it doesn't register with Eureka
+        # Gateway receives: /api/ai/... -> forwards to ai-service:8085/api/v1/ai/...
+        - id: ai-service-v1
+          uri: http://ai-service:8085
+          predicates:
+            - Path=/api/v1/ai/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: aiServiceCircuitBreaker
+                fallbackUri: forward:/fallback/ai
+        # AI service - rewrite /api/ai/** to /api/v1/ai/**
+        - id: ai-service
+          uri: http://ai-service:8085
+          predicates:
+            - Path=/api/ai/**
+          filters:
+            - RewritePath=/api/ai/(?<segment>.*), /api/v1/ai/${segment}
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: aiServiceCircuitBreaker
+                fallbackUri: forward:/fallback/ai
+        # Analytics service
+        - id: analytics-service
+          uri: lb://lms-analytics-service
+          predicates:
+            - Path=/api/v1/analytics/**, /api/analytics/**
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_URI:http://eureka-server:8761/eureka}
+  instance:
+    prefer-ip-address: true
+    hostname: api-gateway
+

@@ -1,9 +1,11 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Layout, Card, CardHeader, CardBody, Button, Loading } from '../components';
+import { UnsavedChangesPrompt } from '../components/common/UnsavedChangesPrompt';
+import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning';
 import apiClient from '../api/client';
-import { ClockIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { ClockIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 interface Question {
   id: string;
@@ -44,7 +46,93 @@ export const QuizTaking: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showTimeWarning, setShowTimeWarning] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const hasPlayedWarningRef = useRef(false);
 
+  // Track if user has unsaved answers (quiz in progress)
+  const hasUnsavedAnswers = attempt !== null && Object.keys(answers).length > 0 && !submitting;
+
+  // Unsaved changes warning for navigation
+  const {
+    isPromptOpen,
+    handleSaveAndLeave,
+    handleLeaveWithoutSaving,
+    handleStay,
+  } = useUnsavedChangesWarning({
+    isDirty: hasUnsavedAnswers,
+    message: t('quiz.unsavedWarning', 'You have a quiz in progress. Leaving will not submit your answers automatically. Are you sure you want to leave?'),
+  });
+
+  // Storage key for answer persistence
+  const getStorageKey = () => `quiz_answers_${quizId}_${attempt?.id}`;
+
+  // Save answers to localStorage
+  const saveAnswersToStorage = useCallback((answersToSave: Record<string, any>) => {
+    if (!quizId || !attempt?.id) return;
+    try {
+      localStorage.setItem(getStorageKey(), JSON.stringify({
+        answers: answersToSave,
+        savedAt: new Date().toISOString(),
+        attemptId: attempt.id,
+      }));
+      setLastSaved(new Date());
+    } catch (e) {
+      console.error('Failed to save answers to storage:', e);
+    }
+  }, [quizId, attempt?.id]);
+
+  // Load answers from localStorage on mount
+  const loadAnswersFromStorage = useCallback(() => {
+    if (!quizId || !attempt?.id) return null;
+    try {
+      const stored = localStorage.getItem(getStorageKey());
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.attemptId === attempt.id) {
+          return parsed.answers;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load answers from storage:', e);
+    }
+    return null;
+  }, [quizId, attempt?.id]);
+
+  // Clear stored answers
+  const clearStoredAnswers = useCallback(() => {
+    if (!quizId || !attempt?.id) return;
+    try {
+      localStorage.removeItem(getStorageKey());
+    } catch (e) {
+      console.error('Failed to clear stored answers:', e);
+    }
+  }, [quizId, attempt?.id]);
+
+  // Auto-save answers periodically
+  useEffect(() => {
+    if (!attempt || Object.keys(answers).length === 0) return;
+
+    const saveInterval = setInterval(() => {
+      setIsSaving(true);
+      saveAnswersToStorage(answers);
+      setTimeout(() => setIsSaving(false), 500);
+    }, 30000); // Save every 30 seconds
+
+    return () => clearInterval(saveInterval);
+  }, [answers, attempt, saveAnswersToStorage]);
+
+  // Load stored answers when attempt is ready
+  useEffect(() => {
+    if (attempt?.id) {
+      const storedAnswers = loadAnswersFromStorage();
+      if (storedAnswers && Object.keys(storedAnswers).length > 0) {
+        setAnswers(storedAnswers);
+      }
+    }
+  }, [attempt?.id, loadAnswersFromStorage]);
 
   const startQuiz = useCallback(async () => {
     if (!quizId) return;
@@ -84,17 +172,21 @@ export const QuizTaking: React.FC = () => {
   }, [quizId, startQuiz]);
 
   const handleAnswerChange = (questionId: string, answer: any) => {
-    setAnswers(prev => ({
-      ...prev,
+    const newAnswers = {
+      ...answers,
       [questionId]: answer,
-    }));
+    };
+    setAnswers(newAnswers);
+    // Save immediately on answer change
+    saveAnswersToStorage(newAnswers);
   };
 
   const handleSubmit = useCallback(async () => {
     if (!attempt || submitting) return;
 
     const unansweredCount = (quiz?.questions.length || 0) - Object.keys(answers).length;
-    if (unansweredCount > 0) {
+    if (unansweredCount > 0 && timeRemaining !== 0) {
+      // Don't show confirm on auto-submit (time = 0)
       const confirmSubmit = window.confirm(
         t('quiz.confirmSubmitWithUnanswered', { count: unansweredCount })
       );
@@ -107,17 +199,33 @@ export const QuizTaking: React.FC = () => {
         answers,
       });
 
+      // Clear stored answers on successful submit
+      clearStoredAnswers();
+
       // Navigate to results page
       navigate(`/quiz/${quizId}/attempt/${attempt.id}/results`);
     } catch (err: any) {
       setError(err.response?.data?.error || t('quiz.errors.submitFailed'));
       setSubmitting(false);
     }
-  }, [attempt, submitting, quiz?.questions.length, answers, t, navigate, quizId]);
+  }, [attempt, submitting, quiz?.questions.length, answers, t, navigate, quizId, timeRemaining, clearStoredAnswers]);
 
-  // Timer countdown
+  // Timer countdown with warning
   useEffect(() => {
     if (!quiz?.time_limit || timeRemaining === null) return;
+
+    // Show warning at 5 minutes and play sound
+    if (timeRemaining === 300 && !hasPlayedWarningRef.current) {
+      setShowTimeWarning(true);
+      hasPlayedWarningRef.current = true;
+      // Play warning sound
+      try {
+        audioRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JjYuGfnV1e4OKjYyHf3Z0eYKKjYyIgHh2eoOKjYyJgXl3e4OLjYyJgXl4e4OLjYyJgXl4e4OLjIyJgHl4eoKLjIyJgHl4eoKLjIyKgHl4eoKLjIyKgHp5eoKLjIyKgHp5eoKKjIyKgHp5eoKKjIyKgHp5eoKKjIyKgHp5eoKKi4uKf3p5eoKKi4uKf3p5eoKKi4uKf3p5eoGKi4uKf3p5eoGKi4uKf3p5eoGKi4uKf3p5eoGKi4uKf3p5eoGKi4uKf3p5eoGKioqKf3p5eoGKioqKf3p5eoGKioqKf3p5eoGKioqKf3p5eYGKioqKfnp5eYGKioqKfnp5eYGKioqKfnp5eYGKioqKfnp5eYGKioqKfnp5eYCKioqKfnp5eYCJioqJfnp5eYCJioqJfnp5eYCJioqJfnp4eYCJioqJfXp4eYCJioqJfXp4eICJioqJfXp4eICJioqJfXp4eICJioqJfXp4eICJiomJfXp4d4CJiomJfXl4d4CJiomJfXl4d4CJiomIfXl4d4CJiomIfXl3d4CJiomIfXl3d3+JiomIfXl3d3+JiomIfXl3d3+JiYmIfXl3d3+JiYmIfXl3d3+JiYmIfXl3dn+JiYmIfHl3dn+JiYmIfHl2dn+JiYmHfHl2dn+IiYmHfHl2dn+IiYmHfHh2dn+IiYmHfHh2dn+IiYiHfHh2dn6IiYiHe3h2dn6IiYiHe3h2dn6IiYiHe3h1dn6IiYiHe3h1dn6IiIiHe3h1dX6IiIiHe3h1dX6IiIiGe3h1dX6IiIiGe3h1dX6IiIiGe3d1dX6IiIiGend1dX6HiIiGend1dX2HiIiGend1dX2HiIiFend0dX2HiIiFend0dX2HiIiFend0dH2HiIiFend0dH2HiIiFend0dH2Hh4iFend0dH2Hh4iFend0dH2Hh4iEendzdH2Hh4iEeXdzdH2Gh4iEeXdzdHyGh4iEeXdzdHyGh4iEeXdzdHyGh4eDOA==');
+        audioRef.current.play().catch(() => {}); // Ignore if autoplay blocked
+      } catch (e) {}
+      // Hide warning after 5 seconds
+      setTimeout(() => setShowTimeWarning(false), 5000);
+    }
 
     const timer = setInterval(() => {
       setTimeRemaining(prev => {
@@ -265,8 +373,33 @@ export const QuizTaking: React.FC = () => {
 
   return (
     <Layout>
+      {/* Unsaved Changes Warning Modal */}
+      <UnsavedChangesPrompt
+        isOpen={isPromptOpen}
+        onSaveAndLeave={handleSaveAndLeave}
+        onLeaveWithoutSaving={handleLeaveWithoutSaving}
+        onStay={handleStay}
+        title={t('quiz.leaveQuiz', 'Leave Quiz?')}
+        message={t('quiz.unsavedWarning', 'You have a quiz in progress. Your answers are saved locally, but leaving without submitting may affect your score. Are you sure you want to leave?')}
+      />
+
       <div className="p-4 sm:p-6 lg:p-8">
         <div className="max-w-4xl mx-auto">
+            {/* Time Warning Banner */}
+            {showTimeWarning && (
+              <div className="mb-4 p-4 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg flex items-center gap-3 animate-pulse">
+                <ExclamationTriangleIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
+                <div>
+                  <p className="font-semibold text-red-800 dark:text-red-200">
+                    {t('quiz.timeWarning', '⚠️ Only 5 minutes remaining!')}
+                  </p>
+                  <p className="text-sm text-red-700 dark:text-red-300">
+                    {t('quiz.timeWarningHint', 'Please review your answers and submit soon.')}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Quiz Header */}
             <Card className="mb-6">
               <CardHeader>
@@ -275,13 +408,37 @@ export const QuizTaking: React.FC = () => {
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                       {quiz.title}
                     </h1>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      {t('quiz.attemptNumber')} {attempt.attempt_number}
-                    </p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {t('quiz.attemptNumber')} {attempt.attempt_number}
+                      </p>
+                      {/* Auto-save indicator */}
+                      {lastSaved && (
+                        <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                          {isSaving ? (
+                            <>
+                              <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
+                              {t('quiz.saving', 'Saving...')}
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircleIcon className="h-3 w-3" />
+                              {t('quiz.answersSaved', 'Answers saved')}
+                            </>
+                          )}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {timeRemaining !== null && (
-                    <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      <ClockIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+                      timeRemaining < 300 
+                        ? 'bg-red-100 dark:bg-red-900/30 animate-pulse' 
+                        : 'bg-blue-50 dark:bg-blue-900/20'
+                    }`}>
+                      <ClockIcon className={`h-5 w-5 ${
+                        timeRemaining < 300 ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'
+                      }`} />
                       <span className={`text-lg font-semibold ${
                         timeRemaining < 300 ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'
                       }`}>

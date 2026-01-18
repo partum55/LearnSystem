@@ -19,8 +19,12 @@ export * from './CourseGradesTab';
 export * from './TeacherGradebook';
 export * from './DashboardBuilder';
 export * from './DashboardWidgets';
-export * from './AICourseGenerator';
-export * from './AIElementGenerator';
-export * from './AIContentEditor';
-export * from './AIAssistantPanel';
 export * from './TemplateSelection';
+
+// AI Components (consolidated)
+export * from './ai';
+
+// Common Components
+export * from './common/ErrorBoundary';
+export * from './common/ConfirmModal';
+

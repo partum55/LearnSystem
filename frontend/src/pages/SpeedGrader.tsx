@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardBody, Button, Loading } from '../components';
+import { ConfirmModal } from '../components/common/ConfirmModal';
 import apiClient from '../api/client';
 
 interface Submission {
@@ -48,13 +49,36 @@ export const SpeedGrader: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<'prev' | 'next' | 'exit' | null>(null);
 
   const [grade, setGrade] = useState<string>('');
   const [feedback, setFeedback] = useState('');
   const [comment, setComment] = useState('');
   const [rubricScores, setRubricScores] = useState<Record<string, number>>({});
 
+  const initialValuesRef = useRef<{ grade: string; feedback: string; rubricScores: Record<string, number> }>({
+    grade: '',
+    feedback: '',
+    rubricScores: {},
+  });
+
   const currentSubmission = submissions[currentIndex];
+
+  // Protect against browser navigation/refresh when there are unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved grading changes. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
 
   useEffect(() => {
     const submissionId = searchParams.get('submission');
@@ -68,9 +92,21 @@ export const SpeedGrader: React.FC = () => {
 
   useEffect(() => {
     if (currentSubmission) {
-      setGrade(currentSubmission.grade?.toString() || '');
-      setFeedback(currentSubmission.feedback || '');
-      setRubricScores(currentSubmission.rubric_evaluation || {});
+      const initialGrade = currentSubmission.grade?.toString() || '';
+      const initialFeedback = currentSubmission.feedback || '';
+      const initialRubric = currentSubmission.rubric_evaluation || {};
+
+      setGrade(initialGrade);
+      setFeedback(initialFeedback);
+      setRubricScores(initialRubric);
+
+      // Store initial values for dirty checking
+      initialValuesRef.current = {
+        grade: initialGrade,
+        feedback: initialFeedback,
+        rubricScores: initialRubric,
+      };
+      setIsDirty(false);
     }
   }, [currentSubmission]);
 
@@ -103,7 +139,7 @@ export const SpeedGrader: React.FC = () => {
     fetchSubmissions();
   }, [fetchAssignment, fetchSubmissions]);
 
-  const handleSaveGrade = async () => {
+  const handleSaveGrade = async (navigateAfter?: 'prev' | 'next' | 'exit') => {
     if (!currentSubmission) return;
 
     setSaving(true);
@@ -114,7 +150,18 @@ export const SpeedGrader: React.FC = () => {
         rubric_evaluation: rubricScores,
       });
 
-      if (currentIndex < submissions.length - 1) {
+      // Reset dirty state after successful save
+      initialValuesRef.current = { grade, feedback, rubricScores };
+      setIsDirty(false);
+
+      // Handle pending navigation after save
+      if (navigateAfter === 'next' && currentIndex < submissions.length - 1) {
+        setCurrentIndex(currentIndex + 1);
+      } else if (navigateAfter === 'prev' && currentIndex > 0) {
+        setCurrentIndex(currentIndex - 1);
+      } else if (navigateAfter === 'exit') {
+        navigate(`/assignments/${assignmentId}`);
+      } else if (currentIndex < submissions.length - 1) {
         setCurrentIndex(currentIndex + 1);
       }
       fetchSubmissions();
@@ -123,6 +170,8 @@ export const SpeedGrader: React.FC = () => {
       alert('Failed to save grade');
     } finally {
       setSaving(false);
+      setShowUnsavedModal(false);
+      setPendingNavigation(null);
     }
   };
 
@@ -138,16 +187,50 @@ export const SpeedGrader: React.FC = () => {
     }
   };
 
-  const navigateToPrevious = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
+  // Navigation with unsaved changes check
+  const handleNavigation = (direction: 'prev' | 'next' | 'exit') => {
+    if (isDirty) {
+      setPendingNavigation(direction);
+      setShowUnsavedModal(true);
+    } else {
+      executeNavigation(direction);
     }
   };
 
-  const navigateToNext = () => {
-    if (currentIndex < submissions.length - 1) {
+  const executeNavigation = (direction: 'prev' | 'next' | 'exit') => {
+    if (direction === 'prev' && currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+    } else if (direction === 'next' && currentIndex < submissions.length - 1) {
       setCurrentIndex(currentIndex + 1);
+    } else if (direction === 'exit') {
+      navigate(`/assignments/${assignmentId}`);
     }
+  };
+
+  const handleDiscardChanges = () => {
+    setShowUnsavedModal(false);
+    if (pendingNavigation) {
+      executeNavigation(pendingNavigation);
+      setPendingNavigation(null);
+    }
+  };
+
+  const handleSaveAndNavigate = () => {
+    if (pendingNavigation) {
+      handleSaveGrade(pendingNavigation);
+    }
+  };
+
+  const navigateToPrevious = () => {
+    handleNavigation('prev');
+  };
+
+  const navigateToNext = () => {
+    handleNavigation('next');
+  };
+
+  const handleExit = () => {
+    handleNavigation('exit');
   };
 
   const calculateRubricTotal = () => {
@@ -182,6 +265,27 @@ export const SpeedGrader: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Unsaved Changes Modal */}
+      <ConfirmModal
+        isOpen={showUnsavedModal}
+        onClose={() => {
+          setShowUnsavedModal(false);
+          setPendingNavigation(null);
+        }}
+        onConfirm={handleDiscardChanges}
+        title="Unsaved Changes"
+        message="You have unsaved changes to this grade. What would you like to do?"
+        details="Your grade and feedback changes will be lost if you don't save."
+        variant="warning"
+        confirmText="Discard Changes"
+        cancelText="Keep Editing"
+        thirdAction={{
+          text: "Save & Continue",
+          onClick: handleSaveAndNavigate,
+          isLoading: saving,
+        }}
+      />
+
       {/* SpeedGrader uses custom layout without sidebar */}
       <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <div className="px-8 py-4">
@@ -190,9 +294,17 @@ export const SpeedGrader: React.FC = () => {
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">
                 {assignment.title}
               </h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                SpeedGrader - {currentIndex + 1} of {submissions.length}
-              </p>
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  SpeedGrader - {currentIndex + 1} of {submissions.length}
+                </p>
+                {isDirty && (
+                  <span className="text-xs text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
+                    <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                    Unsaved changes
+                  </span>
+                )}
+              </div>
             </div>
             
             <div className="flex items-center space-x-4">
@@ -210,7 +322,7 @@ export const SpeedGrader: React.FC = () => {
               >
                 Next →
               </Button>
-              <Button onClick={() => navigate(`/assignments/${assignmentId}`)}>
+              <Button onClick={handleExit}>
                 Exit
               </Button>
             </div>
@@ -469,7 +581,7 @@ export const SpeedGrader: React.FC = () => {
 
               {/* Save Button */}
               <Button
-                onClick={handleSaveGrade}
+                onClick={() => handleSaveGrade()}
                 disabled={!grade || saving}
                 className="w-full"
               >
