@@ -20,7 +20,7 @@ cp .env.local .env
 ./run-local.sh
 
 # Or with docker-compose directly
-docker-compose -f docker-compose.local.yml up -d
+docker-compose up -d
 ```
 
 ---
@@ -106,22 +106,22 @@ docker-compose -f docker-compose.local.yml up -d
 
 ```bash
 # Start all services
-docker-compose -f docker-compose.local.yml up -d
+docker-compose up -d
 
 # Start with rebuild
-docker-compose -f docker-compose.local.yml up --build -d
+docker-compose up --build -d
 
 # Stop services
-docker-compose -f docker-compose.local.yml down
+docker-compose down
 
 # View logs
-docker-compose -f docker-compose.local.yml logs -f
+docker-compose logs -f
 
 # View specific service logs
-docker-compose -f docker-compose.local.yml logs -f ai-service
+docker-compose logs -f ai-service
 
 # Remove with volumes
-docker-compose -f docker-compose.local.yml down -v
+docker-compose down -v
 ```
 
 ---
@@ -203,13 +203,13 @@ LLAMA_MODEL=gpt-4o-mini
 
 ```bash
 # Check which services are running
-docker-compose -f docker-compose.local.yml ps
+docker-compose ps
 
 # Check logs for a specific service
-docker-compose -f docker-compose.local.yml logs ai-service
+docker-compose logs ai-service
 
 # Restart a specific service
-docker-compose -f docker-compose.local.yml restart ai-service
+docker-compose restart ai-service
 ```
 
 ### Database issues?
@@ -219,15 +219,15 @@ docker-compose -f docker-compose.local.yml restart ai-service
 docker exec -it lms-postgres psql -U lms_user -d lms_db
 
 # Reset database
-docker-compose -f docker-compose.local.yml down -v
-docker-compose -f docker-compose.local.yml up -d
+docker-compose down -v
+docker-compose up -d
 ```
 
 ### Build errors?
 
 ```bash
 # Clean rebuild
-docker-compose -f docker-compose.local.yml build --no-cache
+docker-compose build --no-cache
 
 # Prune old images
 docker system prune -f
@@ -235,7 +235,7 @@ docker system prune -f
 
 ### Out of memory?
 
-Reduce JVM memory in docker-compose.local.yml:
+Reduce JVM memory in docker-compose.yml:
 ```yaml
 - JAVA_OPTS=-Xmx256m -Xms128m
 ```
@@ -248,17 +248,17 @@ Reduce JVM memory in docker-compose.local.yml:
 
 ```bash
 # Rebuild specific service
-docker-compose -f docker-compose.local.yml up -d --build user-service
+docker-compose up -d --build user-service
 
 # Or rebuild all
-docker-compose -f docker-compose.local.yml up -d --build
+docker-compose up -d --build
 ```
 
 ### Frontend Changes
 
-For hot reload, use the dev compose:
+Rebuild frontend after changes:
 ```bash
-docker-compose -f docker-compose.dev.yml up frontend
+docker-compose up -d --build frontend
 ```
 
 ### Database Migrations
@@ -281,21 +281,17 @@ Migrations run automatically on service startup via Flyway.
 
 ```
 LearnSystemUCU/
-├── docker-compose.local.yml    # Main local compose
-├── docker-compose.dev.yml      # Dev with hot reload
-├── docker-compose.yml          # Full production
+├── docker-compose.yml          # All services
 ├── .env.local                  # Env template
 ├── .env                        # Your local config
 ├── run-local.sh                # Helper script
 │
 ├── frontend/
 │   ├── Dockerfile              # Production build
-│   ├── Dockerfile.dev          # Dev with hot reload
 │   └── nginx.conf              # Nginx config
 │
 └── backend-spring/
     ├── Dockerfile              # Production build
-    ├── Dockerfile.local        # Fast local build
     └── lms-*/                  # Services
 ```
 

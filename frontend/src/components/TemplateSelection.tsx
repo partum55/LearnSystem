@@ -34,12 +34,7 @@ export const TemplateSelection: React.FC<TemplateSelectionProps> = ({
     { id: 'business', name: t('templates.business'), icon: BriefcaseIcon },
   ];
 
-  useEffect(() => {
-    fetchTemplates();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory]);
-
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     setLoading(true);
     try {
       const data =

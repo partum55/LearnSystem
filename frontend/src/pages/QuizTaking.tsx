@@ -67,7 +67,7 @@ export const QuizTaking: React.FC = () => {
   });
 
   // Storage key for answer persistence
-  const getStorageKey = () => `quiz_answers_${quizId}_${attempt?.id}`;
+  const getStorageKey = useCallback(() => `quiz_answers_${quizId}_${attempt?.id}`, [quizId, attempt?.id]);
 
   // Save answers to localStorage
   const saveAnswersToStorage = useCallback((answersToSave: Record<string, any>) => {
@@ -82,7 +82,7 @@ export const QuizTaking: React.FC = () => {
     } catch (e) {
       console.error('Failed to save answers to storage:', e);
     }
-  }, [quizId, attempt?.id]);
+  }, [quizId, attempt?.id, getStorageKey]);
 
   // Load answers from localStorage on mount
   const loadAnswersFromStorage = useCallback(() => {
@@ -99,7 +99,7 @@ export const QuizTaking: React.FC = () => {
       console.error('Failed to load answers from storage:', e);
     }
     return null;
-  }, [quizId, attempt?.id]);
+  }, [quizId, attempt?.id, getStorageKey]);
 
   // Clear stored answers
   const clearStoredAnswers = useCallback(() => {
@@ -109,7 +109,7 @@ export const QuizTaking: React.FC = () => {
     } catch (e) {
       console.error('Failed to clear stored answers:', e);
     }
-  }, [quizId, attempt?.id]);
+  }, [quizId, attempt?.id, getStorageKey]);
 
   // Auto-save answers periodically
   useEffect(() => {

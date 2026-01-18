@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+
+# Test artifacts - should not be committed
+reports/screenshots/
+reports/videos/
+reports/traces/
+reports/*.html
+
+# Environment
+.env
+.env.local
+
+# Logs
+logs/*.log
+*.log
