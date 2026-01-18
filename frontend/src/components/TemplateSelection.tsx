@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { aiApi, CourseTemplate } from '../api/ai';
 import { Loading } from './Loading';
@@ -52,7 +52,11 @@ export const TemplateSelection: React.FC<TemplateSelectionProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCategory]);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
 
   if (loading) {
     return <Loading />;
