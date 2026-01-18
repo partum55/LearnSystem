@@ -140,8 +140,7 @@ learn_system/
 │   └── lms-eureka-server/      # Service Discovery
 ├── e2e-tests/                # End-to-end tests
 ├── docs/                     # Documentation
-├── docker-compose.yml        # Production compose
-├── docker-compose.local.yml  # Local development compose
+├── docker-compose.yml        # Docker Compose (all services)
 └── run-local.sh              # Development runner script
 ```
 

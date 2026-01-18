@@ -24,7 +24,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-COMPOSE_FILE="docker-compose.local.yml"
+COMPOSE_FILE="docker-compose.yml"
 COMPOSE_CMD="docker compose"
 
 # Check for docker compose v2 or fall back to docker-compose

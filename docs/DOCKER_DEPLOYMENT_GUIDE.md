@@ -93,17 +93,14 @@ All old Docker files have been replaced with optimized versions:
 
 ```
 LearnSystemUCU/
-├── docker-compose.yml          # Production deployment
-├── docker-compose.dev.yml      # Development with hot reload
+├── docker-compose.yml          # All services deployment
 ├── .env.example                # Environment template
-├── deploy-docker.sh            # Deployment script
-├── check-docker-status.sh      # Status checker
+├── run-local.sh                # Development runner script
 ├── backend-spring/
 │   ├── Dockerfile              # Multi-stage backend build
 │   └── .dockerignore
 └── frontend/
     ├── Dockerfile              # Production (Nginx)
-    ├── Dockerfile.dev          # Development (hot reload)
     ├── nginx.conf              # Nginx configuration
     └── .dockerignore
 ```
@@ -215,14 +212,14 @@ REACT_APP_AI_SERVICE_URL=http://localhost:8080/api/ai
 ### Start Services
 
 ```bash
-# Production mode
+# Start all services
 docker-compose up -d
-
-# Development mode (with hot reload)
-docker-compose -f docker-compose.dev.yml up -d
 
 # View logs while starting
 docker-compose up
+
+# Build and start (after code changes)
+docker-compose up --build -d
 ```
 
 ### Stop Services
