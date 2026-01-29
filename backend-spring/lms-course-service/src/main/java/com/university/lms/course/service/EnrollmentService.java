@@ -36,10 +36,11 @@ public class EnrollmentService {
      * Enroll a user in a course.
      */
     @Transactional
-    public CourseMemberDto enrollUser(UUID courseId, EnrollUserRequest request, UUID enrolledBy) {
+    public CourseMemberDto enrollUser(UUID courseId, EnrollUserRequest request, UUID enrolledBy, String requesterRole) {
         log.info("Enrolling user {} in course {} with role {}", request.getUserId(), courseId, request.getRoleInCourse());
 
         Course course = findCourseById(courseId);
+        enforceEnrollmentPermission(courseId, request.getUserId(), request.getRoleInCourse(), enrolledBy, requesterRole);
 
         // Check if user is already enrolled
         if (courseMemberRepository.existsByCourseIdAndUserId(courseId, request.getUserId())) {
@@ -76,14 +77,16 @@ public class EnrollmentService {
      * Unenroll a user from a course.
      */
     @Transactional
-    public void unenrollUser(UUID courseId, UUID userId, UUID requestedBy) {
+    public void unenrollUser(UUID courseId, UUID userId, UUID requestedBy, String requesterRole) {
         log.info("Unenrolling user {} from course {}", userId, courseId);
 
         CourseMember member = courseMemberRepository.findByCourseIdAndUserId(courseId, userId)
             .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found"));
 
         // Check permissions - user can unenroll themselves, or instructors can unenroll others
-        if (!userId.equals(requestedBy) && !courseMemberRepository.canUserManageCourse(courseId, requestedBy)) {
+        if (!userId.equals(requestedBy)
+                && !courseMemberRepository.canUserManageCourse(courseId, requestedBy)
+                && !isSuperAdmin(requesterRole)) {
             throw new ValidationException("You don't have permission to unenroll this user");
         }
 
@@ -136,11 +139,12 @@ public class EnrollmentService {
     /**
      * Get course members.
      */
-    public PageResponse<CourseMemberDto> getCourseMembers(UUID courseId, Pageable pageable) {
+    public PageResponse<CourseMemberDto> getCourseMembers(UUID courseId, Pageable pageable, UUID requesterId, String requesterRole) {
         log.debug("Fetching members for course: {}", courseId);
 
         // Verify course exists
         findCourseById(courseId);
+        enforceViewMembersPermission(courseId, requesterId, requesterRole);
 
         Page<CourseMember> memberPage = courseMemberRepository.findByCourseId(courseId, pageable);
         return mapToPageResponse(memberPage);
@@ -149,11 +153,12 @@ public class EnrollmentService {
     /**
      * Get course members by role.
      */
-    public PageResponse<CourseMemberDto> getCourseMembers(UUID courseId, String role, Pageable pageable) {
+    public PageResponse<CourseMemberDto> getCourseMembers(UUID courseId, String role, Pageable pageable, UUID requesterId, String requesterRole) {
         log.debug("Fetching members for course: {} with role: {}", courseId, role);
 
         // Verify course exists
         findCourseById(courseId);
+        enforceViewMembersPermission(courseId, requesterId, requesterRole);
 
         Page<CourseMember> memberPage = courseMemberRepository.findByCourseId(courseId, pageable);
         Page<CourseMember> filteredPage = memberPage.map(m ->
@@ -193,8 +198,13 @@ public class EnrollmentService {
     /**
      * Get user's enrollment in a course.
      */
-    public CourseMemberDto getEnrollment(UUID courseId, UUID userId) {
+    public CourseMemberDto getEnrollment(UUID courseId, UUID userId, UUID requesterId, String requesterRole) {
         log.debug("Fetching enrollment for user {} in course {}", userId, courseId);
+        if (!userId.equals(requesterId)
+                && !courseMemberRepository.canUserManageCourse(courseId, requesterId)
+                && !isSuperAdmin(requesterRole)) {
+            throw new ValidationException("You don't have permission to view this enrollment");
+        }
 
         CourseMember member = courseMemberRepository.findByCourseIdAndUserId(courseId, userId)
             .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found"));
@@ -202,7 +212,8 @@ public class EnrollmentService {
         return courseMapper.toDto(member);
     }
 
-    public java.util.List<Long> getStudentIdsByCourseId(UUID courseId) {
+    public java.util.List<Long> getStudentIdsByCourseId(UUID courseId, UUID requesterId, String requesterRole) {
+        enforceViewMembersPermission(courseId, requesterId, requesterRole);
         return courseMemberRepository.findStudentIdsByCourseId(courseId);
     }
 
@@ -210,6 +221,37 @@ public class EnrollmentService {
     private Course findCourseById(UUID courseId) {
         return courseRepository.findById(courseId)
             .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
+    }
+
+    private void enforceEnrollmentPermission(UUID courseId, UUID targetUserId, String targetRole, UUID requesterId, String requesterRole) {
+        boolean isSelfEnrollment = requesterId.equals(targetUserId);
+        boolean isInstructor = courseMemberRepository.canUserManageCourse(courseId, requesterId);
+        boolean isAdmin = isSuperAdmin(requesterRole);
+
+        if (isAdmin || isInstructor) {
+            return;
+        }
+
+        if (!isSelfEnrollment) {
+            throw new ValidationException("Only instructors or admins can enroll other users");
+        }
+
+        if (!"STUDENT".equals(targetRole)) {
+            throw new ValidationException("Self-enrollment is only permitted for students");
+        }
+    }
+
+    private void enforceViewMembersPermission(UUID courseId, UUID requesterId, String requesterRole) {
+        if (isSuperAdmin(requesterRole)) {
+            return;
+        }
+        if (!courseMemberRepository.canUserManageCourse(courseId, requesterId)) {
+            throw new ValidationException("You don't have permission to view course members");
+        }
+    }
+
+    private boolean isSuperAdmin(String requesterRole) {
+        return requesterRole != null && requesterRole.equals("SUPERADMIN");
     }
 
     private PageResponse<CourseMemberDto> mapToPageResponse(Page<CourseMember> page) {

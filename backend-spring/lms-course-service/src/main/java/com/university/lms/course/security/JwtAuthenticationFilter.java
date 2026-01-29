@@ -42,7 +42,7 @@ public class JwtAuthenticationFilter extends com.university.lms.common.security.
             @Override
             public String getRole() {
                 // Role is extracted from token in the base filter
-                return "USER"; // Default, will be overridden by token claims
+                return null;
             }
 
             @Override
@@ -53,4 +53,3 @@ public class JwtAuthenticationFilter extends com.university.lms.common.security.
         };
     }
 }
-

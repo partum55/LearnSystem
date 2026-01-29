@@ -47,6 +47,9 @@ public class ResourceService {
 
         // Check if user can view resources
         boolean canManage = canUserManageCourse(module.getCourse(), userId);
+        if (!canManage && !courseMemberRepository.existsByCourseIdAndUserId(module.getCourse().getId(), userId)) {
+            throw new ValidationException("User does not have access to this course");
+        }
 
         List<Resource> resources = resourceRepository.findByModuleIdOrderByPositionAsc(moduleId);
 
@@ -72,6 +75,9 @@ public class ResourceService {
 
         // Check permissions
         boolean canManage = canUserManageCourse(module.getCourse(), userId);
+        if (!canManage && !courseMemberRepository.existsByCourseIdAndUserId(module.getCourse().getId(), userId)) {
+            throw new ValidationException("User does not have access to this course");
+        }
         if (!canManage && !module.getIsPublished()) {
             throw new ValidationException("Resource is not available");
         }
@@ -85,6 +91,10 @@ public class ResourceService {
     public List<ResourceDto> getResourcesByCourse(UUID courseId, UUID userId) {
         log.debug("Fetching all resources for course: {}", courseId);
 
+        if (!courseMemberRepository.existsByCourseIdAndUserId(courseId, userId)
+                && !courseMemberRepository.canUserManageCourse(courseId, userId)) {
+            throw new ValidationException("User does not have access to this course");
+        }
         List<Resource> resources = resourceRepository.findAllByCourseId(courseId);
 
         return resources.stream()

@@ -7,12 +7,14 @@ import com.university.lms.ai.dto.GeneratedCourseResponse;
 import com.university.lms.ai.service.CourseGenerationService;
 import com.university.lms.ai.service.CoursePersistenceService;
 import com.university.lms.ai.service.StreamingGenerationService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 
@@ -27,11 +29,13 @@ import java.util.UUID;
 @RequestMapping("/v1/ai")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
 public class AiCourseController {
 
     private final CourseGenerationService courseGenerationService;
     private final CoursePersistenceService coursePersistenceService;
     private final StreamingGenerationService streamingGenerationService;
+    private final HttpServletRequest request;
 
     /**
      * Generate course structure from prompt (preview only, not saved)
@@ -82,14 +86,14 @@ public class AiCourseController {
      */
     @PostMapping("/courses/generate-and-save")
     public ResponseEntity<Map<String, Object>> generateAndSaveCourse(
-            @Valid @RequestBody CourseGenerationRequest request,
-            @RequestHeader("X-User-Id") UUID userId,
+            @Valid @RequestBody CourseGenerationRequest courseRequest,
             @RequestHeader("Authorization") String authToken) {
 
+        UUID userId = getAuthenticatedUserId();
         log.info("Received course generation and save request from user: {}", userId);
 
         // Generate course structure
-        GeneratedCourseResponse generatedCourse = courseGenerationService.generateCourse(request);
+        GeneratedCourseResponse generatedCourse = courseGenerationService.generateCourse(courseRequest);
 
         // Save to database
         Map<String, Object> result = coursePersistenceService.saveGeneratedCourse(
@@ -209,5 +213,13 @@ public class AiCourseController {
                 java.util.Collections.emptyList() :
                 response.getModules().get(0).getQuizzes()
         ));
+    }
+
+    private UUID getAuthenticatedUserId() {
+        Object userId = request.getAttribute("userId");
+        if (userId instanceof UUID) {
+            return (UUID) userId;
+        }
+        throw new IllegalStateException("User ID not available in request");
     }
 }

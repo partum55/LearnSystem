@@ -5,6 +5,7 @@ import com.university.lms.ai.service.PromptABTestService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,6 +27,7 @@ public class ABTestController {
      * Register a new A/B test experiment.
      */
     @PostMapping("/experiments")
+    @PreAuthorize("hasRole('SUPERADMIN')")
     public ResponseEntity<Void> registerExperiment(@RequestBody RegisterExperimentRequest request) {
         abTestService.registerExperiment(
                 request.experimentName(),
@@ -39,6 +41,7 @@ public class ABTestController {
      * Get results for an experiment.
      */
     @GetMapping("/experiments/{experimentName}/results")
+    @PreAuthorize("hasRole('SUPERADMIN')")
     public ResponseEntity<ABTestResultsResponse> getResults(@PathVariable String experimentName) {
         ABTestResultsResponse results = abTestService.getResults(experimentName);
         return ResponseEntity.ok(results);
@@ -48,6 +51,7 @@ public class ABTestController {
      * Get all active experiments.
      */
     @GetMapping("/experiments/active")
+    @PreAuthorize("hasRole('SUPERADMIN')")
     public ResponseEntity<Set<String>> getActiveExperiments() {
         return ResponseEntity.ok(abTestService.getActiveExperiments());
     }
@@ -56,6 +60,7 @@ public class ABTestController {
      * Get all experiment names from history.
      */
     @GetMapping("/experiments")
+    @PreAuthorize("hasRole('SUPERADMIN')")
     public ResponseEntity<List<String>> getAllExperiments() {
         return ResponseEntity.ok(abTestService.getAllExperimentNames());
     }
@@ -64,6 +69,7 @@ public class ABTestController {
      * Stop an experiment.
      */
     @DeleteMapping("/experiments/{experimentName}")
+    @PreAuthorize("hasRole('SUPERADMIN')")
     public ResponseEntity<Void> stopExperiment(@PathVariable String experimentName) {
         abTestService.stopExperiment(experimentName);
         return ResponseEntity.ok().build();
@@ -73,6 +79,7 @@ public class ABTestController {
      * Record user rating for an A/B test result.
      */
     @PostMapping("/results/{resultId}/rating")
+    @PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
     public ResponseEntity<Void> recordRating(
             @PathVariable String resultId,
             @RequestBody RatingRequest request) {
@@ -88,4 +95,3 @@ public class ABTestController {
 
     public record RatingRequest(int rating) {}
 }
-

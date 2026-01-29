@@ -55,20 +55,28 @@ public abstract class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
 
                 // Validate token
-                if (jwtService.validateToken(jwt)) {
+                if (jwtService.validateAccessToken(jwt)) {
                     UUID userId = jwtService.extractUserId(jwt);
                     String email = jwtService.extractUsername(jwt);
-                    String role = jwtService.extractRole(jwt);
+                    String roleFromToken = jwtService.extractRole(jwt);
 
                     // Get user details from service-specific implementation
                     UserDetails userDetails = getUserDetails(userId, email);
 
                     if (userDetails != null && userDetails.isActive()) {
+                        String effectiveRole = resolveRole(userDetails.getRole(), roleFromToken);
+                        if (effectiveRole == null) {
+                            log.warn("Token missing role claim for userId: {}", userId);
+                            auditLogger.logInvalidTokenAttempt(getClientIP(request), "Token missing role claim");
+                            sendUnauthorizedResponse(response, "Token missing role claim");
+                            return;
+                        }
+
                         // Create authentication token
                         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                                 userDetails.getEmail(),
                                 null,
-                                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + userDetails.getRole()))
+                                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + effectiveRole))
                         );
 
                         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
@@ -78,7 +86,7 @@ public abstract class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                         // Add user info to request attributes for controllers
                         request.setAttribute("userId", userId);
-                        request.setAttribute("userRole", userDetails.getRole());
+                        request.setAttribute("userRole", effectiveRole);
                         request.setAttribute("userEmail", userDetails.getEmail());
                     } else {
                         log.warn("User not found or inactive for userId: {}", userId);
@@ -111,6 +119,21 @@ public abstract class JwtAuthenticationFilter extends OncePerRequestFilter {
             return bearerToken.substring(7);
         }
 
+        String tokenFromQuery = request.getParameter("token");
+        if (tokenFromQuery != null && !tokenFromQuery.isBlank()) {
+            return tokenFromQuery.trim();
+        }
+
+        return null;
+    }
+
+    private String resolveRole(String roleFromUser, String roleFromToken) {
+        if (roleFromUser != null && !roleFromUser.isBlank()) {
+            return roleFromUser;
+        }
+        if (roleFromToken != null && !roleFromToken.isBlank()) {
+            return roleFromToken;
+        }
         return null;
     }
 
@@ -150,4 +173,3 @@ public abstract class JwtAuthenticationFilter extends OncePerRequestFilter {
         boolean isActive();
     }
 }
-

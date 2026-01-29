@@ -5,6 +5,7 @@ import com.university.lms.ai.service.ContentGenerationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")
+@PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
 public class ContentGenerationController {
 
     private final ContentGenerationService contentGenerationService;

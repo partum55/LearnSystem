@@ -47,6 +47,9 @@ public class ModuleService {
 
         // Check if user can view modules
         boolean canManage = canUserManageCourse(course, userId);
+        if (!canManage && !courseMemberRepository.existsByCourseIdAndUserId(courseId, userId)) {
+            throw new ValidationException("User does not have access to this course");
+        }
 
         List<Module> modules;
         if (canManage) {
@@ -72,7 +75,11 @@ public class ModuleService {
         Module module = findModuleById(id);
 
         // Check permissions
-        if (!module.getIsPublished() && !canUserManageCourse(module.getCourse(), userId)) {
+        boolean canManage = canUserManageCourse(module.getCourse(), userId);
+        if (!canManage && !courseMemberRepository.existsByCourseIdAndUserId(module.getCourse().getId(), userId)) {
+            throw new ValidationException("User does not have access to this course");
+        }
+        if (!module.getIsPublished() && !canManage) {
             throw new ValidationException("Module is not published");
         }
 
@@ -253,4 +260,3 @@ public class ModuleService {
         return courseMemberRepository.canUserManageCourse(course.getId(), userId);
     }
 }
-

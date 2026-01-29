@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { queryClient } from './api/queryClient';
 import { useAuthStore } from './store/authStore';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { UserRole } from './types';
 import './i18n/config';
 
 // Loading component for lazy-loaded routes
@@ -43,6 +44,17 @@ const VirtualLab = lazy(() => import('./pages/VirtualLab'));
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
+};
+
+const RoleRoute: React.FC<{ children: React.ReactNode; allowedRoles: UserRole[] }> = ({
+  children,
+  allowedRoles,
+}) => {
+  const { user } = useAuthStore();
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+  return allowedRoles.includes(user.role) ? <>{children}</> : <Navigate to="/dashboard" />;
 };
 
 // Wrapper for lazy routes with Suspense
@@ -107,26 +119,56 @@ const AppOptimized: React.FC = () => {
             <Route path="/dashboard/customize" element={<LazyRoute isPrivate><DashboardCustomize /></LazyRoute>} />
 
             <Route path="/courses" element={<LazyRoute isPrivate><CourseList /></LazyRoute>} />
-            <Route path="/courses/create" element={<LazyRoute isPrivate><CourseCreate /></LazyRoute>} />
+            <Route path="/courses/create" element={
+              <LazyRoute isPrivate>
+                <RoleRoute allowedRoles={['TEACHER', 'SUPERADMIN']}>
+                  <CourseCreate />
+                </RoleRoute>
+              </LazyRoute>
+            } />
             <Route path="/courses/:id" element={<LazyRoute isPrivate><CourseDetail /></LazyRoute>} />
 
             <Route path="/calendar" element={<LazyRoute isPrivate><CalendarPage /></LazyRoute>} />
 
             <Route path="/assignments" element={<LazyRoute isPrivate><Assignments /></LazyRoute>} />
             <Route path="/assignments/:id" element={<LazyRoute isPrivate><AssignmentDetail /></LazyRoute>} />
-            <Route path="/assignments/:id/edit" element={<LazyRoute isPrivate><AssignmentEditor /></LazyRoute>} />
+            <Route path="/assignments/:id/edit" element={
+              <LazyRoute isPrivate>
+                <RoleRoute allowedRoles={['TEACHER', 'TA', 'SUPERADMIN']}>
+                  <AssignmentEditor />
+                </RoleRoute>
+              </LazyRoute>
+            } />
             <Route path="/assignments/:id/submit" element={<LazyRoute isPrivate><SubmitAssignment /></LazyRoute>} />
 
             <Route path="/grades" element={<LazyRoute isPrivate><AllGrades /></LazyRoute>} />
             <Route path="/gradebook" element={<LazyRoute isPrivate><StudentGradebook /></LazyRoute>} />
-            <Route path="/speed-grader" element={<LazyRoute isPrivate><SpeedGrader /></LazyRoute>} />
+            <Route path="/speed-grader" element={
+              <LazyRoute isPrivate>
+                <RoleRoute allowedRoles={['TEACHER', 'TA', 'SUPERADMIN']}>
+                  <SpeedGrader />
+                </RoleRoute>
+              </LazyRoute>
+            } />
 
-            <Route path="/question-bank" element={<LazyRoute isPrivate><QuestionBank /></LazyRoute>} />
+            <Route path="/question-bank" element={
+              <LazyRoute isPrivate>
+                <RoleRoute allowedRoles={['TEACHER', 'TA', 'SUPERADMIN']}>
+                  <QuestionBank />
+                </RoleRoute>
+              </LazyRoute>
+            } />
 
             <Route path="/quiz/:id" element={<LazyRoute isPrivate><QuizDetail /></LazyRoute>} />
             <Route path="/quiz/:id/take" element={<LazyRoute isPrivate><QuizTaking /></LazyRoute>} />
             <Route path="/quiz/:id/results" element={<LazyRoute isPrivate><QuizResults /></LazyRoute>} />
-            <Route path="/quiz-builder" element={<LazyRoute isPrivate><QuizBuilder /></LazyRoute>} />
+            <Route path="/quiz-builder" element={
+              <LazyRoute isPrivate>
+                <RoleRoute allowedRoles={['TEACHER', 'TA', 'SUPERADMIN']}>
+                  <QuizBuilder />
+                </RoleRoute>
+              </LazyRoute>
+            } />
 
             <Route path="/profile" element={<LazyRoute isPrivate><Profile /></LazyRoute>} />
             <Route path="/profile/settings" element={<LazyRoute isPrivate><ProfileSettings /></LazyRoute>} />
@@ -141,4 +183,3 @@ const AppOptimized: React.FC = () => {
 };
 
 export default AppOptimized;
-

@@ -127,7 +127,7 @@ public class UserService {
         log.info("Refreshing access token");
 
         // Validate refresh token
-        if (!jwtService.validateToken(refreshToken)) {
+        if (!jwtService.validateRefreshToken(refreshToken)) {
             throw new ValidationException("Invalid or expired refresh token");
         }
 
