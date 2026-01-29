@@ -21,6 +21,7 @@ public class CourseGenerationService {
     private final LlamaApiService llamaApiService;
     private final ObjectMapper objectMapper;
     private final AIGenerationCacheService cacheService;
+    private final AiGeneratedContentValidator contentValidator;
 
     /**
      * Generate a complete course structure from a prompt
@@ -39,6 +40,7 @@ public class CourseGenerationService {
                     cached.get(),
                     GeneratedCourseResponse.class
                 );
+                response = contentValidator.validateCourse(response);
                 log.info("Returning cached course generation result");
                 return response;
             } catch (Exception e) {
@@ -57,6 +59,7 @@ public class CourseGenerationService {
             jsonResponse = cleanJsonResponse(jsonResponse);
 
             GeneratedCourseResponse response = objectMapper.readValue(jsonResponse, GeneratedCourseResponse.class);
+            response = contentValidator.validateCourse(response);
 
             // Cache the result
             cacheService.cache(cacheKey, jsonResponse);
@@ -205,6 +208,7 @@ public class CourseGenerationService {
         sb.append("- For assignments, vary types: FILE_UPLOAD, TEXT, CODE, QUIZ\n");
         sb.append("- For quizzes, create 5-15 questions per quiz\n");
         sb.append("- Question types: MULTIPLE_CHOICE, TRUE_FALSE, SHORT_ANSWER, ESSAY\n");
+        sb.append("- Do not include extra fields; honor required fields and size limits\n");
 
         return sb.toString();
     }
