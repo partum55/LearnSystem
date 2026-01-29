@@ -14,6 +14,8 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ type, on
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewJson, setPreviewJson] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [topic, setTopic] = useState('');
   const [difficulty, setDifficulty] = useState('medium');
   const [questionCount, setQuestionCount] = useState(10);
@@ -27,6 +29,7 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ type, on
 
     setLoading(true);
     setError(null);
+    setPreviewError(null);
     try {
       // Use versioned API endpoint
       const endpoint = `/v1/ai/generate/${type}`;
@@ -44,9 +47,7 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ type, on
 
       // Use apiClient instead of raw fetch
       const data = await apiClient.post(endpoint, requestBody);
-      onGenerate(data);
-      setIsOpen(false);
-      setTopic('');
+      setPreviewJson(JSON.stringify(data, null, 2));
     } catch (err: any) {
       console.error('Error generating content:', err);
       const errorMessage = err.message || t('ai.generator.error', 'Failed to generate content. Please try again.');
@@ -54,6 +55,35 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ type, on
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleReject = () => {
+    setPreviewJson(null);
+    setPreviewError(null);
+  };
+
+  const handleConfirm = () => {
+    if (!previewJson) {
+      return;
+    }
+    try {
+      const parsed = JSON.parse(previewJson);
+      onGenerate(parsed);
+      setIsOpen(false);
+      setTopic('');
+      setPreviewJson(null);
+      setPreviewError(null);
+    } catch (err: any) {
+      setPreviewError(err.message || t('ai.generator.invalidJson', 'Invalid JSON. Please fix before confirming.'));
+    }
+  };
+
+  const handleClose = () => {
+    setIsOpen(false);
+    setTopic('');
+    setError(null);
+    setPreviewJson(null);
+    setPreviewError(null);
   };
 
   return (
@@ -69,8 +99,12 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ type, on
 
       <Modal
         isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
-        title={t(`ai.generator.${type}Title`, `Generate ${type} with AI`)}
+        onClose={handleClose}
+        title={
+          previewJson
+            ? t('ai.generator.previewTitle', 'Review AI output before saving')
+            : t(`ai.generator.${type}Title`, `Generate ${type} with AI`)
+        }
       >
         <div className="space-y-4">
           {error && (
@@ -78,6 +112,37 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ type, on
               {error}
             </div>
           )}
+          {previewError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              {previewError}
+            </div>
+          )}
+          {previewJson ? (
+            <>
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600">
+                  {t(
+                    'ai.generator.previewDescription',
+                    'Review and edit the exact AI output. Content is not saved until you confirm.'
+                  )}
+                </p>
+                <textarea
+                  value={previewJson}
+                  onChange={(e) => setPreviewJson(e.target.value)}
+                  className="w-full h-80 px-3 py-2 border border-gray-300 rounded-lg font-mono text-xs focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex gap-3 justify-end mt-6">
+                <Button onClick={handleReject} variant="secondary" disabled={loading}>
+                  {t('ai.generator.reject', 'Reject')}
+                </Button>
+                <Button onClick={handleConfirm} variant="primary" disabled={loading}>
+                  {t('ai.generator.confirm', 'Confirm & Use')}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               {t('ai.generator.topic', 'Topic')}
@@ -140,7 +205,7 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ type, on
 
           <div className="flex gap-3 justify-end mt-6">
             <Button
-              onClick={() => setIsOpen(false)}
+              onClick={handleClose}
               variant="secondary"
               disabled={loading}
             >
@@ -154,6 +219,8 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ type, on
               {loading ? t('common.generating', 'Generating...') : t('common.generate', 'Generate')}
             </Button>
           </div>
+            </>
+          )}
         </div>
       </Modal>
     </>

@@ -19,6 +19,7 @@ public class ContentGenerationService {
     private final LlamaApiService llamaApiService;
     private final ObjectMapper objectMapper;
     private final AIGenerationCacheService cacheService;
+    private final AiGeneratedContentValidator contentValidator;
 
     /**
      * Generate a quiz using AI
@@ -31,7 +32,8 @@ public class ContentGenerationService {
         Optional<String> cached = cacheService.getCached(cacheKey);
         if (cached.isPresent()) {
             try {
-                return objectMapper.readValue(cached.get(), GeneratedQuizResponse.class);
+                GeneratedQuizResponse cachedResponse = objectMapper.readValue(cached.get(), GeneratedQuizResponse.class);
+                return contentValidator.validateQuiz(cachedResponse);
             } catch (Exception e) {
                 log.warn("Failed to parse cached quiz, regenerating", e);
                 cacheService.invalidate(cacheKey);
@@ -46,6 +48,7 @@ public class ContentGenerationService {
             jsonResponse = cleanJsonResponse(jsonResponse);
             
             GeneratedQuizResponse response = objectMapper.readValue(jsonResponse, GeneratedQuizResponse.class);
+            response = contentValidator.validateQuiz(response);
             cacheService.cache(cacheKey, jsonResponse);
             
             log.info("Successfully generated quiz with {} questions", response.getQuestions().size());
@@ -67,7 +70,8 @@ public class ContentGenerationService {
         Optional<String> cached = cacheService.getCached(cacheKey);
         if (cached.isPresent()) {
             try {
-                return objectMapper.readValue(cached.get(), GeneratedAssignmentResponse.class);
+                GeneratedAssignmentResponse cachedResponse = objectMapper.readValue(cached.get(), GeneratedAssignmentResponse.class);
+                return contentValidator.validateAssignment(cachedResponse);
             } catch (Exception e) {
                 log.warn("Failed to parse cached assignment, regenerating", e);
                 cacheService.invalidate(cacheKey);
@@ -82,6 +86,7 @@ public class ContentGenerationService {
             jsonResponse = cleanJsonResponse(jsonResponse);
             
             GeneratedAssignmentResponse response = objectMapper.readValue(jsonResponse, GeneratedAssignmentResponse.class);
+            response = contentValidator.validateAssignment(response);
             cacheService.cache(cacheKey, jsonResponse);
             
             log.info("Successfully generated assignment: {}", response.getTitle());
@@ -103,7 +108,8 @@ public class ContentGenerationService {
         Optional<String> cached = cacheService.getCached(cacheKey);
         if (cached.isPresent()) {
             try {
-                return objectMapper.readValue(cached.get(), GeneratedModuleResponse.class);
+                GeneratedModuleResponse cachedResponse = objectMapper.readValue(cached.get(), GeneratedModuleResponse.class);
+                return contentValidator.validateModule(cachedResponse);
             } catch (Exception e) {
                 log.warn("Failed to parse cached module, regenerating", e);
                 cacheService.invalidate(cacheKey);
@@ -118,6 +124,7 @@ public class ContentGenerationService {
             jsonResponse = cleanJsonResponse(jsonResponse);
             
             GeneratedModuleResponse response = objectMapper.readValue(jsonResponse, GeneratedModuleResponse.class);
+            response = contentValidator.validateModule(response);
             cacheService.cache(cacheKey, jsonResponse);
             
             log.info("Successfully generated module: {}", response.getTitle());
@@ -175,6 +182,7 @@ public class ContentGenerationService {
             
             Question types: MULTIPLE_CHOICE, TRUE_FALSE, SHORT_ANSWER, ESSAY, MATCHING, FILL_BLANK
             Difficulty levels: easy, medium, hard
+            Do not include additional fields. Respect required fields and size limits.
             Create pedagogically sound questions with clear, unambiguous wording.
             Provide helpful feedback for each answer option.
             """, language);
@@ -237,6 +245,7 @@ public class ContentGenerationService {
             }
             
             Assignment types: FILE_UPLOAD, TEXT, CODE, QUIZ
+            Do not include additional fields. Respect required fields and size limits.
             Create clear, achievable assignments with detailed instructions.
             Align with learning objectives and provide helpful resources.
             """, language, rubricSection);
@@ -298,6 +307,7 @@ public class ContentGenerationService {
             
             Activity types: lecture, discussion, lab, project, workshop, quiz
             Resource types: book, article, video, website, tool
+            Do not include additional fields. Respect required fields and size limits.
             Create pedagogically sound, progressive learning experiences.
             """, language);
     }

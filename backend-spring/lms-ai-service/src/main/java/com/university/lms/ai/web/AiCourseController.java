@@ -1,9 +1,11 @@
 package com.university.lms.ai.web;
 
 import com.university.lms.ai.dto.AIProgressEvent;
+import com.university.lms.ai.dto.AiCourseConfirmationRequest;
 import com.university.lms.ai.dto.CourseEditRequest;
 import com.university.lms.ai.dto.CourseGenerationRequest;
 import com.university.lms.ai.dto.GeneratedCourseResponse;
+import com.university.lms.ai.exception.AiContentValidationException;
 import com.university.lms.ai.service.CourseGenerationService;
 import com.university.lms.ai.service.CoursePersistenceService;
 import com.university.lms.ai.service.StreamingGenerationService;
@@ -87,10 +89,14 @@ public class AiCourseController {
     @PostMapping("/courses/generate-and-save")
     public ResponseEntity<Map<String, Object>> generateAndSaveCourse(
             @Valid @RequestBody CourseGenerationRequest courseRequest,
-            @RequestHeader("Authorization") String authToken) {
+            @RequestHeader("Authorization") String authToken,
+            @RequestParam(defaultValue = "false") boolean confirmed) {
 
         UUID userId = getAuthenticatedUserId();
         log.info("Received course generation and save request from user: {}", userId);
+        if (!confirmed) {
+            throw new AiContentValidationException("course", java.util.List.of("User confirmation is required before saving"));
+        }
 
         // Generate course structure
         GeneratedCourseResponse generatedCourse = courseGenerationService.generateCourse(courseRequest);
@@ -98,6 +104,29 @@ public class AiCourseController {
         // Save to database
         Map<String, Object> result = coursePersistenceService.saveGeneratedCourse(
             generatedCourse, userId, authToken);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    }
+
+    /**
+     * Confirm and save user-reviewed course content
+     *
+     * POST /api/ai/courses/confirm-save
+     */
+    @PostMapping("/courses/confirm-save")
+    public ResponseEntity<Map<String, Object>> confirmAndSaveCourse(
+            @Valid @RequestBody AiCourseConfirmationRequest confirmationRequest,
+            @RequestHeader("Authorization") String authToken) {
+
+        UUID userId = getAuthenticatedUserId();
+        log.info("Received course confirmation request from user: {}", userId);
+
+        if (!Boolean.TRUE.equals(confirmationRequest.getConfirmed())) {
+            throw new AiContentValidationException("course", java.util.List.of("User confirmation is required before saving"));
+        }
+
+        Map<String, Object> result = coursePersistenceService.saveGeneratedCourse(
+            confirmationRequest.getPayload(), userId, authToken);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }

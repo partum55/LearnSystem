@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lms.example.com/schemas/course.schema.json",
+  "title": "AI Generated Course",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["course", "modules"],
+  "properties": {
+    "course": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "titleUk",
+        "titleEn",
+        "descriptionUk",
+        "descriptionEn"
+      ],
+      "properties": {
+        "code": { "type": "string", "maxLength": 50, "minLength": 2 },
+        "titleUk": { "type": "string", "maxLength": 255, "minLength": 3 },
+        "titleEn": { "type": "string", "maxLength": 255, "minLength": 3 },
+        "descriptionUk": { "type": "string", "maxLength": 4000, "minLength": 10 },
+        "descriptionEn": { "type": "string", "maxLength": 4000, "minLength": 10 },
+        "syllabus": { "type": "string", "maxLength": 8000 },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "academicYear": { "type": "string", "maxLength": 20 },
+        "maxStudents": { "type": "integer", "minimum": 1, "maximum": 1000 }
+      }
+    },
+    "modules": {
+      "type": "array",
+      "maxItems": 24,
+      "items": {
+        "$ref": "lesson.schema.json"
+      }
+    }
+  }
+}
