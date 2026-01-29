@@ -14,7 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -36,6 +36,7 @@ public class CourseController {
      * Get all courses with pagination.
      */
     @GetMapping({"", "/"})
+    @PreAuthorize("hasAnyRole('TEACHER','SUPERADMIN')")
     public ResponseEntity<PageResponse<CourseDto>> getAllCourses(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -85,13 +86,13 @@ public class CourseController {
      * Get my courses (courses where user is enrolled).
      */
     @GetMapping("/my")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PageResponse<CourseDto>> getMyCourses(
-            Authentication authentication,
             @RequestParam(required = false) String role,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        UUID userId = extractUserId(authentication);
+        UUID userId = extractUserId();
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
         PageResponse<CourseDto> courses;
@@ -108,6 +109,7 @@ public class CourseController {
      * Get courses by owner.
      */
     @GetMapping("/owner/{ownerId}")
+    @PreAuthorize("hasRole('SUPERADMIN')")
     public ResponseEntity<PageResponse<CourseDto>> getCoursesByOwner(
             @PathVariable UUID ownerId,
             @RequestParam(defaultValue = "0") int page,
@@ -122,8 +124,11 @@ public class CourseController {
      * Get course by ID.
      */
     @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CourseDto> getCourseById(@PathVariable UUID id) {
-        CourseDto course = courseService.getCourseById(id);
+        UUID userId = extractUserId();
+        String userRole = extractUserRole();
+        CourseDto course = courseService.getCourseById(id, userId, userRole);
         return ResponseEntity.ok(course);
     }
 
@@ -140,11 +145,11 @@ public class CourseController {
      * Create a new course.
      */
     @PostMapping
+    @PreAuthorize("hasAnyRole('TEACHER','SUPERADMIN')")
     public ResponseEntity<CourseDto> createCourse(
-            @Valid @RequestBody CreateCourseRequest request,
-            Authentication authentication) {
+            @Valid @RequestBody CreateCourseRequest request) {
 
-        UUID ownerId = extractUserId(authentication);
+        UUID ownerId = extractUserId();
         CourseDto course = courseService.createCourse(request, ownerId);
         return ResponseEntity.status(HttpStatus.CREATED).body(course);
     }
@@ -153,12 +158,12 @@ public class CourseController {
      * Update a course.
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('TEACHER','SUPERADMIN')")
     public ResponseEntity<CourseDto> updateCourse(
             @PathVariable UUID id,
-            @Valid @RequestBody UpdateCourseRequest request,
-            Authentication authentication) {
+            @Valid @RequestBody UpdateCourseRequest request) {
 
-        UUID userId = extractUserId(authentication);
+        UUID userId = extractUserId();
         CourseDto course = courseService.updateCourse(id, request, userId);
         return ResponseEntity.ok(course);
     }
@@ -167,8 +172,9 @@ public class CourseController {
      * Delete a course.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCourse(@PathVariable UUID id, Authentication authentication) {
-        UUID userId = extractUserId(authentication);
+    @PreAuthorize("hasAnyRole('TEACHER','SUPERADMIN')")
+    public ResponseEntity<Void> deleteCourse(@PathVariable UUID id) {
+        UUID userId = extractUserId();
         courseService.deleteCourse(id, userId);
         return ResponseEntity.noContent().build();
     }
@@ -177,11 +183,11 @@ public class CourseController {
      * Publish a course.
      */
     @PostMapping("/{id}/publish")
+    @PreAuthorize("hasAnyRole('TEACHER','SUPERADMIN')")
     public ResponseEntity<CourseDto> publishCourse(
-            @PathVariable UUID id,
-            Authentication authentication) {
+            @PathVariable UUID id) {
 
-        UUID userId = extractUserId(authentication);
+        UUID userId = extractUserId();
         CourseDto course = courseService.publishCourse(id, userId);
         return ResponseEntity.ok(course);
     }
@@ -190,11 +196,11 @@ public class CourseController {
      * Unpublish a course.
      */
     @PostMapping("/{id}/unpublish")
+    @PreAuthorize("hasAnyRole('TEACHER','SUPERADMIN')")
     public ResponseEntity<CourseDto> unpublishCourse(
-            @PathVariable UUID id,
-            Authentication authentication) {
+            @PathVariable UUID id) {
 
-        UUID userId = extractUserId(authentication);
+        UUID userId = extractUserId();
         CourseDto course = courseService.unpublishCourse(id, userId);
         return ResponseEntity.ok(course);
     }
@@ -203,13 +209,14 @@ public class CourseController {
      * Enroll user in course.
      */
     @PostMapping("/{courseId}/enroll")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CourseMemberDto> enrollUser(
             @PathVariable UUID courseId,
-            @Valid @RequestBody EnrollUserRequest request,
-            Authentication authentication) {
+            @Valid @RequestBody EnrollUserRequest request) {
 
-        UUID enrolledBy = extractUserId(authentication);
-        CourseMemberDto member = enrollmentService.enrollUser(courseId, request, enrolledBy);
+        UUID enrolledBy = extractUserId();
+        String userRole = extractUserRole();
+        CourseMemberDto member = enrollmentService.enrollUser(courseId, request, enrolledBy, userRole);
         return ResponseEntity.status(HttpStatus.CREATED).body(member);
     }
 
@@ -217,13 +224,14 @@ public class CourseController {
      * Unenroll user from course.
      */
     @DeleteMapping("/{courseId}/enroll/{userId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> unenrollUser(
             @PathVariable UUID courseId,
-            @PathVariable UUID userId,
-            Authentication authentication) {
+            @PathVariable UUID userId) {
 
-        UUID requestedBy = extractUserId(authentication);
-        enrollmentService.unenrollUser(courseId, userId, requestedBy);
+        UUID requestedBy = extractUserId();
+        String userRole = extractUserRole();
+        enrollmentService.unenrollUser(courseId, userId, requestedBy, userRole);
         return ResponseEntity.noContent().build();
     }
 
@@ -231,11 +239,10 @@ public class CourseController {
      * Drop enrollment (student self-drop).
      */
     @PostMapping("/{courseId}/drop")
-    public ResponseEntity<Void> dropEnrollment(
-            @PathVariable UUID courseId,
-            Authentication authentication) {
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<Void> dropEnrollment(@PathVariable UUID courseId) {
 
-        UUID userId = extractUserId(authentication);
+        UUID userId = extractUserId();
         enrollmentService.dropEnrollment(courseId, userId);
         return ResponseEntity.noContent().build();
     }
@@ -244,6 +251,7 @@ public class CourseController {
      * Get course members.
      */
     @GetMapping("/{courseId}/members")
+    @PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
     public ResponseEntity<PageResponse<CourseMemberDto>> getCourseMembers(
             @PathVariable UUID courseId,
             @RequestParam(required = false) String role,
@@ -254,9 +262,9 @@ public class CourseController {
 
         PageResponse<CourseMemberDto> members;
         if (role != null) {
-            members = enrollmentService.getCourseMembers(courseId, role, pageable);
+            members = enrollmentService.getCourseMembers(courseId, role, pageable, extractUserId(), extractUserRole());
         } else {
-            members = enrollmentService.getCourseMembers(courseId, pageable);
+            members = enrollmentService.getCourseMembers(courseId, pageable, extractUserId(), extractUserRole());
         }
 
         return ResponseEntity.ok(members);
@@ -266,12 +274,11 @@ public class CourseController {
      * Get user's enrollment in course.
      */
     @GetMapping("/{courseId}/enrollment")
-    public ResponseEntity<CourseMemberDto> getMyEnrollment(
-            @PathVariable UUID courseId,
-            Authentication authentication) {
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<CourseMemberDto> getMyEnrollment(@PathVariable UUID courseId) {
 
-        UUID userId = extractUserId(authentication);
-        CourseMemberDto member = enrollmentService.getEnrollment(courseId, userId);
+        UUID userId = extractUserId();
+        CourseMemberDto member = enrollmentService.getEnrollment(courseId, userId, userId, extractUserRole());
         return ResponseEntity.ok(member);
     }
 
@@ -279,11 +286,11 @@ public class CourseController {
      * Check if user is enrolled.
      */
     @GetMapping("/{courseId}/enrollment/check")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Boolean> checkEnrollment(
-            @PathVariable UUID courseId,
-            Authentication authentication) {
+            @PathVariable UUID courseId) {
 
-        UUID userId = extractUserId(authentication);
+        UUID userId = extractUserId();
         boolean enrolled = enrollmentService.isUserEnrolled(courseId, userId);
         return ResponseEntity.ok(enrolled);
     }
@@ -292,20 +299,25 @@ public class CourseController {
      * Get student IDs by course ID.
      */
     @GetMapping("/{id}/students")
+    @PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
     public ResponseEntity<java.util.List<Long>> getStudentIdsByCourseId(@PathVariable UUID id) {
-        return ResponseEntity.ok(enrollmentService.getStudentIdsByCourseId(id));
+        return ResponseEntity.ok(enrollmentService.getStudentIdsByCourseId(id, extractUserId(), extractUserRole()));
     }
 
     // Helper method to extract user ID from request attribute (set by JwtAuthenticationFilter)
-    private UUID extractUserId(Authentication authentication) {
-        if (authentication == null || authentication.getPrincipal() == null) {
-            throw new RuntimeException("User not authenticated");
-        }
-        // userId is set as request attribute by JwtAuthenticationFilter
+    private UUID extractUserId() {
         Object userId = request.getAttribute("userId");
         if (userId instanceof UUID) {
             return (UUID) userId;
         }
-        throw new RuntimeException("User ID not found in request");
+        throw new RuntimeException("User not authenticated");
+    }
+
+    private String extractUserRole() {
+        Object role = request.getAttribute("userRole");
+        if (role != null) {
+            return role.toString();
+        }
+        throw new RuntimeException("User role not found in request");
     }
 }

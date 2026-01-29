@@ -1,4 +1,4 @@
-package com.university.lms.gradebook.security;
+package com.university.lms.ai.security;
 
 import com.university.lms.common.security.JwtService;
 import com.university.lms.common.security.JwtTokenBlacklistService;
@@ -9,8 +9,8 @@ import org.springframework.stereotype.Component;
 import java.util.UUID;
 
 /**
- * Gradebook service JWT authentication filter.
- * Extends common JWT filter. No user lookup needed - just validates tokens.
+ * AI service JWT authentication filter.
+ * Relies on token claims for user identity and role.
  */
 @Component
 @Slf4j
@@ -25,8 +25,6 @@ public class JwtAuthenticationFilter extends com.university.lms.common.security.
 
     @Override
     protected UserDetails getUserDetails(UUID userId, String email) {
-        // For gradebook service, we don't need to look up user in database
-        // The token validation is sufficient, and user info is in the token
         return new UserDetails() {
             @Override
             public UUID getId() {
@@ -40,12 +38,12 @@ public class JwtAuthenticationFilter extends com.university.lms.common.security.
 
             @Override
             public String getRole() {
-                return null; // Role from token is handled in base filter
+                return null;
             }
 
             @Override
             public boolean isActive() {
-                return true; // Assume active if token is valid
+                return true;
             }
         };
     }

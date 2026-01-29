@@ -5,6 +5,7 @@ import com.university.lms.ai.dto.PredictionResponseDto;
 import com.university.lms.ai.service.PredictionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,8 +23,8 @@ public class PredictionController {
     private final PredictionService predictionService;
 
     @PostMapping("/predict-grades")
+    @PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
     public ResponseEntity<PredictionResponseDto> getStudentPredictions(@RequestBody PredictionRequestDto request) {
         return ResponseEntity.ok(predictionService.getStudentPredictions(request));
     }
 }
-

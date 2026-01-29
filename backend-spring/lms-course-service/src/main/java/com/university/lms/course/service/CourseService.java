@@ -38,9 +38,10 @@ public class CourseService {
      * Get course by ID.
      */
     @Cacheable(value = "courses", key = "#id")
-    public CourseDto getCourseById(UUID id) {
+    public CourseDto getCourseById(UUID id, UUID userId, String userRole) {
         log.debug("Fetching course by ID: {}", id);
         Course course = findCourseById(id);
+        enforceCourseVisibility(course, userId, userRole);
         return courseMapper.toDto(course);
     }
 
@@ -256,6 +257,19 @@ public class CourseService {
         return courseMemberRepository.canUserManageCourse(course.getId(), userId);
     }
 
+    private void enforceCourseVisibility(Course course, UUID userId, String userRole) {
+        boolean isAdmin = "SUPERADMIN".equals(userRole);
+        boolean canManage = canUserManageCourse(course, userId);
+
+        if (course.getIsPublished()) {
+            return;
+        }
+
+        if (!isAdmin && !canManage) {
+            throw new ValidationException("Course is not available");
+        }
+    }
+
     private void addCourseMember(Course course, UUID userId, String role, UUID addedBy) {
         CourseMember member = CourseMember.builder()
             .course(course)
@@ -278,4 +292,3 @@ public class CourseService {
             .build();
     }
 }
-

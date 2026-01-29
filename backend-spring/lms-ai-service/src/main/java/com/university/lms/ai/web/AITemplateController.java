@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +23,7 @@ import java.util.UUID;
 @RequestMapping("/v1/ai/templates")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
 public class AITemplateController {
 
     private final TemplateService templateService;
@@ -120,6 +122,7 @@ public class AITemplateController {
      * POST /api/ai/templates/initialize
      */
     @PostMapping("/initialize")
+    @PreAuthorize("hasRole('SUPERADMIN')")
     public ResponseEntity<Map<String, String>> initializeTemplates() {
         log.info("Initializing default templates");
         templateService.initializeDefaultTemplates();
@@ -128,4 +131,3 @@ public class AITemplateController {
         ));
     }
 }
-

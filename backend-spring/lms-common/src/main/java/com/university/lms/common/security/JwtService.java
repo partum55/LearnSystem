@@ -85,6 +85,13 @@ public class JwtService {
     }
 
     /**
+     * Extract token type (access/refresh) from token.
+     */
+    public String extractTokenType(String token) {
+        return extractClaim(token, claims -> claims.get("type", String.class));
+    }
+
+    /**
      * Extract expiration date from token.
      */
     public Date extractExpiration(String token) {
@@ -151,6 +158,20 @@ public class JwtService {
     }
 
     /**
+     * Validate access token signature and type.
+     */
+    public boolean validateAccessToken(String token) {
+        return validateToken(token) && "access".equals(extractTokenType(token));
+    }
+
+    /**
+     * Validate refresh token signature and type.
+     */
+    public boolean validateRefreshToken(String token) {
+        return validateToken(token) && "refresh".equals(extractTokenType(token));
+    }
+
+    /**
      * Get signing key from secret.
      */
     private SecretKey getSigningKey() {
@@ -165,4 +186,3 @@ public class JwtService {
         return jwtExpiration;
     }
 }
-
