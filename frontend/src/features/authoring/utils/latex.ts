@@ -44,6 +44,13 @@ const escapeHtml = (value: string) =>
     .replace(/>/g, '&gt;');
 
 export const renderLatexToHtml = (value: string, options: LatexRenderOptions = {}) => {
+  if (options.displayMode) {
+    const html = typeof window !== 'undefined' && window.katex?.renderToString
+      ? window.katex.renderToString(value, { displayMode: true, throwOnError: false })
+      : `<div class="latex-block">${escapeHtml(value)}</div>`;
+    return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
+  }
+
   const renderWithKatex = (latex: string, displayMode: boolean) => {
     if (typeof window !== 'undefined' && window.katex?.renderToString) {
       return window.katex.renderToString(latex, { displayMode, throwOnError: false });
