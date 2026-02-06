@@ -144,7 +144,7 @@ public class CourseController {
     /**
      * Create a new course.
      */
-    @PostMapping
+    @PostMapping({"", "/"})
     @PreAuthorize("hasAnyRole('TEACHER','SUPERADMIN')")
     public ResponseEntity<CourseDto> createCourse(
             @Valid @RequestBody CreateCourseRequest request) {
