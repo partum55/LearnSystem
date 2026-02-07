@@ -4,8 +4,7 @@ import { Modal } from './Modal';
 import { Input } from './Input';
 import { Button } from './Button';
 import { ResourceType } from '../types';
-import apiClient from '../api/client';
-import type { AxiosProgressEvent } from 'axios';
+import apiClient, { extractErrorMessage } from '../api/client';
 import {
   DocumentTextIcon,
   VideoCameraIcon,
@@ -18,11 +17,12 @@ import {
 interface AddResourceModalProps {
   isOpen: boolean;
   onClose: () => void;
+  courseId: string;
   moduleId: string;
   onResourceAdded: () => void;
 }
 
-const resourceTypeIcons: Record<ResourceType, any> = {
+const resourceTypeIcons: Record<ResourceType, React.ElementType> = {
   VIDEO: VideoCameraIcon,
   PDF: DocumentTextIcon,
   SLIDE: PresentationChartBarIcon,
@@ -35,6 +35,7 @@ const resourceTypeIcons: Record<ResourceType, any> = {
 export const AddResourceModal: React.FC<AddResourceModalProps> = ({
   isOpen,
   onClose,
+  courseId,
   moduleId,
   onResourceAdded,
 }) => {
@@ -83,26 +84,17 @@ export const AddResourceModal: React.FC<AddResourceModalProps> = ({
     setUploadProgress(0);
 
     try {
-      const formDataToSend = new FormData();
-      formDataToSend.append('module', moduleId);
-      formDataToSend.append('title', formData.title);
-      formDataToSend.append('description', formData.description);
-      formDataToSend.append('resource_type', selectedType);
-      formDataToSend.append('is_downloadable', String(formData.is_downloadable));
-
-      if (selectedType === 'LINK') {
-        formDataToSend.append('external_url', formData.external_url);
-      } else if (selectedType === 'TEXT') {
-        formDataToSend.append('text_content', formData.text_content);
-      } else if (formData.file) {
-        formDataToSend.append('file', formData.file);
+      if (formData.file) {
+        throw new Error('File upload for resources is not yet supported by backend endpoint.');
       }
 
-      await apiClient.upload('/courses/resources/upload/', formDataToSend, (e: AxiosProgressEvent) => {
-        if (e.total) {
-          const progress = Math.round((e.loaded / e.total) * 100);
-          setUploadProgress(progress);
-        }
+      await apiClient.post(`/courses/${courseId}/modules/${moduleId}/resources`, {
+        title: formData.title,
+        description: formData.description || undefined,
+        resourceType: selectedType,
+        externalUrl: selectedType === 'LINK' ? formData.external_url : undefined,
+        textContent: selectedType === 'TEXT' ? formData.text_content : undefined,
+        isDownloadable: formData.is_downloadable,
       });
 
       setFormData({
@@ -117,8 +109,8 @@ export const AddResourceModal: React.FC<AddResourceModalProps> = ({
       setUploadProgress(0);
       onResourceAdded();
       onClose();
-    } catch (err: any) {
-      setError(err.message || t('resources.errors.uploadFailed'));
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -152,9 +144,9 @@ export const AddResourceModal: React.FC<AddResourceModalProps> = ({
   };
 
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={handleModalClose} 
+    <Modal
+      isOpen={isOpen}
+      onClose={handleModalClose}
       title={step === 'type' ? t('resources.selectType') : t('resources.addResource')}
     >
       {step === 'type' ? (

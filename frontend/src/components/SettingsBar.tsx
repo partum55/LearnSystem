@@ -52,7 +52,7 @@ const SettingsBar: React.FC = () => {
               aria-label={t('settings.size', 'Size')}
               className="rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={size}
-              onChange={(e) => setSize(e.target.value as any)}
+              onChange={(e) => setSize(e.target.value as 'sm' | 'md' | 'lg')}
             >
               <option value="sm">{t('settings.size_sm', 'Compact')}</option>
               <option value="md">{t('settings.size_md', 'Comfortable')}</option>

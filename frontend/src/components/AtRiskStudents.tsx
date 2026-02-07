@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 
@@ -30,18 +30,13 @@ interface StudentRiskPrediction {
 
 export const AtRiskStudents: React.FC = () => {
   const { t } = useTranslation();
-  const { courseId } = useParams<{ courseId: string }>();
+  const { courseId: routeCourseId, id } = useParams<{ courseId?: string; id?: string }>();
+  const courseId = routeCourseId || id;
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<StudentRiskPrediction[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<StudentRiskPrediction | null>(null);
 
-  useEffect(() => {
-    if (courseId) {
-      fetchAtRiskStudents();
-    }
-  }, [courseId]);
-
-  const fetchAtRiskStudents = async () => {
+  const fetchAtRiskStudents = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(`/api/analytics/courses/${courseId}/at-risk-students`);
@@ -52,7 +47,13 @@ export const AtRiskStudents: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [courseId]);
+
+  useEffect(() => {
+    if (courseId) {
+      fetchAtRiskStudents();
+    }
+  }, [courseId, fetchAtRiskStudents]);
 
   const getRiskLevelColor = (level: string) => {
     switch (level) {
@@ -114,11 +115,10 @@ export const AtRiskStudents: React.FC = () => {
               <div
                 key={student.studentId}
                 onClick={() => setSelectedStudent(student)}
-                className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                  selectedStudent?.studentId === student.studentId
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
+                className={`border-2 rounded-lg p-4 cursor-pointer transition ${selectedStudent?.studentId === student.studentId
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 hover:border-gray-300'
+                  }`}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>

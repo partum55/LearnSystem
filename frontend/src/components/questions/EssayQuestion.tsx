@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 
 interface EssayQuestionProps {
   question: {
@@ -21,18 +21,17 @@ const EssayQuestion: React.FC<EssayQuestionProps> = ({
   onChange,
   disabled = false
 }) => {
-  const [wordCount, setWordCount] = useState(0);
   const maxWords = question.metadata?.max_words || 500;
 
-  useEffect(() => {
+  const wordCount = useMemo(() => {
     const words = value.trim().split(/\s+/).filter(word => word.length > 0);
-    setWordCount(words.length);
+    return words.length;
   }, [value]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     const words = newValue.trim().split(/\s+/).filter(word => word.length > 0);
-    
+
     if (words.length <= maxWords) {
       onChange(newValue);
     }
@@ -48,7 +47,7 @@ const EssayQuestion: React.FC<EssayQuestionProps> = ({
           <button
             type="button"
             className="text-sm text-blue-600 hover:underline"
-            onClick={() => {/* Open rubric modal */}}
+            onClick={() => {/* Open rubric modal */ }}
           >
             View Rubric
           </button>
@@ -61,9 +60,8 @@ const EssayQuestion: React.FC<EssayQuestionProps> = ({
           onChange={handleChange}
           disabled={disabled}
           rows={15}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y ${
-            isOverLimit ? 'border-red-500' : 'border-gray-300'
-          } ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y ${isOverLimit ? 'border-red-500' : 'border-gray-300'
+            } ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
           placeholder="Type your essay here..."
         />
       </div>

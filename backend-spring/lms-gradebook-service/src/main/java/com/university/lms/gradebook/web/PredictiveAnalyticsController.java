@@ -13,7 +13,7 @@ import java.util.List;
  * REST controller for predictive analytics and at-risk student identification
  */
 @RestController
-@RequestMapping("/api/analytics")
+@RequestMapping("/analytics")
 @RequiredArgsConstructor
 @Slf4j
 public class PredictiveAnalyticsController {

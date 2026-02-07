@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from './Modal';
 import { Button } from './Button';
-import apiClient from '../api/client';
+import apiClient, { extractErrorMessage } from '../api/client';
 import {
   UserPlusIcon,
   DocumentArrowUpIcon,
@@ -33,6 +33,16 @@ interface EnrollmentResult {
   total_errors?: number;
 }
 
+interface UserSearchResponse {
+  content: Array<{
+    id: string;
+    email: string;
+    displayName?: string;
+    firstName?: string;
+    lastName?: string;
+  }>;
+}
+
 export const EnrollStudentsModal: React.FC<EnrollStudentsModalProps> = ({
   isOpen,
   onClose,
@@ -47,6 +57,83 @@ export const EnrollStudentsModal: React.FC<EnrollStudentsModalProps> = ({
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [result, setResult] = useState<EnrollmentResult | null>(null);
   const [error, setError] = useState('');
+
+  const enrollUsersByEmail = async (emailsInput: string[]) => {
+    const uniqueEmails = Array.from(
+      new Set(
+        emailsInput
+          .map((email) => email.trim().toLowerCase())
+          .filter((email) => email.length > 0)
+      )
+    );
+
+    const enrollmentResult: EnrollmentResult = {
+      enrolled: [],
+      already_enrolled: [],
+      not_found: [],
+      errors: [],
+      total_enrolled: 0,
+      total_already_enrolled: 0,
+      total_not_found: 0,
+      total_errors: 0,
+    };
+
+    for (let i = 0; i < uniqueEmails.length; i += 1) {
+      const email = uniqueEmails[i];
+      try {
+        const usersResponse = await apiClient.get<UserSearchResponse>(
+          `/users?query=${encodeURIComponent(email)}&page=0&size=20`
+        );
+        const matchedUser = (usersResponse.data.content || []).find(
+          (u) => u.email.toLowerCase() === email
+        );
+
+        if (!matchedUser) {
+          enrollmentResult.not_found.push(email);
+          continue;
+        }
+
+        const userName =
+          matchedUser.displayName ||
+          `${matchedUser.firstName || ''} ${matchedUser.lastName || ''}`.trim() ||
+          matchedUser.email;
+
+        try {
+          await apiClient.post(`/courses/${courseId}/enroll`, {
+            userId: matchedUser.id,
+            roleInCourse: role,
+          });
+          enrollmentResult.enrolled.push({ email, name: userName, role });
+        } catch (err: unknown) {
+          const errMsg = extractErrorMessage(err);
+          const lowered = errMsg.toLowerCase();
+          if (lowered.includes('already') || lowered.includes('exists') || lowered.includes('enrolled')) {
+            enrollmentResult.already_enrolled.push({
+              email,
+              name: userName,
+              current_role: role,
+            });
+          } else {
+            enrollmentResult.errors?.push({
+              row: i + 1,
+              error: `${email}: ${errMsg}`,
+            });
+          }
+        }
+      } catch (err: unknown) {
+        enrollmentResult.errors?.push({
+          row: i + 1,
+          error: `${email}: ${extractErrorMessage(err)}`,
+        });
+      }
+    }
+
+    enrollmentResult.total_enrolled = enrollmentResult.enrolled.length;
+    enrollmentResult.total_already_enrolled = enrollmentResult.already_enrolled.length;
+    enrollmentResult.total_not_found = enrollmentResult.not_found.length;
+    enrollmentResult.total_errors = enrollmentResult.errors?.length || 0;
+    return enrollmentResult;
+  };
 
   const handleManualEnroll = async () => {
     setError('');
@@ -65,19 +152,14 @@ export const EnrollStudentsModal: React.FC<EnrollStudentsModalProps> = ({
         return;
       }
 
-      const response = await apiClient.post<EnrollmentResult>(`/courses/${courseId}/enroll_students/`, {
-        student_emails: emails,
-        role: role,
-      });
-
-      const data = response.data;
+      const data = await enrollUsersByEmail(emails);
       setResult(data);
 
       if (data.total_enrolled > 0) {
         onEnrolled();
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -94,19 +176,42 @@ export const EnrollStudentsModal: React.FC<EnrollStudentsModalProps> = ({
     setResult(null);
 
     try {
-      const formData = new FormData();
-      formData.append('file', csvFile);
+      const csvText = await csvFile.text();
+      const lines = csvText
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
 
-      const response = await apiClient.upload<EnrollmentResult>(`/courses/${courseId}/enroll-csv/`, formData);
+      if (lines.length === 0) {
+        setError(t('enrollment.errors.noFile'));
+        setLoading(false);
+        return;
+      }
 
-      const data = response.data as any as EnrollmentResult;
+      const emails = lines
+        .map((line, index) => {
+          const firstColumn = line.split(',')[0]?.trim();
+          if (index === 0 && firstColumn?.toLowerCase() === 'email') {
+            return '';
+          }
+          return firstColumn || '';
+        })
+        .filter((email) => email.length > 0);
+
+      if (emails.length === 0) {
+        setError(t('enrollment.errors.noEmails'));
+        setLoading(false);
+        return;
+      }
+
+      const data = await enrollUsersByEmail(emails);
       setResult(data);
 
-      if (data.total_enrolled > 0 || (data.total_created && data.total_created > 0)) {
+      if (data.total_enrolled > 0) {
         onEnrolled();
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -141,22 +246,20 @@ export const EnrollStudentsModal: React.FC<EnrollStudentsModalProps> = ({
         <div className="flex gap-3 mb-6">
           <button
             onClick={() => setMethod('manual')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 transition-all ${
-              method === 'manual'
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
-            }`}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 transition-all ${method === 'manual'
+              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+              : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+              }`}
           >
             <UserPlusIcon className="h-5 w-5" />
             <span className="font-medium">{t('enrollment.manual')}</span>
           </button>
           <button
             onClick={() => setMethod('csv')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 transition-all ${
-              method === 'csv'
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
-            }`}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 transition-all ${method === 'csv'
+              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+              : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+              }`}
           >
             <DocumentArrowUpIcon className="h-5 w-5" />
             <span className="font-medium">{t('enrollment.csv')}</span>

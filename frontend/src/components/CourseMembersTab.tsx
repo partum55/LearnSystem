@@ -11,14 +11,29 @@ import {
   UserIcon,
 } from '@heroicons/react/24/outline';
 
+interface CourseMemberDto {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  roleInCourse: string;
+  addedAt: string;
+  finalGrade?: number;
+}
+
+interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+}
+
 interface Member {
   id: string;
-  user: string;
-  user_name: string;
-  user_email: string;
-  role_in_course: string;
-  added_at: string;
-  final_grade?: number;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  roleInCourse: string;
+  addedAt: string;
+  finalGrade?: number;
 }
 
 interface CourseMembers {
@@ -37,8 +52,17 @@ export const CourseMembersTab: React.FC<CourseMembers> = ({ courseId, canManage,
     setLoading(true);
     try {
       const roleParam = filterRole !== 'ALL' ? `?role=${filterRole}` : '';
-      const response = await apiClient.get<Member[]>(`/courses/${courseId}/members/${roleParam}`);
-      setMembers(Array.isArray(response.data) ? response.data : []);
+      const response = await apiClient.get<PageResponse<CourseMemberDto>>(`/courses/${courseId}/members${roleParam}`);
+      const mappedMembers = (response.data.content || []).map((member) => ({
+        id: member.id,
+        userId: member.userId,
+        userName: member.userName,
+        userEmail: member.userEmail,
+        roleInCourse: member.roleInCourse,
+        addedAt: member.addedAt,
+        finalGrade: member.finalGrade,
+      }));
+      setMembers(mappedMembers);
     } catch (error) {
       console.error('Failed to fetch members:', error);
       setMembers([]);
@@ -57,7 +81,7 @@ export const CourseMembersTab: React.FC<CourseMembers> = ({ courseId, canManage,
     }
 
     try {
-      await apiClient.post(`/courses/${courseId}/unenroll/`, { user_id: userId });
+      await apiClient.delete(`/courses/${courseId}/enroll/${userId}`);
       setMembers(prev => prev.filter(m => m.id !== memberId));
       if (onMemberRemoved) {
         onMemberRemoved();
@@ -94,9 +118,9 @@ export const CourseMembersTab: React.FC<CourseMembers> = ({ courseId, canManage,
     return <Loading />;
   }
 
-  const students = members.filter(m => m.role_in_course === 'STUDENT');
-  const tas = members.filter(m => m.role_in_course === 'TA');
-  const teachers = members.filter(m => m.role_in_course === 'TEACHER');
+  const students = members.filter(m => m.roleInCourse === 'STUDENT');
+  const tas = members.filter(m => m.roleInCourse === 'TA');
+  const teachers = members.filter(m => m.roleInCourse === 'TEACHER');
 
   return (
     <div className="space-y-6">
@@ -146,7 +170,7 @@ export const CourseMembersTab: React.FC<CourseMembers> = ({ courseId, canManage,
         </label>
         <select
           value={filterRole}
-          onChange={(e) => setFilterRole(e.target.value as any)}
+          onChange={(e) => setFilterRole(e.target.value as 'ALL' | 'STUDENT' | 'TA' | 'TEACHER')}
           className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
         >
           <option value="ALL">{t('enrollment.allRoles')}</option>
@@ -204,30 +228,30 @@ export const CourseMembersTab: React.FC<CourseMembers> = ({ courseId, canManage,
                     <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          {getRoleIcon(member.role_in_course)}
+                          {getRoleIcon(member.roleInCourse)}
                           <span className="ml-3 text-sm font-medium text-gray-900 dark:text-white">
-                            {member.user_name}
+                            {member.userName}
                           </span>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                        {member.user_email}
+                        {member.userEmail}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(member.role_in_course)}`}>
-                          {t(`enrollment.roles.${member.role_in_course.toLowerCase()}`)}
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(member.roleInCourse)}`}>
+                          {t(`enrollment.roles.${member.roleInCourse.toLowerCase()}`)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                        {new Date(member.added_at).toLocaleDateString()}
+                        {new Date(member.addedAt).toLocaleDateString()}
                       </td>
                       {canManage && (
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                          {member.role_in_course !== 'TEACHER' && (
+                          {member.roleInCourse !== 'TEACHER' && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleUnenroll(member.id, member.user)}
+                              onClick={() => handleUnenroll(member.id, member.userId)}
                               className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                             >
                               <TrashIcon className="h-4 w-4" />

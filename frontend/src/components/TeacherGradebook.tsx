@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import apiClient from '../api/client';
+import apiClient, { extractErrorMessage } from '../api/client';
 import { Card, CardBody } from './Card';
 import { Loading } from './Loading';
 import { Button } from './Button';
@@ -64,6 +64,23 @@ interface TeacherGradebookData {
   modules?: Module[];
 }
 
+interface ApiGradebookEntry {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  assignmentId: string;
+  assignmentTitle: string;
+  score?: number;
+  finalScore?: number;
+  overrideScore?: number;
+  maxScore: number;
+  percentage?: number;
+  status: string;
+  late: boolean;
+  excused: boolean;
+}
+
 interface TeacherGradebookProps {
   courseId: string;
 }
@@ -93,11 +110,93 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get<TeacherGradebookData>(`/gradebook/entries/course/${courseId}/`);
-      setGradebook(response.data);
-    } catch (err: any) {
+      const [entriesResponse, courseResponse] = await Promise.all([
+        apiClient.get<ApiGradebookEntry[]>(`/gradebook/entries/course/${courseId}`),
+        apiClient.get<{ code?: string; title?: string; titleUk?: string; titleEn?: string }>(`/courses/${courseId}`),
+      ]);
+
+      const entries = entriesResponse.data || [];
+      const assignmentMap = new Map<string, Assignment>();
+      const studentMap = new Map<string, StudentGrades>();
+
+      entries.forEach((entry) => {
+        if (!assignmentMap.has(entry.assignmentId)) {
+          assignmentMap.set(entry.assignmentId, {
+            id: entry.assignmentId,
+            title: entry.assignmentTitle || 'Untitled assignment',
+            max_points: Number(entry.maxScore || 0),
+          });
+        }
+
+        if (!studentMap.has(entry.studentId)) {
+          studentMap.set(entry.studentId, {
+            student_id: entry.studentId,
+            student_name: entry.studentName || 'Student',
+            student_email: entry.studentEmail || '',
+            grades: {},
+          });
+        }
+
+        const student = studentMap.get(entry.studentId)!;
+        const resolvedScore = entry.finalScore ?? entry.overrideScore ?? entry.score;
+        student.grades[entry.assignmentId] = {
+          entry_id: entry.id,
+          score: resolvedScore !== undefined && resolvedScore !== null ? Number(resolvedScore) : undefined,
+          max_score: Number(entry.maxScore || 0),
+          percentage: entry.percentage !== undefined && entry.percentage !== null ? Number(entry.percentage) : undefined,
+          status: entry.status,
+          is_late: Boolean(entry.late),
+          is_excused: Boolean(entry.excused),
+        };
+      });
+
+      const assignments = Array.from(assignmentMap.values());
+      const students = Array.from(studentMap.values()).map((student) => {
+        // Ensure every student has a slot for every assignment
+        assignments.forEach((assignment) => {
+          if (!(assignment.id in student.grades)) {
+            student.grades[assignment.id] = null;
+          }
+        });
+
+        const gradeValues = Object.values(student.grades).filter(
+          (grade): grade is GradeEntry => Boolean(grade && grade.score !== undefined)
+        );
+        const totalEarned = gradeValues.reduce((sum, grade) => sum + (grade.score || 0), 0);
+        const totalPossible = gradeValues.reduce((sum, grade) => sum + (grade.max_score || 0), 0);
+        const currentGrade = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : undefined;
+        const letterGrade =
+          currentGrade === undefined ? '-' :
+            currentGrade >= 90 ? 'A' :
+              currentGrade >= 80 ? 'B' :
+                currentGrade >= 70 ? 'C' :
+                  currentGrade >= 60 ? 'D' : 'F';
+
+        return {
+          ...student,
+          summary: {
+            current_grade: currentGrade,
+            letter_grade: letterGrade,
+            total_points_earned: totalEarned,
+            total_points_possible: totalPossible,
+          },
+        };
+      });
+
+      setGradebook({
+        course_id: courseId,
+        course_code: courseResponse.data?.code || '',
+        course_title:
+          courseResponse.data?.title ||
+          courseResponse.data?.titleUk ||
+          courseResponse.data?.titleEn ||
+          '',
+        assignments,
+        students,
+      });
+    } catch (err) {
       console.error('Failed to fetch gradebook:', err);
-      setError(err.response?.data?.error || 'Failed to load gradebook');
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -146,10 +245,10 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
           grade => grade && grade.score !== null && grade.score !== undefined
         );
         const hasPendingAssignments = Object.values(student.grades).some(
-          grade => grade && grade.status === 'PENDING'
+          grade => grade && ['PENDING', 'SUBMITTED'].includes(grade.status)
         );
         const hasMissingAssignments = Object.values(student.grades).some(
-          grade => !grade || grade.status === 'NOT_SUBMITTED'
+          grade => !grade || ['NOT_SUBMITTED', 'MISSING'].includes(grade.status)
         );
 
         if (gradeFilter === 'graded' && !hasGradedAssignments) return false;
@@ -199,12 +298,12 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
     setSaving(true);
     try {
       const score = editValue === '' ? null : parseFloat(editValue);
-      
+
       if (entryId) {
         // Update existing entry
-        await apiClient.patch(`/gradebook/entries/${entryId}/update_grade/`, {
-          override_score: score,
-          override_reason: 'Manual grade entry by teacher'
+        await apiClient.patch(`/gradebook/entries/${entryId}`, {
+          overrideScore: score,
+          overrideReason: 'Manual grade entry by teacher'
         });
       } else {
         // Create new entry (would need additional logic)
@@ -215,9 +314,9 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
       await fetchGradebook();
       setEditingCell(null);
       setEditValue('');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to save grade:', err);
-      alert(err.response?.data?.error || 'Failed to save grade');
+      alert(extractErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -228,12 +327,12 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
 
     setLoading(true);
     try {
-      await apiClient.post(`/gradebook/entries/recalculate/${courseId}/`);
+      await apiClient.post(`/gradebook/recalculate/course/${courseId}`);
       await fetchGradebook();
       alert(t('gradebook.recalculate_success'));
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to recalculate grades:', err);
-      alert(err.response?.data?.error || 'Failed to recalculate grades');
+      alert(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -323,7 +422,7 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
                 </label>
                 <select
                   value={gradeFilter}
-                  onChange={(e) => setGradeFilter(e.target.value as any)}
+                  onChange={(e) => setGradeFilter(e.target.value as 'all' | 'graded' | 'pending' | 'missing')}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
                 >
                   <option value="all">{t('gradebook.all_students')}</option>
@@ -415,120 +514,120 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
                     {groupedAssignments
                       .filter(module => selectedModule === 'all' || module.module_id === selectedModule)
                       .map((module) => (
-                      <div key={module.module_id} className="border-l-4 border-indigo-500 pl-4">
-                        <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-3">
-                          {module.module_title}
-                        </h4>
+                        <div key={module.module_id} className="border-l-4 border-indigo-500 pl-4">
+                          <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-3">
+                            {module.module_title}
+                          </h4>
 
-                        <div className="space-y-2">
-                          {module.assignments.map((assignment) => {
-                            const grade = student.grades[assignment.id];
-                            const isEditing = editingCell?.studentId === student.student_id &&
-                                             editingCell?.assignmentId === assignment.id;
+                          <div className="space-y-2">
+                            {module.assignments.map((assignment) => {
+                              const grade = student.grades[assignment.id];
+                              const isEditing = editingCell?.studentId === student.student_id &&
+                                editingCell?.assignmentId === assignment.id;
 
-                            return (
-                              <div
-                                key={assignment.id}
-                                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
-                              >
-                                <div className="flex-1">
-                                  <div className="font-medium text-gray-900 dark:text-white">
-                                    {assignment.title}
+                              return (
+                                <div
+                                  key={assignment.id}
+                                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                                >
+                                  <div className="flex-1">
+                                    <div className="font-medium text-gray-900 dark:text-white">
+                                      {assignment.title}
+                                    </div>
+                                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                                      {t('gradebook.max_points')}: {assignment.max_points}
+                                      {assignment.due_date && ` • ${t('gradebook.due')}: ${new Date(assignment.due_date).toLocaleDateString()}`}
+                                    </div>
                                   </div>
-                                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                                    {t('gradebook.max_points')}: {assignment.max_points}
-                                    {assignment.due_date && ` • ${t('gradebook.due')}: ${new Date(assignment.due_date).toLocaleDateString()}`}
+
+                                  {/* Grade Input/Display */}
+                                  <div className="flex items-center gap-2">
+                                    {isEditing ? (
+                                      <>
+                                        <Input
+                                          type="number"
+                                          value={editValue}
+                                          onChange={(e) => setEditValue(e.target.value)}
+                                          className="w-24 text-center"
+                                          min="0"
+                                          max={assignment.max_points}
+                                          step="0.1"
+                                          disabled={saving}
+                                          autoFocus
+                                        />
+                                        <span className="text-gray-500">/ {assignment.max_points}</span>
+                                        <button
+                                          onClick={() => saveGrade(grade?.entry_id)}
+                                          disabled={saving}
+                                          className="p-2 text-green-600 hover:text-green-800 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
+                                        >
+                                          <CheckIcon className="h-5 w-5" />
+                                        </button>
+                                        <button
+                                          onClick={cancelEdit}
+                                          disabled={saving}
+                                          className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                                        >
+                                          <XMarkIcon className="h-5 w-5" />
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <div className="min-w-[120px] text-right">
+                                          {grade?.is_excused ? (
+                                            <span className="text-gray-400 italic">
+                                              {t('gradebook.excused')}
+                                            </span>
+                                          ) : grade?.score !== undefined && grade?.score !== null ? (
+                                            <span className="font-semibold text-gray-900 dark:text-white">
+                                              {grade.score.toFixed(1)} / {grade.max_score}
+                                              {grade.percentage !== undefined && (
+                                                <span className="ml-2 text-sm text-gray-500">
+                                                  ({grade.percentage.toFixed(0)}%)
+                                                </span>
+                                              )}
+                                            </span>
+                                          ) : (
+                                            <span className="text-gray-400">
+                                              {t('gradebook.not_graded')}
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        {/* Status Badges */}
+                                        <div className="flex gap-1">
+                                          {grade?.is_late && (
+                                            <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 rounded">
+                                              {t('gradebook.late')}
+                                            </span>
+                                          )}
+                                          {grade?.status === 'PENDING' && (
+                                            <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 rounded">
+                                              {t('gradebook.pending')}
+                                            </span>
+                                          )}
+                                          {(!grade || grade.status === 'NOT_SUBMITTED') && (
+                                            <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400 rounded">
+                                              {t('gradebook.not_submitted')}
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        <button
+                                          onClick={() => startEdit(student.student_id, assignment.id, grade?.score ?? undefined)}
+                                          className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                                        >
+                                          <PencilSquareIcon className="h-5 w-5" />
+                                        </button>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
-
-                                {/* Grade Input/Display */}
-                                <div className="flex items-center gap-2">
-                                  {isEditing ? (
-                                    <>
-                                      <Input
-                                        type="number"
-                                        value={editValue}
-                                        onChange={(e) => setEditValue(e.target.value)}
-                                        className="w-24 text-center"
-                                        min="0"
-                                        max={assignment.max_points}
-                                        step="0.1"
-                                        disabled={saving}
-                                        autoFocus
-                                      />
-                                      <span className="text-gray-500">/ {assignment.max_points}</span>
-                                      <button
-                                        onClick={() => saveGrade(grade?.entry_id)}
-                                        disabled={saving}
-                                        className="p-2 text-green-600 hover:text-green-800 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
-                                      >
-                                        <CheckIcon className="h-5 w-5" />
-                                      </button>
-                                      <button
-                                        onClick={cancelEdit}
-                                        disabled={saving}
-                                        className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                                      >
-                                        <XMarkIcon className="h-5 w-5" />
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <div className="min-w-[120px] text-right">
-                                        {grade?.is_excused ? (
-                                          <span className="text-gray-400 italic">
-                                            {t('gradebook.excused')}
-                                          </span>
-                                        ) : grade?.score !== undefined && grade?.score !== null ? (
-                                          <span className="font-semibold text-gray-900 dark:text-white">
-                                            {grade.score.toFixed(1)} / {grade.max_score}
-                                            {grade.percentage !== undefined && (
-                                              <span className="ml-2 text-sm text-gray-500">
-                                                ({grade.percentage.toFixed(0)}%)
-                                              </span>
-                                            )}
-                                          </span>
-                                        ) : (
-                                          <span className="text-gray-400">
-                                            {t('gradebook.not_graded')}
-                                          </span>
-                                        )}
-                                      </div>
-
-                                      {/* Status Badges */}
-                                      <div className="flex gap-1">
-                                        {grade?.is_late && (
-                                          <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 rounded">
-                                            {t('gradebook.late')}
-                                          </span>
-                                        )}
-                                        {grade?.status === 'PENDING' && (
-                                          <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 rounded">
-                                            {t('gradebook.pending')}
-                                          </span>
-                                        )}
-                                        {(!grade || grade.status === 'NOT_SUBMITTED') && (
-                                          <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400 rounded">
-                                            {t('gradebook.not_submitted')}
-                                          </span>
-                                        )}
-                                      </div>
-
-                                      <button
-                                        onClick={() => startEdit(student.student_id, assignment.id, grade?.score ?? undefined)}
-                                        className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                                      >
-                                        <PencilSquareIcon className="h-5 w-5" />
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 )}
               </CardBody>

@@ -68,7 +68,7 @@ services:
   assessment:
     base-url: http://localhost:8083
   submission:
-    base-url: http://localhost:8085
+    base-url: http://localhost:8087
 
 eureka:
   client:

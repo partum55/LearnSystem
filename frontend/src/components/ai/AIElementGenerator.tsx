@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { aiApi } from '../../api/ai';
+import { aiApi, GeneratedModule, GeneratedAssignment, GeneratedQuiz } from '../../api/ai';
+import { extractErrorMessage } from '../../api/client';
 
 /**
  * AI Generator for individual course elements
@@ -14,7 +15,7 @@ interface AIElementGeneratorProps {
   moduleId?: string;
   courseContext?: string; // Context about the course
   moduleContext?: string; // Context about the module
-  onGenerated?: (data: any) => void;
+  onGenerated?: (data: GeneratedModule[] | GeneratedAssignment[] | GeneratedQuiz[]) => void;
   onClose?: () => void;
 }
 
@@ -29,7 +30,7 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [generatedData, setGeneratedData] = useState<any>(null);
+  const [generatedData, setGeneratedData] = useState<GeneratedModule[] | GeneratedAssignment[] | GeneratedQuiz[] | null>(null);
   const [generationStage, setGenerationStage] = useState<GenerationStage>('idle');
   const [isCancelled, setIsCancelled] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -177,11 +178,12 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
       if (onGenerated && extractedData) {
         onGenerated(extractedData);
       }
-    } catch (err: any) {
-      if (err.name === 'AbortError' || isCancelled) {
+    } catch (err: unknown) {
+      const error = err as Error;
+      if (error?.name === 'AbortError' || isCancelled) {
         setError('Генерацію скасовано');
       } else {
-        setError(err.response?.data?.message || err.message || 'Помилка генерації');
+        setError(extractErrorMessage(err));
       }
       console.error('AI generation error:', err);
     } finally {
@@ -240,9 +242,9 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
               className="bg-blue-600 h-2 rounded-full transition-all duration-500"
               style={{
                 width: generationStage === 'connecting' ? '25%' :
-                       generationStage === 'generating' ? '50%' :
-                       generationStage === 'processing' ? '75%' :
-                       generationStage === 'saving' ? '95%' : '0%'
+                  generationStage === 'generating' ? '50%' :
+                    generationStage === 'processing' ? '75%' :
+                      generationStage === 'saving' ? '95%' : '0%'
               }}
             />
           </div>
@@ -311,8 +313,8 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
               elementType === 'module'
                 ? 'Наприклад: Модуль про основи ООП в Python з прикладами та вправами'
                 : elementType === 'assignment'
-                ? 'Наприклад: Практичне завдання на створення класів і об\'єктів'
-                : 'Наприклад: Квіз на перевірку знань про основи ООП'
+                  ? 'Наприклад: Практичне завдання на створення класів і об\'єктів'
+                  : 'Наприклад: Квіз на перевірку знань про основи ООП'
             }
             rows={3}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"

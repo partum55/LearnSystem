@@ -6,7 +6,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -18,7 +20,9 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ModuleDto {
+public class ModuleDto implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private UUID id;
     private UUID courseId;
@@ -41,4 +45,3 @@ public class ModuleDto {
     private Integer resourceCount;
     private Boolean isAvailable;
 }
-

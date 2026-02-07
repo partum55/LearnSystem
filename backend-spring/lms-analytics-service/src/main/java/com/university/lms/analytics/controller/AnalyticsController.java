@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/analytics")
+@RequestMapping("/analytics")
 @RequiredArgsConstructor
 @Tag(name = "Analytics", description = "AI-powered analytics API for course and student performance analysis")
 @SecurityRequirement(name = "Bearer Authentication")
@@ -58,4 +58,3 @@ public class AnalyticsController {
         return ResponseEntity.ok(analyticsService.getStudentProgress(courseId));
     }
 }
-

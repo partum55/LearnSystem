@@ -64,12 +64,24 @@ export function useNetworkStatus(options: UseNetworkStatusOptions = {}): Network
 
   // Get network information from Navigator API
   const getNetworkInfo = useCallback(() => {
-    const nav = navigator as any;
+    interface NetworkInformation {
+      effectiveType?: '4g' | '3g' | '2g' | 'slow-2g' | 'unknown';
+      rtt?: number;
+      downlink?: number;
+      addEventListener: (type: string, listener: EventListener) => void;
+      removeEventListener: (type: string, listener: EventListener) => void;
+    }
+
+    const nav = navigator as Navigator & {
+      connection?: NetworkInformation;
+      mozConnection?: NetworkInformation;
+      webkitConnection?: NetworkInformation;
+    };
     const connection = nav.connection || nav.mozConnection || nav.webkitConnection;
 
     if (connection) {
       return {
-        effectiveType: connection.effectiveType || 'unknown',
+        effectiveType: (connection.effectiveType || 'unknown') as '4g' | '3g' | '2g' | 'slow-2g' | 'unknown',
         rtt: connection.rtt || null,
         downlink: connection.downlink || null,
       };
@@ -84,7 +96,8 @@ export function useNetworkStatus(options: UseNetworkStatusOptions = {}): Network
 
   // Check server reachability
   const checkServerHealth = useCallback(async () => {
-    if (!status.isOnline) {
+    // Check online status directly from navigator to avoid dependency on state
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
       setStatus(prev => ({ ...prev, isServerReachable: false }));
       return;
     }
@@ -114,7 +127,7 @@ export function useNetworkStatus(options: UseNetworkStatusOptions = {}): Network
         lastServerCheck: new Date(),
       }));
     }
-  }, [healthCheckUrl, status.isOnline, getNetworkInfo]);
+  }, [healthCheckUrl, getNetworkInfo]);
 
   // Handle online/offline events
   useEffect(() => {
@@ -147,8 +160,8 @@ export function useNetworkStatus(options: UseNetworkStatusOptions = {}): Network
   useEffect(() => {
     if (!enableHealthCheck) return;
 
-    // Initial check
-    checkServerHealth();
+    // Initial check - defer to next tick to avoid synchronous setState warning
+    setTimeout(() => checkServerHealth(), 0);
 
     const interval = setInterval(checkServerHealth, checkInterval);
     return () => clearInterval(interval);
@@ -156,7 +169,8 @@ export function useNetworkStatus(options: UseNetworkStatusOptions = {}): Network
 
   // Listen for network info changes
   useEffect(() => {
-    const nav = navigator as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const nav = navigator as Navigator & { connection?: any; mozConnection?: any; webkitConnection?: any };
     const connection = nav.connection || nav.mozConnection || nav.webkitConnection;
 
     if (connection) {

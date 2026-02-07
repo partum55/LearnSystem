@@ -2,6 +2,14 @@ import { create } from 'zustand';
 import { Notification } from '../types';
 import apiClient from '../api/client';
 
+interface NotificationDto {
+  deadlineId: number;
+  studentId: number;
+  sendAt: string;
+  channel: string;
+  message: string;
+}
+
 interface NotificationState {
   notifications: Notification[];
   unreadCount: number;
@@ -11,6 +19,16 @@ interface NotificationState {
   markAllAsRead: () => Promise<void>;
 }
 
+const mapNotification = (n: NotificationDto): Notification => ({
+  id: String(n.deadlineId),
+  user_id: String(n.studentId),
+  type: 'assignment_due',
+  title: 'Upcoming deadline',
+  message: n.message,
+  read: false,
+  created_at: n.sendAt,
+});
+
 export const useNotificationStore = create<NotificationState>((set) => ({
   notifications: [],
   unreadCount: 0,
@@ -19,38 +37,28 @@ export const useNotificationStore = create<NotificationState>((set) => ({
   fetchNotifications: async () => {
     set({ isLoading: true });
     try {
-      const response = await apiClient.get<{ results: Notification[] }>('/notifications/');
-      const notifications = response.data.results;
-      const unreadCount = notifications.filter((n) => !n.read).length;
-      set({ notifications, unreadCount, isLoading: false });
-    } catch (error) {
+      const response = await apiClient.get<NotificationDto[]>('/notifications');
+      const notifications = (response.data || []).map(mapNotification);
+      set({ notifications, unreadCount: notifications.length, isLoading: false });
+    } catch {
       set({ isLoading: false });
     }
   },
 
   markAsRead: async (id: string) => {
-    try {
-      await apiClient.patch(`/notifications/${id}/`, { read: true });
-      set((state) => ({
-        notifications: state.notifications.map((n) =>
-          n.id === id ? { ...n, read: true } : n
-        ),
-        unreadCount: Math.max(0, state.unreadCount - 1),
-      }));
-    } catch (error) {
-      console.error('Failed to mark notification as read', error);
-    }
+    set((state) => {
+      const notifications = state.notifications.map((n) =>
+        n.id === id ? { ...n, read: true } : n
+      );
+      const unreadCount = notifications.filter((n) => !n.read).length;
+      return { notifications, unreadCount };
+    });
   },
 
   markAllAsRead: async () => {
-    try {
-      await apiClient.post('/notifications/mark-all-read/');
-      set((state) => ({
-        notifications: state.notifications.map((n) => ({ ...n, read: true })),
-        unreadCount: 0,
-      }));
-    } catch (error) {
-      console.error('Failed to mark all notifications as read', error);
-    }
+    set((state) => ({
+      notifications: state.notifications.map((n) => ({ ...n, read: true })),
+      unreadCount: 0,
+    }));
   },
 }));

@@ -15,7 +15,7 @@ import java.util.List;
  * REST controller for admin analytics and monitoring
  */
 @RestController
-@RequestMapping("/api/admin/analytics")
+@RequestMapping("/admin/analytics")
 @RequiredArgsConstructor
 @Slf4j
 public class AdminAnalyticsController {

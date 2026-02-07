@@ -9,11 +9,11 @@ interface AIStreamingWrapperProps {
   /** Whether to auto-start the stream */
   autoStart?: boolean;
   /** Request body for the stream */
-  requestBody?: any;
+  requestBody?: Record<string, unknown>;
   /** Progress callback */
   onProgress?: (event: AIProgressEvent) => void;
   /** Complete callback */
-  onComplete?: (data: any) => void;
+  onComplete?: (data: unknown) => void;
   /** Error callback */
   onError?: (error: Error) => void;
   /** Children to render when not streaming */
@@ -105,14 +105,14 @@ export function AIStreamingWrapper({
 interface AIStreamingRenderProps {
   endpoint: string;
   children: (props: {
-    connect: (body?: any) => void;
+    connect: (body?: Record<string, unknown>) => void;
     abort: () => void;
     isStreaming: boolean;
     progress: number;
     error: Error | null;
-    receivedData: any[];
+    receivedData: unknown[];
   }) => ReactNode;
-  onComplete?: (data: any) => void;
+  onComplete?: (data: unknown) => void;
 }
 
 export function AIStreamingProvider({

@@ -1,24 +1,56 @@
 import apiClient from './client';
+import { AxiosProgressEvent } from 'axios';
 import { Course, Module, Resource, ResourceCreateData, CourseCreateData } from '../types';
+
+interface PageResponse<T> {
+  content: T[];
+}
 
 // Course API - Spring backend uses /courses/** endpoints
 export const coursesApi = {
-  getAll: () => apiClient.get<Course[]>('/courses/'),
+  getAll: async () => {
+    const response = await apiClient.get<PageResponse<Course> | Course[]>('/courses/my?size=100');
+    const data = response.data;
+    return {
+      ...response,
+      data: Array.isArray(data) ? data : (data.content || []),
+    };
+  },
 
   getById: (id: string) => apiClient.get<Course>(`/courses/${id}`),
 
-  create: (data: CourseCreateData) => apiClient.post<Course>('/courses/', data),
+  create: (data: CourseCreateData) => apiClient.post<Course>('/courses', {
+    code: data.code,
+    titleUk: data.titleUk,
+    titleEn: data.titleEn,
+    descriptionUk: data.descriptionUk,
+    descriptionEn: data.descriptionEn,
+    visibility: data.visibility,
+    startDate: data.startDate,
+    endDate: data.endDate,
+    maxStudents: data.maxStudents,
+    isPublished: data.isPublished,
+    syllabus: data.syllabus,
+  }),
 
   update: (id: string, data: Partial<Course>) =>
-    apiClient.put<Course>(`/courses/${id}`, data),
+    apiClient.put<Course>(`/courses/${id}`, {
+      titleUk: data.titleUk ?? data.title,
+      titleEn: data.titleEn ?? data.title,
+      descriptionUk: data.descriptionUk ?? data.description,
+      descriptionEn: data.descriptionEn ?? data.description,
+      visibility: data.visibility,
+      isPublished: data.isPublished,
+    }),
 
   delete: (id: string) => apiClient.delete(`/courses/${id}`),
 
-  enrollStudents: (courseId: string, emails: string[], role: string = 'STUDENT') =>
-    apiClient.post(`/courses/${courseId}/members`, {
-      emails: emails,
-      role,
-    }),
+  enrollStudents: (courseId: string, emails: string[], role: string = 'STUDENT') => {
+    void courseId;
+    void emails;
+    void role;
+    return Promise.reject(new Error('Bulk enroll by email is not supported in current backend.'));
+  },
 
   getMembers: (courseId: string, role?: string) => {
     const params = role ? `?role=${role}` : '';
@@ -101,7 +133,7 @@ export const resourcesApi = {
 
   uploadFile: (courseId: string, moduleId: string, formData: FormData, onProgress?: (progress: number) => void) =>
     apiClient.upload<Resource>(`/courses/${courseId}/modules/${moduleId}/resources`, formData,
-      onProgress ? (e: any) => {
+      onProgress ? (e: AxiosProgressEvent) => {
         if (e.total) {
           const progress = Math.round((e.loaded * 100) / e.total);
           onProgress(progress);
@@ -113,17 +145,24 @@ export const resourcesApi = {
 // Announcement API
 export const announcementsApi = {
   getAll: (courseId?: string) => {
-    const params = courseId ? `?courseId=${courseId}` : '';
-    return apiClient.get(`/courses/announcements${params}`);
+    void courseId;
+    return Promise.reject(new Error('Announcements module is not implemented in current backend.'));
   },
-
-  getById: (id: string) => apiClient.get(`/courses/announcements/${id}`),
-
-  create: (data: { course: string; title: string; content: string; is_pinned?: boolean }) =>
-    apiClient.post('/courses/announcements', data),
-
-  update: (id: string, data: any) =>
-    apiClient.put(`/courses/announcements/${id}`, data),
-
-  delete: (id: string) => apiClient.delete(`/courses/announcements/${id}`),
+  getById: (id: string) => {
+    void id;
+    return Promise.reject(new Error('Announcements module is not implemented in current backend.'));
+  },
+  create: (data: { course: string; title: string; content: string; is_pinned?: boolean }) => {
+    void data;
+    return Promise.reject(new Error('Announcements module is not implemented in current backend.'));
+  },
+  update: (id: string, data: Partial<{ title: string; content: string; is_pinned?: boolean }>) => {
+    void id;
+    void data;
+    return Promise.reject(new Error('Announcements module is not implemented in current backend.'));
+  },
+  delete: (id: string) => {
+    void id;
+    return Promise.reject(new Error('Announcements module is not implemented in current backend.'));
+  },
 };

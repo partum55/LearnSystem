@@ -29,21 +29,102 @@ export interface SystemHealth {
   timestamp: string;
 }
 
-export interface UserSummary {
-  id: string;
-  email: string;
-  displayName: string;
-  role: string;
-  createdAt: string;
-  lastLogin?: string;
-  isActive: boolean;
+export interface PageResponse<T> {
+  content: T[];
+  pageNumber: number;
+  pageSize: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
 }
 
-export interface UsersListResponse {
-  users: UserSummary[];
-  totalCount: number;
-  page: number;
-  pageSize: number;
+export type AdminUserRole = 'SUPERADMIN' | 'TEACHER' | 'STUDENT' | 'TA';
+export type AdminUserLocale = 'UK' | 'EN';
+export type AdminCourseVisibility = 'PUBLIC' | 'PRIVATE' | 'DRAFT';
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  displayName?: string;
+  firstName?: string;
+  lastName?: string;
+  studentId?: string;
+  role: AdminUserRole;
+  locale?: AdminUserLocale;
+  theme?: string;
+  bio?: string;
+  avatarUrl?: string;
+  createdAt: string;
+  isActive: boolean;
+  isStaff: boolean;
+  emailVerified: boolean;
+}
+
+export interface CreateAdminUserRequest {
+  email: string;
+  password: string;
+  displayName?: string;
+  firstName?: string;
+  lastName?: string;
+  studentId?: string;
+  role: AdminUserRole;
+  locale?: AdminUserLocale;
+}
+
+export interface UpdateAdminUserRequest {
+  displayName?: string;
+  firstName?: string;
+  lastName?: string;
+  bio?: string;
+  locale?: AdminUserLocale;
+  theme?: 'light' | 'dark';
+}
+
+export interface AdminCourse {
+  id: string;
+  code: string;
+  titleUk: string;
+  titleEn?: string;
+  descriptionUk?: string;
+  descriptionEn?: string;
+  ownerId: string;
+  ownerName?: string;
+  visibility: AdminCourseVisibility;
+  startDate?: string;
+  endDate?: string;
+  maxStudents?: number;
+  currentEnrollment?: number;
+  isPublished?: boolean;
+  status?: string;
+  moduleCount?: number;
+  memberCount?: number;
+  createdAt: string;
+}
+
+export interface CreateAdminCourseRequest {
+  code: string;
+  titleUk: string;
+  titleEn?: string;
+  descriptionUk?: string;
+  descriptionEn?: string;
+  visibility?: AdminCourseVisibility;
+  startDate?: string;
+  endDate?: string;
+  maxStudents?: number;
+  isPublished?: boolean;
+}
+
+export interface UpdateAdminCourseRequest {
+  titleUk?: string;
+  titleEn?: string;
+  descriptionUk?: string;
+  descriptionEn?: string;
+  visibility?: AdminCourseVisibility;
+  startDate?: string;
+  endDate?: string;
+  maxStudents?: number;
+  isPublished?: boolean;
 }
 
 // Get system health status and all registered services
@@ -64,23 +145,78 @@ export const getServiceNames = async (): Promise<string[]> => {
   return response.data;
 };
 
-// Get all users (admin only)
-export const getAllUsers = async (page = 0, size = 20): Promise<UsersListResponse> => {
-  const response = await apiClient.get<UsersListResponse>(`/users?page=${page}&size=${size}`);
+export const getAdminUsers = async (params?: {
+  query?: string;
+  role?: AdminUserRole;
+  page?: number;
+  size?: number;
+}): Promise<PageResponse<AdminUser>> => {
+  const searchParams = new URLSearchParams();
+  if (params?.query) searchParams.set('query', params.query);
+  if (params?.role) searchParams.set('role', params.role);
+  searchParams.set('page', String(params?.page ?? 0));
+  searchParams.set('size', String(params?.size ?? 20));
+  const query = searchParams.toString();
+  const response = await apiClient.get<PageResponse<AdminUser>>(`/users?${query}`);
   return response.data;
 };
 
-// Update user role (admin only)
-export const updateUserRole = async (userId: string, role: string): Promise<void> => {
-  await apiClient.put(`/users/${userId}/role`, { role });
+export const createAdminUser = async (payload: CreateAdminUserRequest): Promise<AdminUser> => {
+  const response = await apiClient.post<AdminUser>('/auth/register', payload);
+  return response.data;
 };
 
-// Deactivate user (admin only)
-export const deactivateUser = async (userId: string): Promise<void> => {
+export const updateAdminUser = async (userId: string, payload: UpdateAdminUserRequest): Promise<AdminUser> => {
+  const response = await apiClient.put<AdminUser>(`/users/${userId}`, payload);
+  return response.data;
+};
+
+export const deactivateAdminUser = async (userId: string): Promise<void> => {
   await apiClient.post(`/users/${userId}/deactivate`);
 };
 
-// Activate user (admin only)
-export const activateUser = async (userId: string): Promise<void> => {
+export const activateAdminUser = async (userId: string): Promise<void> => {
   await apiClient.post(`/users/${userId}/activate`);
+};
+
+export const deleteAdminUser = async (userId: string): Promise<void> => {
+  await apiClient.delete(`/users/${userId}`);
+};
+
+export const getAdminCourses = async (params?: {
+  page?: number;
+  size?: number;
+}): Promise<PageResponse<AdminCourse>> => {
+  const searchParams = new URLSearchParams();
+  searchParams.set('page', String(params?.page ?? 0));
+  searchParams.set('size', String(params?.size ?? 20));
+  const response = await apiClient.get<PageResponse<AdminCourse>>(`/courses?${searchParams.toString()}`);
+  return response.data;
+};
+
+export const createAdminCourse = async (payload: CreateAdminCourseRequest): Promise<AdminCourse> => {
+  const response = await apiClient.post<AdminCourse>('/courses', payload);
+  return response.data;
+};
+
+export const updateAdminCourse = async (
+  courseId: string,
+  payload: UpdateAdminCourseRequest
+): Promise<AdminCourse> => {
+  const response = await apiClient.put<AdminCourse>(`/courses/${courseId}`, payload);
+  return response.data;
+};
+
+export const deleteAdminCourse = async (courseId: string): Promise<void> => {
+  await apiClient.delete(`/courses/${courseId}`);
+};
+
+export const publishAdminCourse = async (courseId: string): Promise<AdminCourse> => {
+  const response = await apiClient.post<AdminCourse>(`/courses/${courseId}/publish`);
+  return response.data;
+};
+
+export const unpublishAdminCourse = async (courseId: string): Promise<AdminCourse> => {
+  const response = await apiClient.post<AdminCourse>(`/courses/${courseId}/unpublish`);
+  return response.data;
 };

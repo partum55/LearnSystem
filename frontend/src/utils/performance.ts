@@ -7,9 +7,9 @@
  * Import and call this in index.tsx before rendering
  */
 export function disableConsoleInProduction(): void {
-  if (process.env.NODE_ENV === 'production') {
+  if (import.meta.env.PROD) {
     // Preserve console.error and console.warn for debugging
-    const noop = () => {};
+    const noop = () => { };
 
     console.log = noop;
     console.debug = noop;
@@ -26,8 +26,6 @@ export function disableConsoleInProduction(): void {
     console.count = noop;
     console.countReset = noop;
     console.table = noop;
-    console.profile = noop;
-    console.profileEnd = noop;
     console.clear = noop;
   }
 }
@@ -37,7 +35,7 @@ export function disableConsoleInProduction(): void {
  */
 export function preloadCriticalResources(): void {
   // Preconnect to API server
-  const apiUrl = process.env.REACT_APP_API_URL;
+  const apiUrl = import.meta.env.VITE_API_URL || import.meta.env.REACT_APP_API_URL;
   if (apiUrl) {
     const link = document.createElement('link');
     link.rel = 'preconnect';
@@ -50,7 +48,7 @@ export function preloadCriticalResources(): void {
  * Register service worker for offline support (PWA)
  */
 export function registerServiceWorker(): void {
-  if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+  if ('serviceWorker' in navigator && import.meta.env.PROD) {
     window.addEventListener('load', () => {
       navigator.serviceWorker
         .register('/service-worker.js')
@@ -89,12 +87,14 @@ export function registerServiceWorker(): void {
 /**
  * Debounce function for optimizing frequent updates
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return function (this: any, ...args: Parameters<T>) {
     if (timeoutId) {
       clearTimeout(timeoutId);
@@ -109,12 +109,14 @@ export function debounce<T extends (...args: any[]) => any>(
 /**
  * Throttle function for rate-limiting function calls
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function throttle<T extends (...args: any[]) => any>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {
   let inThrottle = false;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return function (this: any, ...args: Parameters<T>) {
     if (!inThrottle) {
       func.apply(this, args);
@@ -149,7 +151,8 @@ export function createIntersectionObserver(
  * Memory usage monitoring (development only)
  */
 export function logMemoryUsage(): void {
-  if (process.env.NODE_ENV === 'development' && 'memory' in performance) {
+  if (import.meta.env.DEV && 'memory' in performance) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const memory = (performance as any).memory;
     console.log('Memory:', {
       usedJSHeapSize: `${(memory.usedJSHeapSize / 1048576).toFixed(2)} MB`,
@@ -167,9 +170,9 @@ export function requestIdleCallbackPolyfill(
   options?: { timeout: number }
 ): void {
   if ('requestIdleCallback' in window) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).requestIdleCallback(callback, options);
   } else {
     setTimeout(callback, options?.timeout || 1);
   }
 }
-

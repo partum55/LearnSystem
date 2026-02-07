@@ -4,6 +4,7 @@ import { Modal } from '../components/Modal';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
 import { modulesApi } from '../api/courses';
+import { extractErrorMessage } from '../api/client';
 
 interface CreateModuleModalProps {
   isOpen: boolean;
@@ -43,8 +44,8 @@ export const CreateModuleModal: React.FC<CreateModuleModalProps> = ({
       setFormData({ title: '', description: '', is_published: false });
       onModuleCreated();
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || t('modules.errors.createFailed'));
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }

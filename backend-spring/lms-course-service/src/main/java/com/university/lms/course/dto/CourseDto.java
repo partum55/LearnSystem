@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -19,7 +20,9 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CourseDto {
+public class CourseDto implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private UUID id;
     private String code;
@@ -63,4 +66,3 @@ public class CourseDto {
     private Integer moduleCount;
     private Integer memberCount;
 }
-

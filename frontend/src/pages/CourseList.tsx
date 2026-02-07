@@ -131,13 +131,12 @@ export const CourseList: React.FC = () => {
                             {course.code}
                           </h3>
                           <span
-                            className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              course.visibility === 'PUBLIC'
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                : course.visibility === 'PRIVATE'
+                            className={`px-2 py-1 text-xs font-medium rounded-full ${course.visibility === 'PUBLIC'
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                              : course.visibility === 'PRIVATE'
                                 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
                                 : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                            }`}
+                              }`}
                           >
                             {t(`courses.${course.visibility.toLowerCase()}`)}
                           </span>
@@ -152,11 +151,11 @@ export const CourseList: React.FC = () => {
                         </p>
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600 dark:text-gray-400">
-                            {course.owner_name || t('courses.instructor')}
+                            {course.ownerName || t('courses.instructor')}
                           </span>
-                          {course.member_count !== undefined && (
+                          {course.memberCount !== undefined && (
                             <span className="text-gray-600 dark:text-gray-400">
-                              {course.member_count} {t('courses.students')}
+                              {course.memberCount} {t('courses.students')}
                             </span>
                           )}
                         </div>

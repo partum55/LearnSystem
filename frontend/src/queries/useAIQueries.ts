@@ -161,14 +161,16 @@ export function useGenerateAndSaveCourseMutation() {
       const response = await apiClient.post('/v1/ai/courses/generate-and-save', request);
       return response;
     },
-    onSuccess: (newCourse: any) => {
+    onSuccess: (newCourse: unknown) => {
       // Invalidate courses list
       queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
 
       // Add new course to cache
-      if (newCourse?.id) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const courseWithId = newCourse as any;
+      if (courseWithId?.courseId) {
         queryClient.setQueryData(
-          queryKeys.courses.detail(newCourse.id),
+          queryKeys.courses.detail(courseWithId.courseId),
           newCourse
         );
       }

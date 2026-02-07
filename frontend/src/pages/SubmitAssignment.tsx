@@ -20,7 +20,14 @@ interface Assignment {
   allowed_file_types: string[];
   max_file_size: number;
   max_files: number;
-  resources: any[];
+  resources: { name: string; url: string }[];
+}
+
+interface SubmissionFile {
+  id: string;
+  file_url: string;
+  filename: string;
+  file_size: number;
 }
 
 interface Submission {
@@ -28,14 +35,14 @@ interface Submission {
   status: string;
   text_answer: string;
   submission_url: string;
-  files: any[];
+  files: SubmissionFile[];
   grade: number | null;
   feedback: string;
   submitted_at: string | null;
 }
 
 const SubmitAssignment: React.FC = () => {
-  const { courseId, assignmentId } = useParams<{ courseId: string; assignmentId: string }>();
+  const { id: assignmentId } = useParams<{ id: string }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -84,13 +91,33 @@ const SubmitAssignment: React.FC = () => {
 
   const fetchAssignment = async () => {
     try {
-      const response = await api.get<Assignment>(`assessments/assignments/${assignmentId}/`);
-      setAssignment(response.data);
-      if (response.data.starter_code) {
-        setCodeAnswer(response.data.starter_code);
+      const response = await api.get<Record<string, unknown>>(`/assessments/assignments/${assignmentId}`);
+      const data = response.data;
+      const mappedAssignment: Assignment = {
+        id: String(data.id || ''),
+        title: String(data.title || ''),
+        description: String(data.description || ''),
+        description_format: String(data.descriptionFormat || 'MARKDOWN'),
+        instructions: String(data.instructions || ''),
+        instructions_format: String(data.instructionsFormat || 'MARKDOWN'),
+        assignment_type: String(data.assignmentType || 'FILE_UPLOAD'),
+        max_points: Number(data.maxPoints || 0),
+        due_date: (data.dueDate as string | null) || null,
+        starter_code: String(data.starterCode || ''),
+        programming_language: String(data.programmingLanguage || 'python'),
+        allowed_file_types: (data.allowedFileTypes as string[]) || [],
+        max_file_size: Number(data.maxFileSize || 10485760),
+        max_files: Number(data.maxFiles || 5),
+        resources: (data.resources as { name: string; url: string }[]) || [],
+      };
+      setAssignment(mappedAssignment);
+      if (mappedAssignment.starter_code) {
+        setCodeAnswer(mappedAssignment.starter_code);
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load assignment');
+    } catch (err: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const error = err as any;
+      setError(error.response?.data?.message || 'Failed to load assignment');
     } finally {
       setLoading(false);
     }
@@ -99,11 +126,17 @@ const SubmitAssignment: React.FC = () => {
   const fetchOrCreateSubmission = async () => {
     try {
       // Try to get existing submission
-      const response = await api.get<{ results: Submission[] }>(`submissions/submissions/?assignment=${assignmentId}`);
-      if (response.data.results && response.data.results.length > 0) {
-        const existingSub = response.data.results[0];
+      const response = await api.get<{ results?: Submission[]; content?: Submission[] } | Submission[]>(
+        `/submissions?assignmentId=${assignmentId}`
+      );
+      const fetchedSubmissions = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || response.data.content || [];
+
+      if (fetchedSubmissions.length > 0) {
+        const existingSub = fetchedSubmissions[0];
         setSubmission(existingSub);
-        
+
         // Load existing data
         if (existingSub.text_answer) {
           setTextAnswer(existingSub.text_answer);
@@ -121,22 +154,27 @@ const SubmitAssignment: React.FC = () => {
       } else {
         // Create new draft submission
         try {
-          const createResponse = await api.post<Submission>('submissions/submissions/', {
-            assignment: assignmentId,
+          const createResponse = await api.post<Submission>('/submissions', {
+            assignmentId: assignmentId,
             status: 'DRAFT'
           });
           // Backend returns existing submission with 200 or new with 201
           setSubmission(createResponse.data);
-        } catch (createErr: any) {
+        } catch (createErr: unknown) {
           console.error('Error creating submission:', createErr);
           // If creation fails, try fetching again in case it was created by another request
-          const retryResponse = await api.get<{ results: Submission[] }>(`submissions/submissions/?assignment=${assignmentId}`);
-          if (retryResponse.data.results && retryResponse.data.results.length > 0) {
-            setSubmission(retryResponse.data.results[0]);
+          const retryResponse = await api.get<{ results?: Submission[]; content?: Submission[] } | Submission[]>(
+            `/submissions?assignmentId=${assignmentId}`
+          );
+          const retrySubmissions = Array.isArray(retryResponse.data)
+            ? retryResponse.data
+            : retryResponse.data.results || retryResponse.data.content || [];
+          if (retrySubmissions.length > 0) {
+            setSubmission(retrySubmissions[0]);
           }
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching/creating submission:', err);
     }
   };
@@ -144,13 +182,13 @@ const SubmitAssignment: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
-      
+
       // Validate file count
       if (assignment && selectedFiles.length > assignment.max_files) {
         setError(`Maximum ${assignment.max_files} files allowed`);
         return;
       }
-      
+
       // Validate file size
       const maxSize = assignment?.max_file_size || 10485760;
       const oversizedFiles = selectedFiles.filter(f => f.size > maxSize);
@@ -158,7 +196,7 @@ const SubmitAssignment: React.FC = () => {
         setError(`Files exceed maximum size of ${(maxSize / 1048576).toFixed(1)}MB`);
         return;
       }
-      
+
       setFiles(selectedFiles);
       setError(null);
     }
@@ -171,10 +209,10 @@ const SubmitAssignment: React.FC = () => {
       for (let i = 0; i < files.length; i++) {
         const fileFormData = new FormData();
         fileFormData.append('file', files[i]);
-        
-        await api.post(`submissions/submissions/${submission.id}/upload_file/`, fileFormData, {
+
+        await api.post(`/submissions/${submission.id}/files`, fileFormData, {
           headers: { 'Content-Type': 'multipart/form-data' },
-          onUploadProgress: (progressEvent: any) => {
+          onUploadProgress: (progressEvent: { total?: number; loaded: number }) => {
             const progress = progressEvent.total
               ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
               : 0;
@@ -182,11 +220,13 @@ const SubmitAssignment: React.FC = () => {
           }
         });
       }
-      
+
       setUploadProgress(100);
       return true;
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'File upload failed');
+    } catch (err: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const error = err as any;
+      setError(error.response?.data?.error || 'File upload failed');
       return false;
     }
   };
@@ -202,43 +242,51 @@ const SubmitAssignment: React.FC = () => {
       // Handle different submission types
       switch (assignment?.assignment_type) {
         case 'CODE':
-          await api.post(`submissions/submissions/${submission.id}/submit_code/`, {
+          await api.post(`/submissions/${submission.id}/submit`, {
+            type: 'CODE',
             code: codeAnswer,
             language: assignment.programming_language
           });
           break;
 
         case 'TEXT':
-          await api.post(`submissions/submissions/${submission.id}/submit_text/`, {
+          await api.post(`/submissions/${submission.id}/submit`, {
+            type: 'TEXT',
             text_answer: textAnswer
           });
           break;
 
         case 'URL':
-          await api.post(`submissions/submissions/${submission.id}/submit_url/`, {
+          await api.post(`/submissions/${submission.id}/submit`, {
+            type: 'URL',
             url: urlAnswer
           });
           break;
 
-        case 'FILE_UPLOAD':
+        case 'FILE_UPLOAD': {
           const filesUploaded = await uploadFiles();
           if (!filesUploaded) {
             setSubmitting(false);
             return;
           }
-          await api.post(`submissions/submissions/${submission.id}/submit/`);
+          await api.post(`/submissions/${submission.id}/submit`, {
+            type: 'FILE_UPLOAD',
+          });
           break;
+        }
 
         default:
-          await api.post(`submissions/submissions/${submission.id}/submit/`);
+          await api.post(`/submissions/${submission.id}/submit`, {});
       }
 
       // Success - redirect to assignment page
-      navigate(`/courses/${courseId}/assignments/${assignmentId}`, {
+      navigate(`/assignments/${assignmentId}`, {
         state: { message: t('submission.submitted_successfully') }
       });
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Submission failed');
+    } catch (err: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const error = err as any;
+      setError(error.response?.data?.error || 'Submission failed');
     } finally {
       setSubmitting(false);
     }
@@ -353,7 +401,7 @@ const SubmitAssignment: React.FC = () => {
 
             {uploadProgress > 0 && uploadProgress < 100 && (
               <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                <div 
+                <div
                   className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
                   style={{ width: `${uploadProgress}%` }}
                 ></div>
@@ -415,153 +463,152 @@ const SubmitAssignment: React.FC = () => {
       />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="mb-6">
-        <button
-          onClick={() => navigate(`/courses/${courseId}`)}
-          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          {t('common.back_to_course')}
-        </button>
-
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          {isSubmitted ? t('submission.view_submission') : t('submission.submit_assignment')}
-        </h1>
-        <h2 className="text-xl text-gray-600 dark:text-gray-400 mt-2">
-          {assignment.title}
-        </h2>
-        <div className="flex items-center gap-4 mt-4 text-sm text-gray-600 dark:text-gray-400">
-          <span className="flex items-center gap-1">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        {/* Header */}
+        <div className="mb-6">
+          <button
+            onClick={() => navigate(`/assignments/${assignmentId}`)}
+            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            {t('assignment.max_points')}: {assignment.max_points}
-          </span>
-          {assignment.due_date && (
+            {t('common.back_to_course')}
+          </button>
+
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            {isSubmitted ? t('submission.view_submission') : t('submission.submit_assignment')}
+          </h1>
+          <h2 className="text-xl text-gray-600 dark:text-gray-400 mt-2">
+            {assignment.title}
+          </h2>
+          <div className="flex items-center gap-4 mt-4 text-sm text-gray-600 dark:text-gray-400">
             <span className="flex items-center gap-1">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              {t('assignment.due')}: {new Date(assignment.due_date).toLocaleString()}
+              {t('assignment.max_points')}: {assignment.max_points}
             </span>
-          )}
-        </div>
-      </div>
-
-      {/* Assignment Description */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-          {t('assignment.description')}
-        </h3>
-        <div className="text-gray-700 dark:text-gray-300">
-          {renderContent(assignment.description, assignment.description_format)}
-        </div>
-
-        {assignment.instructions && (
-          <>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mt-6 mb-3">
-              {t('assignment.instructions')}
-            </h3>
-            <div className="text-gray-700 dark:text-gray-300">
-              {renderContent(assignment.instructions, assignment.instructions_format)}
-            </div>
-          </>
-        )}
-
-        {assignment.resources && assignment.resources.length > 0 && (
-          <>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mt-6 mb-3">
-              {t('assignment.resources')}
-            </h3>
-            <ul className="space-y-2">
-              {assignment.resources.map((resource: any, idx: number) => (
-                <li key={idx}>
-                  <a
-                    href={resource.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 dark:text-blue-400 flex items-center gap-2"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    {resource.name || resource.url}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </div>
-
-      {/* Submission Status */}
-      {isSubmitted && submission && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
-          <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            <p className="text-green-800 dark:text-green-200 font-medium">
-              {t('submission.submitted_successfully')}
-            </p>
+            {assignment.due_date && (
+              <span className="flex items-center gap-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                {t('assignment.due')}: {new Date(assignment.due_date).toLocaleString()}
+              </span>
+            )}
           </div>
-          <p className="text-sm text-green-700 dark:text-green-300 mt-2">
-            {t('submission.submitted_at')}: {submission.submitted_at ? new Date(submission.submitted_at).toLocaleString() : 'N/A'}
-          </p>
-          {submission.grade !== null && (
-            <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-              {t('submission.grade')}: {submission.grade} / {assignment.max_points}
-            </p>
-          )}
-          {submission.feedback && (
-            <div className="mt-4">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('submission.feedback')}:</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 whitespace-pre-wrap">{submission.feedback}</p>
-            </div>
-          )}
         </div>
-      )}
 
-      {/* Submission Form */}
-      {!isSubmitted && (
-        <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            {t('submission.your_submission')}
+        {/* Assignment Description */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+            {t('assignment.description')}
           </h3>
+          <div className="text-gray-700 dark:text-gray-300">
+            {renderContent(assignment.description, assignment.description_format)}
+          </div>
 
-          {error && (
-            <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-              <p className="text-red-800 dark:text-red-200">{error}</p>
-            </div>
+          {assignment.instructions && (
+            <>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mt-6 mb-3">
+                {t('assignment.instructions')}
+              </h3>
+              <div className="text-gray-700 dark:text-gray-300">
+                {renderContent(assignment.instructions, assignment.instructions_format)}
+              </div>
+            </>
           )}
 
-          {renderSubmissionForm()}
+          {assignment.resources && assignment.resources.length > 0 && (
+            <>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mt-6 mb-3">
+                {t('assignment.resources')}
+              </h3>
+              <ul className="space-y-2">
+                {assignment.resources.map((resource: { name: string; url: string }, idx: number) => (
+                  <li key={idx}>
+                    <a
+                      href={resource.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 dark:text-blue-400 flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      {resource.name || resource.url}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
 
-          <div className="mt-6 flex gap-4">
-            <button
-              type="submit"
-              disabled={submitting}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-            >
-              {submitting ? t('submission.submitting') : t('submission.submit')}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate(`/courses/${courseId}`)}
-              className="px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              {t('common.cancel')}
-            </button>
+        {/* Submission Status */}
+        {isSubmitted && submission && (
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <p className="text-green-800 dark:text-green-200 font-medium">
+                {t('submission.submitted_successfully')}
+              </p>
+            </div>
+            <p className="text-sm text-green-700 dark:text-green-300 mt-2">
+              {t('submission.submitted_at')}: {submission.submitted_at ? new Date(submission.submitted_at).toLocaleString() : 'N/A'}
+            </p>
+            {submission.grade !== null && (
+              <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                {t('submission.grade')}: {submission.grade} / {assignment.max_points}
+              </p>
+            )}
+            {submission.feedback && (
+              <div className="mt-4">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('submission.feedback')}:</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 whitespace-pre-wrap">{submission.feedback}</p>
+              </div>
+            )}
           </div>
-        </form>
-      )}
+        )}
+
+        {/* Submission Form */}
+        {!isSubmitted && (
+          <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              {t('submission.your_submission')}
+            </h3>
+
+            {error && (
+              <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                <p className="text-red-800 dark:text-red-200">{error}</p>
+              </div>
+            )}
+
+            {renderSubmissionForm()}
+
+            <div className="mt-6 flex gap-4">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+              >
+                {submitting ? t('submission.submitting') : t('submission.submit')}
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(`/assignments/${assignmentId}`)}
+                className="px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                {t('common.cancel')}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </>
   );
 };
 
 export default SubmitAssignment;
-

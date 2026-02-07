@@ -57,7 +57,9 @@ export const CourseDetail: React.FC = () => {
       if (stored) {
         return new Set(JSON.parse(stored));
       }
-    } catch (e) {}
+    } catch {
+      // Ignore parse errors - fall through to return empty set
+    }
     return new Set();
   };
 
@@ -200,14 +202,14 @@ export const CourseDetail: React.FC = () => {
                     <div>
                       <span className="text-gray-500 dark:text-gray-400">{t('courses.instructor')}:</span>
                       <span className="ml-2 font-medium text-gray-900 dark:text-white">
-                        {currentCourse.owner_name || 'Unknown'}
+                        {currentCourse.ownerName || 'Unknown'}
                       </span>
                     </div>
-                    {currentCourse.member_count !== undefined && (
+                    {currentCourse.memberCount !== undefined && (
                       <div>
                         <span className="text-gray-500 dark:text-gray-400">{t('courses.students')}:</span>
                         <span className="ml-2 font-medium text-gray-900 dark:text-white">
-                          {currentCourse.member_count}
+                          {currentCourse.memberCount}
                         </span>
                       </div>
                     )}
@@ -225,10 +227,9 @@ export const CourseDetail: React.FC = () => {
                     onClick={() => handleTabChange(tab.id as 'modules' | 'assignments' | 'members' | 'grades')}
                     className={`
                       flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors
-                      ${
-                        activeTab === tab.id
-                          ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                      ${activeTab === tab.id
+                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
                       }
                     `}
                   >
@@ -342,7 +343,7 @@ export const CourseDetail: React.FC = () => {
                             )}
 
                             {/* Resources Section */}
-                            {(module as any).resources && (module as any).resources.length > 0 && (
+                            {module.resources && module.resources.length > 0 && (
                               <div className="mb-6">
                                 <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
                                   <FolderIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -350,11 +351,11 @@ export const CourseDetail: React.FC = () => {
                                     {t('modules.resources')}
                                   </h4>
                                   <span className="text-sm text-gray-500 dark:text-gray-400">
-                                    ({(module as any).resources.length})
+                                    ({module.resources.length})
                                   </span>
                                 </div>
                                 <div className="space-y-2 pl-2">
-                                  {(module as any).resources.map((resource: any) => (
+                                  {module.resources.map((resource) => (
                                     <div
                                       key={resource.id}
                                       className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
@@ -385,7 +386,7 @@ export const CourseDetail: React.FC = () => {
                             )}
 
                             {/* Assignments Section */}
-                            {(module as any).assignments && (module as any).assignments.length > 0 && (
+                            {module.assignments && module.assignments.length > 0 && (
                               <div className="mb-4">
                                 <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
                                   <DocumentTextIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -393,11 +394,11 @@ export const CourseDetail: React.FC = () => {
                                     {t('assignments.title')}
                                   </h4>
                                   <span className="text-sm text-gray-500 dark:text-gray-400">
-                                    ({(module as any).assignments.length})
+                                    ({module.assignments.length})
                                   </span>
                                 </div>
                                 <div className="space-y-2 pl-2">
-                                  {(module as any).assignments.map((assignment: any) => (
+                                  {module.assignments.map((assignment) => (
                                     <Link
                                       key={assignment.id}
                                       to={`/assignments/${assignment.id}`}
@@ -432,12 +433,12 @@ export const CourseDetail: React.FC = () => {
                             )}
 
                             {/* Empty State */}
-                            {(!(module as any).resources || (module as any).resources.length === 0) &&
-                             (!(module as any).assignments || (module as any).assignments.length === 0) && (
-                              <p className="text-sm text-gray-500 dark:text-gray-400 italic text-center py-8">
-                                {t('modules.noContent')}
-                              </p>
-                            )}
+                            {(!module.resources || module.resources.length === 0) &&
+                              (!module.assignments || module.assignments.length === 0) && (
+                                <p className="text-sm text-gray-500 dark:text-gray-400 italic text-center py-8">
+                                  {t('modules.noContent')}
+                                </p>
+                              )}
                           </CardBody>
                         )}
                       </Card>

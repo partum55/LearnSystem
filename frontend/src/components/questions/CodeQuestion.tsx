@@ -34,7 +34,7 @@ const CodeQuestion: React.FC<CodeQuestionProps> = ({
     if (!value && starterCode) {
       onChange(starterCode);
     }
-  }, []);
+  }, [value, starterCode, onChange]);
 
   const handleRun = () => {
     // This would connect to a code execution service
@@ -90,15 +90,14 @@ const CodeQuestion: React.FC<CodeQuestionProps> = ({
             Run Code
           </button>
         </div>
-        
+
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
           rows={20}
-          className={`w-full px-4 py-3 font-mono text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y ${
-            disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-gray-900 text-green-400'
-          }`}
+          className={`w-full px-4 py-3 font-mono text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-gray-900 text-green-400'
+            }`}
           style={{ tabSize: 4 }}
           spellCheck={false}
         />

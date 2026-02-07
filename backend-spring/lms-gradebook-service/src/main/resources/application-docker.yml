@@ -41,5 +41,4 @@ services:
   assessment:
     base-url: http://assessment-service:8083
   submission:
-    base-url: http://ai-service:8085
-
+    base-url: http://submission-service:8087

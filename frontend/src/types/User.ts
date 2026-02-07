@@ -13,7 +13,7 @@ export interface User {
   isActive: boolean;
   isStaff: boolean;
   emailVerified: boolean;
-  preferences?: any;
+  preferences?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }

@@ -13,7 +13,7 @@ import java.util.UUID;
 @FeignClient(name = "submission-service", url = "${services.submission.base-url}")
 public interface SubmissionClient {
 
-    @GetMapping("/api/submissions/{submissionId}")
+    @GetMapping("/api/submissions/internal/{submissionId}")
     SubmissionDto getSubmission(@PathVariable("submissionId") UUID submissionId);
 
     /**
@@ -29,4 +29,3 @@ public interface SubmissionClient {
             String gradedAt
     ) {}
 }
-

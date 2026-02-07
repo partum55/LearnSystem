@@ -25,6 +25,14 @@ spring:
           uri: lb://lms-assessment-service
           predicates:
             - Path=/api/v1/assessments/**, /api/assessments/**
+          filters:
+            - RewritePath=/api/assessments/(?<segment>.*), /api/${segment}
+            - RewritePath=/api/v1/assessments/(?<segment>.*), /api/${segment}
+        # Submission service
+        - id: submission-service
+          uri: lb://lms-submission-service
+          predicates:
+            - Path=/api/v1/submissions/**, /api/submissions/**
         # Gradebook service
         - id: gradebook-service
           uri: lb://lms-gradebook-service
@@ -82,4 +90,3 @@ eureka:
   instance:
     prefer-ip-address: true
     hostname: api-gateway
-

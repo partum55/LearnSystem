@@ -6,17 +6,26 @@ import { Input } from '../components';
 import { Button } from '../components';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
-const REQUIRE_UCU_EMAIL = process.env.REACT_APP_REQUIRE_UCU_EMAIL === 'true';
+const REQUIRE_UCU_EMAIL =
+  (import.meta.env.VITE_REQUIRE_UCU_EMAIL || import.meta.env.REACT_APP_REQUIRE_UCU_EMAIL) === 'true';
+
+interface LocationState {
+  message?: string;
+  email?: string;
+}
 
 export const Login: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { login, error, isLoading, isAuthenticated } = useAuthStore();
-  const [email, setEmail] = useState('');
+
+  // Initialize state from location.state (lazy initialization pattern)
+  const locationState = location.state as LocationState | null;
+  const [email, setEmail] = useState(() => locationState?.email || '');
   const [password, setPassword] = useState('');
   const [localError, setLocalError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState(() => locationState?.message || '');
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -26,16 +35,11 @@ export const Login: React.FC = () => {
   }, [isAuthenticated, navigate]);
 
   useEffect(() => {
-    // Check for success message from registration
-    if (location.state?.message) {
-      setSuccessMessage(location.state.message);
-      if (location.state?.email) {
-        setEmail(location.state.email);
-      }
-      // Clear the state
+    // Clear the location state to prevent message from showing on refresh
+    if (locationState?.message) {
       window.history.replaceState({}, document.title);
     }
-  }, [location]);
+  }, [locationState]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +65,7 @@ export const Login: React.FC = () => {
         i18n.changeLanguage(savedLanguage);
       }
       // Navigation will happen automatically via useEffect when isAuthenticated changes
-    } catch (err) {
+    } catch {
       setLocalError(error || t('auth.loginError'));
     }
   };

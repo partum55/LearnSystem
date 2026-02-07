@@ -75,8 +75,8 @@ export function useAutoSave<T>({
   const [saveError, setSaveError] = useState<Error | null>(null);
 
   const lastDataRef = useRef<string>(JSON.stringify(data));
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const intervalTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const intervalTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Detect changes in data
   useEffect(() => {
@@ -179,4 +179,3 @@ export function useAutoSave<T>({
 }
 
 export default useAutoSave;
-

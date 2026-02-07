@@ -20,7 +20,7 @@ interface ResourceItemProps {
   onDelete?: (resourceId: string) => void;
 }
 
-const resourceTypeIcons: Record<ResourceType, any> = {
+const resourceTypeIcons: Record<ResourceType, React.ComponentType<{ className?: string }>> = {
   VIDEO: VideoCameraIcon,
   PDF: DocumentTextIcon,
   SLIDE: PresentationChartBarIcon,

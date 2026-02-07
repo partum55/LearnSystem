@@ -5,6 +5,7 @@ import { Input } from './Input';
 import { Button } from './Button';
 import { AssignmentType } from '../types';
 import { assignmentsApi, quizzesApi } from '../api/assessments';
+import { extractErrorMessage } from '../api/client';
 
 interface Quiz {
   id: string;
@@ -91,7 +92,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
     setLoadingQuizzes(true);
     try {
       const response = await quizzesApi.getAll(courseId);
-      const data = response.data as any;
+      const data = response.data as unknown as (Quiz[] | { results: Quiz[] });
       const quizzes = Array.isArray(data) ? data : data.results || [];
       setAvailableQuizzes(quizzes);
     } catch (err) {
@@ -132,7 +133,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
         submission_types = ['url'];
       }
 
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         course: courseId,
         module: moduleId || null,
         assignment_type: formData.assignment_type,
@@ -198,8 +199,8 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
       });
       onAssignmentCreated();
       onClose();
-    } catch (err: any) {
-      setError(err.message || t('assignments.errors.createFailed'));
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -248,18 +249,16 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                   className="sr-only"
                 />
                 <div className="flex flex-col flex-1">
-                  <span className={`block text-sm font-medium ${
-                    formData.assignment_type === type.value
-                      ? 'text-blue-900 dark:text-blue-200'
-                      : 'text-gray-900 dark:text-white'
-                  }`}>
+                  <span className={`block text-sm font-medium ${formData.assignment_type === type.value
+                    ? 'text-blue-900 dark:text-blue-200'
+                    : 'text-gray-900 dark:text-white'
+                    }`}>
                     {t(type.labelKey)}
                   </span>
-                  <span className={`mt-1 text-xs ${
-                    formData.assignment_type === type.value
-                      ? 'text-blue-700 dark:text-blue-300'
-                      : 'text-gray-500 dark:text-gray-400'
-                  }`}>
+                  <span className={`mt-1 text-xs ${formData.assignment_type === type.value
+                    ? 'text-blue-700 dark:text-blue-300'
+                    : 'text-gray-500 dark:text-gray-400'
+                    }`}>
                     {t(type.descriptionKey)}
                   </span>
                 </div>
@@ -426,7 +425,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                       handleChange({
                         ...e,
                         target: { ...e.target, name: 'max_file_size', value: (mb * 1048576).toString() }
-                      } as any);
+                      } as React.ChangeEvent<HTMLInputElement>);
                     }}
                     min="1"
                     className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"

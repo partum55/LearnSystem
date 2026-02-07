@@ -72,10 +72,12 @@ export const Register: React.FC = () => {
           },
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Registration error:', err);
-      if (err.response?.data) {
-        const errorData = err.response.data;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const error = err as any;
+      if (error.response?.data) {
+        const errorData = error.response.data;
         if (errorData.email) {
           setError(Array.isArray(errorData.email) ? errorData.email[0] : errorData.email);
         } else if (errorData.password) {

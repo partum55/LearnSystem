@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, Input, Button } from '../components';
-import apiClient from '../api/client';
+import apiClient, { extractErrorMessage } from '../api/client';
 
 type QuestionType =
   | 'MULTIPLE_CHOICE'
@@ -57,10 +57,10 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
     setLoading(true);
 
     try {
-      let payload: any = {
+      const payload: Record<string, unknown> = {
         // Only include course when provided. The Question Bank can hold global questions without a course.
-        ...(courseId ? { course: courseId } : {}),
-        question_type: formData.question_type,
+        ...(courseId ? { courseId } : {}),
+        questionType: formData.question_type,
         stem: formData.stem,
         points: parseFloat(formData.points),
         explanation: formData.explanation,
@@ -76,10 +76,10 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           return;
         }
         payload.options = { choices: validOptions };
-        payload.correct_answer = { index: formData.correct_answer_index };
+        payload.correctAnswer = { index: formData.correct_answer_index };
       } else if (formData.question_type === 'TRUE_FALSE') {
         payload.options = { choices: ['True', 'False'] };
-        payload.correct_answer = { value: formData.true_false_answer };
+        payload.correctAnswer = { value: formData.true_false_answer };
       } else if (formData.question_type === 'FILL_BLANK') {
         const validAnswers = formData.fill_blank_answers.filter(a => a.trim() !== '');
         if (validAnswers.length === 0) {
@@ -87,20 +87,20 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           setLoading(false);
           return;
         }
-        payload.correct_answer = { blanks: validAnswers };
+        payload.correctAnswer = { blanks: validAnswers };
       } else if (formData.question_type === 'SHORT_ANSWER') {
         const keywords = formData.short_answer_keywords
           .split(',')
           .map(k => k.trim())
           .filter(k => k !== '');
-        payload.correct_answer = { keywords };
+        payload.correctAnswer = { keywords };
         payload.metadata = { requires_manual_grading: true };
       } else if (formData.question_type === 'ESSAY') {
-        payload.correct_answer = {};
+        payload.correctAnswer = {};
         payload.metadata = { requires_manual_grading: true };
       }
 
-      const response = await apiClient.post('/assessments/questions/', payload);
+      const response = await apiClient.post('/assessments/questions', payload);
 
       if (response.status < 200 || response.status >= 300) {
         throw new Error('Failed to create question');
@@ -121,10 +121,9 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
 
       onQuestionCreated();
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Try to extract a useful error message from the server response
-      const serverMessage = err?.response?.data?.detail || err?.response?.data?.error || err?.response?.data || err?.message;
-      setError(typeof serverMessage === 'string' ? serverMessage : JSON.stringify(serverMessage));
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }

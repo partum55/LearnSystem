@@ -1,13 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, Input, Button } from '../components';
-import apiClient from '../api/client';
+import apiClient, { extractErrorMessage } from '../api/client';
 
 interface Question {
   id: string;
   question_type: string;
   stem: string;
   points: number;
+}
+
+interface ApiQuestion {
+  id: string;
+  questionType: string;
+  stem: string;
+  points: number;
+}
+
+interface PageResponse<T> {
+  content: T[];
 }
 
 interface CreateQuizModalProps {
@@ -46,9 +57,13 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({
   const fetchQuestions = useCallback(async () => {
     setLoadingQuestions(true);
     try {
-      const response = await apiClient.get(`/assessments/questions/?course=${courseId}`);
-      const data = response.data as any;
-      const questions = Array.isArray(data) ? data : data.results || [];
+      const response = await apiClient.get<PageResponse<ApiQuestion>>(`/assessments/questions/course/${courseId}`);
+      const questions = (response.data.content || []).map((q) => ({
+        id: q.id,
+        question_type: q.questionType,
+        stem: q.stem,
+        points: Number(q.points),
+      }));
       setAvailableQuestions(questions);
     } catch (err) {
       console.error('Failed to fetch questions:', err);
@@ -82,26 +97,21 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({
     setLoading(true);
 
     try {
-      // Create quiz
-      const quizPayload = {
-        course: courseId,
-        title: formData.title,
-        description: formData.description,
-        time_limit: formData.time_limit ? parseInt(formData.time_limit) : null,
-        attempts_allowed: parseInt(formData.attempts_allowed),
-        shuffle_questions: formData.shuffle_questions,
-        shuffle_answers: formData.shuffle_answers,
-        show_correct_answers: formData.show_correct_answers,
-        pass_percentage: parseFloat(formData.pass_percentage),
-      };
-
-      const quizResponse = await apiClient.post('/assessments/quizzes/', quizPayload);
+      const quizResponse = await apiClient.post('/assessments/quizzes', null, {
+        params: {
+          courseId,
+          title: formData.title,
+          ...(formData.description ? { description: formData.description } : {}),
+        },
+      });
       const quizId = (quizResponse.data as { id: string }).id;
 
-      // Add questions to quiz
-      await apiClient.post(`/assessments/quizzes/${quizId}/add_questions/`, {
-        question_ids: selectedQuestions,
-      });
+      // Add questions to quiz one-by-one (backend endpoint is per-question)
+      await Promise.all(
+        selectedQuestions.map((questionId) =>
+          apiClient.post(`/assessments/quizzes/${quizId}/questions/${questionId}`)
+        )
+      );
 
       // Reset form
       setFormData({
@@ -119,8 +129,8 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({
 
       onQuizCreated();
       onClose();
-    } catch (err: any) {
-      setError(err.message || t('quiz.errors.createFailed'));
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -291,11 +301,10 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({
               {availableQuestions.map((question) => (
                 <label
                   key={question.id}
-                  className={`flex items-start p-4 border rounded-lg cursor-pointer transition-colors ${
-                    selectedQuestions.includes(question.id)
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
-                  }`}
+                  className={`flex items-start p-4 border rounded-lg cursor-pointer transition-colors ${selectedQuestions.includes(question.id)
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                    : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
+                    }`}
                 >
                   <input
                     type="checkbox"

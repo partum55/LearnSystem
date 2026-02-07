@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../Button';
 import { Modal } from '../Modal';
-import apiClient from '../../api/client';
+import apiClient, { extractErrorMessage } from '../../api/client';
 
 interface AIContentGeneratorProps {
   type: 'quiz' | 'assignment' | 'module';
-  onGenerate: (content: any) => void;
+  onGenerate: (content: unknown) => void; // Keep unknown as content structure varies widely
 }
 
 export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ type, onGenerate }) => {
@@ -33,7 +33,7 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ type, on
     try {
       // Use versioned API endpoint
       const endpoint = `/v1/ai/generate/${type}`;
-      const requestBody: any = {
+      const requestBody: Record<string, unknown> = {
         topic,
         language: i18n.language === 'uk' ? 'uk' : 'en',
         difficulty,
@@ -48,10 +48,9 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ type, on
       // Use apiClient instead of raw fetch
       const data = await apiClient.post(endpoint, requestBody);
       setPreviewJson(JSON.stringify(data, null, 2));
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error generating content:', err);
-      const errorMessage = err.message || t('ai.generator.error', 'Failed to generate content. Please try again.');
-      setError(errorMessage);
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -73,8 +72,8 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ type, on
       setTopic('');
       setPreviewJson(null);
       setPreviewError(null);
-    } catch (err: any) {
-      setPreviewError(err.message || t('ai.generator.invalidJson', 'Invalid JSON. Please fix before confirming.'));
+    } catch (err) {
+      setPreviewError(extractErrorMessage(err));
     }
   };
 
@@ -143,82 +142,82 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ type, on
             </>
           ) : (
             <>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('ai.generator.topic', 'Topic')}
-            </label>
-            <textarea
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              rows={3}
-              placeholder={t('ai.generator.topicPlaceholder', 'Describe what you want to create...')}
-            />
-          </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {t('ai.generator.topic', 'Topic')}
+                </label>
+                <textarea
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                  placeholder={t('ai.generator.topicPlaceholder', 'Describe what you want to create...')}
+                />
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('ai.generator.difficulty', 'Difficulty')}
-            </label>
-            <select
-              value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="easy">{t('difficulty.easy', 'Easy')}</option>
-              <option value="medium">{t('difficulty.medium', 'Medium')}</option>
-              <option value="hard">{t('difficulty.hard', 'Hard')}</option>
-            </select>
-          </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {t('ai.generator.difficulty', 'Difficulty')}
+                </label>
+                <select
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="easy">{t('difficulty.easy', 'Easy')}</option>
+                  <option value="medium">{t('difficulty.medium', 'Medium')}</option>
+                  <option value="hard">{t('difficulty.hard', 'Hard')}</option>
+                </select>
+              </div>
 
-          {type === 'quiz' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('ai.generator.questionCount', 'Number of Questions')}
-              </label>
-              <input
-                type="number"
-                value={questionCount}
-                onChange={(e) => setQuestionCount(parseInt(e.target.value))}
-                min={5}
-                max={50}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          )}
+              {type === 'quiz' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {t('ai.generator.questionCount', 'Number of Questions')}
+                  </label>
+                  <input
+                    type="number"
+                    value={questionCount}
+                    onChange={(e) => setQuestionCount(parseInt(e.target.value))}
+                    min={5}
+                    max={50}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              )}
 
-          {type === 'module' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('ai.generator.weekDuration', 'Duration (weeks)')}
-              </label>
-              <input
-                type="number"
-                value={weekDuration}
-                onChange={(e) => setWeekDuration(parseInt(e.target.value))}
-                min={1}
-                max={16}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          )}
+              {type === 'module' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {t('ai.generator.weekDuration', 'Duration (weeks)')}
+                  </label>
+                  <input
+                    type="number"
+                    value={weekDuration}
+                    onChange={(e) => setWeekDuration(parseInt(e.target.value))}
+                    min={1}
+                    max={16}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              )}
 
-          <div className="flex gap-3 justify-end mt-6">
-            <Button
-              onClick={handleClose}
-              variant="secondary"
-              disabled={loading}
-            >
-              {t('common.cancel', 'Cancel')}
-            </Button>
-            <Button
-              onClick={handleGenerate}
-              variant="primary"
-              disabled={loading || !topic.trim()}
-            >
-              {loading ? t('common.generating', 'Generating...') : t('common.generate', 'Generate')}
-            </Button>
-          </div>
+              <div className="flex gap-3 justify-end mt-6">
+                <Button
+                  onClick={handleClose}
+                  variant="secondary"
+                  disabled={loading}
+                >
+                  {t('common.cancel', 'Cancel')}
+                </Button>
+                <Button
+                  onClick={handleGenerate}
+                  variant="primary"
+                  disabled={loading || !topic.trim()}
+                >
+                  {loading ? t('common.generating', 'Generating...') : t('common.generate', 'Generate')}
+                </Button>
+              </div>
             </>
           )}
         </div>

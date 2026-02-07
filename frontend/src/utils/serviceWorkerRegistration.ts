@@ -11,16 +11,22 @@ interface Config {
   onUpdate?: (registration: ServiceWorkerRegistration) => void;
 }
 
+const PUBLIC_BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
+const VAPID_PUBLIC_KEY =
+  import.meta.env.VITE_VAPID_PUBLIC_KEY ||
+  import.meta.env.REACT_APP_VAPID_PUBLIC_KEY ||
+  '';
+
 export function register(config?: Config) {
-  if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
-    const publicUrl = new URL(process.env.PUBLIC_URL || '', window.location.href);
-    
+  if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+    const publicUrl = new URL(PUBLIC_BASE_URL || '/', window.location.href);
+
     if (publicUrl.origin !== window.location.origin) {
       return;
     }
 
     window.addEventListener('load', () => {
-      const swUrl = `${process.env.PUBLIC_URL}/service-worker.js`;
+      const swUrl = `${PUBLIC_BASE_URL}/service-worker.js`;
 
       if (isLocalhost) {
         checkValidServiceWorker(swUrl, config);
@@ -132,8 +138,8 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription |
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(
-        process.env.REACT_APP_VAPID_PUBLIC_KEY || ''
-      )
+        VAPID_PUBLIC_KEY
+      ) as unknown as BufferSource
     });
 
     return subscription;
@@ -160,7 +166,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 }
 
 // Save submission for offline sync
-export async function saveSubmissionForSync(submissionData: any): Promise<void> {
+export async function saveSubmissionForSync(submissionData: unknown): Promise<void> {
   if (!('indexedDB' in window)) {
     console.log('IndexedDB not supported');
     return;
@@ -169,7 +175,7 @@ export async function saveSubmissionForSync(submissionData: any): Promise<void> 
   const db = await openDB();
   const transaction = db.transaction(['pending-submissions'], 'readwrite');
   const store = transaction.objectStore('pending-submissions');
-  
+
   await store.add({
     data: submissionData,
     timestamp: Date.now()
@@ -178,6 +184,7 @@ export async function saveSubmissionForSync(submissionData: any): Promise<void> 
   // Register background sync
   if ('serviceWorker' in navigator && 'SyncManager' in window) {
     const registration = await navigator.serviceWorker.ready;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (registration as any).sync.register('sync-submissions');
   }
 }
@@ -185,10 +192,10 @@ export async function saveSubmissionForSync(submissionData: any): Promise<void> 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('lms-offline-db', 1);
-    
+
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);
-    
+
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
       if (!db.objectStoreNames.contains('pending-submissions')) {
@@ -197,4 +204,3 @@ function openDB(): Promise<IDBDatabase> {
     };
   });
 }
-

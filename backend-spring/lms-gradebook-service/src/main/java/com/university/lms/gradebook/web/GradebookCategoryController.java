@@ -18,7 +18,7 @@ import java.util.UUID;
  * REST controller for gradebook categories.
  */
 @RestController
-@RequestMapping("/api/gradebook/categories")
+@RequestMapping("/gradebook/categories")
 @RequiredArgsConstructor
 @Slf4j
 public class GradebookCategoryController {

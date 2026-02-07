@@ -58,7 +58,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
       }
       markSaved();
       setSaveState('SAVED');
-    } catch (error) {
+    } catch {
       setSaveState('ERROR');
       setErrorMessage('Unable to save task. Please retry.');
     }
@@ -68,7 +68,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
     try {
       const response = await api.validateTask(draft);
       setRemoteValidation(response.data.data);
-    } catch (error) {
+    } catch {
       setRemoteValidation({
         valid: false,
         issues: [{ field: 'server', message: 'Validation service unavailable.', severity: 'ERROR' }],
@@ -80,7 +80,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
     try {
       const response = await api.previewTask({ content: draft.metadata.description, format: draft.metadata.format });
       setPreviewHtml(response.data.data);
-    } catch (error) {
+    } catch {
       setPreviewHtml('<p class="text-red-600">Preview service unavailable.</p>');
     }
   };

@@ -143,8 +143,13 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
 /**
  * Hook to use ConfirmModal imperatively
- * Returns a function that shows the modal and returns a promise
+ * Returns a function that shows the modal and returns a promise, along with props for the modal.
+ * Usage:
+ * const { confirm, ...modalProps } = useConfirmModal();
+ * ...
+ * <ConfirmModal {...modalProps} />
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export const useConfirmModal = () => {
   const [modalState, setModalState] = React.useState<{
     isOpen: boolean;
@@ -169,29 +174,26 @@ export const useConfirmModal = () => {
     []
   );
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   const handleClose = React.useCallback(() => {
     modalState.resolve?.(false);
     setModalState((prev) => ({ ...prev, isOpen: false, resolve: null }));
-  }, [modalState]);
+  }, [modalState.resolve]);
 
-  const handleConfirm = React.useCallback(() => {
+  const handleConfirmAction = React.useCallback(() => {
     modalState.resolve?.(true);
     setModalState((prev) => ({ ...prev, isOpen: false, resolve: null }));
-  }, [modalState]);
+  }, [modalState.resolve]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
-  const ConfirmModalComponent = React.useMemo(
-    () => (
-      <ConfirmModal
-        isOpen={modalState.isOpen}
-        onClose={handleClose}
-        onConfirm={handleConfirm}
-        {...modalState.props}
-      />
-    ),
-    [modalState.isOpen, modalState.props, handleClose, handleConfirm]
-  );
-
-  return { confirm, ConfirmModalComponent };
+  // Return specific props needed for ConfirmModal
+  return {
+    confirm,
+    isOpen: modalState.isOpen,
+    onClose: handleClose,
+    onConfirm: handleConfirmAction,
+    ...modalState.props,
+  };
 };
 
 export default ConfirmModal;

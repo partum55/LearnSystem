@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User } from '../types';
+import { User, UserRole } from '../types';
 import apiClient from '../api/client';
 import { setAccessToken, getAccessToken } from '../api/token';
 import { useUIStore } from './uiStore';
@@ -16,9 +16,32 @@ interface AuthState {
   updateUserPreferences: (locale?: 'uk' | 'en', theme?: 'light' | 'dark') => Promise<void>;
 }
 
+interface ApiUser {
+  id: string;
+  email: string;
+  displayName?: string;
+  display_name?: string;
+  firstName?: string;
+  first_name?: string;
+  lastName?: string;
+  last_name?: string;
+  studentId?: string;
+  student_id?: string;
+  role: string;
+  locale?: string;
+  theme?: string;
+  avatarUrl?: string;
+  avatar?: string;
+  bio?: string;
+  createdAt?: string;
+  created_at?: string;
+  updatedAt?: string;
+  updated_at?: string;
+}
+
 // Helper to map backend (camelCase, enum values) -> frontend User (snake_case, lowercase locale)
-function mapApiUserToFrontend(u: any): User {
-  if (!u) return u;
+function mapApiUserToFrontend(u: ApiUser | null | undefined): User | null {
+  if (!u) return null;
   return {
     id: u.id,
     email: u.email,
@@ -26,14 +49,14 @@ function mapApiUserToFrontend(u: any): User {
     first_name: u.firstName ?? u.first_name,
     last_name: u.lastName ?? u.last_name,
     student_id: u.studentId ?? u.student_id,
-    role: u.role,
+    role: u.role as UserRole,
     // Backend returns 'UK'|'EN'; normalize to 'uk'|'en'
     locale: (typeof u.locale === 'string' ? u.locale.toLowerCase() : u.locale) as 'uk' | 'en',
     theme: u.theme === 'dark' ? 'dark' : 'light',
     avatar: u.avatarUrl ?? u.avatar,
     bio: u.bio,
-    created_at: u.createdAt ?? u.created_at,
-    updated_at: u.updatedAt ?? u.updated_at,
+    created_at: u.createdAt ?? u.created_at ?? '',
+    updated_at: u.updatedAt ?? u.updated_at ?? '',
   };
 }
 
@@ -49,18 +72,20 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           // Spring backend: POST /api/auth/login (no trailing slash)
-          const response = await apiClient.post<{ accessToken?: string; user?: any }>(
+          const response = await apiClient.post<{ accessToken?: string; user?: ApiUser }>(
             '/auth/login',
             { email, password }
           );
 
           // Set JWT from Spring field name
-          const token = (response.data as any).accessToken;
+          const token = response.data.accessToken;
           if (token) {
             setAccessToken(token);
           }
 
-          const mappedUser = mapApiUserToFrontend((response.data as any).user);
+
+
+          const mappedUser = mapApiUserToFrontend(response.data.user);
 
           set({
             user: mappedUser || null,
@@ -77,7 +102,9 @@ export const useAuthStore = create<AuthState>()(
           if (mappedUser?.theme) {
             ui.setTheme(mappedUser.theme as 'light' | 'dark');
           }
-        } catch (error: any) {
+        } catch (err: unknown) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const error = err as any;
           set({
             error: error.response?.data?.error || 'Login failed',
             isLoading: false,
@@ -116,7 +143,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           // Optional: call backend if endpoint exists; ignore failures
           await apiClient.post('/auth/logout');
-        } catch (e) {
+        } catch {
           // no-op
         }
 
@@ -135,8 +162,9 @@ export const useAuthStore = create<AuthState>()(
             set({ user: null, isAuthenticated: false, isLoading: false });
             return;
           }
+
           // Spring backend: GET /api/users/me (no /auth prefix)
-          const response = await apiClient.get<any>('/users/me');
+          const response = await apiClient.get<ApiUser>('/users/me');
           const mappedUser = mapApiUserToFrontend(response.data);
           set({
             user: mappedUser,
@@ -151,7 +179,7 @@ export const useAuthStore = create<AuthState>()(
           if (mappedUser?.theme) {
             ui.setTheme(mappedUser.theme as 'light' | 'dark');
           }
-        } catch (error) {
+        } catch {
           set({ user: null, isAuthenticated: false, isLoading: false });
         }
       },
@@ -159,10 +187,10 @@ export const useAuthStore = create<AuthState>()(
       updateUserPreferences: async (locale?: 'uk' | 'en', theme?: 'light' | 'dark') => {
         try {
           // Spring expects UpdateUserRequest with camelCase and locale enum in upper-case
-          const payload: any = {};
+          const payload: Record<string, unknown> = {};
           if (locale) payload.locale = (locale === 'uk' ? 'UK' : 'EN');
           if (theme) payload.theme = theme;
-          const response = await apiClient.put<any>('/users/me', payload);
+          const response = await apiClient.put<ApiUser>('/users/me', payload);
           const mappedUser = mapApiUserToFrontend(response.data);
           set({ user: mappedUser });
 

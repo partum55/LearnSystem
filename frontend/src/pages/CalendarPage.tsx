@@ -1,19 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { Button, Layout } from '../components';
 
 const CalendarPage: React.FC = () => {
   const { user } = useAuthStore();
-  const [studentGroupId, setStudentGroupId] = useState('');
+  // Initialize state directly from user.id
+  const [studentGroupId, setStudentGroupId] = useState(() => user?.id?.toString() || '');
   const [subscriptionUrl, setSubscriptionUrl] = useState('');
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    // Set student group ID from an authenticated user
-    if (user?.id) {
-      setStudentGroupId(user.id.toString());
-    }
-  }, [user]);
 
   const handleGenerateUrl = () => {
     if (!studentGroupId) {

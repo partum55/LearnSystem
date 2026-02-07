@@ -2,7 +2,7 @@
 # Multi-stage build: Build with Node, serve with Nginx
 
 # Stage 1: Build
-FROM node:18-alpine AS build
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install all dependencies (including devDependencies for build)
-RUN npm ci --silent
+RUN npm ci
 
 # Copy source code
 COPY . .
@@ -31,7 +31,7 @@ RUN rm /etc/nginx/conf.d/default.conf
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built files from build stage
-COPY --from=build /app/build /usr/share/nginx/html
+COPY --from=build /app/dist /usr/share/nginx/html
 
 # Add healthcheck
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
@@ -40,4 +40,3 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
-

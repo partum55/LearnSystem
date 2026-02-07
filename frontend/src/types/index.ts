@@ -21,28 +21,36 @@ export interface User {
 export interface Course {
   id: string;
   code: string;
+  // Multilingual fields from backend
+  titleUk?: string;
+  titleEn?: string;
+  descriptionUk?: string;
+  descriptionEn?: string;
+  // Computed/display fields
   title: string;
   description: string;
-  owner_id: string;
-  owner_name?: string;
+  ownerId?: string;
+  ownerName?: string;
   visibility: 'PUBLIC' | 'PRIVATE' | 'DRAFT';
-  created_at: string;
-  updated_at: string;
-  member_count?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  memberCount?: number;
+  moduleCount?: number;
+  isPublished?: boolean;
   progress?: number;
 }
 
 export interface CourseCreateData {
   code: string;
-  title_uk: string;
-  title_en: string;
-  description_uk: string;
-  description_en: string;
+  titleUk: string;
+  titleEn: string;
+  descriptionUk: string;
+  descriptionEn: string;
   visibility: 'PUBLIC' | 'PRIVATE' | 'DRAFT';
-  start_date?: string;
-  end_date?: string;
-  max_students?: number;
-  is_published?: boolean;
+  startDate?: string;
+  endDate?: string;
+  maxStudents?: number;
+  isPublished?: boolean;
   syllabus?: string;
 }
 
@@ -69,8 +77,9 @@ export interface Module {
   created_at: string;
   updated_at: string;
   resources_count?: number;
-  content_meta?: Record<string, any>;
+  content_meta?: Record<string, unknown>;
   resources?: Resource[];
+  assignments?: Assignment[];
 }
 
 export type ResourceType = 'VIDEO' | 'PDF' | 'SLIDE' | 'LINK' | 'TEXT' | 'CODE' | 'OTHER';
@@ -87,7 +96,7 @@ export interface Resource {
   external_url?: string;
   text_content?: string;
   storage_path?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   position: number;
   is_downloadable: boolean;
   created_at: string;
@@ -138,10 +147,10 @@ export interface Assignment {
   programming_language?: string;
   starter_code?: string;
   auto_grading_enabled?: boolean;
-  test_cases?: any[];
+  test_cases?: { input: string; output: string;[key: string]: unknown }[];
   quiz?: string;
   external_tool_url?: string;
-  external_tool_config?: any;
+  external_tool_config?: Record<string, unknown>;
   grade_anonymously?: boolean;
   peer_review_enabled?: boolean;
   peer_reviews_required?: number;
@@ -196,9 +205,9 @@ export interface Question {
   type: QuestionType;
   stem: string;
   options?: string[];
-  correct_answer: any;
+  correct_answer: string | number | boolean | string[] | number[];
   points: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface Quiz {
@@ -221,7 +230,7 @@ export interface QuizAttempt {
   user_id: string;
   started_at: string;
   submitted_at?: string;
-  answers: Record<string, any>;
+  answers: Record<string, unknown>;
   auto_score?: number;
   final_score?: number;
   graded_by?: string;
@@ -255,7 +264,7 @@ export interface Notification {
   type: NotificationType;
   title: string;
   message: string;
-  payload?: Record<string, any>;
+  payload?: Record<string, unknown>;
   read: boolean;
   created_at: string;
 }
@@ -291,5 +300,5 @@ export interface PaginatedResponse<T> {
 
 export interface ApiError {
   error: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }

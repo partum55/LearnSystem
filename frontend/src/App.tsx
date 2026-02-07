@@ -39,6 +39,7 @@ const DashboardCustomize = lazy(() => import('./pages/DashboardCustomize'));
 const ProfileSettings = lazy(() => import('./pages/ProfileSettings'));
 const CalendarPage = lazy(() => import('./pages/CalendarPage'));
 const VirtualLab = lazy(() => import('./pages/VirtualLab'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 
 // Private route wrapper with auth check
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -174,10 +175,18 @@ const AppOptimized: React.FC = () => {
             <Route path="/profile/settings" element={<LazyRoute isPrivate><ProfileSettings /></LazyRoute>} />
 
             <Route path="/virtual-lab" element={<LazyRoute isPrivate><VirtualLab /></LazyRoute>} />
+
+            <Route path="/admin" element={
+              <LazyRoute isPrivate>
+                <RoleRoute allowedRoles={['SUPERADMIN']}>
+                  <AdminDashboard />
+                </RoleRoute>
+              </LazyRoute>
+            } />
           </Routes>
         </main>
       </BrowserRouter>
-      {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}
+      {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
   );
 };

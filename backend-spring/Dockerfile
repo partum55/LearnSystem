@@ -17,6 +17,7 @@ COPY lms-common/pom.xml ./lms-common/
 COPY lms-user-service/pom.xml ./lms-user-service/
 COPY lms-course-service/pom.xml ./lms-course-service/
 COPY lms-assessment-service/pom.xml ./lms-assessment-service/
+COPY lms-submission-service/pom.xml ./lms-submission-service/
 COPY lms-gradebook-service/pom.xml ./lms-gradebook-service/
 COPY lms-deadline-service/pom.xml ./lms-deadline-service/
 COPY lms-ai-service/pom.xml ./lms-ai-service/
@@ -32,6 +33,7 @@ COPY lms-common/src ./lms-common/src
 COPY lms-user-service/src ./lms-user-service/src
 COPY lms-course-service/src ./lms-course-service/src
 COPY lms-assessment-service/src ./lms-assessment-service/src
+COPY lms-submission-service/src ./lms-submission-service/src
 COPY lms-gradebook-service/src ./lms-gradebook-service/src
 COPY lms-deadline-service/src ./lms-deadline-service/src
 COPY lms-ai-service/src ./lms-ai-service/src
@@ -71,4 +73,3 @@ EXPOSE 8080
 ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0 -Djava.security.egd=file:/dev/./urandom"
 
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
-

@@ -4,6 +4,7 @@ import { Modal } from './Modal';
 import { Input } from './Input';
 import { Button } from './Button';
 import { resourcesApi } from '../api/courses';
+import { extractErrorMessage } from '../api/client';
 import { ResourceType } from '../types';
 
 interface CreateResourceModalProps {
@@ -65,7 +66,7 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
       };
 
       await resourcesApi.create(resourceData);
-      
+
       setFormData({
         title: '',
         description: '',
@@ -78,8 +79,8 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
       setUploadProgress(0);
       onResourceCreated();
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || t('resources.errors.createFailed'));
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }

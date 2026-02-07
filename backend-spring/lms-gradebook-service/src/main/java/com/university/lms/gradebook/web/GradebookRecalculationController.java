@@ -15,7 +15,7 @@ import java.util.UUID;
  * REST controller for grade recalculation operations.
  */
 @RestController
-@RequestMapping("/api/gradebook")
+@RequestMapping("/gradebook")
 @RequiredArgsConstructor
 @Slf4j
 public class GradebookRecalculationController {
@@ -41,4 +41,3 @@ public class GradebookRecalculationController {
         return ResponseEntity.ok("Course grades recalculation initiated");
     }
 }
-

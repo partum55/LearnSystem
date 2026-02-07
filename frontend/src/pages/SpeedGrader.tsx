@@ -4,6 +4,13 @@ import { Card, CardHeader, CardBody, Button, Loading } from '../components';
 import { ConfirmModal } from '../components/common/ConfirmModal';
 import apiClient from '../api/client';
 
+interface SubmissionFile {
+  id: string;
+  file_url: string;
+  filename: string;
+  file_size: number;
+}
+
 interface Submission {
   id: string;
   user: string;
@@ -11,12 +18,12 @@ interface Submission {
   student_email: string;
   status: string;
   text_answer: string;
-  files: any[];
-  uploaded_files: any[];
+  files: SubmissionFile[];
+  uploaded_files: SubmissionFile[];
   submission_url: string | null;
   grade: number | null;
   feedback: string;
-  rubric_evaluation: any;
+  rubric_evaluation: Record<string, number>;
   submitted_at: string;
   is_late: boolean;
   days_late: number;
@@ -35,13 +42,14 @@ interface Assignment {
   id: string;
   title: string;
   max_points: number;
-  rubric: any;
+  rubric: Record<string, number>;
   late_penalty_percent: number;
 }
 
 export const SpeedGrader: React.FC = () => {
-  const { assignmentId } = useParams<{ assignmentId: string }>();
+  const { assignmentId: routeAssignmentId } = useParams<{ assignmentId: string }>();
   const [searchParams] = useSearchParams();
+  const assignmentId = routeAssignmentId || searchParams.get('assignmentId') || undefined;
   const navigate = useNavigate();
 
   const [assignment, setAssignment] = useState<Assignment | null>(null);
@@ -113,7 +121,7 @@ export const SpeedGrader: React.FC = () => {
   const fetchAssignment = useCallback(async () => {
     if (!assignmentId) return;
     try {
-      const response = await apiClient.get<Assignment>(`/assessments/assignments/${assignmentId}/`);
+      const response = await apiClient.get<Assignment>(`/assessments/assignments/${assignmentId}`);
       setAssignment(response.data);
     } catch (error) {
       console.error('Failed to fetch assignment:', error);
@@ -123,7 +131,9 @@ export const SpeedGrader: React.FC = () => {
   const fetchSubmissions = useCallback(async () => {
     if (!assignmentId) return;
     try {
-      const response = await apiClient.get<any>(`/submissions/submissions/speedgrader/?assignment=${assignmentId}`);
+      const response = await apiClient.get<{ ungraded?: Submission[]; recently_graded?: Submission[] }>(
+        `/submissions/speedgrader?assignmentId=${assignmentId}`
+      );
       const data = response.data;
       const allSubmissions = [...(data.ungraded || []), ...(data.recently_graded || [])];
       setSubmissions(allSubmissions);
@@ -144,7 +154,7 @@ export const SpeedGrader: React.FC = () => {
 
     setSaving(true);
     try {
-      await apiClient.post(`/submissions/submissions/${currentSubmission.id}/grade/`, {
+      await apiClient.post(`/submissions/${currentSubmission.id}/grade`, {
         grade: parseFloat(grade),
         feedback,
         rubric_evaluation: rubricScores,
@@ -179,7 +189,7 @@ export const SpeedGrader: React.FC = () => {
     if (!currentSubmission || !comment.trim()) return;
 
     try {
-      await apiClient.post(`/submissions/submissions/${currentSubmission.id}/add_comment/`, { comment });
+      await apiClient.post(`/submissions/${currentSubmission.id}/comments`, { comment });
       setComment('');
       fetchSubmissions();
     } catch (error) {
@@ -306,7 +316,7 @@ export const SpeedGrader: React.FC = () => {
                 )}
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <Button
                 onClick={navigateToPrevious}
@@ -389,7 +399,7 @@ export const SpeedGrader: React.FC = () => {
                   </CardHeader>
                   <CardBody>
                     <div className="space-y-2">
-                      {currentSubmission.uploaded_files.map((file: any) => (
+                      {currentSubmission.uploaded_files.map((file: SubmissionFile) => (
                         <a
                           key={file.id}
                           href={file.file_url}
@@ -458,7 +468,7 @@ export const SpeedGrader: React.FC = () => {
                         <p className="text-gray-700 dark:text-gray-300">{c.comment}</p>
                       </div>
                     ))}
-                    
+
                     <div className="pt-4">
                       <textarea
                         value={comment}
@@ -547,7 +557,7 @@ export const SpeedGrader: React.FC = () => {
                   </CardHeader>
                   <CardBody>
                     <div className="space-y-3">
-                      {Object.entries(assignment.rubric).map(([criterion, maxPoints]: [string, any]) => (
+                      {Object.entries(assignment.rubric).map(([criterion, maxPoints]: [string, number]) => (
                         <div key={criterion}>
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             {criterion}
@@ -596,4 +606,3 @@ export const SpeedGrader: React.FC = () => {
 };
 
 export default SpeedGrader;
-

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { aiApi } from '../../api/ai';
+import { extractErrorMessage } from '../../api/client';
 import {
   SparklesIcon,
   DocumentPlusIcon,
@@ -16,7 +17,7 @@ interface AIAssistantPanelProps {
   moduleId?: string;
   isOpen: boolean;
   onClose: () => void;
-  onContentGenerated?: (type: string, content: any) => void;
+  onContentGenerated?: (type: string, content: unknown) => void;
 }
 
 type AIFunction = 'modules' | 'assignments' | 'quiz' | 'questions';
@@ -62,8 +63,8 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
 
       setModulePrompt('');
       setActiveFunction(null);
-    } catch (err: any) {
-      setError(err.response?.data?.message || t('ai.errors.generationFailed'));
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -89,8 +90,8 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
 
       setAssignmentTopic('');
       setActiveFunction(null);
-    } catch (err: any) {
-      setError(err.response?.data?.message || t('ai.errors.generationFailed'));
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -117,8 +118,8 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
 
       setQuizTopic('');
       setActiveFunction(null);
-    } catch (err: any) {
-      setError(err.response?.data?.message || t('ai.errors.generationFailed'));
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }

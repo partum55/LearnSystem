@@ -9,10 +9,10 @@ import java.util.UUID;
 /**
  * Feign client for Submission Service.
  */
-@FeignClient(name = "submission-service", url = "${services.submission.base-url:http://localhost:8083}")
+@FeignClient(name = "submission-service", url = "${services.submission.base-url:http://localhost:8087}")
 public interface SubmissionClient {
 
-    @GetMapping("/api/submissions/{submissionId}")
+    @GetMapping("/api/submissions/internal/{submissionId}")
     SubmissionDto getSubmission(@PathVariable UUID submissionId);
 
     record SubmissionDto(
@@ -23,4 +23,3 @@ public interface SubmissionClient {
         boolean isLate
     ) {}
 }
-

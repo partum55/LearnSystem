@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import api from '../api/client';
+import api, { extractErrorMessage } from '../api/client';
+import { Assignment, Rubric } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
 import CodeEditor from '../components/CodeEditor';
 import { UnsavedChangesPrompt } from '../components/common/UnsavedChangesPrompt';
@@ -27,7 +28,7 @@ interface AssignmentFormData {
   max_file_size: number;
   test_cases: Array<{ input: string; expected_output: string; points: number }>;
   auto_grading_enabled: boolean;
-  rubric: any;
+  rubric: Rubric | Record<string, unknown>;
   allow_late_submission: boolean;
   late_penalty_percent: number;
   tags: string[];
@@ -37,7 +38,9 @@ interface AssignmentFormData {
 }
 
 const AssignmentEditor: React.FC = () => {
-  const { courseId, assignmentId } = useParams<{ courseId: string; assignmentId?: string }>();
+  const { id: assignmentId } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const courseId = searchParams.get('courseId') || '';
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -74,7 +77,7 @@ const AssignmentEditor: React.FC = () => {
     is_template: false,
   });
 
-  const [availableAssignments, setAvailableAssignments] = useState<any[]>([]);
+  const [availableAssignments, setAvailableAssignments] = useState<Assignment[]>([]);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const initialFormDataRef = useRef<string>(JSON.stringify(formData));
 
@@ -104,10 +107,10 @@ const AssignmentEditor: React.FC = () => {
   }, [assignmentId]);
 
   const fetchAvailableAssignments = async () => {
+    if (!courseId) return;
     try {
-      const response = await api.get(`assessments/assignments/?course=${courseId}`);
-      const data = response.data as any;
-      setAvailableAssignments(data.results || data);
+      const response = await api.get<{ content?: Assignment[] }>(`/assessments/assignments/course/${courseId}`);
+      setAvailableAssignments(response.data?.content || []);
     } catch (err) {
       console.error('Failed to fetch assignments:', err);
     }
@@ -141,12 +144,41 @@ const AssignmentEditor: React.FC = () => {
   const fetchAssignment = async () => {
     try {
       setLoading(true);
-      const response = await api.get<AssignmentFormData>(`assessments/assignments/${assignmentId}/`);
-      setFormData(response.data);
+      const response = await api.get<Record<string, unknown>>(`/assessments/assignments/${assignmentId}`);
+      const data = response.data;
+      const mappedFormData: AssignmentFormData = {
+        title: String(data.title || ''),
+        description: String(data.description || ''),
+        description_format: String(data.descriptionFormat || 'MARKDOWN'),
+        instructions: String(data.instructions || ''),
+        instructions_format: String(data.instructionsFormat || 'MARKDOWN'),
+        assignment_type: String(data.assignmentType || 'FILE_UPLOAD'),
+        max_points: Number(data.maxPoints || 100),
+        due_date: (data.dueDate as string) || '',
+        available_from: (data.availableFrom as string) || '',
+        available_until: (data.availableUntil as string) || '',
+        starter_code: String(data.starterCode || ''),
+        solution_code: '',
+        programming_language: String(data.programmingLanguage || 'python'),
+        resources: (data.resources as Array<{ name: string; url: string; type: string }>) || [],
+        allowed_file_types: (data.allowedFileTypes as string[]) || [],
+        max_files: Number(data.maxFiles || 5),
+        max_file_size: Number(data.maxFileSize || 10485760),
+        test_cases: (data.testCases as Array<{ input: string; expected_output: string; points: number }>) || [],
+        auto_grading_enabled: Boolean(data.autoGradingEnabled),
+        rubric: (data.rubric as Rubric | Record<string, unknown>) || {},
+        allow_late_submission: Boolean(data.allowLateSubmission),
+        late_penalty_percent: Number(data.latePenaltyPercent || 10),
+        tags: (data.tags as string[]) || [],
+        estimated_duration: (data.estimatedDuration as number | null) || null,
+        prerequisites: [],
+        is_template: Boolean(data.isTemplate),
+      };
+      setFormData(mappedFormData);
       // Update initial form data reference after loading
-      initialFormDataRef.current = JSON.stringify(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load assignment');
+      initialFormDataRef.current = JSON.stringify(mappedFormData);
+    } catch (err) {
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -164,18 +196,43 @@ const AssignmentEditor: React.FC = () => {
     setError(null);
 
     try {
+      const payload = {
+        courseId: courseId || undefined,
+        assignmentType: formData.assignment_type,
+        title: formData.title,
+        description: formData.description,
+        descriptionFormat: formData.description_format,
+        instructions: formData.instructions,
+        instructionsFormat: formData.instructions_format,
+        maxPoints: formData.max_points,
+        dueDate: formData.due_date || null,
+        availableFrom: formData.available_from || null,
+        availableUntil: formData.available_until || null,
+        starterCode: formData.starter_code || null,
+        programmingLanguage: formData.programming_language || null,
+        resources: formData.resources,
+        allowedFileTypes: formData.allowed_file_types,
+        maxFiles: formData.max_files,
+        maxFileSize: formData.max_file_size,
+        testCases: formData.test_cases,
+        autoGradingEnabled: formData.auto_grading_enabled,
+        rubric: formData.rubric,
+        allowLateSubmission: formData.allow_late_submission,
+        latePenaltyPercent: formData.late_penalty_percent,
+        tags: formData.tags,
+        estimatedDuration: formData.estimated_duration,
+        isTemplate: formData.is_template,
+        isPublished: false,
+      };
+
       if (assignmentId) {
-        await api.put(`assessments/assignments/${assignmentId}/`, formData);
+        await api.put(`/assessments/assignments/${assignmentId}`, payload);
       } else {
-        await api.post('assessments/assignments/', {
-          ...formData,
-          course: courseId,
-          is_published: false,
-        });
+        await api.post('/assessments/assignments', payload);
       }
-      navigate(`/courses/${courseId}`);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to save assignment');
+      navigate(courseId ? `/courses/${courseId}` : `/assignments/${assignmentId}`);
+    } catch (err) {
+      setError(extractErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -185,16 +242,9 @@ const AssignmentEditor: React.FC = () => {
     if (!assignmentId) return;
 
     try {
-      setSaving(true);
-      const response = await api.post(`assessments/assignments/${assignmentId}/duplicate/`, {
-        course_id: courseId
-      });
-      const data = response.data as any;
-      navigate(`/courses/${courseId}/assignments/${data.id}/edit`);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to duplicate assignment');
-    } finally {
-      setSaving(false);
+      setError(t('assignment.errors.duplicateNotSupported', 'Duplicate is not supported by current backend.'));
+    } catch (err) {
+      setError(extractErrorMessage(err));
     }
   };
 
@@ -202,10 +252,9 @@ const AssignmentEditor: React.FC = () => {
     if (!assignmentId) return;
 
     try {
-      await api.post(`assessments/assignments/${assignmentId}/save_as_template/`);
-      alert(t('assignment.saved_as_template'));
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to save as template');
+      setError(t('assignment.errors.templateNotSupported', 'Save as template is not supported by current backend.'));
+    } catch (err) {
+      setError(extractErrorMessage(err));
     }
   };
 
@@ -236,7 +285,7 @@ const AssignmentEditor: React.FC = () => {
     });
   };
 
-  const updateTestCase = (index: number, field: string, value: any) => {
+  const updateTestCase = (index: number, field: string, value: string | number) => {
     const newTestCases = [...formData.test_cases];
     newTestCases[index] = { ...newTestCases[index], [field]: value };
     setFormData({ ...formData, test_cases: newTestCases });
@@ -259,9 +308,8 @@ const AssignmentEditor: React.FC = () => {
           type="text"
           value={formData.title}
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          className={`w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-            validationErrors.title ? 'border-red-500' : ''
-          }`}
+          className={`w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 ${validationErrors.title ? 'border-red-500' : ''
+            }`}
           required
         />
         {validationErrors.title && (
@@ -539,7 +587,7 @@ const AssignmentEditor: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             {t('assignment.file_upload_settings')}
           </h3>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t('assignment.allowed_file_types')}
@@ -547,9 +595,9 @@ const AssignmentEditor: React.FC = () => {
             <input
               type="text"
               value={formData.allowed_file_types.join(', ')}
-              onChange={(e) => setFormData({ 
-                ...formData, 
-                allowed_file_types: e.target.value.split(',').map(s => s.trim()) 
+              onChange={(e) => setFormData({
+                ...formData,
+                allowed_file_types: e.target.value.split(',').map(s => s.trim())
               })}
               placeholder=".pdf, .docx, .txt"
               className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
@@ -591,7 +639,7 @@ const AssignmentEditor: React.FC = () => {
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           {t('assignment.late_submission_settings')}
         </h3>
-        
+
         <div className="flex items-center mb-4">
           <input
             type="checkbox"
@@ -831,88 +879,87 @@ const AssignmentEditor: React.FC = () => {
       />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          {assignmentId ? t('assignment.edit') : t('assignment.create_new')}
-        </h1>
-      </div>
-
-      {error && (
-        <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-red-800 dark:text-red-200">{error}</p>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            {assignmentId ? t('assignment.edit') : t('assignment.create_new')}
+          </h1>
         </div>
-      )}
 
-      <form onSubmit={handleSubmit}>
-        {/* Tabs */}
-        <div className="bg-white dark:bg-gray-800 rounded-t-lg border-b border-gray-200 dark:border-gray-700">
-          <div className="flex space-x-1 p-2">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                  activeTab === tab.id
+        {error && (
+          <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+            <p className="text-red-800 dark:text-red-200">{error}</p>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          {/* Tabs */}
+          <div className="bg-white dark:bg-gray-800 rounded-t-lg border-b border-gray-200 dark:border-gray-700">
+            <div className="flex space-x-1 p-2">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id as 'basic' | 'content' | 'settings' | 'grading' | 'advanced')}
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === tab.id
                     ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-              >
-                {tab.icon} {tab.label}
-              </button>
-            ))}
+                    }`}
+                >
+                  {tab.icon} {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Tab Content */}
-        <div className="bg-white dark:bg-gray-800 rounded-b-lg shadow p-6">
-          {activeTab === 'basic' && renderBasicTab()}
-          {activeTab === 'content' && renderContentTab()}
-          {activeTab === 'settings' && renderSettingsTab()}
-          {activeTab === 'grading' && renderGradingTab()}
-          {activeTab === 'advanced' && renderAdvancedTab()}
-        </div>
+          {/* Tab Content */}
+          <div className="bg-white dark:bg-gray-800 rounded-b-lg shadow p-6">
+            {activeTab === 'basic' && renderBasicTab()}
+            {activeTab === 'content' && renderContentTab()}
+            {activeTab === 'settings' && renderSettingsTab()}
+            {activeTab === 'grading' && renderGradingTab()}
+            {activeTab === 'advanced' && renderAdvancedTab()}
+          </div>
 
-        {/* Actions */}
-        <div className="mt-6 flex gap-4">
-          <button
-            type="submit"
-            disabled={saving}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-          >
-            {saving ? t('common.saving') : t('common.save')}
-          </button>
+          {/* Actions */}
+          <div className="mt-6 flex gap-4">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            >
+              {saving ? t('common.saving') : t('common.save')}
+            </button>
 
-          {assignmentId && (
-            <>
-              <button
-                type="button"
-                onClick={handleDuplicate}
-                disabled={saving}
-                className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg"
-              >
-                {t('assignment.duplicate')}
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveAsTemplate}
-                disabled={saving}
-                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white rounded-lg"
-              >
-                {t('assignment.save_as_template')}
-              </button>
-            </>
-          )}
+            {assignmentId && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleDuplicate}
+                  disabled={saving}
+                  className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg"
+                >
+                  {t('assignment.duplicate')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveAsTemplate}
+                  disabled={saving}
+                  className="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white rounded-lg"
+                >
+                  {t('assignment.save_as_template')}
+                </button>
+              </>
+            )}
 
-          <button
-            type="button"
-            onClick={() => navigate(`/courses/${courseId}`)}
-            className="px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-          >
-            {t('common.cancel')}
-          </button>
-        </div>
-      </form>
+            <button
+              type="button"
+              onClick={() => navigate(courseId ? `/courses/${courseId}` : `/assignments/${assignmentId}`)}
+              className="px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              {t('common.cancel')}
+            </button>
+          </div>
+        </form>
       </div>
     </>
   );

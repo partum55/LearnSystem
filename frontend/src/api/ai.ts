@@ -2,7 +2,10 @@ import apiClient from './client';
 
 // Use API gateway for AI calls - the gateway routes /api/ai/** to the AI service
 // The gateway rewrites /api/ai/** to /api/v1/ai/** before forwarding to AI service
-const AI_BASE_URL = process.env.REACT_APP_AI_SERVICE_URL || '/api/ai';
+const AI_BASE_URL =
+  import.meta.env.VITE_AI_SERVICE_URL ||
+  import.meta.env.REACT_APP_AI_SERVICE_URL ||
+  '/api/ai';
 
 
 export interface CourseGenerationRequest {
@@ -66,15 +69,15 @@ export interface GeneratedQuestion {
   question_type: string;
   stem: string;
   points: number;
-  options?: any;
-  correct_answer?: any;
+  options?: unknown;
+  correct_answer?: unknown;
 }
 
 export interface AIProgressEvent {
   eventType: 'progress' | 'module' | 'assignment' | 'complete' | 'error';
   message?: string;
   percentage?: number;
-  data?: any;
+  data?: unknown;
   error?: string;
 }
 
@@ -83,28 +86,22 @@ export interface CourseTemplate {
   name: string;
   description: string;
   category: string;
-  promptTemplate: string;
-  variables: Record<string, string>;
-  defaultOptions: Record<string, string>;
-  isPublic: boolean;
   usageCount: number;
   averageRating: number;
+  tags?: string[];
+  variables?: {
+    name: string;
+    description: string;
+    type: 'string' | 'number' | 'enum';
+    options?: string[];
+    required?: boolean;
+    default?: string;
+  }[];
 }
-
+// AI Service Methods
 export const aiApi = {
   /**
-   * Generate course structure (preview only)
-   */
-  generateCourse: async (request: CourseGenerationRequest) => {
-    const response = await apiClient.post<GeneratedCourse>(
-      `${AI_BASE_URL}/courses/generate`,
-      request
-    );
-    return response.data;
-  },
-
-  /**
-   * Generate course with streaming progress
+   * Stream course generation
    */
   generateCourseStream: (
     request: CourseGenerationRequest,
@@ -112,16 +109,18 @@ export const aiApi = {
     onComplete: (course: GeneratedCourse) => void,
     onError: (error: string) => void
   ) => {
+    const params = new URLSearchParams(request as unknown as Record<string, string>);
     const eventSource = new EventSource(
-      `${AI_BASE_URL}/courses/generate-stream?${new URLSearchParams(request as any)}`
+      `${AI_BASE_URL}/courses/generate-stream?${params}`
     );
+    // ...
 
     eventSource.onmessage = (event) => {
       try {
         const data: AIProgressEvent = JSON.parse(event.data);
 
         if (data.eventType === 'complete' && data.data) {
-          onComplete(data.data);
+          onComplete(data.data as GeneratedCourse);
           eventSource.close();
         } else if (data.eventType === 'error') {
           onError(data.error || 'Unknown error');
@@ -144,9 +143,20 @@ export const aiApi = {
   },
 
   /**
+   * Generate course (non-streaming)
+   */
+  generateCourse: async (request: CourseGenerationRequest) => {
+    const response = await apiClient.post<GeneratedCourse>(
+      `${AI_BASE_URL}/courses/generate`,
+      request
+    );
+    return response.data;
+  },
+
+  /**
    * Generate and save course to database
    */
-  generateAndSaveCourse: async (request: CourseGenerationRequest, userId: string, _token?: string) => {
+  generateAndSaveCourse: async (request: CourseGenerationRequest, userId: string) => {
     const response = await apiClient.post<{
       courseId: string;
       modulesCreated: number;

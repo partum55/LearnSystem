@@ -9,7 +9,7 @@ export interface AIProgressEvent {
   message?: string;
   percentage?: number;
   dataType?: string;
-  data?: any;
+  data?: unknown;
 }
 
 /**
@@ -19,7 +19,7 @@ interface UseAIStreamingOptions {
   /** Callback for progress events */
   onProgress?: (event: AIProgressEvent) => void;
   /** Callback when generation completes */
-  onComplete?: (data: any) => void;
+  onComplete?: (data: unknown) => void;
   /** Callback for errors */
   onError?: (error: Error) => void;
   /** Maximum number of reconnection attempts */
@@ -33,7 +33,7 @@ interface UseAIStreamingOptions {
  */
 interface UseAIStreamingReturn {
   /** Connect to SSE endpoint and start streaming */
-  connect: (body?: any) => void;
+  connect: (body?: unknown) => void;
   /** Abort the current streaming connection */
   abort: () => void;
   /** Whether streaming is currently active */
@@ -43,7 +43,7 @@ interface UseAIStreamingReturn {
   /** Current error, if any */
   error: Error | null;
   /** All received data events */
-  receivedData: any[];
+  receivedData: unknown[];
 }
 
 /**
@@ -71,10 +71,11 @@ export function useAIStreaming(
   const [isStreaming, setIsStreaming] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<Error | null>(null);
-  const [receivedData, setReceivedData] = useState<any[]>([]);
+  const [receivedData, setReceivedData] = useState<unknown[]>([]);
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const retryCountRef = useRef(0);
+  const connectRef = useRef<((body?: unknown) => void) | null>(null);
 
   const maxRetries = options.maxRetries ?? 3;
   const retryDelay = options.retryDelay ?? 1000;
@@ -84,7 +85,7 @@ export function useAIStreaming(
    */
   const buildUrl = useCallback((baseUrl: string): string => {
     const token = getAccessToken();
-    const apiBase = process.env.REACT_APP_API_URL || '';
+    const apiBase = import.meta.env.VITE_API_URL || import.meta.env.REACT_APP_API_URL || '';
     const fullUrl = `${apiBase}${baseUrl}`;
 
     // Add token as query parameter for SSE (can't use headers)
@@ -98,7 +99,7 @@ export function useAIStreaming(
   /**
    * Connect to the SSE endpoint
    */
-  const connect = useCallback((body?: any) => {
+  const connect = useCallback((body?: unknown) => {
     // Close existing connection
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
@@ -148,13 +149,14 @@ export function useAIStreaming(
             setProgress(100);
             break;
 
-          case 'error':
+          case 'error': {
             const err = new Error(data.message || 'AI generation failed');
             setError(err);
             options.onError?.(err);
             eventSource.close();
             setIsStreaming(false);
             break;
+          }
         }
       } catch (e) {
         console.error('Failed to parse SSE event:', e);
@@ -173,8 +175,8 @@ export function useAIStreaming(
         console.log(`Retrying SSE connection in ${delay}ms (attempt ${retryCountRef.current}/${maxRetries})`);
 
         setTimeout(() => {
-          if (eventSourceRef.current === eventSource) {
-            connect(body);
+          if (eventSourceRef.current === eventSource && connectRef.current) {
+            connectRef.current(body);
           }
         }, delay);
       } else {
@@ -185,6 +187,11 @@ export function useAIStreaming(
       }
     };
   }, [url, options, maxRetries, retryDelay, buildUrl]);
+
+  // Store connect function in ref for retry access
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   /**
    * Abort the current streaming connection
@@ -219,4 +226,3 @@ export function useAIStreaming(
 }
 
 export default useAIStreaming;
-

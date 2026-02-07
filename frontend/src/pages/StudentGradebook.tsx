@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '../api/client';
+import { useAuthStore } from '../store/authStore';
 
 interface GradeEntry {
   assignment_id: string;
@@ -36,8 +37,22 @@ interface GradebookData {
   summary: GradeSummary | null;
 }
 
+interface ApiGradebookEntry {
+  assignmentId: string;
+  assignmentTitle: string;
+  maxScore: number;
+  score?: number;
+  finalScore?: number;
+  overrideScore?: number;
+  percentage?: number;
+  status: string;
+  late: boolean;
+  excused: boolean;
+}
+
 const StudentGradebook: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
+  const user = useAuthStore((state) => state.user);
   const { t } = useTranslation();
   const [gradebook, setGradebook] = useState<GradebookData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,16 +63,76 @@ const StudentGradebook: React.FC = () => {
   useEffect(() => {
     fetchGradebook();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId]);
+  }, [courseId, user?.id]);
 
   const fetchGradebook = async () => {
+    const queryCourseId = new URLSearchParams(window.location.search).get('courseId');
+    const resolvedCourseId = courseId || queryCourseId;
+    if (!resolvedCourseId || !user?.id) {
+      setLoading(false);
+      setError(t('gradebook.error'));
+      return;
+    }
+
     try {
       setLoading(true);
-      const response = await api.get<GradebookData>(`/api/gradebook/student/${courseId}/`);
-      setGradebook(response.data);
+      const [entriesResponse, courseResponse] = await Promise.all([
+        api.get<ApiGradebookEntry[]>(`/gradebook/entries/course/${resolvedCourseId}/student/${user.id}`),
+        api.get<{ code?: string; title?: string; titleUk?: string; titleEn?: string }>(`/courses/${resolvedCourseId}`),
+      ]);
+
+      const grades: GradeEntry[] = (entriesResponse.data || []).map((entry) => {
+        const resolvedScore = entry.finalScore ?? entry.overrideScore ?? entry.score;
+        return {
+          assignment_id: entry.assignmentId,
+          assignment_title: entry.assignmentTitle,
+          assignment_type: 'ASSIGNMENT',
+          max_points: Number(entry.maxScore || 0),
+          due_date: null,
+          category: null,
+          score: resolvedScore !== undefined && resolvedScore !== null ? Number(resolvedScore) : null,
+          percentage: entry.percentage !== undefined && entry.percentage !== null ? Number(entry.percentage) : null,
+          status: entry.status,
+          is_late: Boolean(entry.late),
+          is_excused: Boolean(entry.excused),
+          graded_at: null,
+          notes: null,
+        };
+      });
+
+      const graded = grades.filter((grade) => grade.score !== null);
+      const totalPointsEarned = graded.reduce((sum, grade) => sum + (grade.score || 0), 0);
+      const totalPointsPossible = graded.reduce((sum, grade) => sum + grade.max_points, 0);
+      const currentGrade = totalPointsPossible > 0 ? (totalPointsEarned / totalPointsPossible) * 100 : null;
+
+      setGradebook({
+        course_id: resolvedCourseId,
+        course_code: courseResponse.data?.code || '',
+        course_title:
+          courseResponse.data?.title ||
+          courseResponse.data?.titleUk ||
+          courseResponse.data?.titleEn ||
+          '',
+        grades,
+        summary: {
+          current_grade: currentGrade,
+          letter_grade:
+            currentGrade === null ? '-' :
+              currentGrade >= 90 ? 'A' :
+                currentGrade >= 80 ? 'B' :
+                  currentGrade >= 70 ? 'C' :
+                    currentGrade >= 60 ? 'D' : 'F',
+          total_points_earned: totalPointsEarned,
+          total_points_possible: totalPointsPossible,
+          assignments_completed: graded.length,
+          assignments_total: grades.length,
+        },
+      });
       setError(null);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load gradebook');
+    } catch (err: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const error = err as any;
+      setError(error.response?.data?.message || 'Failed to load gradebook');
     } finally {
       setLoading(false);
     }
@@ -71,7 +146,7 @@ const StudentGradebook: React.FC = () => {
         </span>
       );
     }
-    
+
     if (isLate) {
       return (
         <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
@@ -104,13 +179,13 @@ const StudentGradebook: React.FC = () => {
 
   const filteredAndSortedGrades = () => {
     if (!gradebook) return [];
-    
+
     let filtered = gradebook.grades;
-    
+
     if (filterCategory !== 'all') {
       filtered = filtered.filter(g => g.category === filterCategory);
     }
-    
+
     const sorted = [...filtered].sort((a, b) => {
       switch (sortBy) {
         case 'title':
@@ -124,7 +199,7 @@ const StudentGradebook: React.FC = () => {
           return new Date(b.due_date).getTime() - new Date(a.due_date).getTime();
       }
     });
-    
+
     return sorted;
   };
 
@@ -152,7 +227,7 @@ const StudentGradebook: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-6">
-        <Link to={`/courses/${courseId}`} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-2 inline-block">
+        <Link to={`/courses/${gradebook.course_id}`} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-2 inline-block">
           ← {t('common.back_to_course')}
         </Link>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -170,8 +245,8 @@ const StudentGradebook: React.FC = () => {
             <div>
               <p className="text-blue-100 text-sm">{t('gradebook.current_grade')}</p>
               <p className="text-4xl font-bold">
-                {gradebook.summary.current_grade !== null 
-                  ? `${gradebook.summary.current_grade.toFixed(1)}%` 
+                {gradebook.summary.current_grade !== null
+                  ? `${gradebook.summary.current_grade.toFixed(1)}%`
                   : 'N/A'}
               </p>
               <p className="text-2xl font-semibold mt-1">
@@ -226,7 +301,7 @@ const StudentGradebook: React.FC = () => {
             </label>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => setSortBy(e.target.value as 'date' | 'title' | 'score')}
               className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
               <option value="date">{t('gradebook.sort.due_date')}</option>
@@ -265,7 +340,7 @@ const StudentGradebook: React.FC = () => {
                 <tr key={grade.assignment_id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-6 py-4">
                     <Link
-                      to={`/courses/${courseId}/assignments/${grade.assignment_id}`}
+                      to={`/assignments/${grade.assignment_id}`}
                       className="text-blue-600 hover:text-blue-800 dark:text-blue-400 font-medium"
                     >
                       {grade.assignment_title}
@@ -277,7 +352,7 @@ const StudentGradebook: React.FC = () => {
                     )}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    {grade.due_date 
+                    {grade.due_date
                       ? new Date(grade.due_date).toLocaleDateString()
                       : 'N/A'}
                   </td>
@@ -286,8 +361,8 @@ const StudentGradebook: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <span className={`font-medium ${getGradeColor(grade.percentage)}`}>
-                      {grade.score !== null 
-                        ? `${grade.score.toFixed(1)} / ${grade.max_points}` 
+                      {grade.score !== null
+                        ? `${grade.score.toFixed(1)} / ${grade.max_points}`
                         : '-'}
                     </span>
                   </td>

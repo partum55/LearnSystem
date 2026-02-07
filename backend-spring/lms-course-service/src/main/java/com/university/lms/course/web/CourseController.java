@@ -164,7 +164,8 @@ public class CourseController {
             @Valid @RequestBody UpdateCourseRequest request) {
 
         UUID userId = extractUserId();
-        CourseDto course = courseService.updateCourse(id, request, userId);
+        String userRole = extractUserRole();
+        CourseDto course = courseService.updateCourse(id, request, userId, userRole);
         return ResponseEntity.ok(course);
     }
 
@@ -175,7 +176,8 @@ public class CourseController {
     @PreAuthorize("hasAnyRole('TEACHER','SUPERADMIN')")
     public ResponseEntity<Void> deleteCourse(@PathVariable UUID id) {
         UUID userId = extractUserId();
-        courseService.deleteCourse(id, userId);
+        String userRole = extractUserRole();
+        courseService.deleteCourse(id, userId, userRole);
         return ResponseEntity.noContent().build();
     }
 
@@ -188,7 +190,8 @@ public class CourseController {
             @PathVariable UUID id) {
 
         UUID userId = extractUserId();
-        CourseDto course = courseService.publishCourse(id, userId);
+        String userRole = extractUserRole();
+        CourseDto course = courseService.publishCourse(id, userId, userRole);
         return ResponseEntity.ok(course);
     }
 
@@ -201,7 +204,8 @@ public class CourseController {
             @PathVariable UUID id) {
 
         UUID userId = extractUserId();
-        CourseDto course = courseService.unpublishCourse(id, userId);
+        String userRole = extractUserRole();
+        CourseDto course = courseService.unpublishCourse(id, userId, userRole);
         return ResponseEntity.ok(course);
     }
 

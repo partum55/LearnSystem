@@ -1,11 +1,8 @@
-/* eslint-disable no-restricted-globals */
 // Service Worker for PWA capabilities
 
 const CACHE_NAME = 'lms-cache-v1';
 const urlsToCache = [
   '/',
-  '/static/css/main.css',
-  '/static/js/main.js',
   '/manifest.json'
 ];
 
@@ -41,7 +38,7 @@ self.addEventListener('activate', (event) => {
 // Fetch event - serve from cache when offline
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  
+
   // Skip non-GET requests
   if (request.method !== 'GET') {
     return;
@@ -104,7 +101,7 @@ async function syncSubmissions() {
   // Get pending submissions from IndexedDB
   const db = await openDB();
   const submissions = await db.getAll('pending-submissions');
-  
+
   for (const submission of submissions) {
     try {
       const response = await fetch('/api/submissions/', {
@@ -114,7 +111,7 @@ async function syncSubmissions() {
         },
         body: JSON.stringify(submission.data)
       });
-      
+
       if (response.ok) {
         // Remove from pending
         await db.delete('pending-submissions', submission.id);
@@ -128,10 +125,10 @@ async function syncSubmissions() {
 function openDB() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('lms-offline-db', 1);
-    
+
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);
-    
+
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
       if (!db.objectStoreNames.contains('pending-submissions')) {
@@ -169,4 +166,3 @@ self.addEventListener('notificationclick', (event) => {
     clients.openWindow(event.notification.data.url)
   );
 });
-

@@ -193,7 +193,7 @@ export function useSubmissionsQuery(assignmentId: string | undefined) {
     queryKey: queryKeys.assessments.submissions(assignmentId || ''),
     queryFn: async () => {
       const response = await submissionsApi.getForAssignment(assignmentId!);
-      const data = response.data as any;
+      const data = response.data as { results?: Submission[] } | Submission[];
       return Array.isArray(data) ? data : data?.results || [];
     },
     enabled: !!assignmentId,

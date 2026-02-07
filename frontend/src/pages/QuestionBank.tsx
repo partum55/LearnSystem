@@ -13,17 +13,38 @@ import { ConfirmModal } from '../components/common/ConfirmModal';
 import apiClient from '../api/client';
 import { PlusIcon, PencilIcon, TrashIcon, FunnelIcon } from '@heroicons/react/24/outline';
 
+interface QuestionOption {
+  choices?: string[];
+  [key: string]: unknown;
+}
+
 interface Question {
   id: string;
   question_type: string;
   stem: string;
-  options?: any;
-  correct_answer: any;
+  options?: QuestionOption;
+  correct_answer: string | number | boolean | string[] | number[] | Record<string, unknown>; // Dynamic based on question type
   explanation?: string;
   points: number;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   created_at: string;
   created_by_name?: string;
+}
+
+interface ApiQuestion {
+  id: string;
+  questionType: string;
+  stem: string;
+  options?: QuestionOption;
+  correctAnswer: string | number | boolean | string[] | number[] | Record<string, unknown>;
+  explanation?: string;
+  points: number;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
+interface PageResponse<T> {
+  content: T[];
 }
 
 export const QuestionBank: React.FC = () => {
@@ -46,10 +67,7 @@ export const QuestionBank: React.FC = () => {
     // If courseId changed, reset
     if (dataLoadedRef.current !== courseId) {
       dataLoadedRef.current = courseId;
-
-      if (courseId) {
-        fetchQuestions();
-      }
+      fetchQuestions();
     } else {
       // Data already loaded for this courseId, skip
       setLoading(false);
@@ -60,9 +78,21 @@ export const QuestionBank: React.FC = () => {
   const fetchQuestions = async () => {
     setLoading(true);
     try {
-      const response = await apiClient.get(`/assessments/questions/?course=${courseId}`);
-      const data = response.data as any;
-      const questionsList = Array.isArray(data) ? data : data.results || [];
+      const response = courseId
+        ? await apiClient.get<PageResponse<ApiQuestion>>(`/assessments/questions/course/${courseId}`)
+        : await apiClient.get<PageResponse<ApiQuestion>>('/assessments/questions/global');
+
+      const questionsList = (response.data.content || []).map((q) => ({
+        id: q.id,
+        question_type: q.questionType,
+        stem: q.stem,
+        options: q.options,
+        correct_answer: q.correctAnswer,
+        explanation: q.explanation,
+        points: Number(q.points),
+        metadata: q.metadata,
+        created_at: q.createdAt,
+      }));
       setQuestions(questionsList);
     } catch (error) {
       console.error('Failed to fetch questions:', error);
@@ -80,7 +110,7 @@ export const QuestionBank: React.FC = () => {
 
     setDeleting(true);
     try {
-      await apiClient.delete(`/assessments/questions/${deleteConfirm.questionId}/`);
+      await apiClient.delete(`/assessments/questions/${deleteConfirm.questionId}`);
       setDeleteConfirm({ isOpen: false, questionId: null });
       fetchQuestions();
     } catch (error) {
@@ -146,216 +176,216 @@ export const QuestionBank: React.FC = () => {
     <Layout>
       <div className="p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
-            {/* Page Header */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                    {t('questionBank.title')}
-                  </h1>
-                  <p className="mt-2 text-gray-600 dark:text-gray-400">
-                    {t('questionBank.description')}
-                  </p>
-                </div>
-                <Button onClick={() => setShowCreateModal(true)}>
-                  <PlusIcon className="h-5 w-5 mr-2" />
-                  {t('question.create')}
-                </Button>
+          {/* Page Header */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                  {t('questionBank.title')}
+                </h1>
+                <p className="mt-2 text-gray-600 dark:text-gray-400">
+                  {t('questionBank.description')}
+                </p>
               </div>
+              <Button onClick={() => setShowCreateModal(true)}>
+                <PlusIcon className="h-5 w-5 mr-2" />
+                {t('question.create')}
+              </Button>
             </div>
+          </div>
 
-            {/* Statistics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <Card>
-                <CardBody>
-                  <div className="text-center">
-                    <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                      {questions.length}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      {t('questionBank.totalQuestions')}
-                    </p>
-                  </div>
-                </CardBody>
-              </Card>
-
-              <Card>
-                <CardBody>
-                  <div className="text-center">
-                    <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                      {questions.filter(q => q.question_type === 'MULTIPLE_CHOICE').length}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      Multiple Choice
-                    </p>
-                  </div>
-                </CardBody>
-              </Card>
-
-              <Card>
-                <CardBody>
-                  <div className="text-center">
-                    <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                      {questions.filter(q => ['SHORT_ANSWER', 'ESSAY'].includes(q.question_type)).length}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      Open-Ended
-                    </p>
-                  </div>
-                </CardBody>
-              </Card>
-
-              <Card>
-                <CardBody>
-                  <div className="text-center">
-                    <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                      {questions.reduce((sum, q) => sum + q.points, 0)}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      {t('questionBank.totalPoints')}
-                    </p>
-                  </div>
-                </CardBody>
-              </Card>
-            </div>
-
-            {/* Filters and Search */}
-            <Card className="mb-6">
+          {/* Statistics */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <Card>
               <CardBody>
-                <div className="flex flex-col md:flex-row gap-4">
-                  <div className="flex-1">
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder={t('questionBank.searchPlaceholder')}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <FunnelIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                    <select
-                      value={filterType}
-                      onChange={(e) => setFilterType(e.target.value)}
-                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                    >
-                      {questionTypes.map(type => (
-                        <option key={type} value={type}>
-                          {type === 'ALL' ? t('questionBank.allTypes') : getQuestionTypeLabel(type)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                <div className="text-center">
+                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                    {questions.length}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {t('questionBank.totalQuestions')}
+                  </p>
                 </div>
               </CardBody>
             </Card>
 
-            {/* Questions List */}
-            {filteredQuestions.length === 0 ? (
-              <Card>
-                <CardBody>
-                  <div className="text-center py-12">
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">
-                      {searchQuery || filterType !== 'ALL' 
-                        ? t('questionBank.noQuestionsFiltered')
-                        : t('questionBank.noQuestions')}
-                    </p>
-                    {!searchQuery && filterType === 'ALL' && (
-                      <Button onClick={() => setShowCreateModal(true)}>
-                        <PlusIcon className="h-5 w-5 mr-2" />
-                        {t('question.createFirst')}
-                      </Button>
-                    )}
-                  </div>
-                </CardBody>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                {filteredQuestions.map((question) => (
-                  <Card key={question.id}>
-                    <CardBody>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          {/* Question Type Badge */}
-                          <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full mb-3 ${getQuestionTypeBadgeColor(question.question_type)}`}>
-                            {getQuestionTypeLabel(question.question_type)}
-                          </span>
+            <Card>
+              <CardBody>
+                <div className="text-center">
+                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                    {questions.filter(q => q.question_type === 'MULTIPLE_CHOICE').length}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    Multiple Choice
+                  </p>
+                </div>
+              </CardBody>
+            </Card>
 
-                          {/* Question Stem */}
-                          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                            {question.stem}
-                          </h3>
+            <Card>
+              <CardBody>
+                <div className="text-center">
+                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                    {questions.filter(q => ['SHORT_ANSWER', 'ESSAY'].includes(q.question_type)).length}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    Open-Ended
+                  </p>
+                </div>
+              </CardBody>
+            </Card>
 
-                          {/* Multiple Choice Options Preview */}
-                          {question.question_type === 'MULTIPLE_CHOICE' && question.options?.choices && (
-                            <div className="mt-3 space-y-1">
-                              {question.options.choices.slice(0, 3).map((choice: string, idx: number) => (
-                                <div key={idx} className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                                  <span className="w-6 h-6 flex items-center justify-center border border-gray-300 dark:border-gray-600 rounded mr-2">
-                                    {String.fromCharCode(65 + idx)}
-                                  </span>
-                                  <span>{choice}</span>
-                                  {question.correct_answer?.index === idx && (
-                                    <span className="ml-2 text-green-600 dark:text-green-400">✓</span>
-                                  )}
-                                </div>
-                              ))}
-                              {question.options.choices.length > 3 && (
-                                <p className="text-xs text-gray-500 dark:text-gray-400 ml-8">
-                                  +{question.options.choices.length - 3} more options
-                                </p>
-                              )}
-                            </div>
-                          )}
+            <Card>
+              <CardBody>
+                <div className="text-center">
+                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                    {questions.reduce((sum, q) => sum + q.points, 0)}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {t('questionBank.totalPoints')}
+                  </p>
+                </div>
+              </CardBody>
+            </Card>
+          </div>
 
-                          {/* Metadata */}
-                          <div className="mt-3 flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-                            <span>{question.points} {t('question.points')}</span>
-                            {question.created_by_name && (
-                              <span>{t('question.createdBy')}: {question.created_by_name}</span>
+          {/* Filters and Search */}
+          <Card className="mb-6">
+            <CardBody>
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={t('questionBank.searchPlaceholder')}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <FunnelIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                  <select
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value)}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  >
+                    {questionTypes.map(type => (
+                      <option key={type} value={type}>
+                        {type === 'ALL' ? t('questionBank.allTypes') : getQuestionTypeLabel(type)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Questions List */}
+          {filteredQuestions.length === 0 ? (
+            <Card>
+              <CardBody>
+                <div className="text-center py-12">
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    {searchQuery || filterType !== 'ALL'
+                      ? t('questionBank.noQuestionsFiltered')
+                      : t('questionBank.noQuestions')}
+                  </p>
+                  {!searchQuery && filterType === 'ALL' && (
+                    <Button onClick={() => setShowCreateModal(true)}>
+                      <PlusIcon className="h-5 w-5 mr-2" />
+                      {t('question.createFirst')}
+                    </Button>
+                  )}
+                </div>
+              </CardBody>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {filteredQuestions.map((question) => (
+                <Card key={question.id}>
+                  <CardBody>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        {/* Question Type Badge */}
+                        <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full mb-3 ${getQuestionTypeBadgeColor(question.question_type)}`}>
+                          {getQuestionTypeLabel(question.question_type)}
+                        </span>
+
+                        {/* Question Stem */}
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                          {question.stem}
+                        </h3>
+
+                        {/* Multiple Choice Options Preview */}
+                        {question.question_type === 'MULTIPLE_CHOICE' && question.options?.choices && (
+                          <div className="mt-3 space-y-1">
+                            {question.options.choices.slice(0, 3).map((choice: string, idx: number) => (
+                              <div key={idx} className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                                <span className="w-6 h-6 flex items-center justify-center border border-gray-300 dark:border-gray-600 rounded mr-2">
+                                  {String.fromCharCode(65 + idx)}
+                                </span>
+                                <span>{choice}</span>
+                                {((question.correct_answer as unknown) as { index: number })?.index === idx && (
+                                  <span className="ml-2 text-green-600 dark:text-green-400">✓</span>
+                                )}
+                              </div>
+                            ))}
+                            {(question.options.choices.length || 0) > 3 && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 ml-8">
+                                +{(question.options.choices.length || 0) - 3} more options
+                              </p>
                             )}
-                            <span>{new Date(question.created_at).toLocaleDateString()}</span>
                           </div>
+                        )}
 
-                          {/* Explanation Preview */}
-                          {question.explanation && (
-                            <div className="mt-2 text-sm text-gray-600 dark:text-gray-400 italic">
-                              {t('question.explanation')}: {question.explanation.substring(0, 100)}
-                              {question.explanation.length > 100 && '...'}
-                            </div>
+                        {/* Metadata */}
+                        <div className="mt-3 flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                          <span>{question.points} {t('question.points')}</span>
+                          {question.created_by_name && (
+                            <span>{t('question.createdBy')}: {question.created_by_name}</span>
                           )}
+                          <span>{new Date(question.created_at).toLocaleDateString()}</span>
                         </div>
 
-                        {/* Actions */}
-                        <div className="flex items-center gap-2 ml-4">
-                          <button
-                            onClick={handleEditQuestion}
-                            className="p-2 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                            title={t('common.edit')}
-                          >
-                            <PencilIcon className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteQuestion(question.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                            title={t('common.delete')}
-                          >
-                            <TrashIcon className="h-5 w-5" />
-                          </button>
-                        </div>
+                        {/* Explanation Preview */}
+                        {question.explanation && (
+                          <div className="mt-2 text-sm text-gray-600 dark:text-gray-400 italic">
+                            {t('question.explanation')}: {question.explanation.substring(0, 100)}
+                            {question.explanation.length > 100 && '...'}
+                          </div>
+                        )}
                       </div>
-                    </CardBody>
-                  </Card>
-                ))}
-              </div>
-            )}
 
-            {/* Pagination Info */}
-            {filteredQuestions.length > 0 && (
-              <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-                {t('questionBank.showing')} {filteredQuestions.length} {t('questionBank.of')} {questions.length} {t('questionBank.questions')}
-              </div>
-            )}
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 ml-4">
+                        <button
+                          onClick={handleEditQuestion}
+                          className="p-2 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                          title={t('common.edit')}
+                        >
+                          <PencilIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteQuestion(question.id)}
+                          className="p-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          title={t('common.delete')}
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </div>
+                  </CardBody>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Pagination Info */}
+          {filteredQuestions.length > 0 && (
+            <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+              {t('questionBank.showing')} {filteredQuestions.length} {t('questionBank.of')} {questions.length} {t('questionBank.questions')}
+            </div>
+          )}
         </div>
       </div>
 

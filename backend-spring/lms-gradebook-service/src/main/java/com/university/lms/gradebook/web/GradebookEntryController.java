@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
  * REST controller for gradebook entries.
  */
 @RestController
-@RequestMapping("/api/gradebook/entries")
+@RequestMapping("/gradebook/entries")
 @RequiredArgsConstructor
 @Slf4j
 public class GradebookEntryController {
@@ -97,4 +97,3 @@ public class GradebookEntryController {
         return ResponseEntity.ok(history);
     }
 }
-

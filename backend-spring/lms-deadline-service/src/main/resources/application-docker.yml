@@ -35,3 +35,6 @@ eureka:
     prefer-ip-address: true
     hostname: deadline-service
 
+services:
+  submission:
+    base-url: http://submission-service:8087

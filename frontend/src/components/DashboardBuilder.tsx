@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { useTranslation } from 'react-i18next';
 import { Modal } from './Modal';
 import { Button } from './Button';
-import { 
-  Cog6ToothIcon, 
-  PlusIcon, 
+import {
+  Cog6ToothIcon,
+  PlusIcon,
   XMarkIcon,
   ChartBarIcon,
   AcademicCapIcon,
@@ -27,7 +27,7 @@ export interface DashboardWidgetConfig {
   visible: boolean;
   order: number;
   size: 'small' | 'medium' | 'large' | 'full';
-  settings?: Record<string, any>;
+  settings?: Record<string, unknown>;
 }
 
 interface DashboardBuilderProps {
@@ -37,87 +37,87 @@ interface DashboardBuilderProps {
 }
 
 const AVAILABLE_WIDGET_TYPES = [
-  { 
-    id: 'stats', 
-    name: 'Statistics Overview', 
-    icon: ChartBarIcon, 
+  {
+    id: 'stats',
+    name: 'Statistics Overview',
+    icon: ChartBarIcon,
     description: 'Course and assignment statistics',
     defaultSize: 'large' as const
   },
-  { 
-    id: 'courses', 
-    name: 'My Courses', 
-    icon: AcademicCapIcon, 
+  {
+    id: 'courses',
+    name: 'My Courses',
+    icon: AcademicCapIcon,
     description: 'List of enrolled courses',
     defaultSize: 'medium' as const
   },
-  { 
-    id: 'deadlines', 
-    name: 'Upcoming Deadlines', 
-    icon: ClockIcon, 
+  {
+    id: 'deadlines',
+    name: 'Upcoming Deadlines',
+    icon: ClockIcon,
     description: 'Assignments due soon',
     defaultSize: 'medium' as const
   },
-  { 
-    id: 'notifications', 
-    name: 'Recent Activity', 
-    icon: BellIcon, 
+  {
+    id: 'notifications',
+    name: 'Recent Activity',
+    icon: BellIcon,
     description: 'Latest notifications',
     defaultSize: 'medium' as const
   },
-  { 
-    id: 'calendar', 
-    name: 'Calendar', 
-    icon: CalendarIcon, 
+  {
+    id: 'calendar',
+    name: 'Calendar',
+    icon: CalendarIcon,
     description: 'Schedule and events',
     defaultSize: 'large' as const
   },
-  { 
-    id: 'progress', 
-    name: 'Course Progress', 
-    icon: TrophyIcon, 
+  {
+    id: 'progress',
+    name: 'Course Progress',
+    icon: TrophyIcon,
     description: 'Your learning progress',
     defaultSize: 'medium' as const
   },
-  { 
-    id: 'recent-assignments', 
-    name: 'Recent Assignments', 
-    icon: BookOpenIcon, 
+  {
+    id: 'recent-assignments',
+    name: 'Recent Assignments',
+    icon: BookOpenIcon,
     description: 'Latest assignment submissions',
     defaultSize: 'medium' as const
   },
-  { 
-    id: 'study-groups', 
-    name: 'Study Groups', 
-    icon: UserGroupIcon, 
+  {
+    id: 'study-groups',
+    name: 'Study Groups',
+    icon: UserGroupIcon,
     description: 'Your study groups',
     defaultSize: 'small' as const
   },
-  { 
-    id: 'grade-distribution', 
-    name: 'Grade Distribution', 
-    icon: ChartPieIcon, 
+  {
+    id: 'grade-distribution',
+    name: 'Grade Distribution',
+    icon: ChartPieIcon,
     description: 'Your grades overview',
     defaultSize: 'medium' as const
   },
-  { 
-    id: 'streak', 
-    name: 'Learning Streak', 
-    icon: FireIcon, 
+  {
+    id: 'streak',
+    name: 'Learning Streak',
+    icon: FireIcon,
     description: 'Daily learning streak',
     defaultSize: 'small' as const
   },
-  { 
-    id: 'completed-today', 
-    name: 'Completed Today', 
-    icon: CheckCircleIcon, 
+  {
+    id: 'completed-today',
+    name: 'Completed Today',
+    icon: CheckCircleIcon,
     description: 'Tasks completed today',
     defaultSize: 'small' as const
   },
-  { 
-    id: 'quick-links', 
-    name: 'Quick Links', 
-    icon: BookOpenIcon, 
+  {
+    id: 'quick-links',
+    name: 'Quick Links',
+    icon: BookOpenIcon,
     description: 'Frequently accessed resources',
     defaultSize: 'small' as const
   },
@@ -128,6 +128,7 @@ export const DashboardBuilder: React.FC<DashboardBuilderProps> = ({ widgets, onS
   const [isOpen, setIsOpen] = useState(false);
   const [localWidgets, setLocalWidgets] = useState<DashboardWidgetConfig[]>(widgets);
   const [showAddWidget, setShowAddWidget] = useState(false);
+  const widgetIdCounter = useRef(0);
 
   useEffect(() => {
     setLocalWidgets(widgets);
@@ -182,8 +183,9 @@ export const DashboardBuilder: React.FC<DashboardBuilderProps> = ({ widgets, onS
     const widgetType = AVAILABLE_WIDGET_TYPES.find(t => t.id === typeId);
     if (!widgetType) return;
 
+    widgetIdCounter.current += 1;
     const newWidget: DashboardWidgetConfig = {
-      id: `${typeId}-${Date.now()}`,
+      id: `${typeId}-${widgetIdCounter.current}`,
       type: typeId,
       title: widgetType.name,
       visible: true,
@@ -251,9 +253,8 @@ export const DashboardBuilder: React.FC<DashboardBuilderProps> = ({ widgets, onS
             <div
               {...provided.droppableProps}
               ref={provided.innerRef}
-              className={`space-y-2 min-h-[200px] p-2 rounded-lg ${
-                snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-blue-900/10' : ''
-              }`}
+              className={`space-y-2 min-h-[200px] p-2 rounded-lg ${snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-blue-900/10' : ''
+                }`}
             >
               {localWidgets.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 dark:text-gray-400">
@@ -269,18 +270,17 @@ export const DashboardBuilder: React.FC<DashboardBuilderProps> = ({ widgets, onS
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
-                          className={`p-4 bg-white dark:bg-gray-700 rounded-lg border-2 ${
-                            snapshot.isDragging
+                          className={`p-4 bg-white dark:bg-gray-700 rounded-lg border-2 ${snapshot.isDragging
                               ? 'border-blue-500 shadow-lg'
                               : 'border-gray-200 dark:border-gray-600'
-                          }`}
+                            }`}
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3 flex-1">
                               {/* Drag Handle */}
                               <div className="cursor-grab active:cursor-grabbing">
                                 <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24">
-                                  <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01"/>
+                                  <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01" />
                                 </svg>
                               </div>
 
@@ -308,7 +308,7 @@ export const DashboardBuilder: React.FC<DashboardBuilderProps> = ({ widgets, onS
                               {/* Size Selector */}
                               <select
                                 value={widget.size}
-                                onChange={(e) => changeWidgetSize(widget.id, e.target.value as any)}
+                                onChange={(e) => changeWidgetSize(widget.id, e.target.value as 'small' | 'medium' | 'large' | 'full')}
                                 className="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                               >
                                 <option value="small">{t('dashboard.builder.size.small', 'Small')}</option>

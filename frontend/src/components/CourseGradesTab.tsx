@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import apiClient from '../api/client';
+import apiClient, { extractErrorMessage } from '../api/client';
+import { useAuthStore } from '../store/authStore';
 import { Card, CardBody } from './Card';
 import { Loading } from './Loading';
 import {
   AcademicCapIcon,
-  CheckCircleIcon, 
-  ClockIcon, 
+  CheckCircleIcon,
+  ClockIcon,
   XCircleIcon,
   ExclamationCircleIcon,
   ChevronDownIcon,
@@ -54,12 +55,27 @@ interface GradebookData {
   modules: ModuleGrades[];
 }
 
+interface ApiGradebookEntry {
+  id: string;
+  assignmentId: string;
+  assignmentTitle: string;
+  maxScore: number;
+  score?: number;
+  finalScore?: number;
+  overrideScore?: number;
+  percentage?: number;
+  status: string;
+  late: boolean;
+  excused: boolean;
+}
+
 interface CourseGradesTabProps {
   courseId: string;
 }
 
 export const CourseGradesTab: React.FC<CourseGradesTabProps> = ({ courseId }) => {
   const { t } = useTranslation();
+  const user = useAuthStore((state) => state.user);
   const [gradebook, setGradebook] = useState<GradebookData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,24 +84,79 @@ export const CourseGradesTab: React.FC<CourseGradesTabProps> = ({ courseId }) =>
   useEffect(() => {
     fetchGradebook();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId]);
+  }, [courseId, user?.id]);
 
   const fetchGradebook = async () => {
+    if (!user?.id) {
+      setError(t('gradebook.error'));
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get<GradebookData>(`/gradebook/entries/student/${courseId}/`);
-      setGradebook(response.data);
-      // Auto-expand all modules by default
-      if (response.data.modules) {
-        const allModuleIds = response.data.modules
-          .map(m => m.module_id)
-          .filter(id => id !== null) as string[];
-        setExpandedModules(new Set(allModuleIds));
-      }
-    } catch (err: any) {
+      const [entriesResponse, courseResponse] = await Promise.all([
+        apiClient.get<ApiGradebookEntry[]>(`/gradebook/entries/course/${courseId}/student/${user.id}`),
+        apiClient.get<{ code?: string; title?: string; titleUk?: string; titleEn?: string }>(`/courses/${courseId}`),
+      ]);
+
+      const grades: GradeEntry[] = (entriesResponse.data || []).map((entry) => {
+        const resolvedScore = entry.finalScore ?? entry.overrideScore ?? entry.score;
+        return {
+          assignment_id: entry.assignmentId,
+          assignment_title: entry.assignmentTitle,
+          assignment_type: 'ASSIGNMENT',
+          max_points: Number(entry.maxScore || 0),
+          score: resolvedScore !== undefined && resolvedScore !== null ? Number(resolvedScore) : undefined,
+          percentage: entry.percentage !== undefined && entry.percentage !== null ? Number(entry.percentage) : undefined,
+          status: entry.status,
+          is_late: Boolean(entry.late),
+          is_excused: Boolean(entry.excused),
+        };
+      });
+
+      const gradedEntries = grades.filter((grade) => grade.score !== undefined && grade.score !== null);
+      const totalPointsEarned = gradedEntries.reduce((sum, grade) => sum + (grade.score || 0), 0);
+      const totalPointsPossible = gradedEntries.reduce((sum, grade) => sum + grade.max_points, 0);
+      const currentGrade = totalPointsPossible > 0 ? (totalPointsEarned / totalPointsPossible) * 100 : undefined;
+
+      const mapped: GradebookData = {
+        course_id: courseId,
+        course_code: courseResponse.data?.code || '',
+        course_title:
+          courseResponse.data?.title ||
+          courseResponse.data?.titleUk ||
+          courseResponse.data?.titleEn ||
+          '',
+        summary: {
+          current_grade: currentGrade,
+          letter_grade:
+            currentGrade === undefined ? '-' :
+              currentGrade >= 90 ? 'A' :
+                currentGrade >= 80 ? 'B' :
+                  currentGrade >= 70 ? 'C' :
+                    currentGrade >= 60 ? 'D' : 'F',
+          total_points_earned: totalPointsEarned,
+          total_points_possible: totalPointsPossible,
+          assignments_completed: gradedEntries.length,
+          assignments_total: grades.length,
+        },
+        modules: [
+          {
+            module_id: 'all',
+            module_title: t('gradebook.assignment_grades'),
+            module_position: 0,
+            grades,
+          },
+        ],
+      };
+
+      setGradebook(mapped);
+      setExpandedModules(new Set(['all']));
+    } catch (err: unknown) {
       console.error('Failed to fetch gradebook:', err);
-      setError(err.response?.data?.error || 'Failed to load grades');
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -297,11 +368,10 @@ export const CourseGradesTab: React.FC<CourseGradesTabProps> = ({ courseId }) =>
                         </div>
                       </div>
                       <div className="text-right min-w-[60px]">
-                        <div className={`text-lg font-bold ${
-                          stats.percentage >= 90 ? 'text-green-600 dark:text-green-400' :
+                        <div className={`text-lg font-bold ${stats.percentage >= 90 ? 'text-green-600 dark:text-green-400' :
                           stats.percentage >= 70 ? 'text-yellow-600 dark:text-yellow-400' :
-                          'text-red-600 dark:text-red-400'
-                        }`}>
+                            'text-red-600 dark:text-red-400'
+                          }`}>
                           {stats.percentage.toFixed(0)}%
                         </div>
                       </div>
@@ -352,24 +422,22 @@ export const CourseGradesTab: React.FC<CourseGradesTabProps> = ({ courseId }) =>
                                 {getStatusBadge(grade)}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                <span className={`font-medium ${
-                                  grade.score !== null && grade.score !== undefined
-                                    ? 'text-gray-900 dark:text-white'
-                                    : 'text-gray-400 dark:text-gray-500'
-                                }`}>
+                                <span className={`font-medium ${grade.score !== null && grade.score !== undefined
+                                  ? 'text-gray-900 dark:text-white'
+                                  : 'text-gray-400 dark:text-gray-500'
+                                  }`}>
                                   {grade.score !== null && grade.score !== undefined
                                     ? `${grade.score.toFixed(1)} / ${grade.max_points}`
                                     : `- / ${grade.max_points}`}
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                <span className={`font-medium ${
-                                  grade.percentage !== null && grade.percentage !== undefined
-                                    ? grade.percentage >= 90 ? 'text-green-600 dark:text-green-400' :
-                                      grade.percentage >= 70 ? 'text-yellow-600 dark:text-yellow-400' :
+                                <span className={`font-medium ${grade.percentage !== null && grade.percentage !== undefined
+                                  ? grade.percentage >= 90 ? 'text-green-600 dark:text-green-400' :
+                                    grade.percentage >= 70 ? 'text-yellow-600 dark:text-yellow-400' :
                                       'text-red-600 dark:text-red-400'
-                                    : 'text-gray-400 dark:text-gray-500'
-                                }`}>
+                                  : 'text-gray-400 dark:text-gray-500'
+                                  }`}>
                                   {grade.percentage !== null && grade.percentage !== undefined
                                     ? `${grade.percentage.toFixed(1)}%`
                                     : '-'}

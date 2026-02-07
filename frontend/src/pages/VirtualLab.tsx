@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import CodeEditor from '../components/CodeEditor';
 import { Assignment } from '../types';
@@ -27,8 +27,10 @@ interface ExecutionResult {
 }
 
 const VirtualLab: React.FC = () => {
-  const { assignmentId } = useParams<{ assignmentId: string }>();
-  
+  const { assignmentId: routeAssignmentId } = useParams<{ assignmentId: string }>();
+  const [searchParams] = useSearchParams();
+  const assignmentId = routeAssignmentId || searchParams.get('assignmentId') || undefined;
+
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [code, setCode] = useState<string>('');
   const [input, setInput] = useState<string>('');
@@ -39,22 +41,32 @@ const VirtualLab: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [timeoutRemaining, setTimeoutRemaining] = useState<number | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const timeoutIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchAssignment = async () => {
     try {
       setLoading(true);
       const response = await api.get(`/assessments/assignments/${assignmentId}`);
-      const data = response.data as Assignment;
+      const raw = response.data as Assignment & {
+        starterCode?: string;
+        programmingLanguage?: string;
+      };
+      const data = {
+        ...raw,
+        starter_code: raw.starter_code || raw.starterCode,
+        programming_language: raw.programming_language || raw.programmingLanguage,
+      } as Assignment;
       setAssignment(data);
-      
+
       // Set starter code if available
       if (data.starter_code) {
         setCode(data.starter_code);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to fetch assignment:', err);
-      setError(err.message || 'Failed to load assignment');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const error = err as any;
+      setError(error.message || 'Failed to load assignment');
     } finally {
       setLoading(false);
     }
@@ -123,23 +135,25 @@ const VirtualLab: React.FC = () => {
 
       const result = response.data as ExecutionResult;
       setExecutionResult(result);
-      
+
       if (result.success) {
         setOutput(result.output || 'Program executed successfully with no output');
       } else {
         setError(result.error || 'Execution failed');
       }
-    } catch (err: any) {
-      if (err.name === 'AbortError' || err.name === 'CanceledError') {
+    } catch (err: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const error = err as any;
+      if (error.name === 'AbortError' || error.name === 'CanceledError') {
         // Already handled in handleAbortExecution
         if (!error) {
           setError('Execution cancelled');
         }
-      } else if (err.response?.status === 408 || err.message?.includes('timeout')) {
+      } else if (error.response?.status === 408 || error.message?.includes('timeout')) {
         setError(`⏱️ Execution timed out after ${EXECUTION_TIMEOUT_SECONDS} seconds. Your code may contain an infinite loop or be too slow.`);
       } else {
-        console.error('Code execution failed:', err);
-        setError(err.response?.data?.message || 'Failed to execute code');
+        console.error('Code execution failed:', error);
+        setError(error.response?.data?.message || 'Failed to execute code');
       }
     } finally {
       setExecuting(false);
@@ -154,14 +168,15 @@ const VirtualLab: React.FC = () => {
 
   const calculateScore = () => {
     if (!executionResult?.testResults) return 0;
-    
+
     return executionResult.testResults.reduce((sum, test) => sum + (test.points || 0), 0);
   };
 
   const getTotalPoints = () => {
     if (!assignment?.test_cases) return 0;
-    
-    return assignment.test_cases.reduce((sum, tc: any) => sum + (tc.points || 0), 0);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return assignment.test_cases.reduce((sum: number, tc: any) => sum + (tc.points || 0), 0);
   };
 
   if (loading) {
@@ -212,7 +227,7 @@ const VirtualLab: React.FC = () => {
               Language: {assignment.programming_language || 'python'}
             </span>
           </div>
-          
+
           <div className="mb-4">
             <CodeEditor
               value={code}
@@ -322,20 +337,19 @@ const VirtualLab: React.FC = () => {
                 <div className="text-sm">
                   <span className="font-semibold">Score: </span>
                   <span className="text-blue-600 dark:text-blue-400">
-                    {calculateScore()} / {getTotalPoints()}
+                    {String(calculateScore())} / {getTotalPoints()}
                   </span>
                 </div>
               </div>
-              
+
               <div className="space-y-3">
                 {executionResult.testResults.map((test, index) => (
                   <div
                     key={index}
-                    className={`border rounded-lg p-3 ${
-                      test.passed
-                        ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                        : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                    }`}
+                    className={`border rounded-lg p-3 ${test.passed
+                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                      : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                      }`}
                   >
                     <div className="flex items-center gap-2 mb-2">
                       {test.passed ? (
@@ -350,14 +364,14 @@ const VirtualLab: React.FC = () => {
                         {test.passed ? test.points : 0} / {test.points} points
                       </span>
                     </div>
-                    
+
                     {test.input && (
                       <div className="text-xs mb-1">
                         <span className="text-gray-600 dark:text-gray-400">Input: </span>
                         <code className="text-gray-800 dark:text-gray-200">{test.input}</code>
                       </div>
                     )}
-                    
+
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div>
                         <span className="text-gray-600 dark:text-gray-400">Expected: </span>

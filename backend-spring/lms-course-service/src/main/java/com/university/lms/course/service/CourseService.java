@@ -154,13 +154,13 @@ public class CourseService {
      */
     @Transactional
     @CacheEvict(value = "courses", key = "#id")
-    public CourseDto updateCourse(UUID id, UpdateCourseRequest request, UUID userId) {
+    public CourseDto updateCourse(UUID id, UpdateCourseRequest request, UUID userId, String userRole) {
         log.info("Updating course: {} by user: {}", id, userId);
 
         Course course = findCourseById(id);
 
         // Check permissions
-        if (!canUserManageCourse(course, userId)) {
+        if (!canUserManageCourse(course, userId, userRole)) {
             throw new ValidationException("User does not have permission to update this course");
         }
 
@@ -183,14 +183,14 @@ public class CourseService {
      */
     @Transactional
     @CacheEvict(value = "courses", key = "#id")
-    public void deleteCourse(UUID id, UUID userId) {
+    public void deleteCourse(UUID id, UUID userId, String userRole) {
         log.info("Deleting course: {} by user: {}", id, userId);
 
         Course course = findCourseById(id);
 
-        // Check permissions - only owner can delete
-        if (!course.getOwnerId().equals(userId)) {
-            throw new ValidationException("Only course owner can delete the course");
+        // Owner and SUPERADMIN can delete
+        if (!course.getOwnerId().equals(userId) && !isSuperAdmin(userRole)) {
+            throw new ValidationException("Only course owner or SUPERADMIN can delete the course");
         }
 
         courseRepository.delete(course);
@@ -202,12 +202,12 @@ public class CourseService {
      */
     @Transactional
     @CacheEvict(value = "courses", key = "#id")
-    public CourseDto publishCourse(UUID id, UUID userId) {
+    public CourseDto publishCourse(UUID id, UUID userId, String userRole) {
         log.info("Publishing course: {} by user: {}", id, userId);
 
         Course course = findCourseById(id);
 
-        if (!canUserManageCourse(course, userId)) {
+        if (!canUserManageCourse(course, userId, userRole)) {
             throw new ValidationException("User does not have permission to publish this course");
         }
 
@@ -224,12 +224,12 @@ public class CourseService {
      */
     @Transactional
     @CacheEvict(value = "courses", key = "#id")
-    public CourseDto unpublishCourse(UUID id, UUID userId) {
+    public CourseDto unpublishCourse(UUID id, UUID userId, String userRole) {
         log.info("Unpublishing course: {} by user: {}", id, userId);
 
         Course course = findCourseById(id);
 
-        if (!canUserManageCourse(course, userId)) {
+        if (!canUserManageCourse(course, userId, userRole)) {
             throw new ValidationException("User does not have permission to unpublish this course");
         }
 
@@ -248,7 +248,11 @@ public class CourseService {
             .orElseThrow(() -> new ResourceNotFoundException("Course", "id", id));
     }
 
-    private boolean canUserManageCourse(Course course, UUID userId) {
+    private boolean canUserManageCourse(Course course, UUID userId, String userRole) {
+        if (isSuperAdmin(userRole)) {
+            return true;
+        }
+
         // Owner can always manage
         if (course.getOwnerId().equals(userId)) {
             return true;
@@ -258,8 +262,8 @@ public class CourseService {
     }
 
     private void enforceCourseVisibility(Course course, UUID userId, String userRole) {
-        boolean isAdmin = "SUPERADMIN".equals(userRole);
-        boolean canManage = canUserManageCourse(course, userId);
+        boolean isAdmin = isSuperAdmin(userRole);
+        boolean canManage = canUserManageCourse(course, userId, userRole);
 
         if (course.getIsPublished()) {
             return;
@@ -268,6 +272,10 @@ public class CourseService {
         if (!isAdmin && !canManage) {
             throw new ValidationException("Course is not available");
         }
+    }
+
+    private boolean isSuperAdmin(String userRole) {
+        return "SUPERADMIN".equals(userRole);
     }
 
     private void addCourseMember(Course course, UUID userId, String role, UUID addedBy) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 interface AnalyticsDashboardProps {
   courseId: string;
@@ -28,11 +28,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ courseId }) => 
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'semester'>('week');
 
-  useEffect(() => {
-    fetchAnalytics();
-  }, [courseId, timeRange]);
-
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     setLoading(true);
     try {
       // Fetch course statistics
@@ -49,7 +45,11 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ courseId }) => 
     } finally {
       setLoading(false);
     }
-  };
+  }, [courseId, timeRange]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
   if (loading) {
     return (
@@ -72,7 +72,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ courseId }) => 
         <h2 className="text-2xl font-bold text-gray-900">Course Analytics</h2>
         <select
           value={timeRange}
-          onChange={(e) => setTimeRange(e.target.value as any)}
+          onChange={(e) => setTimeRange(e.target.value as 'week' | 'month' | 'semester')}
           className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
         >
           <option value="week">Last Week</option>
@@ -196,12 +196,11 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ courseId }) => 
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <span className={`font-medium ${
-                      student.grade >= 90 ? 'text-green-600' :
+                    <span className={`font-medium ${student.grade >= 90 ? 'text-green-600' :
                       student.grade >= 70 ? 'text-blue-600' :
-                      student.grade >= 60 ? 'text-yellow-600' :
-                      'text-red-600'
-                    }`}>
+                        student.grade >= 60 ? 'text-yellow-600' :
+                          'text-red-600'
+                      }`}>
                       {student.grade.toFixed(1)}%
                     </span>
                   </td>

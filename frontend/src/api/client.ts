@@ -1,8 +1,8 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig, AxiosProgressEvent } from 'axios';
 import { getAccessToken, setAccessToken } from './token';
 
-// Prefer explicit REACT_APP_API_URL, otherwise default to local Spring backend in dev
-let API_BASE_URL = process.env.REACT_APP_API_URL || '';
+// Prefer explicit VITE_API_URL/REACT_APP_API_URL, otherwise default to local Spring backend in dev
+let API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.REACT_APP_API_URL || '';
 
 if (!API_BASE_URL) {
   if (typeof window !== 'undefined' && window.location && window.location.hostname) {
@@ -21,20 +21,22 @@ if (!API_BASE_URL) API_BASE_URL = '/api';
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
 // Extract a safe, human-readable error message
-const extractErrorMessage = (error: AxiosError): string => {
-  const data: any = error.response?.data;
+export const extractErrorMessage = (error: unknown): string => {
+  const data = (error as AxiosError<{ message?: string; error?: string; detail?: string; non_field_errors?: string[]; code?: string; retry_after?: number }>)?.response?.data;
   if (data) {
     if (typeof data === 'string') return data;
     if (typeof data.message === 'string') return data.message;
     if (typeof data.error === 'string') return data.error;
     if (typeof data.detail === 'string') return data.detail;
-    if (typeof data.non_field_errors?.[0] === 'string') return data.non_field_errors[0];
+    if (Array.isArray(data.non_field_errors) && typeof data.non_field_errors[0] === 'string') {
+      return data.non_field_errors[0];
+    }
     if (typeof data.code === 'string' && typeof data.retry_after !== 'undefined') {
       // e.g., rate-limit object
-      return data.message || 'Too many requests, please try again shortly.';
+      return ((data.message as unknown) as string) || 'Too many requests, please try again shortly.';
     }
   }
-  return error.message || 'Request failed';
+  return (error as Error).message || 'Request failed';
 };
 
 class ApiClient {
@@ -89,7 +91,7 @@ class ApiClient {
         if (status === 429 && originalRequest && !originalRequest._retry429) {
           originalRequest._retry429 = true;
           const retryAfterHeader = error.response?.headers?.['retry-after'] as string | undefined;
-          const retryAfterJson = (error.response?.data as any)?.retry_after as number | undefined;
+          const retryAfterJson = (error.response?.data as Record<string, unknown>)?.retry_after as number | undefined;
           const retrySeconds = Math.min(10, Number(retryAfterHeader) || (typeof retryAfterJson === 'number' ? retryAfterJson : 1));
           await delay(retrySeconds * 1000);
           return this.client(originalRequest);
@@ -112,14 +114,14 @@ class ApiClient {
 
         // Normalize error so consumers don't render objects
         const normalizedMessage = extractErrorMessage(error);
-        if (error.response?.data && typeof (error.response.data as any) === 'object') {
-          const dataObj = error.response.data as any;
+        if (error.response?.data && typeof error.response.data === 'object') {
+          const dataObj = error.response.data as Record<string, unknown>;
           if (typeof dataObj.error !== 'string') {
             dataObj.error = normalizedMessage;
           }
         }
         if (normalizedMessage && normalizedMessage !== error.message) {
-          try { (error as any).message = normalizedMessage; } catch {}
+          try { (error as Error).message = normalizedMessage; } catch { /* ignore assignment error */ }
         }
 
         return Promise.reject(error);
@@ -128,9 +130,9 @@ class ApiClient {
   }
 
   public get<T>(url: string, config = {}) { return this.client.get<T>(url, config); }
-  public post<T>(url: string, data?: any, config = {}) { return this.client.post<T>(url, data, config); }
-  public put<T>(url: string, data?: any, config = {}) { return this.client.put<T>(url, data, config); }
-  public patch<T>(url: string, data?: any, config = {}) { return this.client.patch<T>(url, data, config); }
+  public post<T>(url: string, data?: unknown, config = {}) { return this.client.post<T>(url, data, config); }
+  public put<T>(url: string, data?: unknown, config = {}) { return this.client.put<T>(url, data, config); }
+  public patch<T>(url: string, data?: unknown, config = {}) { return this.client.patch<T>(url, data, config); }
   public delete<T>(url: string, config = {}) { return this.client.delete<T>(url, config); }
 
   public upload<T>(url: string, formData: FormData, onUploadProgress?: (progressEvent: AxiosProgressEvent) => void) {

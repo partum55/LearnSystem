@@ -48,9 +48,29 @@ export const useCourseStore = create<CourseState>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await coursesApi.getAll();
-      set({ courses: Array.isArray(response.data) ? response.data : [], isLoading: false });
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      const data = response.data as unknown;
+      // Handle PageResponse format (content array) or direct array
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let coursesArray: any[] = [];
+      if (Array.isArray(data)) {
+        coursesArray = data;
+      } else if (data && typeof data === 'object') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pageData = data as any;
+        coursesArray = pageData.content || [];
+      }
+
+      // Normalize courses to ensure title/description are set
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const normalizedCourses = coursesArray.map((course: any) => ({
+        ...course,
+        title: course.titleUk || course.titleEn || course.title || '',
+        description: course.descriptionUk || course.descriptionEn || course.description || '',
+      }));
+      set({ courses: normalizedCourses, isLoading: false });
+    } catch (err: unknown) {
+      const error = err as Error;
+      set({ error: error.message || 'Failed to fetch courses', isLoading: false });
     }
   },
 
@@ -58,9 +78,18 @@ export const useCourseStore = create<CourseState>((set) => ({
     set({ isLoadingCourse: true, error: null });
     try {
       const response = await coursesApi.getById(id);
-      set({ currentCourse: response.data, isLoadingCourse: false });
-    } catch (error: any) {
-      set({ error: error.message, isLoadingCourse: false });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const course = response.data as any;
+      // Normalize course to ensure title/description are set
+      const normalizedCourse = {
+        ...course,
+        title: course.titleUk || course.titleEn || course.title || '',
+        description: course.descriptionUk || course.descriptionEn || course.description || '',
+      };
+      set({ currentCourse: normalizedCourse, isLoadingCourse: false });
+    } catch (err: unknown) {
+      const error = err as Error;
+      set({ error: error.message || 'Failed to fetch course', isLoadingCourse: false });
     }
   },
 
@@ -69,12 +98,18 @@ export const useCourseStore = create<CourseState>((set) => ({
     try {
       const response = await modulesApi.getAll(courseId);
       // Handle both array response and object with results property
-      const data = response.data as any;
-      const modules = Array.isArray(data) ? data :
-        (data?.results ? data.results : []);
+      const data = response.data as unknown;
+      let modules: Module[] = [];
+      if (Array.isArray(data)) {
+        modules = data as Module[];
+      } else if (data && typeof data === 'object' && 'results' in data) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        modules = (data as any).results || [];
+      }
       set({ modules, isLoadingModules: false });
-    } catch (error: any) {
-      set({ error: error.message, isLoadingModules: false });
+    } catch (err: unknown) {
+      const error = err as Error;
+      set({ error: error.message || 'Failed to fetch modules', isLoadingModules: false });
     }
   },
 
@@ -83,13 +118,21 @@ export const useCourseStore = create<CourseState>((set) => ({
     try {
       const response = await assignmentsApi.getAll(courseId);
       // Handle both array response and PageResponse with content property
-      const data = response.data as any;
-      const assignments = Array.isArray(data) ? data :
-        (data?.content ? data.content :
-          (data?.results ? data.results : []));
+      const data = response.data as unknown;
+      let assignments: Assignment[] = [];
+
+      if (Array.isArray(data)) {
+        assignments = data as Assignment[];
+      } else if (data && typeof data === 'object') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pageData = data as any;
+        if (pageData.content) assignments = pageData.content;
+        else if (pageData.results) assignments = pageData.results;
+      }
       set({ assignments, isLoadingAssignments: false });
-    } catch (error: any) {
-      set({ error: error.message, isLoadingAssignments: false });
+    } catch (err: unknown) {
+      const error = err as Error;
+      set({ error: error.message || 'Failed to fetch assignments', isLoadingAssignments: false });
     }
   },
 
@@ -102,8 +145,9 @@ export const useCourseStore = create<CourseState>((set) => ({
         isLoading: false,
       }));
       return response.data;
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+    } catch (err: unknown) {
+      const error = err as Error;
+      set({ error: error.message || 'Failed to create course', isLoading: false });
       throw error;
     }
   },
@@ -117,8 +161,9 @@ export const useCourseStore = create<CourseState>((set) => ({
         currentCourse: state.currentCourse?.id === id ? response.data : state.currentCourse,
         isLoading: false,
       }));
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+    } catch (err: unknown) {
+      const error = err as Error;
+      set({ error: error.message || 'Failed to update course', isLoading: false });
       throw error;
     }
   },

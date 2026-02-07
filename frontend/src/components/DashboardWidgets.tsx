@@ -18,9 +18,16 @@ import {
 import { format } from 'date-fns';
 import { DashboardWidgetConfig } from './DashboardBuilder';
 
+interface DashboardData {
+  courses?: Array<{ id: string; code: string; title: string; progress?: number }>;
+  deadlines?: Array<{ course: string; deadline: string }>;
+  notifications?: Array<{ id: string; title: string; message: string; created_at: string; read: boolean }>;
+  [key: string]: unknown;
+}
+
 interface WidgetRendererProps {
   widget: DashboardWidgetConfig;
-  data?: any;
+  data?: DashboardData;
 }
 
 export const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widget, data }) => {
@@ -80,7 +87,7 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widget, data }) 
 
 // Individual Widget Components
 
-const StatsWidget: React.FC<{ data?: any }> = ({ data }) => {
+const StatsWidget: React.FC<{ data?: DashboardData }> = ({ data }) => {
   const { t } = useTranslation();
   const { courses, deadlines, notifications } = data || {};
 
@@ -133,7 +140,7 @@ const StatsWidget: React.FC<{ data?: any }> = ({ data }) => {
                 {t('notifications.title')}
               </p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                {notifications?.filter((n: any) => !n.read).length || 0}
+                {notifications?.filter((n) => !n.read).length || 0}
               </p>
             </div>
           </div>
@@ -143,7 +150,7 @@ const StatsWidget: React.FC<{ data?: any }> = ({ data }) => {
   );
 };
 
-const CoursesWidget: React.FC<{ data?: any }> = ({ data }) => {
+const CoursesWidget: React.FC<{ data?: DashboardData }> = ({ data }) => {
   const { t } = useTranslation();
   const courses = data?.courses || [];
 
@@ -164,7 +171,7 @@ const CoursesWidget: React.FC<{ data?: any }> = ({ data }) => {
           </p>
         ) : (
           <div className="space-y-3">
-            {courses.slice(0, 5).map((course: any) => (
+            {courses.slice(0, 5).map((course) => (
               <Link
                 key={course.id}
                 to={`/courses/${course.id}`}
@@ -195,7 +202,7 @@ const CoursesWidget: React.FC<{ data?: any }> = ({ data }) => {
   );
 };
 
-const DeadlinesWidget: React.FC<{ data?: any }> = ({ data }) => {
+const DeadlinesWidget: React.FC<{ data?: DashboardData }> = ({ data }) => {
   const { t } = useTranslation();
   const deadlines = data?.deadlines || [];
 
@@ -216,7 +223,7 @@ const DeadlinesWidget: React.FC<{ data?: any }> = ({ data }) => {
           </p>
         ) : (
           <div className="space-y-3">
-            {deadlines.map((item: any, idx: number) => (
+            {deadlines.map((item, idx: number) => (
               <div
                 key={idx}
                 className="p-4 rounded-lg border border-gray-200 dark:border-gray-700"
@@ -236,7 +243,7 @@ const DeadlinesWidget: React.FC<{ data?: any }> = ({ data }) => {
   );
 };
 
-const NotificationsWidget: React.FC<{ data?: any }> = ({ data }) => {
+const NotificationsWidget: React.FC<{ data?: DashboardData }> = ({ data }) => {
   const { t } = useTranslation();
   const notifications = data?.notifications || [];
 
@@ -257,14 +264,13 @@ const NotificationsWidget: React.FC<{ data?: any }> = ({ data }) => {
           </p>
         ) : (
           <div className="space-y-3">
-            {notifications.slice(0, 5).map((notification: any) => (
+            {notifications.slice(0, 5).map((notification) => (
               <div
                 key={notification.id}
-                className={`p-4 rounded-lg border ${
-                  notification.read
-                    ? 'border-gray-200 dark:border-gray-700'
-                    : 'border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20'
-                }`}
+                className={`p-4 rounded-lg border ${notification.read
+                  ? 'border-gray-200 dark:border-gray-700'
+                  : 'border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20'
+                  }`}
               >
                 <h4 className="font-medium text-gray-900 dark:text-white">
                   {notification.title}
@@ -284,7 +290,7 @@ const NotificationsWidget: React.FC<{ data?: any }> = ({ data }) => {
   );
 };
 
-const CalendarWidget: React.FC<{ data?: any }> = () => {
+const CalendarWidget: React.FC<{ data?: DashboardData }> = () => {
   const { t } = useTranslation();
 
   return (
@@ -309,7 +315,7 @@ const CalendarWidget: React.FC<{ data?: any }> = () => {
   );
 };
 
-const ProgressWidget: React.FC<{ data?: any }> = ({ data }) => {
+const ProgressWidget: React.FC<{ data?: DashboardData }> = ({ data }) => {
   const { t } = useTranslation();
   const courses = data?.courses || [];
 
@@ -325,7 +331,7 @@ const ProgressWidget: React.FC<{ data?: any }> = ({ data }) => {
       </CardHeader>
       <CardBody>
         <div className="space-y-4">
-          {courses.slice(0, 5).map((course: any) => (
+          {courses.slice(0, 5).map((course) => (
             <div key={course.id}>
               <div className="flex justify-between mb-1">
                 <span className="text-sm font-medium text-gray-900 dark:text-white">
@@ -349,7 +355,7 @@ const ProgressWidget: React.FC<{ data?: any }> = ({ data }) => {
   );
 };
 
-const RecentAssignmentsWidget: React.FC<{ data?: any }> = () => {
+const RecentAssignmentsWidget: React.FC<{ data?: DashboardData }> = () => {
   const { t } = useTranslation();
 
   return (
@@ -371,7 +377,7 @@ const RecentAssignmentsWidget: React.FC<{ data?: any }> = () => {
   );
 };
 
-const StudyGroupsWidget: React.FC<{ data?: any }> = () => {
+const StudyGroupsWidget: React.FC<{ data?: DashboardData }> = () => {
   const { t } = useTranslation();
 
   return (
@@ -393,7 +399,7 @@ const StudyGroupsWidget: React.FC<{ data?: any }> = () => {
   );
 };
 
-const GradeDistributionWidget: React.FC<{ data?: any }> = () => {
+const GradeDistributionWidget: React.FC<{ data?: DashboardData }> = () => {
   const { t } = useTranslation();
 
   return (
@@ -441,7 +447,7 @@ const GradeDistributionWidget: React.FC<{ data?: any }> = () => {
     </Card>
   );
 };
-const StreakWidget: React.FC<{ data?: any }> = () => {
+const StreakWidget: React.FC<{ data?: DashboardData }> = () => {
   const { t } = useTranslation();
 
   return (
@@ -458,7 +464,7 @@ const StreakWidget: React.FC<{ data?: any }> = () => {
     </Card>
   );
 };
-const CompletedTodayWidget: React.FC<{ data?: any }> = () => {
+const CompletedTodayWidget: React.FC<{ data?: DashboardData }> = () => {
   const { t } = useTranslation();
 
   return (
@@ -475,7 +481,7 @@ const CompletedTodayWidget: React.FC<{ data?: any }> = () => {
     </Card>
   );
 };
-const QuickLinksWidget: React.FC<{ data?: any }> = () => {
+const QuickLinksWidget: React.FC<{ data?: DashboardData }> = () => {
   const { t } = useTranslation();
 
   const links = [

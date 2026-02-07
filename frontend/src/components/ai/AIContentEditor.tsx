@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../Button';
 import { aiApi, CourseEditRequest } from '../../api/ai';
+import { extractErrorMessage } from '../../api/client';
 import {
   SparklesIcon,
   ArrowPathIcon,
@@ -62,9 +63,9 @@ export const AIContentEditor: React.FC<AIContentEditorProps> = ({
 
       const result = await aiApi.editContent(request);
       setEditedContent(result);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to edit content:', err);
-      setError(err.response?.data?.message || t('ai.errors.editFailed'));
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }

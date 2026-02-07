@@ -48,7 +48,7 @@ export function useUsersListQuery(params?: { role?: string; search?: string }) {
     queryKey: [...queryKeys.users.list(), params],
     queryFn: async () => {
       const response = await usersApi.getAll(params);
-      return response.data?.results || response.data || [];
+      return response.data?.content || [];
     },
     staleTime: 2 * 60 * 1000,
   });
@@ -62,7 +62,7 @@ export function useSearchUsersQuery(searchTerm: string, options?: { enabled?: bo
     queryKey: [...queryKeys.users.all, 'search', searchTerm],
     queryFn: async () => {
       const response = await usersApi.search(searchTerm);
-      return response.data?.results || response.data || [];
+      return response.data || [];
     },
     enabled: options?.enabled !== false && searchTerm.length >= 2,
     staleTime: 30 * 1000, // 30 seconds for search results
@@ -105,8 +105,8 @@ export function useUpdateAvatarMutation() {
 
   return useMutation({
     mutationFn: async (file: File) => {
-      const response = await usersApi.updateAvatar(file);
-      return response.data;
+      await usersApi.updateAvatar(file);
+      return null;
     },
     onSuccess: () => {
       // Invalidate current user to refetch with new avatar
@@ -188,4 +188,3 @@ export function useDeleteUserMutation() {
     },
   });
 }
-

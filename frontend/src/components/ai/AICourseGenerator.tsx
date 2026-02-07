@@ -4,6 +4,7 @@ import { Modal } from '../Modal';
 import { Button } from '../Button';
 import { Input } from '../Input';
 import { aiApi, CourseGenerationRequest, GeneratedCourse } from '../../api/ai';
+import { extractErrorMessage } from '../../api/client';
 import { SparklesIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { Loading } from '../Loading';
 
@@ -57,9 +58,9 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
       const result = await aiApi.generateCourse(request);
       setGeneratedCourse(result);
       setStep('preview');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to generate course:', err);
-      setError(err.response?.data?.message || t('ai.errors.generationFailed'));
+      setError(extractErrorMessage(err));
       setStep('prompt');
     }
   };
@@ -76,15 +77,15 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
         prompt: prompt.trim(),
       };
 
-      await aiApi.generateAndSaveCourse(request, userId, authToken);
+      await aiApi.generateAndSaveCourse(request, userId);
       setStep('success');
 
       if (onCourseGenerated) {
         onCourseGenerated(generatedCourse);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to save course:', err);
-      setError(err.response?.data?.message || t('ai.errors.saveFailed'));
+      setError(extractErrorMessage(err));
     } finally {
       setSaving(false);
     }
