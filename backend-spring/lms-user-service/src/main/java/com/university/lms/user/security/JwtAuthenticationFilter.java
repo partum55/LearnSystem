@@ -3,9 +3,7 @@ package com.university.lms.user.security;
 import com.university.lms.common.security.JwtService;
 import com.university.lms.common.security.JwtTokenBlacklistService;
 import com.university.lms.common.security.SecurityAuditLogger;
-import com.university.lms.user.domain.User;
 import com.university.lms.user.repository.UserRepository;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
@@ -15,7 +13,6 @@ import java.util.UUID;
  * Extends common JWT filter with user-specific lookup logic.
  */
 @Component
-@Slf4j
 public class JwtAuthenticationFilter extends com.university.lms.common.security.JwtAuthenticationFilter {
 
     private final UserRepository userRepository;
@@ -31,32 +28,47 @@ public class JwtAuthenticationFilter extends com.university.lms.common.security.
 
     @Override
     protected UserDetails getUserDetails(UUID userId, String email) {
-        User user = userRepository.findById(userId).orElse(null);
+        return userRepository.findByIdAndIsDeletedFalse(userId)
+                .map(user -> new UserServiceUserDetails(
+                        user.getId(),
+                        user.getEmail(),
+                        user.getRole() != null ? user.getRole().name() : null,
+                        user.isActive()
+                ))
+                .orElse(null);
+    }
 
-        if (user == null) {
-            return null;
+    private static final class UserServiceUserDetails implements UserDetails {
+        private final UUID id;
+        private final String email;
+        private final String role;
+        private final boolean active;
+
+        private UserServiceUserDetails(UUID id, String email, String role, boolean active) {
+            this.id = id;
+            this.email = email;
+            this.role = role;
+            this.active = active;
         }
 
-        return new UserDetails() {
-            @Override
-            public UUID getId() {
-                return user.getId();
-            }
+        @Override
+        public UUID getId() {
+            return id;
+        }
 
-            @Override
-            public String getEmail() {
-                return user.getEmail();
-            }
+        @Override
+        public String getEmail() {
+            return email;
+        }
 
-            @Override
-            public String getRole() {
-                return user.getRole().name();
-            }
+        @Override
+        public String getRole() {
+            return role;
+        }
 
-            @Override
-            public boolean isActive() {
-                return user.isActive();
-            }
-        };
+        @Override
+        public boolean isActive() {
+            return active;
+        }
     }
 }

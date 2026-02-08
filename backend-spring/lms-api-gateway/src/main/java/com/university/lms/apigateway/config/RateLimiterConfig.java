@@ -4,51 +4,84 @@ import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import reactor.core.publisher.Mono;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
 /**
- * Rate limiting configuration for API Gateway.
+ * Key resolvers for gateway rate limiting.
  */
 @Configuration
 public class RateLimiterConfig {
 
-    /**
-     * Key resolver that extracts user identity for rate limiting.
-     * Falls back to IP address if no user identity is available.
-     */
+    private static final String BEARER_PREFIX = "Bearer ";
+    private static final String KEY_USER_PREFIX = "user:";
+    private static final String KEY_IP_PREFIX = "ip:";
+    private static final String UNKNOWN_CLIENT = "unknown";
+
     @Bean
     @Primary
     public KeyResolver userKeyResolver() {
-        return exchange -> {
-            // Try to get user from JWT header (simplified - in production, decode JWT)
-            String authHeader = exchange.getRequest().getHeaders().getFirst("Authorization");
-
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                // Use a hash of the token as the key (simplified)
-                String token = authHeader.substring(7);
-                return Mono.just("user:" + token.hashCode());
-            }
-
-            // Fall back to IP address
-            String ip = exchange.getRequest().getRemoteAddress() != null
-                    ? exchange.getRequest().getRemoteAddress().getAddress().getHostAddress()
-                    : "anonymous";
-
-            return Mono.just("ip:" + ip);
-        };
+        return exchange -> Mono.just(resolveClientKey(exchange.getRequest()));
     }
 
-    /**
-     * Key resolver based on IP address only.
-     */
     @Bean
     public KeyResolver ipKeyResolver() {
-        return exchange -> {
-            String ip = exchange.getRequest().getRemoteAddress() != null
-                    ? exchange.getRequest().getRemoteAddress().getAddress().getHostAddress()
-                    : "0.0.0.0";
-            return Mono.just(ip);
-        };
+        return exchange -> Mono.just(resolveIpAddress(exchange.getRequest()));
+    }
+
+    private String resolveClientKey(ServerHttpRequest request) {
+        String token = extractBearerToken(request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION));
+        if (token != null) {
+            return KEY_USER_PREFIX + hashToken(token);
+        }
+        return KEY_IP_PREFIX + resolveIpAddress(request);
+    }
+
+    private String extractBearerToken(String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith(BEARER_PREFIX)) {
+            return null;
+        }
+        String token = authorizationHeader.substring(BEARER_PREFIX.length()).trim();
+        return token.isEmpty() ? null : token;
+    }
+
+    private String resolveIpAddress(ServerHttpRequest request) {
+        String forwarded = request.getHeaders().getFirst("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",")[0].trim();
+        }
+
+        String realIp = request.getHeaders().getFirst("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) {
+            return realIp.trim();
+        }
+
+        if (request.getRemoteAddress() == null || request.getRemoteAddress().getAddress() == null) {
+            return UNKNOWN_CLIENT;
+        }
+        return request.getRemoteAddress().getAddress().getHostAddress();
+    }
+
+    private String hashToken(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+            return toHex(hash);
+        } catch (NoSuchAlgorithmException ex) {
+            return Integer.toHexString(token.hashCode());
+        }
+    }
+
+    private String toHex(byte[] bytes) {
+        StringBuilder builder = new StringBuilder(bytes.length * 2);
+        for (byte value : bytes) {
+            builder.append(String.format("%02x", value));
+        }
+        return builder.toString();
     }
 }
-

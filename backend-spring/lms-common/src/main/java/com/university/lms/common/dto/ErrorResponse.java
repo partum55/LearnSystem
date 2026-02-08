@@ -31,11 +31,28 @@ public class ErrorResponse {
     public static ErrorResponse of(String code, String message, String path, Integer status) {
         return ErrorResponse.builder()
                 .code(code)
+                .error(code)
                 .message(message)
                 .timestamp(LocalDateTime.now())
                 .path(path)
                 .status(status)
                 .build();
     }
-}
 
+    public static ErrorResponse of(
+            String code,
+            String message,
+            String path,
+            Integer status,
+            Object details) {
+        return ErrorResponse.builder()
+                .code(code)
+                .error(code)
+                .message(message)
+                .timestamp(LocalDateTime.now())
+                .path(path)
+                .status(status)
+                .details(details)
+                .build();
+    }
+}

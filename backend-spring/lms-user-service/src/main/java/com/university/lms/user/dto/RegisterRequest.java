@@ -45,10 +45,13 @@ public class RegisterRequest {
     @Size(max = 50, message = "Student ID must not exceed 50 characters")
     private String studentId;
 
+    /**
+     * Registration is restricted to STUDENT role in service validation.
+     * The field is kept for backward compatibility with existing clients.
+     */
     @Builder.Default
     private UserRole role = UserRole.STUDENT;
 
     @Builder.Default
     private UserLocale locale = UserLocale.UK;
 }
-

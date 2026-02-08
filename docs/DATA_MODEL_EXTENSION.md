@@ -107,7 +107,7 @@ erDiagram
 
 ## 3) Database Schema Additions
 
-### Course Service (Flyway V2)
+### Learning Service - Course Domain (Flyway V2)
 - `lessons`
 - `lesson_content_blocks`
 - `lesson_objectives`
@@ -115,7 +115,7 @@ erDiagram
 - `learning_paths`
 - `path_steps`
 
-### Assessment Service (Flyway V3)
+### Learning Service - Assessment Domain (Flyway V3)
 - `ai_feedback_entries`
 - `rubric_score_history`
 - `revision_feedback_threads`
@@ -157,4 +157,3 @@ erDiagram
 - Do not escape backslashes unnecessarily.
 - Preserve input LaTeX verbatim; do not “normalize” unless requested.
 - Include a validation pass in AI workflows that checks for balanced delimiters and common LaTeX errors before storing output.
-

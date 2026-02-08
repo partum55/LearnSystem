@@ -45,8 +45,8 @@ docker-compose up -d
              │         │         │         │         │
              ▼         ▼         ▼         ▼         ▼
         ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
-        │  User  │ │ Course │ │ Assess │ │ Grade  │ │   AI   │
-        │ :8081  │ │ :8082  │ │ :8083  │ │ :8084  │ │ :8085  │
+        │  User  │ │Learning│ │   AI   │ │Analytics│ │  Redis │
+        │ :8081  │ │ :8089  │ │ :8085  │ │ :8088  │ │ :6380  │
         └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘
             │          │          │          │          │
             └──────────┴──────────┴──────────┴──────────┘
@@ -69,12 +69,11 @@ docker-compose up -d
 | API Gateway | 8080 | http://localhost:8080 |
 | Eureka Server | 8761 | http://localhost:8761 |
 | User Service | 8081 | http://localhost:8081 |
-| Course Service | 8082 | http://localhost:8082 |
-| Assessment Service | 8083 | http://localhost:8083 |
-| Gradebook Service | 8084 | http://localhost:8084 |
+| Learning Service | 8089 | http://localhost:8089 |
 | AI Service | 8085 | http://localhost:8085 |
+| Analytics Service | 8088 | http://localhost:8088 |
 | PostgreSQL | 5432 | localhost:5432 |
-| Redis | 6379 | localhost:6379 |
+| Redis | 6380 | localhost:6380 |
 
 ---
 
@@ -149,10 +148,11 @@ All services expose health endpoints:
 curl http://localhost:8080/actuator/health
 
 # Check User Service
-curl http://localhost:8081/actuator/health
+curl http://localhost:8081/api/actuator/health
 
 # Check AI Service
-curl http://localhost:8085/actuator/health
+curl http://localhost:8089/api/actuator/health
+curl http://localhost:8085/api/actuator/health
 
 # Check Frontend
 curl http://localhost:3000/health
@@ -294,4 +294,3 @@ LearnSystemUCU/
     ├── Dockerfile              # Production build
     └── lms-*/                  # Services
 ```
-

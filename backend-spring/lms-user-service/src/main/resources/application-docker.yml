@@ -35,6 +35,10 @@ management:
     mail:
       enabled: false
 
+app:
+  bootstrap-admin:
+    enabled: false
+
 eureka:
   client:
     serviceUrl:
@@ -42,4 +46,3 @@ eureka:
   instance:
     prefer-ip-address: true
     hostname: user-service
-

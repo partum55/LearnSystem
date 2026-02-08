@@ -6,12 +6,9 @@ import lombok.Data;
 
 @Data
 public class AiCourseConfirmationRequest {
-    @NotNull
-    @Valid
-    private GeneratedCourseResponse payload;
+  @NotNull @Valid private GeneratedCourseResponse payload;
 
-    @NotNull
-    private Boolean confirmed;
+  @NotNull private Boolean confirmed;
 
-    private String confirmationNotes;
+  private String confirmationNotes;
 }

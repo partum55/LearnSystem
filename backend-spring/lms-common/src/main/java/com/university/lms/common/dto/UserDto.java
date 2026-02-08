@@ -1,10 +1,15 @@
 package com.university.lms.common.dto;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Shared lightweight user projection for cross-service communication.
+ */
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserDto {
@@ -14,5 +19,4 @@ public class UserDto {
     private String firstName;
     private String lastName;
 }
-
 

@@ -6,10 +6,9 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@FeignClient(name = "lms-ai-service", path = "/api/ai")
+@FeignClient(name = "lms-ai-service", path = "/api/v1/ai")
 public interface AIServiceClient {
 
     @PostMapping("/predict-grades")
     PredictionResponseDto getStudentPredictions(@RequestBody PredictionRequestDto request);
 }
-

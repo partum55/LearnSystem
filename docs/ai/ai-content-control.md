@@ -47,7 +47,7 @@ AI Provider
     → Frontend (preview + edit)
       → User confirmation
         → lms-ai-service (re-validate + map)
-          → course-service / assessment-service (transactional persistence)
+          → lms-learning-service (course + assessment domains, transactional persistence)
             → Read-back verification
               → Success or explicit mismatch errors
 ```
@@ -60,4 +60,3 @@ AI Provider
 5. Read back course/module/assignment/quiz details and compare to preview.
 6. Confirm no partial saves exist if a failure is injected (rollback).
 7. Validate DB constraints reject oversized or empty titles.
-

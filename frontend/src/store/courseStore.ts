@@ -12,7 +12,7 @@
  */
 import { create } from 'zustand';
 import { Course, Module, Assignment, CourseCreateData } from '../types';
-import { coursesApi, modulesApi } from '../api/courses';
+import { coursesApi, modulesApi, resourcesApi } from '../api/courses';
 import { assignmentsApi } from '../api/assessments';
 
 interface CourseState {
@@ -31,9 +31,13 @@ interface CourseState {
   fetchAssignments: (courseId: string) => Promise<void>;
   createCourse: (data: CourseCreateData) => Promise<Course>;
   updateCourse: (id: string, data: Partial<Course>) => Promise<void>;
+  deleteCourse: (id: string) => Promise<void>;
+  deleteModule: (courseId: string, moduleId: string) => Promise<void>;
+  deleteResource: (courseId: string, moduleId: string, resourceId: string) => Promise<void>;
+  deleteAssignment: (assignmentId: string) => Promise<void>;
 }
 
-export const useCourseStore = create<CourseState>((set) => ({
+export const useCourseStore = create<CourseState>((set, get) => ({
   courses: [],
   currentCourse: null,
   modules: [],
@@ -164,6 +168,66 @@ export const useCourseStore = create<CourseState>((set) => ({
     } catch (err: unknown) {
       const error = err as Error;
       set({ error: error.message || 'Failed to update course', isLoading: false });
+      throw error;
+    }
+  },
+
+  deleteCourse: async (id: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await coursesApi.delete(id);
+      set((state) => ({
+        courses: state.courses.filter((c) => c.id !== id),
+        currentCourse: state.currentCourse?.id === id ? null : state.currentCourse,
+        isLoading: false,
+      }));
+    } catch (err: unknown) {
+      const error = err as Error;
+      set({ error: error.message || 'Failed to delete course', isLoading: false });
+      throw error;
+    }
+  },
+
+  deleteModule: async (courseId: string, moduleId: string) => {
+    set({ isLoadingModules: true, error: null });
+    try {
+      await modulesApi.delete(courseId, moduleId);
+      set((state) => ({
+        modules: state.modules.filter((m) => m.id !== moduleId),
+        isLoadingModules: false,
+      }));
+    } catch (err: unknown) {
+      const error = err as Error;
+      set({ error: error.message || 'Failed to delete module', isLoadingModules: false });
+      throw error;
+    }
+  },
+
+  deleteResource: async (courseId: string, moduleId: string, resourceId: string) => {
+    // Optimistic update or fetch-after-delete
+    try {
+      await resourcesApi.delete(courseId, moduleId, resourceId);
+      // We need to update the module list because resources are nested in modules
+      const { fetchModules } = get();
+      await fetchModules(courseId);
+    } catch (err: unknown) {
+      const error = err as Error;
+      set({ error: error.message || 'Failed to delete resource' });
+      throw error;
+    }
+  },
+
+  deleteAssignment: async (assignmentId: string) => {
+    set({ isLoadingAssignments: true, error: null });
+    try {
+      await assignmentsApi.delete(assignmentId);
+      set((state) => ({
+        assignments: state.assignments.filter((a) => a.id !== assignmentId),
+        isLoadingAssignments: false,
+      }));
+    } catch (err: unknown) {
+      const error = err as Error;
+      set({ error: error.message || 'Failed to delete assignment', isLoadingAssignments: false });
       throw error;
     }
   },

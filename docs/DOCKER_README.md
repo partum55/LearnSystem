@@ -7,18 +7,15 @@ All Docker configuration has been **completely rewritten** for optimal performan
 ### New Files Created:
 
 ✅ **Docker Configuration:**
-- `docker-compose.yml` - Production deployment
-- `docker-compose.dev.yml` - Development with hot reload
+- `docker-compose.yml` - Local container deployment
 - `backend-spring/Dockerfile` - Optimized multi-stage build
 - `frontend/Dockerfile` - Production with Nginx
-- `frontend/Dockerfile.dev` - Development mode
 - `frontend/nginx.conf` - Optimized Nginx config
 - `.env.example` - Environment template
 
 ✅ **Helper Scripts:**
-- `deploy-docker.sh` - One-command deployment
-- `check-docker-status.sh` - Service status checker
-- `test-docker-deployment.sh` - Deployment tester
+- `run-local.sh` - Start/stop local stack
+- `create-admin.sh` - Create an admin account
 
 ✅ **Documentation:**
 - `DOCKER_DEPLOYMENT_GUIDE.md` - Complete guide
@@ -38,18 +35,18 @@ nano .env  # Add your LLAMA_API_KEY
 ### 2. Deploy
 
 ```bash
-# One command to deploy everything
-./deploy-docker.sh
+# Build and deploy everything
+docker-compose up -d --build
 ```
 
 ### 3. Wait & Verify
 
 ```bash
 # Wait 2-3 minutes, then check status
-./check-docker-status.sh
+docker-compose ps
 
-# Run automated tests
-./test-docker-deployment.sh
+# Smoke test
+curl http://localhost:8080/actuator/health
 ```
 
 ### 4. Access
@@ -204,7 +201,6 @@ curl -H "Authorization: Bearer YOUR_KEY" \
 
 **Check status:**
 ```bash
-./check-docker-status.sh
 docker-compose ps
 ```
 
@@ -216,7 +212,7 @@ docker-compose logs [service-name]
 **Clean restart:**
 ```bash
 docker-compose down -v
-./deploy-docker.sh
+docker-compose up -d --build
 ```
 
 ### Port Conflicts
@@ -280,10 +276,7 @@ Before deploying to production:
 - Eureka: 256-512MB
 - API Gateway: 256-512MB
 - User Service: 256-512MB
-- Course Service: 256-512MB
-- Assessment Service: 256-512MB
-- Gradebook Service: 256-512MB
-- Deadline Service: 256-512MB
+- Learning Service: 512-768MB
 - **AI Service: 512MB-1GB** (needs more for ML)
 - Analytics Service: 256-512MB
 - PostgreSQL: 256-512MB
@@ -300,17 +293,18 @@ Before deploying to production:
 
 ```bash
 # Start backend services
-docker-compose up -d postgres redis eureka-server api-gateway
+docker-compose up -d postgres redis eureka-server user-service learning-service ai-service analytics-service api-gateway
 
 # Start frontend with hot reload
-docker-compose -f docker-compose.dev.yml up frontend
+cd frontend
+npm run dev
 ```
 
 Or run frontend locally:
 ```bash
 cd frontend
 npm install
-npm start
+npm run dev
 ```
 
 ### Backend Development
@@ -334,11 +328,12 @@ mvn spring-boot:run
 
 ```bash
 # Check all
-./check-docker-status.sh
+docker-compose ps
 
 # Individual health endpoints
 curl http://localhost:8081/api/actuator/health
-curl http://localhost:8085/actuator/health
+curl http://localhost:8089/api/actuator/health
+curl http://localhost:8085/api/actuator/health
 ```
 
 ### Eureka Dashboard
@@ -459,4 +454,3 @@ After successful deployment:
 **For detailed documentation, see:** `DOCKER_DEPLOYMENT_GUIDE.md`
 
 **Ready to deploy!** 🚀
-

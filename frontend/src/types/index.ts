@@ -38,6 +38,9 @@ export interface Course {
   moduleCount?: number;
   isPublished?: boolean;
   progress?: number;
+  start_date?: string;
+  end_date?: string;
+  max_students?: number;
 }
 
 export interface CourseCreateData {

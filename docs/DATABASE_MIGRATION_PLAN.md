@@ -1,6 +1,6 @@
 # Database Per Service Migration Plan
 
-**Document Status:** PLANNING  
+**Document Status:** UPDATED (Post-Learning Consolidation)  
 **Created:** December 19, 2025  
 **Owner:** Principal Architect
 
@@ -18,14 +18,14 @@ Currently, all services share a single PostgreSQL database (`lms_db`):
 ├─────────────────────────────────────────────────────────────┤
 │  users           │  User Service (owner)                    │
 │  user_profiles   │  User Service (owner)                    │
-│  courses         │  Course Service (owner)                  │
-│  modules         │  Course Service (owner)                  │
-│  enrollments     │  Course Service (owner)                  │
-│  assignments     │  Assessment Service (owner)              │
-│  quizzes         │  Assessment Service (owner)              │
-│  submissions     │  Assessment Service (owner)              │
-│  grades          │  Gradebook Service (owner)               │
-│  deadlines       │  Deadline Service (owner)                │
+│  courses         │  Learning Service (course domain owner)  │
+│  modules         │  Learning Service (course domain owner)  │
+│  enrollments     │  Learning Service (course domain owner)  │
+│  assignments     │  Learning Service (assessment owner)     │
+│  quizzes         │  Learning Service (assessment owner)     │
+│  submissions     │  Learning Service (submission owner)     │
+│  grades          │  Learning Service (gradebook owner)      │
+│  deadlines       │  Learning Service (deadline owner)       │
 │  prompt_templates│  AI Service (owner)                      │
 │  ai_generation_log│ AI Service (owner)                      │
 │  ai_user_usage   │  AI Service (owner)                      │
@@ -51,30 +51,23 @@ Currently, all services share a single PostgreSQL database (`lms_db`):
 ### 2.1 Target Architecture
 
 ```
-┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│ lms_users_db │  │lms_courses_db│  │lms_assess_db │
-│              │  │              │  │              │
-│ users        │  │ courses      │  │ assignments  │
-│ user_profiles│  │ modules      │  │ quizzes      │
-│ auth_tokens  │  │ enrollments  │  │ submissions  │
-└──────┬───────┘  └──────┬───────┘  └──────┬───────┘
-       │                 │                 │
-       ▼                 ▼                 ▼
-┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│ User Service │  │Course Service│  │Assessment Svc│
-└──────────────┘  └──────────────┘  └──────────────┘
-
-┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│lms_grades_db │  │lms_deadline_db│ │  lms_ai_db   │
-│              │  │              │  │              │
-│ grades       │  │ deadlines    │  │ prompt_*     │
-│ grade_history│  │ reminders    │  │ ai_*         │
-└──────┬───────┘  └──────┬───────┘  └──────┬───────┘
-       │                 │                 │
-       ▼                 ▼                 ▼
-┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│Gradebook Svc │  │ Deadline Svc │  │  AI Service  │
-└──────────────┘  └──────────────┘  └──────────────┘
+┌──────────────┐  ┌────────────────┐  ┌──────────────┐  ┌──────────────────┐
+│ lms_users_db │  │lms_learning_db │  │  lms_ai_db   │  │ lms_analytics_db │
+│              │  │                │  │              │  │                  │
+│ users        │  │ courses        │  │ prompt_*     │  │ events           │
+│ user_profiles│  │ modules        │  │ ai_*         │  │ aggregations     │
+│ auth_tokens  │  │ enrollments    │  │ course_*     │  │ predictions      │
+│              │  │ assignments    │  │              │  │                  │
+│              │  │ quizzes        │  │              │  │                  │
+│              │  │ submissions    │  │              │  │                  │
+│              │  │ grades         │  │              │  │                  │
+│              │  │ deadlines      │  │              │  │                  │
+└──────┬───────┘  └───────┬────────┘  └──────┬───────┘  └────────┬─────────┘
+       │                  │                  │                    │
+       ▼                  ▼                  ▼                    ▼
+┌──────────────┐  ┌────────────────┐  ┌──────────────┐  ┌──────────────────┐
+│ User Service │  │Learning Service│  │  AI Service  │  │ Analytics Service│
+└──────────────┘  └────────────────┘  └──────────────┘  └──────────────────┘
 ```
 
 ### 2.2 Database Ownership Matrix
@@ -82,10 +75,7 @@ Currently, all services share a single PostgreSQL database (`lms_db`):
 | Service | Database | Tables | Data Volume Est. |
 |---------|----------|--------|------------------|
 | User Service | lms_users_db | users, user_profiles, auth_tokens | Low |
-| Course Service | lms_courses_db | courses, modules, enrollments, lessons | Medium |
-| Assessment Service | lms_assess_db | assignments, quizzes, submissions, quiz_attempts | High |
-| Gradebook Service | lms_grades_db | grades, grade_history | Medium |
-| Deadline Service | lms_deadline_db | deadlines, reminders, notifications | Low |
+| Learning Service | lms_learning_db | courses, modules, enrollments, assignments, quizzes, submissions, gradebook, deadlines | High |
 | AI Service | lms_ai_db | prompt_templates, ai_generation_log, ai_user_usage, ai_prompt_ab_test, course_templates | Medium |
 | Analytics Service | lms_analytics_db | events, aggregations, predictions | Very High |
 
@@ -105,29 +95,16 @@ Currently, all services share a single PostgreSQL database (`lms_db`):
 - No dependencies on other tables
 - Timeline: Week 1-2
 
-**Phase C: Deadline Service (Low Risk)**
-- Minimal coupling
-- Uses Kafka for course events
-- Timeline: Week 2
-
-**Phase D: Gradebook Service (Medium Risk)**
-- Depends on user_id, course_id (can be stored as values)
-- Timeline: Week 3
-
-**Phase E: Assessment Service (Medium Risk)**
-- Depends on course_id, user_id
-- Large data volume
-- Timeline: Week 4
-
-**Phase F: Course Service (High Risk)**
-- Central entity with many references
+**Phase C: Learning Service (High Risk)**
+- Consolidated runtime includes course + assessment + submission + gradebook + deadline domains
+- Highest data volume and most domain relationships
 - Requires careful data synchronization
-- Timeline: Week 5-6
+- Timeline: Week 3-5
 
-**Phase G: User Service (High Risk)**
+**Phase D: User Service (High Risk)**
 - Most referenced entity
 - Final migration
-- Timeline: Week 7-8
+- Timeline: Week 6-7
 
 ### 3.2 Data Synchronization Strategy
 
@@ -135,11 +112,11 @@ For cross-service references, use eventual consistency:
 
 ```
 ┌─────────────────┐    Kafka Events    ┌─────────────────┐
-│  Course Service │ ───────────────────▶ │ Assessment Svc  │
-│                 │  course.created     │                 │
-│                 │  course.updated     │ Local cache:    │
-│                 │  course.deleted     │ courses (id,    │
-│                 │                     │  title, status) │
+│Learning Service │ ───────────────────▶ │Analytics Service│
+│                 │  course.updated     │                 │
+│                 │  assignment.graded  │ Local cache:    │
+│                 │  submission.created │ course/grade KPIs│
+│                 │                     │ and predictions │
 └─────────────────┘                     └─────────────────┘
 ```
 
@@ -249,14 +226,10 @@ If issues arise:
 |------|--------|----------|
 | 1 | Migrate AI Service | lms-ai-service |
 | 1-2 | Migrate Analytics Service | lms-analytics-service |
-| 2 | Migrate Deadline Service | lms-deadline-service |
-| 3 | Migrate Gradebook Service | lms-gradebook-service |
-| 4 | Migrate Assessment Service | lms-assessment-service |
-| 5-6 | Migrate Course Service | lms-course-service |
-| 7-8 | Migrate User Service | lms-user-service |
+| 3-5 | Migrate Learning Service domains (course+assessment+submission+gradebook+deadline) | lms-learning-service |
+| 6-7 | Migrate User Service | lms-user-service |
 
 ---
 
-**Document Status:** APPROVED FOR IMPLEMENTATION  
-**Next Steps:** Begin Phase A (AI Service migration) after production stabilization
-
+**Document Status:** APPROVED (Revised for consolidated architecture)  
+**Next Steps:** Execute migration in service-order above, with Learning Service treated as one bounded context.

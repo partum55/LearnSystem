@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,7 +23,7 @@ public class AnalyticsService {
     private final AIServiceClient aiServiceClient;
 
     public CourseStatsDto getCourseStats(String courseId) {
-        List<Long> studentIds = courseServiceClient.getStudentIdsByCourseId(courseId);
+        List<UUID> studentIds = courseServiceClient.getStudentIdsByCourseId(courseId);
         if (studentIds.isEmpty()) {
             return new CourseStatsDto(0, 0, 0, 0, 0, 0);
         }
@@ -44,7 +45,7 @@ public class AnalyticsService {
 
     @Cacheable(value = "studentProgress", key = "#courseId")
     public List<StudentProgressDto> getStudentProgress(String courseId) {
-        List<Long> studentIds = courseServiceClient.getStudentIdsByCourseId(courseId);
+        List<UUID> studentIds = courseServiceClient.getStudentIdsByCourseId(courseId);
         var assessments = assessmentServiceClient.getAssessmentsByCourseId(courseId);
 
         List<StudentDataDto> studentData = studentIds.parallelStream().map(studentId -> {
@@ -88,4 +89,3 @@ public class AnalyticsService {
         }).collect(Collectors.toList());
     }
 }
-

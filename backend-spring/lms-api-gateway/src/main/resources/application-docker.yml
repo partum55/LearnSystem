@@ -1,87 +1,107 @@
-# Docker profile for api-gateway
+# Docker profile overrides for lms-api-gateway
 spring:
   data:
     redis:
       host: ${REDIS_HOST:redis}
       port: ${REDIS_PORT:6379}
+
   cloud:
     gateway:
-      # Global filters to handle duplicate headers from downstream services
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials Access-Control-Allow-Methods Access-Control-Allow-Headers, RETAIN_UNIQUE
       routes:
-        # User service - includes auth endpoints
         - id: user-service
           uri: lb://lms-user-service
           predicates:
             - Path=/api/v1/users/**, /api/users/**, /api/v1/auth/**, /api/auth/**
-        # Course service
-        - id: course-service
-          uri: lb://lms-course-service
+          filters:
+            - RewritePath=/api/v1/users(?<segment>/?.*), /api/users${segment}
+            - RewritePath=/api/v1/auth(?<segment>/?.*), /api/auth${segment}
+
+        - id: learning-courses
+          uri: lb://lms-learning-service
           predicates:
             - Path=/api/v1/courses/**, /api/courses/**
-        # Assessment service
-        - id: assessment-service
-          uri: lb://lms-assessment-service
+          filters:
+            - RewritePath=/api/v1/courses(?<segment>/?.*), /api/courses${segment}
+
+        - id: learning-assessments
+          uri: lb://lms-learning-service
           predicates:
             - Path=/api/v1/assessments/**, /api/assessments/**
           filters:
             - RewritePath=/api/assessments/(?<segment>.*), /api/${segment}
             - RewritePath=/api/v1/assessments/(?<segment>.*), /api/${segment}
-        # Submission service
-        - id: submission-service
-          uri: lb://lms-submission-service
+
+        - id: learning-submissions
+          uri: lb://lms-learning-service
           predicates:
             - Path=/api/v1/submissions/**, /api/submissions/**
-        # Gradebook service
-        - id: gradebook-service
-          uri: lb://lms-gradebook-service
+          filters:
+            - RewritePath=/api/v1/submissions(?<segment>/?.*), /api/submissions${segment}
+
+        - id: learning-gradebook
+          uri: lb://lms-learning-service
           predicates:
             - Path=/api/v1/gradebook/**, /api/gradebook/**
-        # Deadline service
-        - id: deadline-service
-          uri: lb://lms-deadline-service
+          filters:
+            - RewritePath=/api/v1/gradebook(?<segment>/?.*), /api/gradebook${segment}
+
+        - id: learning-deadlines
+          uri: lb://lms-learning-service
           predicates:
             - Path=/api/v1/calendar/**, /api/calendar/**, /api/v1/deadlines/**, /api/deadlines/**, /api/v1/notifications/**, /api/notifications/**
-        # AI service - uses direct URL because it doesn't register with Eureka
-        # Gateway receives: /api/ai/... -> forwards to ai-service:8085/api/v1/ai/...
+          filters:
+            - RewritePath=/api/v1/calendar(?<segment>/?.*), /api/calendar${segment}
+            - RewritePath=/api/v1/deadlines(?<segment>/?.*), /api/deadlines${segment}
+            - RewritePath=/api/v1/notifications(?<segment>/?.*), /api/notifications${segment}
+
         - id: ai-service-v1
-          uri: http://ai-service:8085
+          uri: ${AI_SERVICE_URI:http://ai-service:8085}
           predicates:
             - Path=/api/v1/ai/**
           filters:
             - name: RequestRateLimiter
               args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-                redis-rate-limiter.requestedTokens: 1
+                redis-rate-limiter.replenishRate: ${gateway.ai-rate-limit.replenish-rate:10}
+                redis-rate-limiter.burstCapacity: ${gateway.ai-rate-limit.burst-capacity:20}
+                redis-rate-limiter.requestedTokens: ${gateway.ai-rate-limit.requested-tokens:1}
                 key-resolver: "#{@userKeyResolver}"
             - name: CircuitBreaker
               args:
                 name: aiServiceCircuitBreaker
                 fallbackUri: forward:/fallback/ai
-        # AI service - rewrite /api/ai/** to /api/v1/ai/**
+
         - id: ai-service
-          uri: http://ai-service:8085
+          uri: ${AI_SERVICE_URI:http://ai-service:8085}
           predicates:
             - Path=/api/ai/**
           filters:
             - RewritePath=/api/ai/(?<segment>.*), /api/v1/ai/${segment}
             - name: RequestRateLimiter
               args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-                redis-rate-limiter.requestedTokens: 1
+                redis-rate-limiter.replenishRate: ${gateway.ai-rate-limit.replenish-rate:10}
+                redis-rate-limiter.burstCapacity: ${gateway.ai-rate-limit.burst-capacity:20}
+                redis-rate-limiter.requestedTokens: ${gateway.ai-rate-limit.requested-tokens:1}
                 key-resolver: "#{@userKeyResolver}"
             - name: CircuitBreaker
               args:
                 name: aiServiceCircuitBreaker
                 fallbackUri: forward:/fallback/ai
-        # Analytics service
+
+        - id: learning-risk-analytics
+          uri: lb://lms-learning-service
+          predicates:
+            - Path=/api/analytics/courses/*/at-risk-students, /api/analytics/courses/*/students/*/risk, /api/v1/analytics/courses/*/at-risk-students, /api/v1/analytics/courses/*/students/*/risk
+          filters:
+            - RewritePath=/api/v1/analytics(?<segment>/?.*), /api/analytics${segment}
+
         - id: analytics-service
           uri: lb://lms-analytics-service
           predicates:
             - Path=/api/v1/analytics/**, /api/analytics/**
+          filters:
+            - RewritePath=/api/v1/analytics(?<segment>/?.*), /api/analytics${segment}
 
 eureka:
   client:

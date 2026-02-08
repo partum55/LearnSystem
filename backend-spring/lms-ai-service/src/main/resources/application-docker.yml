@@ -34,8 +34,5 @@ eureka:
 
 # Service URLs for Docker environment
 services:
-  course-service:
-    url: http://course-service:8082
-  assessment-service:
-    url: http://assessment-service:8083
-
+  learning-service:
+    url: http://learning-service:8089

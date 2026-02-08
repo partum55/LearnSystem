@@ -62,10 +62,8 @@ jwt:
 
 # Other services
 services:
-  course-service:
-    url: ${COURSE_SERVICE_URL:http://localhost:8081}
-  assessment-service:
-    url: ${ASSESSMENT_SERVICE_URL:http://localhost:8083}
+  learning-service:
+    url: ${LEARNING_SERVICE_URL:http://localhost:8089}
 
 # Logging
 logging:
@@ -166,5 +164,4 @@ ai:
     completion-per-million: ${AI_PRICING_COMPLETION:0.10}
   usage:
     monthly-limit-tokens: ${AI_MONTHLY_TOKEN_LIMIT:1000000}
-
 

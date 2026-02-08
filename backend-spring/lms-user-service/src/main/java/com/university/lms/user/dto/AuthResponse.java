@@ -13,6 +13,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AuthResponse {
+    private static final String TOKEN_TYPE_BEARER = "Bearer";
+
     private String accessToken;
     private String refreshToken;
     private String tokenType;
@@ -23,10 +25,9 @@ public class AuthResponse {
         return AuthResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
-                .tokenType("Bearer")
+                .tokenType(TOKEN_TYPE_BEARER)
                 .expiresIn(expiresIn)
                 .user(user)
                 .build();
     }
 }
-

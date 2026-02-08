@@ -1,5 +1,9 @@
 # User + Data Flow Event Chains (Full Static Audit)
 
+> [!WARNING]
+> Historical snapshot: this report was generated during a pre-consolidation audit and includes references to former split services (`course`, `assessment`, `gradebook`, `deadline`, `submission`).
+> For the current architecture, use `lms-learning-service` docs and `docs/adr/0001-learning-service-modular-monolith.md`.
+
 Audit timestamp: 2026-02-06
 
 ## Scope
@@ -7,7 +11,7 @@ Audit timestamp: 2026-02-06
 - Interactive frontend files with user events: 74
 - Interactive pages audited: 22
 - Interactive components audited: 48
-- Backend controllers/mappings audited: user, course, assessment, gradebook, deadline, analytics, AI, gateway admin
+- Backend controllers/mappings audited: user, learning (course + assessment + gradebook + submission + deadline), analytics, AI, gateway admin
 
 This document maps how user actions (clicks, form fills, submits, redirects) move through UI state, API requests, and backend routes.
 

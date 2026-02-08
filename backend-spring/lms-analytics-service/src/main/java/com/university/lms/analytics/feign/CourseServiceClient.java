@@ -6,11 +6,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
+import java.util.UUID;
 
-@FeignClient(name = "lms-course-service", path = "/api/courses", fallback = CourseServiceFallback.class)
+@FeignClient(name = "lms-learning-service", path = "/api/courses", fallback = CourseServiceFallback.class)
 public interface CourseServiceClient {
 
     @GetMapping("/{courseId}/students")
-    List<Long> getStudentIdsByCourseId(@PathVariable("courseId") String courseId);
+    List<UUID> getStudentIdsByCourseId(@PathVariable("courseId") String courseId);
 }
-

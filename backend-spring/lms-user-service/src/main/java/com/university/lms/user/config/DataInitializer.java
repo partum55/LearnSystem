@@ -6,15 +6,14 @@ import com.university.lms.user.domain.User;
 import com.university.lms.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-/**
- * Initialize default data on application startup
- * Creates default admin user if none exists
- */
+import java.util.Locale;
+
 @Component
 @Order(1)
 @RequiredArgsConstructor
@@ -24,38 +23,45 @@ public class DataInitializer implements CommandLineRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
+    @Value("${app.bootstrap-admin.enabled:true}")
+    private boolean bootstrapAdminEnabled;
+
+    @Value("${app.bootstrap-admin.email:admin@ucu.edu.ua}")
+    private String bootstrapAdminEmail;
+
+    @Value("${app.bootstrap-admin.password:admin123}")
+    private String bootstrapAdminPassword;
+
     @Override
     public void run(String... args) {
-        log.info("🚀 Running data initialization...");
-        createDefaultAdminIfNotExists();
-        log.info("✅ Data initialization completed");
+        if (!bootstrapAdminEnabled) {
+            log.info("Bootstrap admin creation is disabled");
+            return;
+        }
+        createDefaultAdminIfNeeded();
     }
 
-    /**
-     * Create default SUPERADMIN user if none exists
-     */
-    private void createDefaultAdminIfNotExists() {
-        String adminEmail = "admin@ucu.edu.ua";
-
-        // Check if admin already exists
-        if (userRepository.existsByEmailIgnoreCase(adminEmail)) {
-            log.info("ℹ️  Admin user already exists: {}", adminEmail);
+    private void createDefaultAdminIfNeeded() {
+        String normalizedEmail = bootstrapAdminEmail.trim().toLowerCase(Locale.ROOT);
+        if (bootstrapAdminPassword == null || bootstrapAdminPassword.isBlank()) {
+            log.error("Bootstrap admin password is empty. Skipping bootstrap user creation");
             return;
         }
 
-        // Check if any SUPERADMIN exists
-        long superadminCount = userRepository.countByRole(UserRole.SUPERADMIN);
+        if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
+            log.info("Bootstrap admin email already exists: {}", normalizedEmail);
+            return;
+        }
+
+        long superadminCount = userRepository.countByRoleAndIsDeletedFalse(UserRole.SUPERADMIN);
         if (superadminCount > 0) {
-            log.info("ℹ️  SUPERADMIN users already exist: {} found", superadminCount);
+            log.info("Superadmin already exists, skipping bootstrap user creation");
             return;
         }
-
-        // Create default admin
-        log.info("📝 Creating default SUPERADMIN user...");
 
         User admin = User.builder()
-                .email(adminEmail)
-                .passwordHash(passwordEncoder.encode("admin123"))
+                .email(normalizedEmail)
+                .passwordHash(passwordEncoder.encode(bootstrapAdminPassword))
                 .displayName("System Administrator")
                 .firstName("Admin")
                 .lastName("User")
@@ -68,12 +74,7 @@ public class DataInitializer implements CommandLineRunner {
 
         userRepository.save(admin);
 
-        log.warn("⚠️  ========================================");
-        log.warn("⚠️  DEFAULT ADMIN USER CREATED");
-        log.warn("⚠️  Email: {}", adminEmail);
-        log.warn("⚠️  Password: admin123");
-        log.warn("⚠️  CHANGE PASSWORD IMMEDIATELY!");
-        log.warn("⚠️  ========================================");
+        log.warn("Bootstrap superadmin user was created with email '{}'", normalizedEmail);
+        log.warn("Change bootstrap admin credentials immediately");
     }
 }
-

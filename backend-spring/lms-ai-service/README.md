@@ -20,7 +20,7 @@ AI сервіс для автоматичного створення та ред
 
 ### 3. Збереження в БД
 - Автоматичне збереження згенерованого контенту
-- Інтеграція з Course Service та Assessment Service
+- Інтеграція з Learning Service (course + assessment domains)
 - Підтримка транзакцій
 
 ## Налаштування
@@ -126,7 +126,7 @@ Request:
 ### Приклад 1: Створення курсу з модулями
 
 ```bash
-curl -X POST http://localhost:8084/api/ai/courses/generate \
+curl -X POST http://localhost:8085/api/ai/courses/generate \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Створи курс \"Вступ до Machine Learning\" з 6 модулів, що покривають основи ML, supervised learning, unsupervised learning, neural networks, deep learning та практичні проєкти",
@@ -141,7 +141,7 @@ curl -X POST http://localhost:8084/api/ai/courses/generate \
 ### Приклад 2: Створення та збереження повного курсу
 
 ```bash
-curl -X POST http://localhost:8084/api/ai/courses/generate-and-save \
+curl -X POST http://localhost:8085/api/ai/courses/generate-and-save \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -H "X-User-Id: <user-uuid>" \
@@ -157,7 +157,7 @@ curl -X POST http://localhost:8084/api/ai/courses/generate-and-save \
 ### Приклад 3: Редагування модуля
 
 ```bash
-curl -X POST http://localhost:8084/api/ai/content/edit \
+curl -X POST http://localhost:8085/api/ai/content/edit \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Зроби опис більш детальним та додай посилання на ресурси для самостійного вивчення",
@@ -272,12 +272,11 @@ mvn spring-boot:run
 - Java 21
 - Spring Boot 3.2.2
 - Ollama з моделлю Llama 3.1
-- Course Service (порт 8081)
-- Assessment Service (порт 8083)
+- Learning Service (порт 8089)
 
 ## Порт
 
-За замовчуванням сервіс запускається на порту **8084**.
+За замовчуванням сервіс запускається на порту **8085**.
 
 ## Логування
 
@@ -330,4 +329,3 @@ private LlamaApiService llamaApiService;
 when(llamaApiService.generateJson(any(), any()))
     .thenReturn("{ ... test json ... }");
 ```
-

@@ -10,9 +10,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AiModuleCreateRequest {
-    private String courseId;
-    private String title;
-    private String description;
-    private Integer position;
-    private boolean isPublished;
+  private String courseId;
+  private String title;
+  private String description;
+  private Integer position;
+  private boolean isPublished;
 }

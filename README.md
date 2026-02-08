@@ -22,10 +22,7 @@ A full-stack Learning Management System with Spring Boot microservices backend a
 
 ### ✅ Features
 - **User Service** - Authentication, authorization, user management
-- **Course Service** - Course management, enrollment, modules, resources  
-- **Assessment Service** - Quizzes, assignments, grading, submissions
-- **Gradebook Service** - Grade management, analytics
-- **Deadline Service** - Deadline tracking, notifications, workload management
+- **Learning Service** - Courses, assessments, gradebook, submissions, deadlines
 - **AI Service** - AI-powered content generation, course creation
 - **Analytics Service** - AI-powered analytics for teachers
 - **API Gateway** - Unified API entry point with load balancing
@@ -45,20 +42,17 @@ A full-stack Learning Management System with Spring Boot microservices backend a
 │     :8080       │
 └────────┬────────┘
          │
-    ┌────┴────┬────────────┬────────────┬────────────┐
-    ▼         ▼            ▼            ▼            ▼
-┌────────┐ ┌──────┐  ┌──────────┐  ┌──────────┐ ┌──────────┐
-│  User  │ │Course│  │Assessment│  │Gradebook │ │    AI    │
-│Service │ │Service│ │Service   │  │Service   │ │Service   │
-│:8081   │ │:8082  │ │:8083     │  │:8084     │ │:8085     │
-└────────┘ └──────┘  └──────────┘  └──────────┘ └──────────┘
-     │         │           │             │            │
-     └─────────┴───────────┴─────────────┴────────────┘
-                          │
-                ┌─────────┴─────────┐
-                │   PostgreSQL      │
-                │   Redis Cache     │
-                └───────────────────┘
+     ┌───────────┬───────────────┬─────────────┬─────────────┐
+     ▼           ▼               ▼             ▼             ▼
+┌────────┐ ┌───────────┐   ┌──────────┐  ┌──────────┐ ┌──────────┐
+│  User  │ │ Learning  │   │ Analytics│  │    AI    │ │  Eureka  │
+│Service │ │ Service   │   │ Service  │  │ Service  │ │  Server  │
+│:8081   │ │ :8089     │   │ :8088    │  │ :8085    │ │ :8761    │
+└────────┘ └───────────┘   └──────────┘  └──────────┘ └──────────┘
+      \          |               |             /
+       \         |               |            /
+        \────────┴───────────────┴───────────/
+                    PostgreSQL + Redis
 ```
 
 ## Prerequisites
@@ -94,11 +88,8 @@ cp .env.local .env
 | API Gateway | http://localhost:8080 |
 | Eureka Dashboard | http://localhost:8761 |
 | User Service | http://localhost:8081 |
-| Course Service | http://localhost:8082 |
-| Assessment Service | http://localhost:8083 |
-| Gradebook Service | http://localhost:8084 |
+| Learning Service | http://localhost:8089 |
 | AI Service | http://localhost:8085 |
-| Deadline Service | http://localhost:8086 |
 | Analytics Service | http://localhost:8088 |
 
 ### Health Checks
@@ -109,7 +100,7 @@ cp .env.local .env
 
 # Manual health checks
 curl http://localhost:8081/api/actuator/health  # User Service
-curl http://localhost:8082/api/actuator/health  # Course Service
+curl http://localhost:8089/api/actuator/health  # Learning Service (course+assessment+gradebook)
 curl http://localhost:8085/api/actuator/health  # AI Service
 ```
 
@@ -121,6 +112,7 @@ curl http://localhost:8085/api/actuator/health  # AI Service
 | [DOCKER_DEPLOYMENT_GUIDE.md](docs/DOCKER_DEPLOYMENT_GUIDE.md) | Production deployment |
 | [ENVIRONMENT_VARIABLES.md](docs/ENVIRONMENT_VARIABLES.md) | Configuration reference |
 | [OPERATIONS_RUNBOOK.md](docs/OPERATIONS_RUNBOOK.md) | Operations guide |
+| [ADR 0001](docs/adr/0001-learning-service-modular-monolith.md) | Learning domain target architecture |
 
 ## Project Structure
 
@@ -130,10 +122,7 @@ learn_system/
 ├── backend-spring/           # Spring Boot microservices
 │   ├── lms-common/           # Shared libraries
 │   ├── lms-user-service/     # User management
-│   ├── lms-course-service/   # Course management
-│   ├── lms-assessment-service/ # Assessments
-│   ├── lms-gradebook-service/  # Gradebook
-│   ├── lms-deadline-service/   # Deadlines
+│   ├── lms-learning-service/ # Courses + assessments + gradebook + submissions + deadlines
 │   ├── lms-ai-service/         # AI features
 │   ├── lms-analytics-service/  # Analytics
 │   ├── lms-api-gateway/        # API Gateway
@@ -165,4 +154,3 @@ Key variables:
 ## License
 
 [MIT License](LICENSE)
-

@@ -11,20 +11,18 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * REST controller for AI predictions.
- * API Version: v1
- */
+/** REST controller for AI predictions. API Version: v1 */
 @RestController
 @RequestMapping("/v1/ai")
 @RequiredArgsConstructor
 public class PredictionController {
 
-    private final PredictionService predictionService;
+  private final PredictionService predictionService;
 
-    @PostMapping("/predict-grades")
-    @PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
-    public ResponseEntity<PredictionResponseDto> getStudentPredictions(@RequestBody PredictionRequestDto request) {
-        return ResponseEntity.ok(predictionService.getStudentPredictions(request));
-    }
+  @PostMapping("/predict-grades")
+  @PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
+  public ResponseEntity<PredictionResponseDto> getStudentPredictions(
+      @RequestBody PredictionRequestDto request) {
+    return ResponseEntity.ok(predictionService.getStudentPredictions(request));
+  }
 }

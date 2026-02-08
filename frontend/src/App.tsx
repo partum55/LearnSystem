@@ -21,7 +21,9 @@ const Register = lazy(() => import('./pages/Register'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const CourseList = lazy(() => import('./pages/CourseList'));
 const CourseDetail = lazy(() => import('./pages/CourseDetail'));
+const ResourceView = lazy(() => import('./pages/course/resources/ResourceView'));
 const CourseCreate = lazy(() => import('./pages/CourseCreate'));
+const CourseEdit = lazy(() => import('./pages/CourseEdit'));
 const Assignments = lazy(() => import('./pages/Assignments'));
 const AssignmentDetail = lazy(() => import('./pages/AssignmentDetail'));
 const AssignmentEditor = lazy(() => import('./pages/AssignmentEditor'));
@@ -127,7 +129,15 @@ const AppOptimized: React.FC = () => {
                 </RoleRoute>
               </LazyRoute>
             } />
+            <Route path="/courses/:id/edit" element={
+              <LazyRoute isPrivate>
+                <RoleRoute allowedRoles={['TEACHER', 'SUPERADMIN']}>
+                  <CourseEdit />
+                </RoleRoute>
+              </LazyRoute>
+            } />
             <Route path="/courses/:id" element={<LazyRoute isPrivate><CourseDetail /></LazyRoute>} />
+            <Route path="/courses/:courseId/modules/:moduleId/resources/:resourceId" element={<LazyRoute isPrivate><ResourceView /></LazyRoute>} />
 
             <Route path="/calendar" element={<LazyRoute isPrivate><CalendarPage /></LazyRoute>} />
 

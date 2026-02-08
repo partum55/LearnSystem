@@ -1,6 +1,7 @@
 package com.university.lms.user.dto;
 
 import com.university.lms.common.domain.UserLocale;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -32,10 +33,11 @@ public class UpdateUserRequest {
 
     private UserLocale locale;
 
+    @Pattern(regexp = "^(?i)(light|dark)$", message = "Theme must be either 'light' or 'dark'")
     private String theme;
 
+    @Size(max = 2048, message = "Avatar URL must not exceed 2048 characters")
     private String avatarUrl;
 
     private Map<String, Object> preferences;
 }
-

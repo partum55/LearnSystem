@@ -17,6 +17,10 @@
     <name>LMS Common</name>
     <description>Common utilities, DTOs, and domain models</description>
 
+    <properties>
+        <bucket4j.version>8.7.0</bucket4j.version>
+    </properties>
+
     <dependencies>
         <!-- Spring Boot Starter -->
         <dependency>
@@ -90,9 +94,8 @@
         <dependency>
             <groupId>com.bucket4j</groupId>
             <artifactId>bucket4j-core</artifactId>
-            <version>8.7.0</version>
+            <version>${bucket4j.version}</version>
         </dependency>
     </dependencies>
 
 </project>
-

@@ -1,16 +1,26 @@
 package com.university.lms.user.service;
 
+import com.university.lms.common.domain.UserLocale;
 import com.university.lms.common.domain.UserRole;
 import com.university.lms.common.dto.PageResponse;
 import com.university.lms.common.exception.ResourceNotFoundException;
 import com.university.lms.common.exception.ValidationException;
-import com.university.lms.user.domain.User;
-import com.university.lms.user.dto.*;
-import com.university.lms.user.repository.UserRepository;
 import com.university.lms.common.security.JwtService;
 import com.university.lms.common.security.JwtTokenBlacklistService;
+import com.university.lms.user.client.CourseClient;
+import com.university.lms.user.domain.User;
+import com.university.lms.user.dto.AuthResponse;
+import com.university.lms.user.dto.ChangePasswordRequest;
+import com.university.lms.user.dto.LoginRequest;
+import com.university.lms.user.dto.RegisterRequest;
+import com.university.lms.user.dto.ResetPasswordRequest;
+import com.university.lms.user.dto.UpdateUserRequest;
+import com.university.lms.user.dto.UserDto;
+import com.university.lms.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -19,19 +29,22 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.UUID;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
-/**
- * Service layer for user management operations.
- * Implements business logic matching Django's UserManager.
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class UserService {
+
+    private static final Duration PASSWORD_RESET_TOKEN_TTL = Duration.ofHours(24);
+    private static final Set<String> ALLOWED_THEMES = Set.of("light", "dark");
+    private static final String USERS_CACHE = "users";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -39,216 +52,129 @@ public class UserService {
     private final UserMapper userMapper;
     private final EmailService emailService;
     private final JwtTokenBlacklistService tokenBlacklistService;
+    private final CourseClient courseClient;
+    private final CacheManager cacheManager;
 
-    /**
-     * Register a new user.
-     */
     @Transactional
     public UserDto registerUser(RegisterRequest request) {
-        log.info("Registering new user with email: {}", request.getEmail());
+        String email = normalizeEmail(request.getEmail());
+        String studentId = normalizeOptional(request.getStudentId());
 
-        // Validate email uniqueness
-        if (userRepository.existsByEmailIgnoreCase(request.getEmail())) {
-            throw new ValidationException("email", "Email already exists");
-        }
+        validateRegistration(email, studentId, request.getRole());
 
-        // Validate student ID uniqueness if provided
-        if (request.getStudentId() != null && !request.getStudentId().isBlank()) {
-            if (userRepository.existsByStudentId(request.getStudentId())) {
-                throw new ValidationException("studentId", "Student ID already exists");
-            }
-        }
-
-        // Create user entity
         User user = User.builder()
-                .email(request.getEmail().toLowerCase())
+                .email(email)
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .displayName(request.getDisplayName())
-                .firstName(request.getFirstName())
-                .lastName(request.getLastName())
-                .studentId(request.getStudentId())
-                .role(request.getRole())
-                .locale(request.getLocale())
+                .displayName(normalizeOptional(request.getDisplayName()))
+                .firstName(normalizeOptional(request.getFirstName()))
+                .lastName(normalizeOptional(request.getLastName()))
+                .studentId(studentId)
+                .role(resolveRegistrationRole())
+                .locale(request.getLocale() != null ? request.getLocale() : UserLocale.UK)
                 .isActive(true)
                 .emailVerified(false)
-                .emailVerificationToken(generateVerificationToken())
+                .emailVerificationToken(generateToken())
                 .build();
 
-        user = userRepository.save(user);
-        log.info("User registered successfully with ID: {}", user.getId());
+        User savedUser = userRepository.save(user);
+        emailService.sendVerificationEmail(savedUser);
 
-        // Send verification email asynchronously
-        emailService.sendVerificationEmail(user);
-
-        return userMapper.toDto(user);
+        log.info("User registered successfully: {}", savedUser.getId());
+        return userMapper.toDto(savedUser);
     }
 
-    /**
-     * Authenticate user and generate tokens.
-     */
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
-        log.info("Login attempt for email: {}", request.getEmail());
+        String email = normalizeEmail(request.getEmail());
+        User user = userRepository.findByEmailIgnoreCaseAndIsDeletedFalse(email)
+                .orElseThrow(this::invalidCredentialsException);
 
-        User user = userRepository.findByEmailIgnoreCase(request.getEmail())
-                .orElseThrow(() -> new ValidationException("Invalid email or password"));
-
-        if (!user.isActive()) {
-            throw new ValidationException("Account is inactive");
+        ensureUserIsActive(user);
+        if (user.getPasswordHash() == null || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            log.warn("Failed login attempt for email: {}", email);
+            throw invalidCredentialsException();
         }
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            log.warn("Failed login attempt for email: {}", request.getEmail());
-            throw new ValidationException("Invalid email or password");
-        }
-
-        // Generate tokens using common JwtService
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("userId", user.getId().toString());
-        claims.put("role", user.getRole() != null ? user.getRole().name() : null);
-        String accessToken = jwtService.generateToken(claims, user.getEmail());
-        String refreshToken = jwtService.generateRefreshToken(claims, user.getEmail());
-
-        log.info("User logged in successfully: {}", user.getId());
-
-        return AuthResponse.of(
-                accessToken,
-                refreshToken,
-                jwtService.getExpirationTime(),
-                userMapper.toDto(user)
-        );
+        log.info("User logged in: {}", user.getId());
+        return buildAuthResponse(user);
     }
 
-    /**
-     * Refresh access token using refresh token.
-     */
     @Transactional(readOnly = true)
     public AuthResponse refreshToken(String refreshToken) {
-        log.info("Refreshing access token");
-
-        // Validate refresh token
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new ValidationException("Refresh token is required");
+        }
         if (!jwtService.validateRefreshToken(refreshToken)) {
             throw new ValidationException("Invalid or expired refresh token");
         }
 
-        // Extract user ID from token
-        UUID userId = jwtService.extractUserId(refreshToken);
-
-        // Get user
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", userId.toString()));
-
-        if (!user.isActive()) {
-            throw new ValidationException("Account is inactive");
+        UUID userId;
+        try {
+            userId = jwtService.extractUserId(refreshToken);
+        } catch (Exception ex) {
+            throw new ValidationException("Invalid or expired refresh token");
         }
+        User user = getRequiredUserById(userId);
+        ensureUserIsActive(user);
 
-        // Generate new tokens
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("userId", user.getId().toString());
-        claims.put("role", user.getRole() != null ? user.getRole().name() : null);
-        String newAccessToken = jwtService.generateToken(claims, user.getEmail());
-        String newRefreshToken = jwtService.generateRefreshToken(claims, user.getEmail());
-
-        log.info("Tokens refreshed for user: {}", user.getId());
-
-        return AuthResponse.of(
-                newAccessToken,
-                newRefreshToken,
-                jwtService.getExpirationTime(),
-                userMapper.toDto(user)
-        );
+        log.info("Tokens refreshed for user: {}", userId);
+        return buildAuthResponse(user);
     }
 
-    /**
-     * Logout user by blacklisting the token.
-     */
     public void logout(String token) {
-        log.info("Logging out user");
+        if (token == null || token.isBlank()) {
+            log.debug("Logout called without token");
+            return;
+        }
 
         try {
-            // Validate token before blacklisting
             if (jwtService.validateToken(token)) {
                 tokenBlacklistService.blacklistToken(token);
-                log.info("Token blacklisted successfully");
+                log.info("Token blacklisted on logout");
             } else {
-                log.warn("Attempted to blacklist invalid token");
+                log.debug("Skipping logout blacklisting for invalid token");
             }
-        } catch (Exception e) {
-            log.error("Error during logout: {}", e.getMessage());
-            // Don't throw exception - logout should always succeed from user perspective
+        } catch (Exception ex) {
+            log.warn("Failed to blacklist token during logout: {}", ex.getMessage());
         }
     }
 
-    /**
-     * Get user by ID.
-     */
     @Transactional(readOnly = true)
-    @Cacheable(value = "users", key = "#id")
+    @Cacheable(value = USERS_CACHE, key = "#id")
     public UserDto getUserById(UUID id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User", id.toString()));
-        return userMapper.toDto(user);
+        return userMapper.toDto(getRequiredUserById(id));
     }
 
-    /**
-     * Get user by email.
-     */
     @Transactional(readOnly = true)
     public UserDto getUserByEmail(String email) {
-        User user = userRepository.findByEmailIgnoreCase(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User", email));
+        String normalizedEmail = normalizeEmail(email);
+        User user = userRepository.findByEmailIgnoreCaseAndIsDeletedFalse(normalizedEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User", normalizedEmail));
         return userMapper.toDto(user);
     }
 
-    /**
-     * Update user profile.
-     */
     @Transactional
-    @CacheEvict(value = "users", key = "#id")
+    @CacheEvict(value = USERS_CACHE, key = "#id")
     public UserDto updateUser(UUID id, UpdateUserRequest request) {
-        log.info("Updating user: {}", id);
+        User user = getRequiredUserById(id);
 
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User", id.toString()));
+        UpdateUserRequest normalizedRequest = normalizeUpdateRequest(request);
+        userMapper.updateUserFromRequest(normalizedRequest, user);
 
-        // Update fields if provided
-        if (request.getDisplayName() != null) {
-            user.setDisplayName(request.getDisplayName());
-        }
-        if (request.getFirstName() != null) {
-            user.setFirstName(request.getFirstName());
-        }
-        if (request.getLastName() != null) {
-            user.setLastName(request.getLastName());
-        }
-        if (request.getBio() != null) {
-            user.setBio(request.getBio());
-        }
-        if (request.getLocale() != null) {
-            user.setLocale(request.getLocale());
-        }
-        if (request.getTheme() != null) {
-            user.setTheme(request.getTheme());
-        }
-        if (request.getPreferences() != null) {
-            user.setPreferences(request.getPreferences());
+        if (normalizedRequest.getPreferences() != null) {
+            user.setPreferences(new HashMap<>(normalizedRequest.getPreferences()));
         }
 
-        user = userRepository.save(user);
-        log.info("User updated successfully: {}", id);
+        User updatedUser = userRepository.save(user);
+        log.info("User updated: {}", id);
 
-        return userMapper.toDto(user);
+        return userMapper.toDto(updatedUser);
     }
 
-    /**
-     * Change user password.
-     */
     @Transactional
+    @CacheEvict(value = USERS_CACHE, key = "#userId")
     public void changePassword(UUID userId, ChangePasswordRequest request) {
-        log.info("Changing password for user: {}", userId);
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", userId.toString()));
+        User user = getRequiredUserById(userId);
 
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
             throw new ValidationException("currentPassword", "Current password is incorrect");
@@ -256,40 +182,36 @@ public class UserService {
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+        tokenBlacklistService.blacklistUserTokens(userId.toString());
 
-        log.info("Password changed successfully for user: {}", userId);
+        log.info("Password changed for user: {}", userId);
     }
 
-    /**
-     * Request password reset.
-     */
     @Transactional
     public void requestPasswordReset(String email) {
-        log.info("Password reset requested for email: {}", email);
+        String normalizedEmail = normalizeEmail(email);
+        User user = userRepository.findByEmailIgnoreCaseAndIsDeletedFalse(normalizedEmail).orElse(null);
+        if (user == null) {
+            log.info("Password reset requested for unknown email");
+            return;
+        }
 
-        User user = userRepository.findByEmailIgnoreCase(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User", email));
-
-        String resetToken = generateResetToken();
-        user.setPasswordResetToken(resetToken);
-        user.setPasswordResetExpires(LocalDateTime.now().plusHours(24));
-
+        user.setPasswordResetToken(generateToken());
+        user.setPasswordResetExpires(LocalDateTime.now().plus(PASSWORD_RESET_TOKEN_TTL));
         userRepository.save(user);
 
-        // Send password reset email asynchronously
         emailService.sendPasswordResetEmail(user);
-
         log.info("Password reset token generated for user: {}", user.getId());
     }
 
-    /**
-     * Reset password with token.
-     */
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        log.info("Resetting password with token");
+        String token = normalizeOptional(request.getToken());
+        if (token == null) {
+            throw new ValidationException("token", "Reset token is required");
+        }
 
-        User user = userRepository.findByPasswordResetToken(request.getToken())
+        User user = userRepository.findByPasswordResetTokenAndIsDeletedFalse(token)
                 .orElseThrow(() -> new ValidationException("Invalid or expired reset token"));
 
         if (!user.isPasswordResetTokenValid()) {
@@ -299,38 +221,38 @@ public class UserService {
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         user.setPasswordResetToken(null);
         user.setPasswordResetExpires(null);
-
         userRepository.save(user);
 
+        tokenBlacklistService.blacklistUserTokens(user.getId().toString());
+        evictUserCache(user.getId());
         log.info("Password reset successfully for user: {}", user.getId());
     }
 
-    /**
-     * Verify email with token.
-     */
     @Transactional
     public void verifyEmail(String token) {
-        log.info("Verifying email with token");
+        String normalizedToken = normalizeOptional(token);
+        if (normalizedToken == null) {
+            throw new ValidationException("token", "Verification token is required");
+        }
 
-        User user = userRepository.findByEmailVerificationToken(token)
+        User user = userRepository.findByEmailVerificationTokenAndIsDeletedFalse(normalizedToken)
                 .orElseThrow(() -> new ValidationException("Invalid verification token"));
 
         user.setEmailVerified(true);
         user.setEmailVerificationToken(null);
-
         userRepository.save(user);
 
+        emailService.sendWelcomeEmail(user);
+        evictUserCache(user.getId());
         log.info("Email verified for user: {}", user.getId());
     }
 
-    /**
-     * Search users with pagination.
-     */
     @Transactional(readOnly = true)
     public PageResponse<UserDto> searchUsers(String query, Pageable pageable) {
-        Page<User> userPage = query != null && !query.isBlank()
-                ? userRepository.searchUsers(query, pageable)
-                : userRepository.findAll(pageable);
+        String normalizedQuery = normalizeOptional(query);
+        Page<User> userPage = normalizedQuery == null
+                ? userRepository.findByIsDeletedFalse(pageable)
+                : userRepository.searchUsers(normalizedQuery, pageable);
 
         return PageResponse.of(
                 userPage.getContent().stream().map(userMapper::toDto).toList(),
@@ -340,13 +262,13 @@ public class UserService {
         );
     }
 
-    /**
-     * Get users by role.
-     */
     @Transactional(readOnly = true)
     public PageResponse<UserDto> getUsersByRole(UserRole role, Pageable pageable) {
-        Page<User> userPage = userRepository.findByRole(role, pageable);
+        if (role == null) {
+            throw new ValidationException("role", "Role is required");
+        }
 
+        Page<User> userPage = userRepository.findByRoleAndIsDeletedFalse(role, pageable);
         return PageResponse.of(
                 userPage.getContent().stream().map(userMapper::toDto).toList(),
                 userPage.getNumber(),
@@ -355,65 +277,142 @@ public class UserService {
         );
     }
 
-    /**
-     * Deactivate user account.
-     */
     @Transactional
-    @CacheEvict(value = "users", key = "#userId")
+    @CacheEvict(value = USERS_CACHE, key = "#userId")
     public void deactivateUser(UUID userId) {
-        log.info("Deactivating user: {}", userId);
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", userId.toString()));
-
+        User user = getRequiredUserById(userId);
         user.setActive(false);
         userRepository.save(user);
-
         log.info("User deactivated: {}", userId);
     }
 
-    /**
-     * Activate user account.
-     */
     @Transactional
-    @CacheEvict(value = "users", key = "#userId")
+    @CacheEvict(value = USERS_CACHE, key = "#userId")
     public void activateUser(UUID userId) {
-        log.info("Activating user: {}", userId);
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", userId.toString()));
-
+        User user = getRequiredUserById(userId);
         user.setActive(true);
         userRepository.save(user);
-
         log.info("User activated: {}", userId);
     }
 
-    /**
-     * Delete user account (soft delete).
-     */
     @Transactional
-    @CacheEvict(value = "users", key = "#userId")
+    @CacheEvict(value = USERS_CACHE, key = "#userId")
     public void deleteUser(UUID userId) {
-        log.info("Deleting user: {}", userId);
+        User user = getRequiredUserById(userId);
 
-        User user = userRepository.findById(userId)
+        try {
+            courseClient.deleteUserData(userId);
+        } catch (Exception ex) {
+            log.error("Failed to cleanup course data for user {}: {}", userId, ex.getMessage());
+            throw new RuntimeException("Failed to cleanup user data in course service", ex);
+        }
+
+        userRepository.delete(user);
+        log.info("User deleted: {}", userId);
+    }
+
+    private void validateRegistration(String email, String studentId, UserRole requestedRole) {
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            throw new ValidationException("email", "Email already exists");
+        }
+
+        if (studentId != null && userRepository.existsByStudentId(studentId)) {
+            throw new ValidationException("studentId", "Student ID already exists");
+        }
+
+        if (requestedRole != null && requestedRole != UserRole.STUDENT) {
+            throw new ValidationException("role", "Self-registration supports only STUDENT role");
+        }
+    }
+
+    private UserRole resolveRegistrationRole() {
+        return UserRole.STUDENT;
+    }
+
+    private AuthResponse buildAuthResponse(User user) {
+        String accessToken = jwtService.generateToken(buildJwtClaims(user), user.getEmail());
+        String refreshToken = jwtService.generateRefreshToken(buildJwtClaims(user), user.getEmail());
+
+        return AuthResponse.of(
+                accessToken,
+                refreshToken,
+                jwtService.getExpirationTime(),
+                userMapper.toDto(user)
+        );
+    }
+
+    private Map<String, Object> buildJwtClaims(User user) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", user.getId().toString());
+        claims.put("role", user.getRole() != null ? user.getRole().name() : null);
+        return claims;
+    }
+
+    private void ensureUserIsActive(User user) {
+        if (!user.isActive()) {
+            throw new ValidationException("Account is inactive");
+        }
+    }
+
+    private ValidationException invalidCredentialsException() {
+        return new ValidationException("Invalid email or password");
+    }
+
+    private User getRequiredUserById(UUID userId) {
+        return userRepository.findByIdAndIsDeletedFalse(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId.toString()));
-
-        // Soft delete by deactivating
-        user.setActive(false);
-        userRepository.save(user);
-
-        log.info("User deleted (soft): {}", userId);
     }
 
-    // Helper methods
-
-    private String generateVerificationToken() {
-        return UUID.randomUUID().toString();
+    private UpdateUserRequest normalizeUpdateRequest(UpdateUserRequest request) {
+        return UpdateUserRequest.builder()
+                .displayName(normalizeOptional(request.getDisplayName()))
+                .firstName(normalizeOptional(request.getFirstName()))
+                .lastName(normalizeOptional(request.getLastName()))
+                .bio(normalizeOptional(request.getBio()))
+                .locale(request.getLocale())
+                .theme(normalizeTheme(request.getTheme()))
+                .avatarUrl(normalizeOptional(request.getAvatarUrl()))
+                .preferences(request.getPreferences() == null ? null : new HashMap<>(request.getPreferences()))
+                .build();
     }
 
-    private String generateResetToken() {
+    private String normalizeEmail(String email) {
+        String normalizedEmail = normalizeOptional(email);
+        if (normalizedEmail == null) {
+            throw new ValidationException("Email is required");
+        }
+        return normalizedEmail.toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeTheme(String theme) {
+        String normalizedTheme = normalizeOptional(theme);
+        if (normalizedTheme == null) {
+            return null;
+        }
+
+        String lowerCaseTheme = normalizedTheme.toLowerCase(Locale.ROOT);
+        if (!ALLOWED_THEMES.contains(lowerCaseTheme)) {
+            throw new ValidationException("theme", "Supported values are: light, dark");
+        }
+        return lowerCaseTheme;
+    }
+
+    private String normalizeOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private void evictUserCache(UUID userId) {
+        Cache cache = cacheManager.getCache(USERS_CACHE);
+        if (cache != null) {
+            cache.evict(userId);
+        }
+    }
+
+    private String generateToken() {
         return UUID.randomUUID().toString();
     }
 }

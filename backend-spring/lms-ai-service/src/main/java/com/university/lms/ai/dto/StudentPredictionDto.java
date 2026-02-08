@@ -8,8 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class StudentPredictionDto {
-    private String studentId;
-    private double predictedGrade;
-    private double confidence;
+  private String studentId;
+  private double predictedGrade;
+  private double confidence;
 }
-

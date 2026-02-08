@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User, UserRole } from '../types';
 import apiClient from '../api/client';
-import { setAccessToken, getAccessToken } from '../api/token';
+import { clearStoredTokens, getAccessToken, setAccessToken, setRefreshToken } from '../api/token';
 import { useUIStore } from './uiStore';
 
 interface AuthState {
@@ -72,18 +72,20 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           // Spring backend: POST /api/auth/login (no trailing slash)
-          const response = await apiClient.post<{ accessToken?: string; user?: ApiUser }>(
+          const response = await apiClient.post<{ accessToken?: string; refreshToken?: string; user?: ApiUser }>(
             '/auth/login',
             { email, password }
           );
 
-          // Set JWT from Spring field name
+          // Set JWT tokens from Spring field names
           const token = response.data.accessToken;
+          const refreshToken = response.data.refreshToken;
           if (token) {
             setAccessToken(token);
           }
-
-
+          if (refreshToken) {
+            setRefreshToken(refreshToken);
+          }
 
           const mappedUser = mapApiUserToFrontend(response.data.user);
 
@@ -105,6 +107,7 @@ export const useAuthStore = create<AuthState>()(
         } catch (err: unknown) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const error = err as any;
+          clearStoredTokens();
           set({
             error: error.response?.data?.error || 'Login failed',
             isLoading: false,
@@ -116,6 +119,8 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
+        const tokenToRevoke = getAccessToken();
+
         // First, clear all local state IMMEDIATELY
         set({
           user: null,
@@ -123,10 +128,9 @@ export const useAuthStore = create<AuthState>()(
           error: null,
         });
 
-        // Clear token from memory and localStorage
-        setAccessToken(null);
+        // Clear tokens from memory and localStorage
+        clearStoredTokens();
         localStorage.removeItem('auth-storage');
-        localStorage.removeItem('access_token');
 
         // Clear cookies manually with all possible variations
         const cookieOptions = [
@@ -141,8 +145,14 @@ export const useAuthStore = create<AuthState>()(
         });
 
         try {
-          // Optional: call backend if endpoint exists; ignore failures
-          await apiClient.post('/auth/logout');
+          // Optional: call backend logout if access token exists; ignore failures
+          if (tokenToRevoke) {
+            await apiClient.post('/auth/logout', null, {
+              headers: {
+                Authorization: `Bearer ${tokenToRevoke}`,
+              },
+            });
+          }
         } catch {
           // no-op
         }

@@ -1,142 +1,132 @@
 spring:
-    total-size-cap: 1GB
-    max-history: 30
-    max-size: 10MB
-    name: /var/log/lms/user-service.log
-  file:
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-  pattern:
-    org.hibernate.SQL: WARN
-    org.springframework.security: WARN
-    com.university.lms.user.security: INFO
-    com.university.lms: INFO
-    root: WARN
-  level:
-logging:
-# Logging Configuration
-
-      environment: production
-      application: ${spring.application.name}
-    tags:
-        enabled: true
-      prometheus:
-    export:
-  metrics:
-        enabled: true
-      probes:
-      show-details: never
-    health:
-  endpoint:
-      base-path: /actuator
-        include: health,info,prometheus
-      exposure:
-    web:
-  endpoints:
-management:
-# Actuator Configuration
-
-    key-store-type: PKCS12
-    key-store-password: ${SSL_KEY_STORE_PASSWORD:}
-    key-store: ${SSL_KEY_STORE:}
-    enabled: ${SSL_ENABLED:false}
-  ssl:
-    enabled: true
-  http2:
-    include-exception: false
-    include-stacktrace: never
-    include-binding-errors: never
-    include-message: never
-  error:
-    min-response-size: 1024
-    mime-types: application/json,application/xml,text/html,text/xml,text/plain
-    enabled: true
-  compression:
-    context-path: /api
-  servlet:
-  port: ${SERVER_PORT:8080}
-server:
-# Server Configuration
-
-    lockout-duration: 15
-    max-attempts: 5
-    enabled: true
-  account-lockout:
-    require-special: true
-    require-digit: true
-    require-lowercase: true
-    require-uppercase: true
-    min-length: 12
-  password:
-    enabled: true
-  rate-limit:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS}
-  cors:
-security:
-# Security Configuration
-
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days in production
-  expiration: ${JWT_EXPIRATION:3600000} # 1 hour in production
-  secret: ${JWT_SECRET}
-jwt:
-# JWT Configuration
-
-    validate-on-migrate: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
-    enabled: true
-  flyway:
-
-      cache-null-values: false
-      time-to-live: 600000 # 10 minutes
-    redis:
-    type: redis
-  cache:
-
-          min-idle: 5
-          max-idle: 10
-          max-active: 20
-        pool:
-      lettuce:
-      ssl: true
-      timeout: 60000ms
-      password: ${SPRING_DATA_REDIS_PASSWORD}
-      port: ${SPRING_DATA_REDIS_PORT}
-      host: ${SPRING_DATA_REDIS_HOST}
-    redis:
-  data:
-
-    open-in-view: false
-        query.in_clause_parameter_padding: true
-        order_updates: true
-        order_inserts: true
-          batch_size: 50
-        jdbc:
-        format_sql: false
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-      hibernate:
-    properties:
-    show-sql: false
-      ddl-auto: validate
-    hibernate:
-  jpa:
-
-      leak-detection-threshold: 60000
-      max-lifetime: 1800000
-      idle-timeout: 600000
-      connection-timeout: 30000
-      minimum-idle: 5
-      maximum-pool-size: 20
-    hikari:
-    driver-class-name: org.postgresql.Driver
-    password: ${SPRING_DATASOURCE_PASSWORD}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    url: ${SPRING_DATASOURCE_URL}
-  datasource:
-
-    active: production
-  profiles:
-
-    name: lms-user-service
   application:
+    name: lms-user-service
 
+  profiles:
+    active: production
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+        query:
+          in_clause_parameter_padding: true
+
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST}
+      port: ${SPRING_DATA_REDIS_PORT}
+      password: ${SPRING_DATA_REDIS_PASSWORD}
+      timeout: 60000ms
+      ssl: true
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 5
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000
+      cache-null-values: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:3600000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+
+security:
+  cors:
+    enabled: true
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+    min-response-size: 1024
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
+  http2:
+    enabled: true
+  ssl:
+    enabled: ${SSL_ENABLED:false}
+    key-store: ${SSL_KEY_STORE:}
+    key-store-password: ${SSL_KEY_STORE_PASSWORD:}
+    key-store-type: PKCS12
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+      environment: production
+
+logging:
+  level:
+    root: WARN
+    com.university.lms: INFO
+    com.university.lms.user.security: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: /var/log/lms/user-service.log
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 30
+      total-size-cap: 1GB
+
+app:
+  bootstrap-admin:
+    enabled: false

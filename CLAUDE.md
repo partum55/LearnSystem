@@ -118,10 +118,7 @@ docker-compose down
 
 ### Backend (Spring Boot Microservices)
 - `lms-user-service`: Authentication, authorization, user management (:8081)
-- `lms-course-service`: Course management, enrollment, modules (:8082)
-- `lms-assessment-service`: Quizzes, assignments, grading (:8083)
-- `lms-gradebook-service`: Grade management, analytics (:8084)
-- `lms-deadline-service`: Deadline tracking, notifications (:8086)
+- `lms-learning-service`: Course, assessment, gradebook, submission, and deadline management (:8089)
 - `lms-ai-service`: AI-powered content generation (:8085)
 - `lms-analytics-service`: Teacher analytics (:8088)
 - `lms-api-gateway`: Unified API entry point (:8080)

@@ -10,14 +10,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AiAssignmentCreateRequest {
-    private String courseId;
-    private String moduleId;
-    private String title;
-    private String description;
-    private String assignmentType;
-    private String instructions;
-    private Integer position;
-    private boolean isPublished;
-    private Integer maxPoints;
-    private Integer timeLimit;
+  private String courseId;
+  private String moduleId;
+  private String title;
+  private String description;
+  private String assignmentType;
+  private String instructions;
+  private Integer position;
+  private boolean isPublished;
+  private Integer maxPoints;
+  private Integer timeLimit;
 }

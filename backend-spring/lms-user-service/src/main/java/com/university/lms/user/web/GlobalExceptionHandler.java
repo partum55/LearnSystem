@@ -2,9 +2,8 @@ package com.university.lms.user.web;
 
 import com.university.lms.common.dto.ErrorResponse;
 import com.university.lms.common.exception.LmsException;
-import com.university.lms.common.exception.ResourceNotFoundException;
-import com.university.lms.common.exception.ValidationException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,124 +12,56 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * Global exception handler for REST controllers.
- * Provides consistent error responses across the application.
- */
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
 
-    /**
-     * Handle LMS-specific exceptions.
-     */
     @ExceptionHandler(LmsException.class)
     public ResponseEntity<ErrorResponse> handleLmsException(LmsException ex, HttpServletRequest request) {
-        log.error("LMS exception: {}", ex.getMessage(), ex);
-
-        ErrorResponse error = ErrorResponse.builder()
-                .code(ex.getErrorCode())
-                .message(ex.getMessage())
-                .timestamp(LocalDateTime.now())
-                .path(request.getRequestURI())
-                .status(ex.getHttpStatus().value())
-                .build();
-
-        return ResponseEntity.status(ex.getHttpStatus()).body(error);
+        HttpStatus status = ex.getHttpStatus();
+        if (status.is5xxServerError()) {
+            log.error("LMS exception: {}", ex.getMessage(), ex);
+        } else {
+            log.warn("LMS exception: {}", ex.getMessage());
+        }
+        return buildErrorResponse(ex.getErrorCode(), ex.getMessage(), status, request);
     }
 
-    /**
-     * Handle resource not found exceptions.
-     */
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleResourceNotFoundException(
-            ResourceNotFoundException ex, HttpServletRequest request) {
-        log.warn("Resource not found: {}", ex.getMessage());
-
-        ErrorResponse error = ErrorResponse.of(
-                ex.getErrorCode(),
-                ex.getMessage(),
-                request.getRequestURI(),
-                HttpStatus.NOT_FOUND.value()
-        );
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-    }
-
-    /**
-     * Handle validation exceptions.
-     */
-    @ExceptionHandler(ValidationException.class)
-    public ResponseEntity<ErrorResponse> handleValidationException(
-            ValidationException ex, HttpServletRequest request) {
-        log.warn("Validation error: {}", ex.getMessage());
-
-        ErrorResponse error = ErrorResponse.of(
-                ex.getErrorCode(),
-                ex.getMessage(),
-                request.getRequestURI(),
-                HttpStatus.BAD_REQUEST.value()
-        );
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-    }
-
-    /**
-     * Handle access denied exceptions from LMS and Spring Security.
-     */
     @ExceptionHandler({com.university.lms.common.exception.AccessDeniedException.class,
-                       org.springframework.security.access.AccessDeniedException.class})
-    public ResponseEntity<ErrorResponse> handleAccessDeniedException(
-            Exception ex, HttpServletRequest request) {
+            org.springframework.security.access.AccessDeniedException.class})
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(Exception ex, HttpServletRequest request) {
         log.warn("Access denied: {}", ex.getMessage());
-
-        ErrorResponse error = ErrorResponse.of(
-                "ACCESS_DENIED",
-                "Access denied to this resource",
-                request.getRequestURI(),
-                HttpStatus.FORBIDDEN.value()
-        );
-
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+        return buildErrorResponse("ACCESS_DENIED", "Access denied to this resource", HttpStatus.FORBIDDEN, request);
     }
 
-    /**
-     * Handle authentication exceptions.
-     */
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthenticationException(
-            AuthenticationException ex, HttpServletRequest request) {
+            AuthenticationException ex,
+            HttpServletRequest request
+    ) {
         log.warn("Authentication error: {}", ex.getMessage());
-
-        ErrorResponse error = ErrorResponse.of(
-                "AUTHENTICATION_FAILED",
-                "Authentication failed",
-                request.getRequestURI(),
-                HttpStatus.UNAUTHORIZED.value()
-        );
-
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+        return buildErrorResponse("AUTHENTICATION_FAILED", "Authentication failed", HttpStatus.UNAUTHORIZED, request);
     }
 
-    /**
-     * Handle Spring validation errors (from @Valid).
-     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(
-            MethodArgumentNotValidException ex, HttpServletRequest request) {
-        log.warn("Validation errors: {}", ex.getMessage());
-
-        Map<String, String> errors = new HashMap<>();
+            MethodArgumentNotValidException ex,
+            HttpServletRequest request
+    ) {
+        Map<String, String> validationErrors = new LinkedHashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
+            if (error instanceof FieldError fieldError) {
+                validationErrors.put(fieldError.getField(), fieldError.getDefaultMessage());
+            } else {
+                validationErrors.put(error.getObjectName(), error.getDefaultMessage());
+            }
         });
 
         ErrorResponse error = ErrorResponse.builder()
@@ -139,46 +70,69 @@ public class GlobalExceptionHandler {
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
                 .status(HttpStatus.BAD_REQUEST.value())
-                .details(errors)
+                .details(validationErrors)
                 .build();
 
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        return ResponseEntity.badRequest().body(error);
     }
 
-    /**
-     * Handle static resource not found (SPA routes) - return 404 without logging as ERROR
-     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolationException(
+            ConstraintViolationException ex,
+            HttpServletRequest request
+    ) {
+        Map<String, String> validationErrors = new LinkedHashMap<>();
+        ex.getConstraintViolations().forEach(violation ->
+                validationErrors.put(String.valueOf(violation.getPropertyPath()), violation.getMessage()));
+
+        ErrorResponse error = ErrorResponse.builder()
+                .code("VALIDATION_ERROR")
+                .message("Validation failed")
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .details(validationErrors)
+                .build();
+
+        return ResponseEntity.badRequest().body(error);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatch(
+            MethodArgumentTypeMismatchException ex,
+            HttpServletRequest request
+    ) {
+        String message = "Invalid value for parameter '" + ex.getName() + "'";
+        return buildErrorResponse("VALIDATION_ERROR", message, HttpStatus.BAD_REQUEST, request);
+    }
+
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoResourceFound(
-            NoResourceFoundException ex, HttpServletRequest request) {
-        // Don't log as ERROR - these are expected for SPA routing
-        log.debug("Static resource not found (expected for SPA): {}", request.getRequestURI());
-
-        ErrorResponse error = ErrorResponse.of(
-                "NOT_FOUND",
-                "Resource not found",
-                request.getRequestURI(),
-                HttpStatus.NOT_FOUND.value()
-        );
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+            NoResourceFoundException ex,
+            HttpServletRequest request
+    ) {
+        log.debug("Resource not found: {}", request.getRequestURI());
+        return buildErrorResponse("NOT_FOUND", "Resource not found", HttpStatus.NOT_FOUND, request);
     }
 
-    /**
-     * Handle all other exceptions.
-     */
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGlobalException(
-            Exception ex, HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleGlobalException(Exception ex, HttpServletRequest request) {
         log.error("Unexpected error: {}", ex.getMessage(), ex);
-
-        ErrorResponse error = ErrorResponse.of(
+        return buildErrorResponse(
                 "INTERNAL_SERVER_ERROR",
                 "An unexpected error occurred",
-                request.getRequestURI(),
-                HttpStatus.INTERNAL_SERVER_ERROR.value()
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                request
         );
+    }
 
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    private ResponseEntity<ErrorResponse> buildErrorResponse(
+            String code,
+            String message,
+            HttpStatus status,
+            HttpServletRequest request
+    ) {
+        ErrorResponse error = ErrorResponse.of(code, message, request.getRequestURI(), status.value());
+        return ResponseEntity.status(status).body(error);
     }
 }

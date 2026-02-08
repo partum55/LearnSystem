@@ -19,14 +19,14 @@ import java.util.UUID;
 public interface UserRepository extends JpaRepository<User, UUID> {
 
     /**
-     * Find user by email (case-insensitive).
+     * Find active (not soft-deleted) user by email (case-insensitive).
      */
-    Optional<User> findByEmailIgnoreCase(String email);
+    Optional<User> findByEmailIgnoreCaseAndIsDeletedFalse(String email);
 
     /**
-     * Find user by student ID.
+     * Find active (not soft-deleted) user by ID.
      */
-    Optional<User> findByStudentId(String studentId);
+    Optional<User> findByIdAndIsDeletedFalse(UUID id);
 
     /**
      * Check if email exists (case-insensitive).
@@ -41,36 +41,37 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     /**
      * Find user by email verification token.
      */
-    Optional<User> findByEmailVerificationToken(String token);
+    Optional<User> findByEmailVerificationTokenAndIsDeletedFalse(String token);
 
     /**
      * Find user by password reset token.
      */
-    Optional<User> findByPasswordResetToken(String token);
+    Optional<User> findByPasswordResetTokenAndIsDeletedFalse(String token);
 
     /**
-     * Count users by role.
+     * Count not-deleted users by role.
      */
-    long countByRole(UserRole role);
+    long countByRoleAndIsDeletedFalse(UserRole role);
 
     /**
-     * Count active users.
+     * Find users by role (not deleted).
      */
-    long countByIsActive(boolean isActive);
+    Page<User> findByRoleAndIsDeletedFalse(UserRole role, Pageable pageable);
 
     /**
-     * Find users by role with pagination.
+     * Find all active (not deleted) users.
      */
-    Page<User> findByRole(UserRole role, Pageable pageable);
+    Page<User> findByIsDeletedFalse(Pageable pageable);
 
     /**
      * Search users by email, name or student ID.
      */
     @Query("SELECT u FROM User u WHERE " +
-           "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(u.displayName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(u.studentId) LIKE LOWER(CONCAT('%', :search, '%'))")
+            "u.isDeleted = false AND (" +
+            "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(u.displayName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(u.studentId) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<User> searchUsers(@Param("search") String search, Pageable pageable);
 }

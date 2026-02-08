@@ -1,5 +1,9 @@
 package com.university.lms.common.domain;
 
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+
 /**
  * User locale preferences.
  * Maps directly from Django's LOCALE_CHOICES.
@@ -7,6 +11,9 @@ package com.university.lms.common.domain;
 public enum UserLocale {
     UK("uk", "Ukrainian"),
     EN("en", "English");
+
+    private static final UserLocale DEFAULT = UK;
+    private static final Map<String, UserLocale> LOOKUP = buildLookup();
 
     private final String code;
     private final String displayName;
@@ -25,12 +32,19 @@ public enum UserLocale {
     }
 
     public static UserLocale fromCode(String code) {
-        for (UserLocale locale : values()) {
-            if (locale.code.equalsIgnoreCase(code)) {
-                return locale;
-            }
+        if (code == null || code.isBlank()) {
+            return DEFAULT;
         }
-        return UK; // Default
+        String normalized = code.trim().toLowerCase(Locale.ROOT);
+        return LOOKUP.getOrDefault(normalized, DEFAULT);
+    }
+
+    private static Map<String, UserLocale> buildLookup() {
+        Map<String, UserLocale> lookup = new HashMap<>();
+        for (UserLocale locale : values()) {
+            lookup.put(locale.code, locale);
+            lookup.put(locale.name().toLowerCase(Locale.ROOT), locale);
+        }
+        return Map.copyOf(lookup);
     }
 }
-

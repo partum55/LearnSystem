@@ -1,6 +1,6 @@
 # LMS Spring Boot Backend
 
-Enterprise-grade Learning Management System backend built with Spring Boot 3.2, implementing microservices architecture for scalability and maintainability.
+Enterprise-grade Learning Management System backend built with Spring Boot 3.2 and a modular service architecture.
 
 ## 🏗️ Architecture
 
@@ -10,14 +10,15 @@ This is a multi-module Maven project following Domain-Driven Design (DDD) princi
 backend-spring/
 ├── lms-common/              # Shared utilities, DTOs, exceptions
 ├── lms-user-service/        # User management & authentication
-├── lms-course-service/      # Course management (planned)
-├── lms-assessment-service/  # Assessment engine (planned)
-├── lms-submission-service/  # Submission processing (planned)
-├── lms-grade-service/       # Gradebook management (planned)
-├── lms-notification-service/# Communication hub (planned)
-├── lms-analytics-service/   # Business intelligence (planned)
-└── lms-api-gateway/         # API Gateway (planned)
+├── lms-learning-service/    # Courses + assessments + gradebook + submissions + deadlines
+├── lms-ai-service/          # AI content generation workflows
+├── lms-analytics-service/   # Analytics and reporting APIs
+├── lms-api-gateway/         # API Gateway
+└── lms-eureka-server/       # Service discovery
 ```
+
+Architecture decision record:
+- `docs/adr/0001-learning-service-modular-monolith.md`
 
 ## 🚀 Technology Stack
 
@@ -59,7 +60,7 @@ backend-spring/
 - [x] Common DTOs (ErrorResponse, PageResponse)
 - [x] Shared utilities
 
-#### Course Service ✅
+#### Learning Service ✅
 - [x] Course entity with multilingual support (UK/EN)
 - [x] Course visibility controls (PUBLIC, PRIVATE, DRAFT)
 - [x] Course status management (DRAFT, PUBLISHED, ARCHIVED)
@@ -76,19 +77,13 @@ backend-spring/
 - [x] Permission-based authorization
 - [x] Self-enrollment and drop functionality
 
-### 🔄 Phase 2: Assessment & Submission Services (Next)
+### ✅ Learning Domains (Completed in `lms-learning-service`)
 
-#### Assessment Service (Planned)
-- [ ] Assignment creation (QUIZ, FILE_UPLOAD, TEXT, CODE)
-- [ ] Quiz management
-- [ ] Auto-grading engine
-- [ ] Rubric evaluation
-
-#### Assessment Service (Planned)
-- [ ] Assignment creation (QUIZ, FILE_UPLOAD, TEXT, CODE)
-- [ ] Quiz management
-- [ ] Auto-grading engine
-- [ ] Rubric evaluation
+- [x] Course management, enrollment, modules, resources
+- [x] Assignment, quiz, and question-bank APIs
+- [x] Gradebook and predictive risk analytics APIs
+- [x] Submission workflows (draft, upload, submit, grade, comments)
+- [x] Deadline/calendar/notification APIs
 
 ## 🔧 Prerequisites
 
@@ -106,11 +101,11 @@ backend-spring/
 # Navigate to project root
 cd /home/parum/IdeaProjects/LearnSystemUCU
 
-# Start all services (PostgreSQL, Redis, Spring Boot)
-docker-compose up -d backend-spring
+# Start all services
+docker-compose up -d
 
 # View logs
-docker-compose logs -f backend-spring
+docker-compose logs -f api-gateway learning-service user-service ai-service analytics-service
 
 # Stop services
 docker-compose down
@@ -333,4 +328,3 @@ git push origin feature/user-service-implementation
 ## 📄 License
 
 See [LICENSE](../LICENSE) file in the project root.
-

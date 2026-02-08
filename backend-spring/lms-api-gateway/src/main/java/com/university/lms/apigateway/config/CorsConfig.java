@@ -1,60 +1,58 @@
 package com.university.lms.apigateway.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
+import java.time.Duration;
 import java.util.List;
 
 /**
  * CORS configuration for API Gateway.
- * Allows frontend to make cross-origin requests.
  */
 @Configuration
 public class CorsConfig {
 
+    @Value("${gateway.cors.allowed-origins:http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000,http://127.0.0.1:8080}")
+    private List<String> allowedOrigins;
+
+    @Value("${gateway.cors.allowed-methods:GET,POST,PUT,DELETE,PATCH,OPTIONS,HEAD}")
+    private List<String> allowedMethods;
+
+    @Value("${gateway.cors.allowed-headers:*}")
+    private List<String> allowedHeaders;
+
+    @Value("${gateway.cors.exposed-headers:Authorization,Content-Type,X-Total-Count,X-Page-Number,X-Page-Size}")
+    private List<String> exposedHeaders;
+
+    @Value("${gateway.cors.allow-credentials:true}")
+    private boolean allowCredentials;
+
+    @Value("${gateway.cors.max-age-seconds:3600}")
+    private long maxAgeSeconds;
+
     @Bean
     public CorsWebFilter corsWebFilter() {
-        CorsConfiguration corsConfig = new CorsConfiguration();
-
-        // Allow origins for local development
-        corsConfig.setAllowedOrigins(Arrays.asList(
-            "http://localhost:3000",
-            "http://localhost:8080",
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:8080"
-        ));
-
-        // Allow all common HTTP methods
-        corsConfig.setAllowedMethods(Arrays.asList(
-            "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"
-        ));
-
-        // Allow all headers
-        corsConfig.setAllowedHeaders(List.of("*"));
-
-        // Allow credentials (cookies, authorization headers)
-        corsConfig.setAllowCredentials(true);
-
-        // Expose headers to frontend
-        corsConfig.setExposedHeaders(Arrays.asList(
-            "Authorization",
-            "Content-Type",
-            "X-Total-Count",
-            "X-Page-Number",
-            "X-Page-Size"
-        ));
-
-        // Cache preflight response for 1 hour
-        corsConfig.setMaxAge(3600L);
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(normalize(allowedOrigins));
+        configuration.setAllowedMethods(normalize(allowedMethods));
+        configuration.setAllowedHeaders(normalize(allowedHeaders));
+        configuration.setExposedHeaders(normalize(exposedHeaders));
+        configuration.setAllowCredentials(allowCredentials);
+        configuration.setMaxAge(Duration.ofSeconds(maxAgeSeconds));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", corsConfig);
-
+        source.registerCorsConfiguration("/**", configuration);
         return new CorsWebFilter(source);
     }
-}
 
+    private List<String> normalize(List<String> values) {
+        return values.stream()
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .toList();
+    }
+}

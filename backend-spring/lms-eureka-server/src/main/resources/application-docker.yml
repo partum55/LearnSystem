@@ -1,5 +1,16 @@
-# Docker profile for eureka-server
+# Docker profile overrides for Eureka server
+server:
+  port: ${SERVER_PORT:8761}
+
 eureka:
   instance:
-    hostname: eureka-server
+    hostname: ${EUREKA_HOSTNAME:eureka-server}
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: ${EUREKA_DEFAULT_ZONE:http://eureka-server:${server.port}/eureka}
 
+logging:
+  level:
+    root: INFO

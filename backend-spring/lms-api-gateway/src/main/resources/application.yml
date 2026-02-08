@@ -1,7 +1,8 @@
 spring:
   application:
     name: lms-api-gateway
-  # Redis for rate limiting
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -25,29 +26,48 @@ spring:
           uri: lb://lms-user-service
           predicates:
             - Path=/api/v1/users/**, /api/users/**, /api/v1/auth/**, /api/auth/**
-        - id: course-service
-          uri: lb://lms-course-service
+          filters:
+            - RewritePath=/api/v1/users(?<segment>/?.*), /api/users${segment}
+            - RewritePath=/api/v1/auth(?<segment>/?.*), /api/auth${segment}
+
+        - id: learning-courses
+          uri: lb://lms-learning-service
           predicates:
             - Path=/api/v1/courses/**, /api/courses/**
-        - id: assessment-service
-          uri: lb://lms-assessment-service
+          filters:
+            - RewritePath=/api/v1/courses(?<segment>/?.*), /api/courses${segment}
+
+        - id: learning-assessments
+          uri: lb://lms-learning-service
           predicates:
             - Path=/api/v1/assessments/**, /api/assessments/**
           filters:
             - RewritePath=/api/assessments/(?<segment>.*), /api/${segment}
             - RewritePath=/api/v1/assessments/(?<segment>.*), /api/${segment}
-        - id: submission-service
-          uri: lb://lms-submission-service
+
+        - id: learning-submissions
+          uri: lb://lms-learning-service
           predicates:
             - Path=/api/v1/submissions/**, /api/submissions/**
-        - id: gradebook-service
-          uri: lb://lms-gradebook-service
+          filters:
+            - RewritePath=/api/v1/submissions(?<segment>/?.*), /api/submissions${segment}
+
+        - id: learning-gradebook
+          uri: lb://lms-learning-service
           predicates:
             - Path=/api/v1/gradebook/**, /api/gradebook/**
-        - id: deadline-service
-          uri: lb://lms-deadline-service
+          filters:
+            - RewritePath=/api/v1/gradebook(?<segment>/?.*), /api/gradebook${segment}
+
+        - id: learning-deadlines
+          uri: lb://lms-learning-service
           predicates:
             - Path=/api/v1/calendar/**, /api/calendar/**, /api/v1/deadlines/**, /api/deadlines/**, /api/v1/notifications/**, /api/notifications/**
+          filters:
+            - RewritePath=/api/v1/calendar(?<segment>/?.*), /api/calendar${segment}
+            - RewritePath=/api/v1/deadlines(?<segment>/?.*), /api/deadlines${segment}
+            - RewritePath=/api/v1/notifications(?<segment>/?.*), /api/notifications${segment}
+
         - id: ai-service-v1
           uri: lb://lms-ai-service
           predicates:
@@ -55,14 +75,15 @@ spring:
           filters:
             - name: RequestRateLimiter
               args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-                redis-rate-limiter.requestedTokens: 1
+                redis-rate-limiter.replenishRate: ${gateway.ai-rate-limit.replenish-rate:10}
+                redis-rate-limiter.burstCapacity: ${gateway.ai-rate-limit.burst-capacity:20}
+                redis-rate-limiter.requestedTokens: ${gateway.ai-rate-limit.requested-tokens:1}
                 key-resolver: "#{@userKeyResolver}"
             - name: CircuitBreaker
               args:
                 name: aiServiceCircuitBreaker
                 fallbackUri: forward:/fallback/ai
+
         - id: ai-service
           uri: lb://lms-ai-service
           predicates:
@@ -71,20 +92,29 @@ spring:
             - RewritePath=/api/ai/(?<segment>.*), /api/v1/ai/${segment}
             - name: RequestRateLimiter
               args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-                redis-rate-limiter.requestedTokens: 1
+                redis-rate-limiter.replenishRate: ${gateway.ai-rate-limit.replenish-rate:10}
+                redis-rate-limiter.burstCapacity: ${gateway.ai-rate-limit.burst-capacity:20}
+                redis-rate-limiter.requestedTokens: ${gateway.ai-rate-limit.requested-tokens:1}
                 key-resolver: "#{@userKeyResolver}"
             - name: CircuitBreaker
               args:
                 name: aiServiceCircuitBreaker
                 fallbackUri: forward:/fallback/ai
+
+        - id: learning-risk-analytics
+          uri: lb://lms-learning-service
+          predicates:
+            - Path=/api/analytics/courses/*/at-risk-students, /api/analytics/courses/*/students/*/risk, /api/v1/analytics/courses/*/at-risk-students, /api/v1/analytics/courses/*/students/*/risk
+          filters:
+            - RewritePath=/api/v1/analytics(?<segment>/?.*), /api/analytics${segment}
+
         - id: analytics-service
           uri: lb://lms-analytics-service
           predicates:
             - Path=/api/v1/analytics/**, /api/analytics/**
+          filters:
+            - RewritePath=/api/v1/analytics(?<segment>/?.*), /api/analytics${segment}
 
-# Circuit Breaker Configuration
 resilience4j:
   circuitbreaker:
     instances:
@@ -97,6 +127,19 @@ resilience4j:
     instances:
       aiServiceCircuitBreaker:
         timeoutDuration: 60s
+
+gateway:
+  cors:
+    allowed-origins: ${GATEWAY_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000,http://127.0.0.1:8080}
+    allowed-methods: ${GATEWAY_CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,PATCH,OPTIONS,HEAD}
+    allowed-headers: ${GATEWAY_CORS_ALLOWED_HEADERS:*}
+    exposed-headers: ${GATEWAY_CORS_EXPOSED_HEADERS:Authorization,Content-Type,X-Total-Count,X-Page-Number,X-Page-Size}
+    allow-credentials: ${GATEWAY_CORS_ALLOW_CREDENTIALS:true}
+    max-age-seconds: ${GATEWAY_CORS_MAX_AGE_SECONDS:3600}
+  ai-rate-limit:
+    replenish-rate: ${AI_RATE_LIMIT_REPLENISH_RATE:10}
+    burst-capacity: ${AI_RATE_LIMIT_BURST_CAPACITY:20}
+    requested-tokens: ${AI_RATE_LIMIT_REQUESTED_TOKENS:1}
 
 management:
   endpoints:
@@ -115,4 +158,4 @@ eureka:
     prefer-ip-address: true
 
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}

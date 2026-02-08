@@ -1,105 +1,82 @@
 package com.university.lms.user.web;
 
-import com.university.lms.user.dto.*;
+import com.university.lms.user.dto.AuthResponse;
+import com.university.lms.user.dto.LoginRequest;
+import com.university.lms.user.dto.RegisterRequest;
+import com.university.lms.user.dto.ResetPasswordRequest;
+import com.university.lms.user.dto.UserDto;
 import com.university.lms.user.service.UserService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-/**
- * REST controller for authentication operations.
- * Matches Django's auth endpoints.
- */
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
-@Slf4j
+@Validated
 public class AuthController {
+
+    private static final String BEARER_PREFIX = "Bearer ";
 
     private final UserService userService;
 
-    /**
-     * Register a new user.
-     * POST /api/auth/register
-     */
     @PostMapping("/register")
     public ResponseEntity<UserDto> register(@Valid @RequestBody RegisterRequest request) {
-        log.info("Registration request for email: {}", request.getEmail());
         UserDto user = userService.registerUser(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }
 
-    /**
-     * Login user.
-     * POST /api/auth/login
-     */
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        log.info("Login request for email: {}", request.getEmail());
         AuthResponse response = userService.login(request);
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Verify email with token.
-     * POST /api/auth/verify-email
-     */
     @PostMapping("/verify-email")
-    public ResponseEntity<Void> verifyEmail(@RequestParam String token) {
-        log.info("Email verification request");
+    public ResponseEntity<Void> verifyEmail(@RequestParam @NotBlank String token) {
         userService.verifyEmail(token);
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * Request password reset.
-     * POST /api/auth/forgot-password
-     */
     @PostMapping("/forgot-password")
-    public ResponseEntity<Void> forgotPassword(@RequestParam String email) {
-        log.info("Password reset request for email: {}", email);
+    public ResponseEntity<Void> forgotPassword(@RequestParam @NotBlank @Email String email) {
         userService.requestPasswordReset(email);
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * Reset password with token.
-     * POST /api/auth/reset-password
-     */
     @PostMapping("/reset-password")
     public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
-        log.info("Password reset with token");
         userService.resetPassword(request);
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * Refresh access token.
-     * POST /api/auth/refresh
-     */
     @PostMapping("/refresh")
-    public ResponseEntity<AuthResponse> refreshToken(@RequestHeader("Authorization") String refreshToken) {
-        log.info("Token refresh request");
-        // Remove "Bearer " prefix if present
-        String token = refreshToken.startsWith("Bearer ") ? refreshToken.substring(7) : refreshToken;
-        AuthResponse response = userService.refreshToken(token);
+    public ResponseEntity<AuthResponse> refreshToken(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader) {
+        AuthResponse response = userService.refreshToken(extractBearerToken(authorizationHeader));
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Logout user.
-     * POST /api/auth/logout
-     */
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@RequestHeader("Authorization") String authHeader) {
-        log.info("Logout request");
-        // Remove "Bearer " prefix if present
-        String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
-        userService.logout(token);
+    public ResponseEntity<Void> logout(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader) {
+        userService.logout(extractBearerToken(authorizationHeader));
         return ResponseEntity.ok().build();
     }
-}
 
+    private String extractBearerToken(String authHeader) {
+        if (authHeader == null || authHeader.isBlank()) {
+            return "";
+        }
+        return authHeader.startsWith(BEARER_PREFIX) ? authHeader.substring(BEARER_PREFIX.length()) : authHeader;
+    }
+}

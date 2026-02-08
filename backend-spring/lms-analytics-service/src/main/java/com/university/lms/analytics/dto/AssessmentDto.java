@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.ZonedDateTime;
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -13,6 +13,5 @@ public class AssessmentDto {
     private String id;
     private String courseId;
     private String title;
-    private ZonedDateTime dueDate;
+    private LocalDateTime dueDate;
 }
-

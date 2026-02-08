@@ -41,6 +41,7 @@ jwt:
 # Security Configuration
 security:
   cors:
+    enabled: true
     allowed-origins: http://localhost:3000,http://localhost:8080,http://localhost:5173
   rate-limit:
     enabled: true
@@ -91,4 +92,3 @@ logging:
     org.hibernate.SQL: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-

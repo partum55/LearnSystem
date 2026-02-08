@@ -34,13 +34,13 @@ LLAMA_API_KEY=your-groq-api-key-here
 ### Step 2: Deploy
 
 ```bash
-# Run the deployment script
-./deploy-docker.sh
+# Build and start all services
+docker-compose up -d --build
 ```
 
 This will:
 - ✅ Build all Docker images (5-10 minutes first time)
-- ✅ Start all 12 services
+- ✅ Start all platform services
 - ✅ Setup PostgreSQL database
 - ✅ Setup Redis cache
 - ✅ Configure networking
@@ -49,7 +49,7 @@ This will:
 
 ```bash
 # Check service status
-./check-docker-status.sh
+docker-compose ps
 
 # Or check Eureka dashboard
 open http://localhost:8761
@@ -72,16 +72,13 @@ Once deployed:
 
 **Individual Microservices:**
 - User Service: http://localhost:8081/api
-- Course Service: http://localhost:8082/api
-- Assessment Service: http://localhost:8083/api
-- Gradebook Service: http://localhost:8084/api
+- Learning Service: http://localhost:8089/api
 - AI Service: http://localhost:8085/api
-- Deadline Service: http://localhost:8086/api
 - Analytics Service: http://localhost:8088/api
 
 **Databases:**
 - PostgreSQL: localhost:5432
-- Redis: localhost:6379
+- Redis: localhost:6380
 
 ---
 
@@ -198,11 +195,11 @@ REACT_APP_AI_SERVICE_URL=http://localhost:8080/api/ai
                        |
         ┌──────────────┼──────────────┬──────────┐
         |              |              |          |
-    User (8081)   Course (8082)  Assessment  Gradebook
-        |              |          (8083)      (8084)
+    User (8081)  Learning (8089)     AI       Analytics
+        |              |            (8085)      (8088)
         |              |              |          |
-    AI (8085)    Deadline (8086)  Analytics  PostgreSQL
-                                  (8088)      Redis
+        └──────────────┴──────────────┴──────────┘
+                          PostgreSQL + Redis
 ```
 
 ---
@@ -520,7 +517,7 @@ docker ps --format "table {{.Names}}\t{{.Status}}"
 
 # Individual service health
 curl http://localhost:8080/actuator/health
-curl http://localhost:8085/actuator/health
+curl http://localhost:8085/api/actuator/health
 ```
 
 ### Prometheus Metrics
@@ -528,7 +525,7 @@ curl http://localhost:8085/actuator/health
 **Metrics endpoints available:**
 ```bash
 # AI Service metrics
-curl http://localhost:8085/actuator/prometheus
+curl http://localhost:8085/api/actuator/prometheus
 
 # User Service metrics
 curl http://localhost:8081/api/actuator/prometheus
@@ -541,7 +538,7 @@ curl http://localhost:8081/api/actuator/prometheus
 ### 1. Check Services are Up
 
 ```bash
-./check-docker-status.sh
+docker-compose ps
 ```
 
 ### 2. Test API Gateway
@@ -554,7 +551,7 @@ curl http://localhost:8080/actuator/health
 
 ```bash
 # Health check
-curl http://localhost:8085/actuator/health
+curl http://localhost:8085/api/actuator/health
 
 # Test AI generation (requires authentication)
 curl -X POST http://localhost:8080/api/ai/generate \
@@ -610,21 +607,22 @@ docker run --rm \
 
 ### Development Mode
 
-**Use docker-compose.dev.yml for frontend hot reload:**
+**Use Docker for backend + local frontend dev server:**
 
 ```bash
 # Start only database and backend services
-docker-compose up -d postgres redis eureka-server
+docker-compose up -d postgres redis eureka-server user-service learning-service ai-service analytics-service api-gateway
 
 # Start frontend in development mode
-docker-compose -f docker-compose.dev.yml up frontend
+cd frontend
+npm run dev
 ```
 
 **Or run frontend locally:**
 ```bash
 cd frontend
 npm install
-npm start
+npm run dev
 ```
 
 ### Backend Development
@@ -678,10 +676,10 @@ docker system prune -a --volumes
 
 ```bash
 # Deploy
-./deploy-docker.sh
+docker-compose up -d --build
 
 # Check status
-./check-docker-status.sh
+docker-compose ps
 
 # View logs
 docker-compose logs -f [service]
@@ -738,4 +736,3 @@ Before going to production:
 **Docker deployment is now ready!** 🚀
 
 For issues, check logs and troubleshooting section above.
-

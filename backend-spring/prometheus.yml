@@ -9,7 +9,7 @@ scrape_configs:
   - job_name: 'lms-services'
     metrics_path: '/actuator/prometheus'
     static_configs:
-      - targets: ['lms-user-service:8081', 'lms-course-service:8082', 'lms-assessment-service:8083', 'lms-api-gateway:8080']
+      - targets: ['lms-user-service:8081', 'lms-learning-service:8089', 'lms-api-gateway:8080']
 
   - job_name: 'lms-ai-service'
     metrics_path: '/actuator/prometheus'
@@ -20,4 +20,3 @@ scrape_configs:
       - source_labels: [__address__]
         target_label: instance
         replacement: 'ai-service'
-

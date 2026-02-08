@@ -2,26 +2,29 @@ package com.university.lms.common.security;
 
 import org.springframework.stereotype.Component;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.List;
 import java.util.regex.Pattern;
 
 /**
  * Input sanitization and validation utility.
- * Prevents injection attacks (XSS, SQL Injection, etc.)
  */
 @Component
 public class InputSanitizer {
 
-    // Patterns for validation
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
             "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
     );
-
     private static final Pattern ALPHA_NUMERIC = Pattern.compile("^[a-zA-Z0-9]+$");
-
     private static final Pattern SAFE_TEXT = Pattern.compile("^[a-zA-Z0-9\\s.,!?'-]+$");
+    private static final Pattern UUID_PATTERN = Pattern.compile(
+            "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    );
+    private static final Pattern SAFE_FILE_PATH_CHARS = Pattern.compile("[^A-Za-z0-9._-]");
+    private static final Pattern MULTIPLE_UNDERSCORES = Pattern.compile("_+");
 
-    // Dangerous characters/patterns
-    private static final Pattern[] XSS_PATTERNS = {
+    private static final List<Pattern> XSS_PATTERNS = List.of(
             Pattern.compile("<script", Pattern.CASE_INSENSITIVE),
             Pattern.compile("javascript:", Pattern.CASE_INSENSITIVE),
             Pattern.compile("onerror=", Pattern.CASE_INSENSITIVE),
@@ -29,168 +32,134 @@ public class InputSanitizer {
             Pattern.compile("<iframe", Pattern.CASE_INSENSITIVE),
             Pattern.compile("<object", Pattern.CASE_INSENSITIVE),
             Pattern.compile("<embed", Pattern.CASE_INSENSITIVE)
-    };
+    );
 
-    private static final Pattern[] SQL_INJECTION_PATTERNS = {
-            Pattern.compile("('|(\\-\\-)|(;)|(\\|\\|)|(\\*))", Pattern.CASE_INSENSITIVE),
-            Pattern.compile("(union.*select)", Pattern.CASE_INSENSITIVE),
-            Pattern.compile("(insert.*into)", Pattern.CASE_INSENSITIVE),
-            Pattern.compile("(delete.*from)", Pattern.CASE_INSENSITIVE),
-            Pattern.compile("(drop.*table)", Pattern.CASE_INSENSITIVE),
-            Pattern.compile("(update.*set)", Pattern.CASE_INSENSITIVE),
-            Pattern.compile("(exec(ute)?\\s)", Pattern.CASE_INSENSITIVE)
-    };
+    private static final List<Pattern> SQL_INJECTION_PATTERNS = List.of(
+            Pattern.compile("(--|/\\*|\\*/|;\\s*$)", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("\\bunion\\b\\s+\\bselect\\b", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("\\binsert\\b\\s+\\binto\\b", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("\\bdelete\\b\\s+\\bfrom\\b", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("\\bdrop\\b\\s+\\btable\\b", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("\\bupdate\\b\\s+\\w+\\s+\\bset\\b", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("\\bexec(?:ute)?\\b\\s", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("\\b(?:or|and)\\b\\s+['\"]?\\d+['\"]?\\s*=\\s*['\"]?\\d+['\"]?", Pattern.CASE_INSENSITIVE)
+    );
 
-    /**
-     * Validate email format.
-     */
     public boolean isValidEmail(String email) {
-        if (email == null || email.trim().isEmpty()) {
+        if (email == null) {
             return false;
         }
-        return EMAIL_PATTERN.matcher(email).matches();
+        String normalized = email.trim();
+        return !normalized.isEmpty() && EMAIL_PATTERN.matcher(normalized).matches();
     }
 
     /**
-     * Sanitize string to prevent XSS attacks.
+     * Encodes common HTML characters to reduce XSS risk in rendered content.
      */
     public String sanitizeXSS(String input) {
         if (input == null) {
             return null;
         }
 
-        String sanitized = input;
-
-        // HTML encode special characters
-        sanitized = sanitized.replace("&", "&amp;")
+        return input
+                .replace("&", "&amp;")
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;")
-                .replace("'", "&#x27;")
-                .replace("/", "&#x2F;");
-
-        return sanitized;
+                .replace("'", "&#x27;");
     }
 
-    /**
-     * Check if input contains potential XSS attack vectors.
-     */
     public boolean containsXSS(String input) {
-        if (input == null || input.isEmpty()) {
-            return false;
-        }
-
-        for (Pattern pattern : XSS_PATTERNS) {
-            if (pattern.matcher(input).find()) {
-                return true;
-            }
-        }
-
-        return false;
+        return matchesAnyPattern(input, XSS_PATTERNS);
     }
 
-    /**
-     * Check if input contains potential SQL injection patterns.
-     */
     public boolean containsSQLInjection(String input) {
-        if (input == null || input.isEmpty()) {
-            return false;
-        }
-
-        for (Pattern pattern : SQL_INJECTION_PATTERNS) {
-            if (pattern.matcher(input).find()) {
-                return true;
-            }
-        }
-
-        return false;
+        return matchesAnyPattern(input, SQL_INJECTION_PATTERNS);
     }
 
-    /**
-     * Validate UUID format.
-     */
     public boolean isValidUUID(String uuid) {
-        if (uuid == null || uuid.trim().isEmpty()) {
+        if (uuid == null) {
             return false;
         }
-
-        Pattern uuidPattern = Pattern.compile(
-                "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-        );
-
-        return uuidPattern.matcher(uuid).matches();
+        String normalized = uuid.trim();
+        return !normalized.isEmpty() && UUID_PATTERN.matcher(normalized).matches();
     }
 
-    /**
-     * Sanitize string for safe use in file paths.
-     */
     public String sanitizeFilePath(String input) {
         if (input == null) {
             return null;
         }
 
-        // Remove path traversal attempts
-        String sanitized = input.replace("..", "")
+        String sanitized = input
+                .trim()
+                .replace("..", "")
                 .replace("./", "")
                 .replace("\\", "")
                 .replace(":", "");
 
-        // Only allow alphanumeric, dash, underscore, and dot
-        sanitized = sanitized.replaceAll("[^a-zA-Z0-9._-]", "_");
-
+        sanitized = SAFE_FILE_PATH_CHARS.matcher(sanitized).replaceAll("_");
+        sanitized = MULTIPLE_UNDERSCORES.matcher(sanitized).replaceAll("_");
         return sanitized;
     }
 
-    /**
-     * Validate alphanumeric string.
-     */
     public boolean isAlphaNumeric(String input) {
-        if (input == null || input.trim().isEmpty()) {
+        if (input == null) {
             return false;
         }
-        return ALPHA_NUMERIC.matcher(input).matches();
+        String normalized = input.trim();
+        return !normalized.isEmpty() && ALPHA_NUMERIC.matcher(normalized).matches();
     }
 
-    /**
-     * Validate safe text (alphanumeric + common punctuation).
-     */
     public boolean isSafeText(String input) {
-        if (input == null || input.trim().isEmpty()) {
+        if (input == null) {
             return false;
         }
-        return SAFE_TEXT.matcher(input).matches();
+        String normalized = input.trim();
+        return !normalized.isEmpty() && SAFE_TEXT.matcher(normalized).matches();
     }
 
-    /**
-     * Validate and sanitize input with maximum length.
-     */
     public String sanitizeWithMaxLength(String input, int maxLength) {
         if (input == null) {
             return null;
         }
 
         String sanitized = sanitizeXSS(input.trim());
-
-        if (sanitized.length() > maxLength) {
-            sanitized = sanitized.substring(0, maxLength);
+        if (maxLength < 0) {
+            return sanitized;
         }
-
-        return sanitized;
+        return sanitized.length() > maxLength ? sanitized.substring(0, maxLength) : sanitized;
     }
 
-    /**
-     * Validate URL format.
-     */
     public boolean isValidURL(String url) {
-        if (url == null || url.trim().isEmpty()) {
+        if (url == null) {
             return false;
         }
 
-        Pattern urlPattern = Pattern.compile(
-                "^(https?)://[a-zA-Z0-9.-]+(:[0-9]+)?(/.*)?$"
-        );
+        String normalized = url.trim();
+        if (normalized.isEmpty()) {
+            return false;
+        }
 
-        return urlPattern.matcher(url).matches();
+        try {
+            URI uri = new URI(normalized);
+            String scheme = uri.getScheme();
+            return ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))
+                    && uri.getHost() != null
+                    && !uri.getHost().isBlank();
+        } catch (URISyntaxException e) {
+            return false;
+        }
+    }
+
+    private boolean matchesAnyPattern(String input, List<Pattern> patterns) {
+        if (input == null || input.isEmpty()) {
+            return false;
+        }
+        for (Pattern pattern : patterns) {
+            if (pattern.matcher(input).find()) {
+                return true;
+            }
+        }
+        return false;
     }
 }
-

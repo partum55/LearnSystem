@@ -4,14 +4,13 @@ import com.university.lms.analytics.dto.AssessmentDto;
 import com.university.lms.analytics.feign.fallback.AssessmentServiceFallback;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
 
-@FeignClient(name = "lms-assessment-service", path = "/api/assessments", fallback = AssessmentServiceFallback.class)
+@FeignClient(name = "lms-learning-service", path = "/api/assignments", fallback = AssessmentServiceFallback.class)
 public interface AssessmentServiceClient {
 
-    @GetMapping
-    List<AssessmentDto> getAssessmentsByCourseId(@RequestParam("courseId") String courseId);
+    @GetMapping("/course/{courseId}")
+    List<AssessmentDto> getAssessmentsByCourseId(@PathVariable("courseId") String courseId);
 }
-

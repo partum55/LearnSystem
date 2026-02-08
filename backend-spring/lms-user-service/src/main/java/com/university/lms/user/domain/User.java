@@ -21,9 +21,9 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "users", indexes = {
-    @Index(name = "idx_user_email", columnList = "email"),
-    @Index(name = "idx_user_role", columnList = "role"),
-    @Index(name = "idx_user_student_id", columnList = "student_id")
+        @Index(name = "idx_user_email", columnList = "email"),
+        @Index(name = "idx_user_role", columnList = "role"),
+        @Index(name = "idx_user_student_id", columnList = "student_id")
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
@@ -83,6 +83,10 @@ public class User {
     @Builder.Default
     private boolean isStaff = false;
 
+    @Column(name = "is_deleted")
+    @Builder.Default
+    private boolean isDeleted = false;
+
     @Column(name = "email_verified")
     @Builder.Default
     private boolean emailVerified = false;
@@ -122,8 +126,14 @@ public class User {
         if (displayName != null && !displayName.isBlank()) {
             return displayName;
         }
-        if (firstName != null && lastName != null) {
+        if (firstName != null && !firstName.isBlank() && lastName != null && !lastName.isBlank()) {
             return firstName + " " + lastName;
+        }
+        if (firstName != null && !firstName.isBlank()) {
+            return firstName;
+        }
+        if (lastName != null && !lastName.isBlank()) {
+            return lastName;
         }
         return email;
     }
@@ -147,7 +157,7 @@ public class User {
      */
     public boolean isPasswordResetTokenValid() {
         return passwordResetToken != null
-            && passwordResetExpires != null
-            && passwordResetExpires.isAfter(LocalDateTime.now());
+                && passwordResetExpires != null
+                && passwordResetExpires.isAfter(LocalDateTime.now());
     }
 }

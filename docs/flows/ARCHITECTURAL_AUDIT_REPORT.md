@@ -1,6 +1,10 @@
 # ARCHITECTURAL AUDIT REPORT
 ## LearnSystemUCU - AI-Integrated Learning Management System
 
+> [!WARNING]
+> Historical snapshot: this report reflects the pre-consolidation split-service architecture (course/assessment/gradebook/deadline as separate services) as of **December 19, 2025**.
+> Current runtime architecture is the consolidated `lms-learning-service` model described in `docs/adr/0001-learning-service-modular-monolith.md`.
+
 **Audit Date:** December 19, 2025  
 **Auditor Role:** Principal Software Architect & AI Systems Engineer  
 **System:** React + Spring Boot Microservices + LLM Integration
@@ -447,4 +451,3 @@ The architecture is **fundamentally sound** for an MVP but **NOT production-grad
 **Report Prepared By:** AI Systems Architecture Audit  
 **Confidence Level:** High (based on full codebase review)  
 **Next Review:** After Phase 2 completion
-

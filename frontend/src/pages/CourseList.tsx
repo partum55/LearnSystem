@@ -32,8 +32,8 @@ export const CourseList: React.FC = () => {
 
   const filteredCourses = (courses || []).filter((course: Course) => {
     const matchesSearch =
-      course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      course.code.toLowerCase().includes(searchTerm.toLowerCase());
+      (course.title?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (course.code?.toLowerCase() || '').includes(searchTerm.toLowerCase());
     const matchesFilter =
       filterVisibility === 'all' || course.visibility === filterVisibility.toUpperCase();
     return matchesSearch && matchesFilter;
@@ -138,7 +138,7 @@ export const CourseList: React.FC = () => {
                                 : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
                               }`}
                           >
-                            {t(`courses.${course.visibility.toLowerCase()}`)}
+                            {t(`courses.${(course.visibility?.toLowerCase() || 'public')}`)}
                           </span>
                         </div>
                       </CardHeader>

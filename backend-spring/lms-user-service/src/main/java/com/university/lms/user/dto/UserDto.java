@@ -53,8 +53,14 @@ public class UserDto implements Serializable {
         if (displayName != null && !displayName.isBlank()) {
             return displayName;
         }
-        if (firstName != null && lastName != null) {
+        if (firstName != null && !firstName.isBlank() && lastName != null && !lastName.isBlank()) {
             return firstName + " " + lastName;
+        }
+        if (firstName != null && !firstName.isBlank()) {
+            return firstName;
+        }
+        if (lastName != null && !lastName.isBlank()) {
+            return lastName;
         }
         return email;
     }

@@ -2,5 +2,6 @@
     "java.compile.nullAnalysis.mode": "automatic",
     "chat.tools.terminal.autoApprove": {
         "docker logs": true
-    }
+    },
+    "java.configuration.updateBuildConfiguration": "automatic"
 }

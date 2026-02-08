@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import apiClient, { extractErrorMessage } from '../../api/client';
 
 interface AnalyticsDashboardProps {
   courseId: string;
@@ -26,22 +27,24 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ courseId }) => 
   const [stats, setStats] = useState<CourseStats | null>(null);
   const [students, setStudents] = useState<StudentProgress[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'semester'>('week');
 
   const fetchAnalytics = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      // Fetch course statistics
-      const statsResponse = await fetch(`/api/analytics/courses/${courseId}/stats?range=${timeRange}`);
-      const statsData = await statsResponse.json();
-      setStats(statsData);
-
-      // Fetch student progress
-      const studentsResponse = await fetch(`/api/analytics/courses/${courseId}/student-progress`);
-      const studentsData = await studentsResponse.json();
-      setStudents(studentsData);
+      const [statsResponse, studentsResponse] = await Promise.all([
+        apiClient.get<CourseStats>(`/analytics/courses/${courseId}/stats`, {
+          params: { range: timeRange },
+        }),
+        apiClient.get<StudentProgress[]>(`/analytics/courses/${courseId}/student-progress`),
+      ]);
+      setStats(statsResponse.data);
+      setStudents(studentsResponse.data);
     } catch (error) {
       console.error('Failed to fetch analytics:', error);
+      setError(extractErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -60,7 +63,11 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ courseId }) => 
   }
 
   if (!stats) {
-    return <div className="text-center text-gray-600">No data available</div>;
+    return (
+      <div className="text-center text-gray-600">
+        {error || 'No data available'}
+      </div>
+    );
   }
 
   const strugglingStudents = students.filter(s => s.isStruggling);
@@ -274,4 +281,3 @@ const MetricCard: React.FC<MetricCardProps> = ({ title, value, subtitle, icon, c
 };
 
 export default AnalyticsDashboard;
-

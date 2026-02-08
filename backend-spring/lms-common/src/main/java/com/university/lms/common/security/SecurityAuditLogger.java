@@ -1,109 +1,119 @@
 package com.university.lms.common.security;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
-
 /**
  * Security audit logger for tracking security-relevant events.
- * Implements comprehensive audit logging for compliance and security monitoring.
  */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class SecurityAuditLogger {
 
-    /**
-     * Log successful authentication.
-     */
+    private static final int MAX_FIELD_LENGTH = 512;
+
     public void logSuccessfulAuthentication(String email, String ipAddress, String userAgent) {
-        log.info("SECURITY_AUDIT: Successful authentication - Email: {}, IP: {}, Time: {}, UserAgent: {}",
-                email, ipAddress, LocalDateTime.now(), sanitize(userAgent));
+        log.info(
+                "SECURITY_AUDIT event=auth_success email={} ip={} userAgent={}",
+                sanitize(email),
+                sanitize(ipAddress),
+                sanitize(userAgent)
+        );
     }
 
-    /**
-     * Log failed authentication attempt.
-     */
     public void logFailedAuthentication(String email, String ipAddress, String reason, String userAgent) {
-        log.warn("SECURITY_AUDIT: Failed authentication - Email: {}, IP: {}, Reason: {}, Time: {}, UserAgent: {}",
-                email, ipAddress, reason, LocalDateTime.now(), sanitize(userAgent));
+        log.warn(
+                "SECURITY_AUDIT event=auth_failed email={} ip={} reason={} userAgent={}",
+                sanitize(email),
+                sanitize(ipAddress),
+                sanitize(reason),
+                sanitize(userAgent)
+        );
     }
 
-    /**
-     * Log account lockout.
-     */
     public void logAccountLockout(String email, String ipAddress, int failedAttempts) {
-        log.warn("SECURITY_AUDIT: Account locked - Email: {}, IP: {}, FailedAttempts: {}, Time: {}",
-                email, ipAddress, failedAttempts, LocalDateTime.now());
+        log.warn(
+                "SECURITY_AUDIT event=account_lockout email={} ip={} attempts={}",
+                sanitize(email),
+                sanitize(ipAddress),
+                failedAttempts
+        );
     }
 
-    /**
-     * Log password change.
-     */
     public void logPasswordChange(String userId, String email, String ipAddress) {
-        log.info("SECURITY_AUDIT: Password changed - UserId: {}, Email: {}, IP: {}, Time: {}",
-                userId, email, ipAddress, LocalDateTime.now());
+        log.info(
+                "SECURITY_AUDIT event=password_change userId={} email={} ip={}",
+                sanitize(userId),
+                sanitize(email),
+                sanitize(ipAddress)
+        );
     }
 
-    /**
-     * Log suspicious activity.
-     */
     public void logSuspiciousActivity(String description, String email, String ipAddress) {
-        log.warn("SECURITY_AUDIT: Suspicious activity - Description: {}, Email: {}, IP: {}, Time: {}",
-                description, email, ipAddress, LocalDateTime.now());
+        log.warn(
+                "SECURITY_AUDIT event=suspicious_activity description={} email={} ip={}",
+                sanitize(description),
+                sanitize(email),
+                sanitize(ipAddress)
+        );
     }
 
-    /**
-     * Log privilege escalation attempt.
-     */
     public void logPrivilegeEscalation(String userId, String attemptedAction, String ipAddress) {
-        log.error("SECURITY_AUDIT: Privilege escalation attempt - UserId: {}, Action: {}, IP: {}, Time: {}",
-                userId, attemptedAction, ipAddress, LocalDateTime.now());
+        log.error(
+                "SECURITY_AUDIT event=privilege_escalation userId={} action={} ip={}",
+                sanitize(userId),
+                sanitize(attemptedAction),
+                sanitize(ipAddress)
+        );
     }
 
-    /**
-     * Log token revocation.
-     */
     public void logTokenRevocation(String userId, String reason) {
-        log.info("SECURITY_AUDIT: Token revoked - UserId: {}, Reason: {}, Time: {}",
-                userId, reason, LocalDateTime.now());
+        log.info(
+                "SECURITY_AUDIT event=token_revocation userId={} reason={}",
+                sanitize(userId),
+                sanitize(reason)
+        );
     }
 
-    /**
-     * Log account creation.
-     */
     public void logAccountCreation(String email, String ipAddress) {
-        log.info("SECURITY_AUDIT: Account created - Email: {}, IP: {}, Time: {}",
-                email, ipAddress, LocalDateTime.now());
+        log.info(
+                "SECURITY_AUDIT event=account_created email={} ip={}",
+                sanitize(email),
+                sanitize(ipAddress)
+        );
     }
 
-    /**
-     * Log rate limit exceeded.
-     */
     public void logRateLimitExceeded(String identifier, String endpoint) {
-        log.warn("SECURITY_AUDIT: Rate limit exceeded - Identifier: {}, Endpoint: {}, Time: {}",
-                identifier, endpoint, LocalDateTime.now());
+        log.warn(
+                "SECURITY_AUDIT event=rate_limit_exceeded identifier={} endpoint={}",
+                sanitize(identifier),
+                sanitize(endpoint)
+        );
     }
 
-    /**
-     * Log invalid JWT token attempt.
-     */
     public void logInvalidTokenAttempt(String ipAddress, String reason) {
-        log.warn("SECURITY_AUDIT: Invalid token attempt - IP: {}, Reason: {}, Time: {}",
-                ipAddress, reason, LocalDateTime.now());
+        log.warn(
+                "SECURITY_AUDIT event=invalid_token ip={} reason={}",
+                sanitize(ipAddress),
+                sanitize(reason)
+        );
     }
 
     /**
-     * Sanitize user input to prevent log injection.
+     * Sanitizes user-controlled values to reduce log injection risk.
      */
-    private String sanitize(String input) {
-        if (input == null) {
+    private String sanitize(String value) {
+        if (value == null) {
             return "";
         }
-        // Remove newlines and carriage returns to prevent log injection
-        return input.replaceAll("[\n\r]", "_");
+        String sanitized = value
+                .replace('\n', '_')
+                .replace('\r', '_')
+                .replace('\t', '_')
+                .trim();
+        if (sanitized.length() > MAX_FIELD_LENGTH) {
+            return sanitized.substring(0, MAX_FIELD_LENGTH);
+        }
+        return sanitized;
     }
 }
-

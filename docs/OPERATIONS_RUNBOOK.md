@@ -1,7 +1,7 @@
 # Operations Runbook - LearnSystemUCU
 
-**Version:** 1.0  
-**Last Updated:** December 19, 2025
+**Version:** 1.1  
+**Last Updated:** February 8, 2026
 
 ---
 
@@ -28,22 +28,29 @@
 │   Browser   │     │  (Frontend) │     │   :8080     │
 └─────────────┘     └─────────────┘     └──────┬──────┘
                                                │
-        ┌──────────────────────────────────────┼──────────────────────────────────────┐
-        │                                      │                                       │
-        ▼                                      ▼                                       ▼
-┌───────────────┐     ┌───────────────┐     ┌───────────────┐     ┌───────────────┐
-│ User Service  │     │Course Service │     │Assessment Svc │     │  AI Service   │
-│    :8081      │     │    :8082      │     │    :8083      │     │    :8085      │
-└───────┬───────┘     └───────┬───────┘     └───────┬───────┘     └───────┬───────┘
-        │                     │                     │                     │
-        └─────────────────────┴─────────────────────┴─────────────────────┘
-                                       │
-                              ┌────────┴────────┐
-                              │                 │
-                         ┌────▼────┐      ┌────▼────┐
-                         │PostgreSQL│      │  Redis  │
-                         │  :5432   │      │  :6379  │
-                         └──────────┘      └─────────┘
+        ┌───────────────────────────────┼───────────────────────────────┐
+        │                               │                               │
+        ▼                               ▼                               ▼
+┌───────────────┐               ┌───────────────┐               ┌───────────────┐
+│ User Service  │               │Learning Service│              │  AI Service   │
+│    :8081      │               │    :8089      │               │    :8085      │
+└───────┬───────┘               └───────┬───────┘               └───────┬───────┘
+        │                               │                               │
+        └───────────────────────────────┴───────────────┬───────────────┘
+                                                        ▼
+                                               ┌───────────────┐
+                                               │Analytics Svc  │
+                                               │    :8088      │
+                                               └───────┬───────┘
+                                                       │
+                                              ┌────────┴────────┐
+                                              │                 │
+                                         ┌────▼────┐      ┌────▼────┐
+                                         │PostgreSQL│      │  Redis  │
+                                         │  :5432   │      │  :6380* │
+                                         └──────────┘      └─────────┘
+
+* Host-mapped Redis port (container internal port remains 6379)
 ```
 
 ### Service Ports
@@ -53,13 +60,11 @@
 | Eureka Server | 8761 | /actuator/health |
 | API Gateway | 8080 | /actuator/health |
 | User Service | 8081 | /actuator/health |
-| Course Service | 8082 | /actuator/health |
-| Assessment Service | 8083 | /actuator/health |
-| Gradebook Service | 8084 | /actuator/health |
+| Learning Service | 8089 | /api/actuator/health |
 | AI Service | 8085 | /actuator/health |
-| Analytics Service | 8086 | /actuator/health |
+| Analytics Service | 8088 | /api/actuator/health |
 | PostgreSQL | 5432 | - |
-| Redis | 6379 | PING |
+| Redis | 6380 (host) / 6379 (container) | PING |
 | Prometheus | 9090 | /-/healthy |
 | Grafana | 3000 | /api/health |
 
@@ -100,7 +105,6 @@ REACT_APP_API_URL=/api
 | File | Purpose |
 |------|---------|
 | `docker-compose.yml` | Development deployment |
-| `docker-compose.scale.yml` | Production with scaling |
 | `k8s/*.yaml` | Kubernetes manifests |
 | `prometheus.yml` | Metrics collection |
 | `grafana/dashboards/*.json` | Dashboard definitions |
@@ -113,26 +117,25 @@ REACT_APP_API_URL=/api
 
 ```bash
 # Start all services
-docker-compose -f docker-compose.dev.yml up -d
+docker-compose up -d
 
 # Check status
 docker-compose ps
 
 # View logs
-docker-compose logs -f lms-ai-service
+docker-compose logs -f ai-service
 ```
 
 ### 3.2 Production Deployment (Docker Compose)
 
 ```bash
-# Pull latest images
-docker-compose -f docker-compose.scale.yml pull
+# Rebuild and restart with latest local code
+docker-compose up -d --build
 
-# Deploy with scaling
-docker-compose -f docker-compose.scale.yml up -d --scale lms-ai-service=3
-
-# Verify health
-./scripts/check-health.sh
+# Verify key endpoints
+curl -f http://localhost:8080/actuator/health
+curl -f http://localhost:8081/api/actuator/health
+curl -f http://localhost:8089/api/actuator/health
 ```
 
 ### 3.3 Kubernetes Deployment
@@ -155,7 +158,7 @@ kubectl get hpa
 
 ```bash
 # Docker Compose
-docker-compose -f docker-compose.scale.yml up -d --no-deps lms-ai-service
+docker-compose up -d --no-deps --build ai-service
 
 # Kubernetes
 kubectl rollout restart deployment/lms-ai-service
@@ -169,7 +172,7 @@ kubectl rollout status deployment/lms-ai-service
 kubectl rollout undo deployment/lms-ai-service
 
 # Docker Compose - use previous image tag
-docker-compose -f docker-compose.scale.yml up -d --no-deps lms-ai-service
+docker-compose up -d --no-deps ai-service
 ```
 
 ---
@@ -180,10 +183,17 @@ docker-compose -f docker-compose.scale.yml up -d --no-deps lms-ai-service
 
 ```bash
 #!/bin/bash
-SERVICES=("8080" "8081" "8082" "8083" "8085")
-for port in "${SERVICES[@]}"; do
-    status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$port/actuator/health)
-    echo "Port $port: $status"
+declare -A ENDPOINTS=(
+  ["api-gateway"]="http://localhost:8080/actuator/health"
+  ["user-service"]="http://localhost:8081/api/actuator/health"
+  ["learning-service"]="http://localhost:8089/api/actuator/health"
+  ["ai-service"]="http://localhost:8085/api/actuator/health"
+  ["analytics-service"]="http://localhost:8088/api/actuator/health"
+)
+
+for service in "${!ENDPOINTS[@]}"; do
+  status=$(curl -s -o /dev/null -w "%{http_code}" "${ENDPOINTS[$service]}")
+  echo "$service: $status"
 done
 ```
 
@@ -225,7 +235,7 @@ Dashboards:
 **Diagnosis:**
 ```bash
 # Check circuit breaker state
-curl http://localhost:8085/actuator/circuitbreakers | jq
+curl http://localhost:8085/api/actuator/circuitbreakers | jq
 
 # Check AI service logs
 docker logs lms-ai-service --tail 100
@@ -249,7 +259,7 @@ curl -H "Authorization: Bearer $LLAMA_API_KEY" https://api.groq.com/openai/v1/mo
 docker stats
 
 # Check JVM heap
-curl http://localhost:8085/actuator/metrics/jvm.memory.used | jq
+curl http://localhost:8085/api/actuator/metrics/jvm.memory.used | jq
 ```
 
 **Resolution:**
@@ -264,10 +274,10 @@ curl http://localhost:8085/actuator/metrics/jvm.memory.used | jq
 **Diagnosis:**
 ```bash
 # Check active connections
-docker exec postgres psql -U lms_user -c "SELECT count(*) FROM pg_stat_activity;"
+docker exec lms-postgres psql -U lms_user -c "SELECT count(*) FROM pg_stat_activity;"
 
 # Check HikariCP metrics
-curl http://localhost:8085/actuator/metrics/hikaricp.connections.active | jq
+curl http://localhost:8085/api/actuator/metrics/hikaricp.connections.active | jq
 ```
 
 **Resolution:**
@@ -285,10 +295,10 @@ curl http://localhost:8085/actuator/metrics/hikaricp.connections.active | jq
 **Diagnosis:**
 ```bash
 # Check Redis connectivity
-docker exec redis redis-cli PING
+docker exec lms-redis redis-cli PING
 
 # Check memory
-docker exec redis redis-cli INFO memory
+docker exec lms-redis redis-cli INFO memory
 ```
 
 **Resolution:**
@@ -306,7 +316,7 @@ docker exec redis redis-cli INFO memory
 curl http://localhost:8761/eureka/apps | jq
 
 # Check service registration
-curl http://localhost:8085/actuator/health | jq '.components.discoveryComposite'
+curl http://localhost:8085/api/actuator/health | jq '.components.discoveryComposite'
 ```
 
 **Resolution:**
@@ -322,7 +332,7 @@ curl http://localhost:8085/actuator/health | jq '.components.discoveryComposite'
 
 ```bash
 # Docker Compose
-docker-compose -f docker-compose.scale.yml up -d --scale lms-ai-service=5
+docker-compose up -d --scale ai-service=3
 
 # Kubernetes
 kubectl scale deployment lms-ai-service --replicas=5
@@ -357,33 +367,33 @@ PostgreSQL read replicas (future):
 
 ```bash
 # Full backup
-docker exec postgres pg_dump -U lms_user lms_db > backup_$(date +%Y%m%d).sql
+docker exec lms-postgres pg_dump -U lms_user lms_db > backup_$(date +%Y%m%d).sql
 
 # Compressed backup
-docker exec postgres pg_dump -U lms_user lms_db | gzip > backup_$(date +%Y%m%d).sql.gz
+docker exec lms-postgres pg_dump -U lms_user lms_db | gzip > backup_$(date +%Y%m%d).sql.gz
 ```
 
 ### 7.2 Database Restore
 
 ```bash
 # Stop services
-docker-compose stop lms-user-service lms-course-service
+docker-compose stop user-service learning-service ai-service analytics-service api-gateway
 
 # Restore
-gunzip -c backup_20251219.sql.gz | docker exec -i postgres psql -U lms_user lms_db
+gunzip -c backup_20251219.sql.gz | docker exec -i lms-postgres psql -U lms_user lms_db
 
 # Restart services
-docker-compose start
+docker-compose start user-service learning-service ai-service analytics-service api-gateway
 ```
 
 ### 7.3 Redis Backup
 
 ```bash
 # Trigger RDB save
-docker exec redis redis-cli BGSAVE
+docker exec lms-redis redis-cli BGSAVE
 
 # Copy dump file
-docker cp redis:/data/dump.rdb ./redis_backup.rdb
+docker cp lms-redis:/data/dump.rdb ./redis_backup.rdb
 ```
 
 ---
@@ -440,9 +450,8 @@ docker exec -it lms-ai-service /bin/sh
 docker exec kafka kafka-topics.sh --list --bootstrap-server localhost:9092
 
 # Force garbage collection (JVM)
-curl -X POST http://localhost:8085/actuator/gc
+curl -X POST http://localhost:8085/api/actuator/gc
 
 # Thread dump
-curl http://localhost:8085/actuator/threaddump > threaddump.json
+curl http://localhost:8085/api/actuator/threaddump > threaddump.json
 ```
-

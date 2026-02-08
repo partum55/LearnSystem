@@ -18,10 +18,7 @@ COPY pom.xml .
 # Copy all module POMs (needed for reactor build)
 COPY lms-common/pom.xml ./lms-common/
 COPY lms-user-service/pom.xml ./lms-user-service/
-COPY lms-course-service/pom.xml ./lms-course-service/
-COPY lms-assessment-service/pom.xml ./lms-assessment-service/
-COPY lms-gradebook-service/pom.xml ./lms-gradebook-service/
-COPY lms-deadline-service/pom.xml ./lms-deadline-service/
+COPY lms-learning-service/pom.xml ./lms-learning-service/
 COPY lms-ai-service/pom.xml ./lms-ai-service/
 COPY lms-analytics-service/pom.xml ./lms-analytics-service/
 COPY lms-api-gateway/pom.xml ./lms-api-gateway/
@@ -63,4 +60,3 @@ ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Djava.securit
 
 # Run the application
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
-

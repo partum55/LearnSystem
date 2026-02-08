@@ -24,15 +24,21 @@ public class PageResponse<T> {
     private boolean last;
 
     public static <T> PageResponse<T> of(List<T> content, int page, int size, long totalElements) {
+        long safeTotalElements = Math.max(totalElements, 0);
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.max(size, 1);
+        List<T> safeContent = content == null ? List.of() : List.copyOf(content);
+        long totalPagesLong = (safeTotalElements + safeSize - 1) / safeSize;
+        int totalPages = totalPagesLong > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) totalPagesLong;
+
         PageResponse<T> response = new PageResponse<>();
-        response.setContent(content);
-        response.setPageNumber(page);
-        response.setPageSize(size);
-        response.setTotalElements(totalElements);
-        response.setTotalPages((int) Math.ceil((double) totalElements / size));
-        response.setFirst(page == 0);
-        response.setLast(page >= response.getTotalPages() - 1);
+        response.setContent(safeContent);
+        response.setPageNumber(safePage);
+        response.setPageSize(safeSize);
+        response.setTotalElements(safeTotalElements);
+        response.setTotalPages(totalPages);
+        response.setFirst(safePage == 0);
+        response.setLast(totalPages == 0 || safePage >= totalPages - 1);
         return response;
     }
 }
-

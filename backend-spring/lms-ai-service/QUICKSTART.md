@@ -18,15 +18,11 @@ ollama serve
 У різних терміналах запустіть:
 
 ```bash
-# Термінал 1: Course Service
-cd backend-spring/lms-course-service
+# Термінал 1: Learning Service (courses + assessments)
+cd backend-spring/lms-learning-service
 mvn spring-boot:run
 
-# Термінал 2: Assessment Service  
-cd backend-spring/lms-assessment-service
-mvn spring-boot:run
-
-# Термінал 3: AI Service
+# Термінал 2: AI Service
 cd backend-spring/lms-ai-service
 mvn spring-boot:run
 ```
@@ -36,7 +32,7 @@ mvn spring-boot:run
 ### Приклад 1: Генерація курсу (preview)
 
 ```bash
-curl -X POST http://localhost:8084/api/ai/courses/generate \
+curl -X POST http://localhost:8085/api/ai/courses/generate \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Створи курс з основ Python програмування для початківців. Курс має охоплювати змінні, типи даних, умовні конструкції, цикли, функції та об'\''єктно-орієнтоване програмування.",
@@ -50,7 +46,7 @@ curl -X POST http://localhost:8084/api/ai/courses/generate \
 ### Приклад 2: Генерація курсу з завданнями та квізами
 
 ```bash
-curl -X POST http://localhost:8084/api/ai/courses/generate \
+curl -X POST http://localhost:8085/api/ai/courses/generate \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Курс \"Веб-розробка з JavaScript\". 5 модулів: Основи JS, DOM, Async JS, React, Node.js. Кожен модуль має 2 практичних завдання та 1 квіз з 8 питань.",
@@ -69,7 +65,7 @@ curl -X POST http://localhost:8084/api/ai/courses/generate \
 TOKEN="your-jwt-token"
 USER_ID="your-user-uuid"
 
-curl -X POST http://localhost:8084/api/ai/courses/generate-and-save \
+curl -X POST http://localhost:8085/api/ai/courses/generate-and-save \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -H "X-User-Id: $USER_ID" \
@@ -85,7 +81,7 @@ curl -X POST http://localhost:8084/api/ai/courses/generate-and-save \
 ### Приклад 4: Редагування контенту
 
 ```bash
-curl -X POST http://localhost:8084/api/ai/content/edit \
+curl -X POST http://localhost:8085/api/ai/content/edit \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Зроби опис більш детальним, додай приклади використання у реальному житті та посилання на додаткові матеріали",
@@ -100,7 +96,7 @@ curl -X POST http://localhost:8084/api/ai/content/edit \
 ```bash
 COURSE_ID="existing-course-uuid"
 
-curl -X POST "http://localhost:8084/api/ai/modules/generate?courseId=$COURSE_ID&prompt=Створи 6 модулів для курсу з баз даних&language=uk&moduleCount=6" \
+curl -X POST "http://localhost:8085/api/ai/modules/generate?courseId=$COURSE_ID&prompt=Створи 6 модулів для курсу з баз даних&language=uk&moduleCount=6" \
   -H "Content-Type: application/json" | jq .
 ```
 
@@ -109,7 +105,7 @@ curl -X POST "http://localhost:8084/api/ai/modules/generate?courseId=$COURSE_ID&
 ```bash
 MODULE_ID="existing-module-uuid"
 
-curl -X POST "http://localhost:8084/api/ai/assignments/generate?moduleId=$MODULE_ID&moduleTopic=Функції в Python&language=uk&assignmentCount=4" \
+curl -X POST "http://localhost:8085/api/ai/assignments/generate?moduleId=$MODULE_ID&moduleTopic=Функції в Python&language=uk&assignmentCount=4" \
   -H "Content-Type: application/json" | jq .
 ```
 
@@ -118,7 +114,7 @@ curl -X POST "http://localhost:8084/api/ai/assignments/generate?moduleId=$MODULE
 ```bash
 COURSE_ID="existing-course-uuid"
 
-curl -X POST "http://localhost:8084/api/ai/quizzes/generate?courseId=$COURSE_ID&topic=Основи HTML та CSS&language=uk&questionCount=15&timeLimit=45" \
+curl -X POST "http://localhost:8085/api/ai/quizzes/generate?courseId=$COURSE_ID&topic=Основи HTML та CSS&language=uk&questionCount=15&timeLimit=45" \
   -H "Content-Type: application/json" | jq .
 ```
 
@@ -148,7 +144,7 @@ Express, MongoDB. Кожен модуль має практичне завдан
 
 ```bash
 # Health check
-curl http://localhost:8084/api/ai/health
+curl http://localhost:8085/api/ai/health
 
 # Перевірка Ollama
 curl http://localhost:11434/api/version
@@ -161,8 +157,7 @@ curl http://localhost:11434/api/version
 ```bash
 LLAMA_API_URL=http://localhost:11434
 LLAMA_MODEL=llama3.1
-COURSE_SERVICE_URL=http://localhost:8081
-ASSESSMENT_SERVICE_URL=http://localhost:8083
+LEARNING_SERVICE_URL=http://localhost:8089
 ```
 
 ## Troubleshooting
@@ -227,4 +222,3 @@ logging:
     com.university.lms.ai: TRACE
     org.springframework.web.reactive: DEBUG
 ```
-

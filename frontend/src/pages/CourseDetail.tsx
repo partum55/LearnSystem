@@ -7,8 +7,8 @@ import { Card, CardHeader, CardBody } from '../components';
 import { Button } from '../components';
 import { Loading } from '../components';
 import { CreateModuleModal } from '../components';
-import { CreateAssignmentModal } from '../components';
-import { CreateResourceModal } from '../components/CreateResourceModal';
+import { ResourceWizard } from '../components/wizards/ResourceWizard';   // Changed
+import { AssignmentWizard } from '../components/wizards/AssignmentWizard'; // Changed
 import { useCourseStore } from '../store/courseStore';
 import { useAuthStore } from '../store/authStore';
 import {
@@ -21,6 +21,7 @@ import {
   ClockIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 import { Module, Assignment } from '../types';
 import { TeacherGradebook } from '../components';
@@ -34,7 +35,18 @@ export const CourseDetail: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation();
   const { user } = useAuthStore();
-  const { currentCourse, modules, assignments, fetchCourseById, fetchModules, fetchAssignments, isLoadingCourse } = useCourseStore();
+  const {
+    currentCourse,
+    modules,
+    assignments,
+    fetchCourseById,
+    fetchModules,
+    fetchAssignments,
+    deleteModule,
+    deleteResource,
+    deleteAssignment,
+    isLoadingCourse
+  } = useCourseStore();
 
   // Restore tab from URL or localStorage
   const getInitialTab = (): 'modules' | 'assignments' | 'members' | 'grades' => {
@@ -73,6 +85,14 @@ export const CourseDetail: React.FC = () => {
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [selectedModuleContext, setSelectedModuleContext] = useState<string>('');
   const [expandedModules, setExpandedModules] = useState<Set<string>>(getInitialExpandedModules);
+
+  // Deletion state
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    type: 'module' | 'resource' | 'assignment';
+    id: string;
+    moduleId?: string; // Needed for resource deletion
+    title: string;
+  } | null>(null);
 
   // Persist tab state to URL and sessionStorage
   const handleTabChange = useCallback((tab: 'modules' | 'assignments' | 'members' | 'grades') => {
@@ -135,12 +155,35 @@ export const CourseDetail: React.FC = () => {
     });
   };
 
+  const confirmDelete = async () => {
+    if (!deleteConfirmation || !id) return;
+
+    try {
+      if (deleteConfirmation.type === 'module') {
+        await deleteModule(id, deleteConfirmation.id);
+        fetchModules(id);
+      } else if (deleteConfirmation.type === 'resource' && deleteConfirmation.moduleId) {
+        await deleteResource(id, deleteConfirmation.moduleId, deleteConfirmation.id);
+        // module list updated in deleteResource
+      } else if (deleteConfirmation.type === 'assignment') {
+        await deleteAssignment(deleteConfirmation.id);
+        fetchAssignments(id);
+        fetchModules(id); // Module might need update if assignment was linked there? (Assignments are separate but visible in modules sometimes)
+      }
+      setDeleteConfirmation(null);
+    } catch (error) {
+      console.error('Failed to delete:', error);
+      // Ideally show error toast
+    }
+  };
+
   if (isLoadingCourse || !currentCourse) {
     return <Loading />;
   }
 
   const isInstructor = user?.role === 'TEACHER' || user?.role === 'SUPERADMIN';
 
+  // ... (tabs definition remains same)
   const tabs = [
     { id: 'modules', name: t('courses.modules'), icon: FolderIcon },
     { id: 'assignments', name: t('assignments.title'), icon: DocumentTextIcon },
@@ -150,6 +193,7 @@ export const CourseDetail: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* ... (Header and Sidebar remains same) */}
       <Header />
       <div className="flex">
         <Sidebar />
@@ -339,20 +383,31 @@ export const CourseDetail: React.FC = () => {
                                   <PlusIcon className="h-4 w-4 mr-1" />
                                   {t('assignments.addAssignment')}
                                 </Button>
+                                <Button
+                                  variant="danger"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteConfirmation({
+                                      type: 'module',
+                                      id: module.id,
+                                      title: module.title
+                                    });
+                                  }}
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                </Button>
                               </div>
                             )}
 
-                            {/* Resources Section */}
+                            {/* RESOURCES BLOCK */}
                             {module.resources && module.resources.length > 0 && (
-                              <div className="mb-6">
-                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+                              <div>
+                                <div className="flex items-center gap-2 mb-3">
                                   <FolderIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                                  <h4 className="font-semibold text-base text-gray-900 dark:text-gray-100">
+                                  <h4 className="font-semibold text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400">
                                     {t('modules.resources')}
                                   </h4>
-                                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                                    ({module.resources.length})
-                                  </span>
                                 </div>
                                 <div className="space-y-2 pl-2">
                                   {module.resources.map((resource) => (
@@ -362,14 +417,12 @@ export const CourseDetail: React.FC = () => {
                                     >
                                       <DocumentTextIcon className="h-5 w-5 text-gray-400 flex-shrink-0" />
                                       <div className="flex-1 min-w-0">
-                                        <a
-                                          href={resource.file_url || resource.external_url}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
+                                        <Link
+                                          to={`/courses/${id}/modules/${module.id}/resources/${resource.id}`}
                                           className="text-blue-600 dark:text-blue-400 hover:underline font-medium block truncate"
                                         >
                                           {resource.title}
-                                        </a>
+                                        </Link>
                                         {resource.description && (
                                           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                                             {resource.description}
@@ -379,23 +432,46 @@ export const CourseDetail: React.FC = () => {
                                       <span className="text-xs text-gray-400 uppercase tracking-wider">
                                         {resource.resource_type}
                                       </span>
+                                      {isInstructor && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            setDeleteConfirmation({
+                                              type: 'resource',
+                                              id: resource.id,
+                                              moduleId: module.id,
+                                              title: resource.title
+                                            });
+                                          }}
+                                          className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                                        >
+                                          <TrashIcon className="h-4 w-4" />
+                                        </button>
+                                      )}
                                     </div>
                                   ))}
                                 </div>
                               </div>
                             )}
 
-                            {/* Assignments Section */}
+                            {/* DIVIDER */}
+                            {module.resources && module.resources.length > 0 &&
+                              module.assignments && module.assignments.length > 0 && (
+                                <div className="border-t border-gray-200 dark:border-gray-700/50 my-6 relative">
+                                  <div className="absolute inset-0 flex items-center justify-center">
+
+                                  </div>
+                                </div>
+                              )}
+
+                            {/* ASSIGNMENTS BLOCK */}
                             {module.assignments && module.assignments.length > 0 && (
-                              <div className="mb-4">
-                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+                              <div>
+                                <div className="flex items-center gap-2 mb-3">
                                   <DocumentTextIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
-                                  <h4 className="font-semibold text-base text-gray-900 dark:text-gray-100">
+                                  <h4 className="font-semibold text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400">
                                     {t('assignments.title')}
                                   </h4>
-                                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                                    ({module.assignments.length})
-                                  </span>
                                 </div>
                                 <div className="space-y-2 pl-2">
                                   {module.assignments.map((assignment) => (
@@ -420,10 +496,24 @@ export const CourseDetail: React.FC = () => {
                                             <span>{assignment.max_points} {t('assignments.points')}</span>
                                           </div>
                                         </div>
-                                        {assignment.is_published && (
-                                          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                                            {t('common.published')}
-                                          </span>
+                                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                          {t('common.published')}
+                                        </span>
+
+                                        {isInstructor && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              setDeleteConfirmation({
+                                                type: 'assignment',
+                                                id: assignment.id,
+                                                title: assignment.title
+                                              });
+                                            }}
+                                            className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                                          >
+                                            <TrashIcon className="h-4 w-4" />
+                                          </button>
                                         )}
                                       </div>
                                     </Link>
@@ -529,100 +619,131 @@ export const CourseDetail: React.FC = () => {
       </div>
 
       {/* Modals */}
-      {isInstructor && (
-        <>
-          <CreateModuleModal
-            isOpen={showModuleModal}
-            onClose={() => setShowModuleModal(false)}
-            courseId={id!}
-            onModuleCreated={handleModuleCreated}
-          />
-          <CreateAssignmentModal
-            isOpen={showAssignmentModal}
-            onClose={() => {
-              setShowAssignmentModal(false);
-              setSelectedModuleId(null);
-            }}
-            courseId={id!}
-            moduleId={selectedModuleId || undefined}
-            onAssignmentCreated={handleAssignmentCreated}
-          />
-          {selectedModuleId && (
-            <CreateResourceModal
-              isOpen={showResourceModal}
+      {
+        isInstructor && (
+          <>
+            <CreateModuleModal
+              isOpen={showModuleModal}
+              onClose={() => setShowModuleModal(false)}
+              courseId={id!}
+              onModuleCreated={handleModuleCreated}
+            />
+            {/* Replaced CreateAssignmentModal with AssignmentWizard */}
+            <AssignmentWizard
+              isOpen={showAssignmentModal}
               onClose={() => {
-                setShowResourceModal(false);
+                setShowAssignmentModal(false);
                 setSelectedModuleId(null);
               }}
               courseId={id!}
-              moduleId={selectedModuleId}
-              onResourceCreated={handleResourceCreated}
+              moduleId={selectedModuleId || ''}
+              onAssignmentCreated={handleAssignmentCreated}
             />
-          )}
-          {/* Enroll students modal */}
-          <EnrollStudentsModal
-            isOpen={showEnrollModal}
-            onClose={() => setShowEnrollModal(false)}
-            courseId={id!}
-            onEnrolled={() => {
-              // Refresh course and lists when new students are enrolled
-              if (id) {
-                fetchCourseById(id);
-                fetchModules(id);
-                fetchAssignments(id);
-              }
-              setShowEnrollModal(false);
-            }}
-          />
+            {selectedModuleId && (
+              // Replaced CreateResourceModal with ResourceWizard
+              <ResourceWizard
+                isOpen={showResourceModal}
+                onClose={() => {
+                  setShowResourceModal(false);
+                  setSelectedModuleId(null);
+                }}
+                courseId={id!}
+                moduleId={selectedModuleId}
+                onResourceCreated={handleResourceCreated}
+              />
+            )}
+            {/* Enroll students modal */}
+            <EnrollStudentsModal
+              isOpen={showEnrollModal}
+              onClose={() => setShowEnrollModal(false)}
+              courseId={id!}
+              onEnrolled={() => {
+                // Refresh course and lists when new students are enrolled
+                if (id) {
+                  fetchCourseById(id);
+                  fetchModules(id);
+                  fetchAssignments(id);
+                }
+                setShowEnrollModal(false);
+              }}
+            />
 
-          {/* AI Module Generator Modal */}
-          {showAIModuleGenerator && currentCourse && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-              <div className="bg-white rounded-lg max-w-3xl w-full max-h-screen overflow-y-auto">
-                <AIElementGenerator
-                  elementType="module"
-                  courseId={id}
-                  courseContext={`${currentCourse.code}: ${currentCourse.title} - ${currentCourse.description}`}
-                  onGenerated={(data) => {
-                    console.log('AI generated modules:', data);
-                    setShowAIModuleGenerator(false);
-                    if (id) {
-                      fetchModules(id);
-                    }
-                  }}
-                  onClose={() => setShowAIModuleGenerator(false)}
-                />
+            {/* AI Module Generator Modal */}
+            {showAIModuleGenerator && currentCourse && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+                <div className="bg-white rounded-lg max-w-3xl w-full max-h-screen overflow-y-auto">
+                  <AIElementGenerator
+                    elementType="module"
+                    courseId={id}
+                    courseContext={`${currentCourse.code}: ${currentCourse.title} - ${currentCourse.description}`}
+                    onGenerated={(data) => {
+                      console.log('AI generated modules:', data);
+                      setShowAIModuleGenerator(false);
+                      if (id) {
+                        fetchModules(id);
+                      }
+                    }}
+                    onClose={() => setShowAIModuleGenerator(false)}
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* AI Assignment Generator Modal */}
-          {showAIAssignmentGenerator && selectedModuleId && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-              <div className="bg-white rounded-lg max-w-3xl w-full max-h-screen overflow-y-auto">
-                <AIElementGenerator
-                  elementType="assignment"
-                  moduleId={selectedModuleId}
-                  courseContext={currentCourse ? `${currentCourse.code}: ${currentCourse.title}` : ''}
-                  moduleContext={selectedModuleContext}
-                  onGenerated={(data) => {
-                    console.log('AI generated assignments:', data);
-                    setShowAIAssignmentGenerator(false);
-                    setSelectedModuleId(null);
-                    if (id) {
-                      fetchAssignments(id);
-                      fetchModules(id);
-                    }
-                  }}
-                  onClose={() => {
-                    setShowAIAssignmentGenerator(false);
-                    setSelectedModuleId(null);
-                  }}
-                />
+            {/* AI Assignment Generator Modal */}
+            {showAIAssignmentGenerator && selectedModuleId && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+                <div className="bg-white rounded-lg max-w-3xl w-full max-h-screen overflow-y-auto">
+                  <AIElementGenerator
+                    elementType="assignment"
+                    moduleId={selectedModuleId}
+                    courseContext={currentCourse ? `${currentCourse.code}: ${currentCourse.title}` : ''}
+                    moduleContext={selectedModuleContext}
+                    onGenerated={(data) => {
+                      console.log('AI generated assignments:', data);
+                      setShowAIAssignmentGenerator(false);
+                      setSelectedModuleId(null);
+                      if (id) {
+                        fetchAssignments(id);
+                        fetchModules(id);
+                      }
+                    }}
+                    onClose={() => {
+                      setShowAIAssignmentGenerator(false);
+                      setSelectedModuleId(null);
+                    }}
+                  />
+                </div>
               </div>
+            )}
+          </>
+        )
+      }
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+              {t('common.deleteConfirmTitle')}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              {t('common.deleteConfirmMessage', { title: deleteConfirmation.title })}
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => setDeleteConfirmation(null)}
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button
+                variant="danger"
+                onClick={confirmDelete}
+              >
+                {t('common.delete')}
+              </Button>
             </div>
-          )}
-        </>
+          </div>
+        </div>
       )}
     </div>
   );

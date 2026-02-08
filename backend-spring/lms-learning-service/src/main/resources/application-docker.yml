@@ -1,0 +1,40 @@
+# Docker profile for learning-service
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/lms_db}
+    username: ${SPRING_DATASOURCE_USERNAME:lms_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:lms_password}
+
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:redis}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
+    table: course_flyway_schema_history
+    validate-on-migrate: false
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+# Disable CORS - handled by API Gateway
+security:
+  cors:
+    enabled: false
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_URI:http://eureka-server:8761/eureka}
+  instance:
+    prefer-ip-address: true
+    hostname: learning-service
+
+submission:
+  storage:
+    path: ${SUBMISSION_STORAGE_PATH:/tmp/lms-submissions}

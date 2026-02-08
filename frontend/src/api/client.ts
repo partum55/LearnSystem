@@ -1,5 +1,5 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig, AxiosProgressEvent } from 'axios';
-import { getAccessToken, setAccessToken } from './token';
+import { clearStoredTokens, getAccessToken, getRefreshToken, setAccessToken, setRefreshToken } from './token';
 
 // Prefer explicit VITE_API_URL/REACT_APP_API_URL, otherwise default to local Spring backend in dev
 let API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.REACT_APP_API_URL || '';
@@ -55,10 +55,62 @@ class ApiClient {
     this.setupInterceptors();
   }
 
-  // Disable refresh flow for now (backend exposes refresh but UI can re-login)
+  private handleAuthFailure() {
+    clearStoredTokens();
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.removeItem('auth-storage');
+      } catch {
+        // ignore storage errors
+      }
+
+      const path = window.location?.pathname || '';
+      if (!path.startsWith('/login') && !path.startsWith('/register')) {
+        window.location.replace('/login');
+      }
+    }
+  }
+
   private async refreshAccessToken(): Promise<string | null> {
     if (this.refreshPromise) return this.refreshPromise;
-    this.refreshPromise = Promise.resolve(null).finally(() => { this.refreshPromise = null; });
+
+    this.refreshPromise = (async () => {
+      const refreshToken = getRefreshToken();
+      if (!refreshToken) {
+        this.handleAuthFailure();
+        return null;
+      }
+
+      try {
+        const response = await this.client.post<{ accessToken?: string; refreshToken?: string }>(
+          '/auth/refresh',
+          null,
+          {
+            headers: {
+              Authorization: `Bearer ${refreshToken}`,
+            },
+          }
+        );
+
+        const nextAccessToken = response.data?.accessToken ?? null;
+        const nextRefreshToken = response.data?.refreshToken ?? refreshToken;
+
+        if (!nextAccessToken) {
+          this.handleAuthFailure();
+          return null;
+        }
+
+        setAccessToken(nextAccessToken);
+        setRefreshToken(nextRefreshToken);
+        return nextAccessToken;
+      } catch {
+        this.handleAuthFailure();
+        return null;
+      }
+    })().finally(() => {
+      this.refreshPromise = null;
+    });
+
     return this.refreshPromise;
   }
 
@@ -72,7 +124,15 @@ class ApiClient {
     this.client.interceptors.request.use(
       async (config: InternalAxiosRequestConfig & { _retry?: boolean; _retry429?: boolean }) => {
         const token = getAccessToken();
-        if (token && config.headers) {
+        const hasAuthorizationHeader = Boolean(
+          config.headers &&
+          (
+            (config.headers as Record<string, unknown>).Authorization ||
+            (config.headers as Record<string, unknown>).authorization
+          )
+        );
+
+        if (token && config.headers && !hasAuthorizationHeader) {
           config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
@@ -104,12 +164,13 @@ class ApiClient {
             const access = await this.refreshAccessToken();
             if (access && originalRequest.headers) {
               originalRequest.headers['Authorization'] = `Bearer ${access}`;
-              setAccessToken(access);
               return this.client(originalRequest);
             }
           } catch {
             // fall through
           }
+
+          this.handleAuthFailure();
         }
 
         // Normalize error so consumers don't render objects

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
+import apiClient, { extractErrorMessage } from '../api/client';
 
 interface RiskFactor {
   category: string;
@@ -33,17 +34,23 @@ export const AtRiskStudents: React.FC = () => {
   const { courseId: routeCourseId, id } = useParams<{ courseId?: string; id?: string }>();
   const courseId = routeCourseId || id;
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [students, setStudents] = useState<StudentRiskPrediction[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<StudentRiskPrediction | null>(null);
 
   const fetchAtRiskStudents = useCallback(async () => {
+    if (!courseId) return;
     setLoading(true);
+    setError(null);
     try {
-      const response = await fetch(`/api/analytics/courses/${courseId}/at-risk-students`);
-      const data = await response.json();
-      setStudents(data);
+      const response = await apiClient.get<StudentRiskPrediction[]>(
+        `/analytics/courses/${courseId}/at-risk-students`
+      );
+      setStudents(response.data);
     } catch (error) {
       console.error('Failed to fetch at-risk students:', error);
+      setError(extractErrorMessage(error));
+      setStudents([]);
     } finally {
       setLoading(false);
     }
@@ -100,6 +107,12 @@ export const AtRiskStudents: React.FC = () => {
           {t('common.refresh', 'Refresh')}
         </button>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+          {error}
+        </div>
+      )}
 
       {students.length === 0 ? (
         <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
