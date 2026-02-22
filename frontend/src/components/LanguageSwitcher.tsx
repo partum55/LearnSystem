@@ -16,28 +16,21 @@ export const LanguageSwitcher: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center space-x-2">
-      <button
-        onClick={() => changeLanguage('en')}
-        className={`px-3 py-1 text-sm rounded-md transition-colors ${
-          i18n.language === 'en'
-            ? 'bg-blue-600 text-white'
-            : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-        }`}
-      >
-        EN
-      </button>
-      <button
-        onClick={() => changeLanguage('uk')}
-        className={`px-3 py-1 text-sm rounded-md transition-colors ${
-          i18n.language === 'uk'
-            ? 'bg-blue-600 text-white'
-            : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-        }`}
-      >
-        УКР
-      </button>
+    <div className="flex items-center gap-1">
+      {(['en', 'uk'] as const).map((lng) => (
+        <button
+          key={lng}
+          onClick={() => changeLanguage(lng)}
+          className="px-2.5 py-1 text-xs rounded-md transition-colors"
+          style={{
+            background: i18n.language === lng ? 'var(--bg-active)' : 'transparent',
+            color: i18n.language === lng ? 'var(--text-primary)' : 'var(--text-muted)',
+            fontFamily: 'var(--font-body)',
+          }}
+        >
+          {lng === 'en' ? 'EN' : 'УКР'}
+        </button>
+      ))}
     </div>
   );
 };
-

@@ -42,6 +42,7 @@ const ProfileSettings = lazy(() => import('./pages/ProfileSettings'));
 const CalendarPage = lazy(() => import('./pages/CalendarPage'));
 const VirtualLab = lazy(() => import('./pages/VirtualLab'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const DesignSystemDemo = lazy(() => import('./pages/DesignSystemDemo')); // New import
 
 // Private route wrapper with auth check
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -190,6 +191,15 @@ const AppOptimized: React.FC = () => {
               <LazyRoute isPrivate>
                 <RoleRoute allowedRoles={['SUPERADMIN']}>
                   <AdminDashboard />
+                </RoleRoute>
+              </LazyRoute>
+            } />
+
+            {/* Design System Demo Route - Only accessible in development or by admins */}
+            <Route path="/design-system" element={
+              <LazyRoute isPrivate>
+                <RoleRoute allowedRoles={['SUPERADMIN']}>
+                  <DesignSystemDemo />
                 </RoleRoute>
               </LazyRoute>
             } />

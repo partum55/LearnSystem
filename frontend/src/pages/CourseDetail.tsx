@@ -1,34 +1,30 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Header } from '../components';
-import { Sidebar } from '../components';
-import { Card, CardHeader, CardBody } from '../components';
-import { Button } from '../components';
-import { Loading } from '../components';
-import { CreateModuleModal } from '../components';
-import { ResourceWizard } from '../components/wizards/ResourceWizard';   // Changed
-import { AssignmentWizard } from '../components/wizards/AssignmentWizard'; // Changed
-import { useCourseStore } from '../store/courseStore';
-import { useAuthStore } from '../store/authStore';
 import {
-  AcademicCapIcon,
-  DocumentTextIcon,
-  UserGroupIcon,
-  PlusIcon,
-  FolderIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
-  TrashIcon,
-} from '@heroicons/react/24/outline';
-import { Module, Assignment } from '../types';
-import { TeacherGradebook } from '../components';
-import { CourseGradesTab } from '../components';
-import { EnrollStudentsModal, AIElementGenerator } from '../components';
-import { SparklesIcon } from '@heroicons/react/24/outline';
-
+  Card,
+  CardBody,
+  CourseGradesTab,
+  Header,
+  Loading,
+  Sidebar,
+  TeacherGradebook,
+} from '../components';
+import { useAuthStore } from '../store/authStore';
+import { useCourseStore } from '../store/courseStore';
+import { Assignment, Module, Resource } from '../types';
+import { CourseAssignmentsTab } from './course-detail/CourseAssignmentsTab';
+import { CourseDetailHeader } from './course-detail/CourseDetailHeader';
+import { CourseDetailModals } from './course-detail/CourseDetailModals';
+import { CourseDetailTabs } from './course-detail/CourseDetailTabs';
+import { CourseModulesTab } from './course-detail/CourseModulesTab';
+import {
+  CourseDetailTabId,
+  DeleteConfirmationState,
+  getCourseDetailTabs,
+  getInitialExpandedModules,
+  getInitialTab,
+} from './course-detail/courseDetailModel';
 
 export const CourseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -45,37 +41,12 @@ export const CourseDetail: React.FC = () => {
     deleteModule,
     deleteResource,
     deleteAssignment,
-    isLoadingCourse
+    isLoadingCourse,
   } = useCourseStore();
 
-  // Restore tab from URL or localStorage
-  const getInitialTab = (): 'modules' | 'assignments' | 'members' | 'grades' => {
-    const urlTab = searchParams.get('tab');
-    if (urlTab && ['modules', 'assignments', 'members', 'grades'].includes(urlTab)) {
-      return urlTab as 'modules' | 'assignments' | 'members' | 'grades';
-    }
-    // Try localStorage fallback for this course
-    const storedTab = sessionStorage.getItem(`course_${id}_tab`);
-    if (storedTab && ['modules', 'assignments', 'members', 'grades'].includes(storedTab)) {
-      return storedTab as 'modules' | 'assignments' | 'members' | 'grades';
-    }
-    return 'modules';
-  };
-
-  // Restore expanded modules from sessionStorage
-  const getInitialExpandedModules = (): Set<string> => {
-    try {
-      const stored = sessionStorage.getItem(`course_${id}_expanded`);
-      if (stored) {
-        return new Set(JSON.parse(stored));
-      }
-    } catch {
-      // Ignore parse errors - fall through to return empty set
-    }
-    return new Set();
-  };
-
-  const [activeTab, setActiveTab] = useState<'modules' | 'assignments' | 'members' | 'grades'>(getInitialTab);
+  const [activeTab, setActiveTab] = useState<CourseDetailTabId>(() =>
+    getInitialTab(id, searchParams.get('tab'))
+  );
   const [showModuleModal, setShowModuleModal] = useState(false);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [showResourceModal, setShowResourceModal] = useState(false);
@@ -83,668 +54,278 @@ export const CourseDetail: React.FC = () => {
   const [showAIModuleGenerator, setShowAIModuleGenerator] = useState(false);
   const [showAIAssignmentGenerator, setShowAIAssignmentGenerator] = useState(false);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
-  const [selectedModuleContext, setSelectedModuleContext] = useState<string>('');
-  const [expandedModules, setExpandedModules] = useState<Set<string>>(getInitialExpandedModules);
+  const [selectedModuleContext, setSelectedModuleContext] = useState('');
+  const [deleteConfirmation, setDeleteConfirmation] = useState<DeleteConfirmationState | null>(null);
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(() => getInitialExpandedModules(id));
 
-  // Deletion state
-  const [deleteConfirmation, setDeleteConfirmation] = useState<{
-    type: 'module' | 'resource' | 'assignment';
-    id: string;
-    moduleId?: string; // Needed for resource deletion
-    title: string;
-  } | null>(null);
+  const courseId = id || '';
+  const isInstructor = user?.role === 'TEACHER' || user?.role === 'SUPERADMIN';
+  const tabs = useMemo(() => getCourseDetailTabs(t), [t]);
 
-  // Persist tab state to URL and sessionStorage
-  const handleTabChange = useCallback((tab: 'modules' | 'assignments' | 'members' | 'grades') => {
-    setActiveTab(tab);
-    setSearchParams({ tab });
-    sessionStorage.setItem(`course_${id}_tab`, tab);
-  }, [id, setSearchParams]);
+  const handleTabChange = useCallback(
+    (tab: CourseDetailTabId) => {
+      setActiveTab(tab);
+      setSearchParams({ tab });
+      if (id) {
+        sessionStorage.setItem(`course_${id}_tab`, tab);
+      }
+    },
+    [id, setSearchParams]
+  );
 
-  // Persist expanded modules state
   useEffect(() => {
+    if (!id) {
+      return;
+    }
     sessionStorage.setItem(`course_${id}_expanded`, JSON.stringify([...expandedModules]));
   }, [expandedModules, id]);
 
   useEffect(() => {
-    if (id) {
-      fetchCourseById(id);
-      fetchModules(id);
-      fetchAssignments(id);
+    if (!id) {
+      return;
     }
-  }, [id, fetchCourseById, fetchModules, fetchAssignments]);
+    void fetchCourseById(id);
+    void fetchModules(id);
+    void fetchAssignments(id);
+  }, [id, fetchAssignments, fetchCourseById, fetchModules]);
 
-  const handleModuleCreated = () => {
-    if (id) {
-      fetchModules(id);
+  const handleModuleCreated = useCallback(() => {
+    if (!id) {
+      return;
     }
-  };
+    void fetchModules(id);
+  }, [fetchModules, id]);
 
-  const handleAssignmentCreated = () => {
-    if (id) {
-      fetchAssignments(id);
-      fetchModules(id);
+  const handleAssignmentCreated = useCallback(() => {
+    if (!id) {
+      return;
     }
-  };
+    void fetchAssignments(id);
+    void fetchModules(id);
+  }, [fetchAssignments, fetchModules, id]);
 
-  const handleResourceCreated = () => {
-    if (id) {
-      fetchModules(id);
+  const handleResourceCreated = useCallback(() => {
+    if (!id) {
+      return;
     }
-  };
+    void fetchModules(id);
+  }, [fetchModules, id]);
 
-  const handleAddResource = (moduleId: string) => {
+  const handleAddResource = useCallback((moduleId: string) => {
     setSelectedModuleId(moduleId);
     setShowResourceModal(true);
-  };
+  }, []);
 
-  const handleAddAssignment = (moduleId: string) => {
+  const handleAddAssignment = useCallback((moduleId: string) => {
     setSelectedModuleId(moduleId);
     setShowAssignmentModal(true);
-  };
+  }, []);
 
-  const toggleModule = (moduleId: string) => {
-    setExpandedModules(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(moduleId)) {
-        newSet.delete(moduleId);
+  const handleOpenAIAssignmentGenerator = useCallback((moduleId: string, moduleContext: string) => {
+    setSelectedModuleId(moduleId);
+    setSelectedModuleContext(moduleContext);
+    setShowAIAssignmentGenerator(true);
+  }, []);
+
+  const toggleModule = useCallback((moduleId: string) => {
+    setExpandedModules((previous) => {
+      const next = new Set(previous);
+      if (next.has(moduleId)) {
+        next.delete(moduleId);
       } else {
-        newSet.add(moduleId);
+        next.add(moduleId);
       }
-      return newSet;
+      return next;
     });
-  };
+  }, []);
 
-  const confirmDelete = async () => {
-    if (!deleteConfirmation || !id) return;
+  const requestDeleteModule = useCallback((module: Module) => {
+    setDeleteConfirmation({
+      type: 'module',
+      id: module.id,
+      title: module.title,
+    });
+  }, []);
+
+  const requestDeleteResource = useCallback((moduleId: string, resource: Resource) => {
+    setDeleteConfirmation({
+      type: 'resource',
+      id: resource.id,
+      moduleId,
+      title: resource.title,
+    });
+  }, []);
+
+  const requestDeleteAssignment = useCallback((assignment: Assignment) => {
+    setDeleteConfirmation({
+      type: 'assignment',
+      id: assignment.id,
+      title: assignment.title,
+    });
+  }, []);
+
+  const confirmDelete = useCallback(async () => {
+    if (!deleteConfirmation || !id) {
+      return;
+    }
 
     try {
       if (deleteConfirmation.type === 'module') {
         await deleteModule(id, deleteConfirmation.id);
-        fetchModules(id);
+        await fetchModules(id);
       } else if (deleteConfirmation.type === 'resource' && deleteConfirmation.moduleId) {
         await deleteResource(id, deleteConfirmation.moduleId, deleteConfirmation.id);
-        // module list updated in deleteResource
       } else if (deleteConfirmation.type === 'assignment') {
         await deleteAssignment(deleteConfirmation.id);
-        fetchAssignments(id);
-        fetchModules(id); // Module might need update if assignment was linked there? (Assignments are separate but visible in modules sometimes)
+        await fetchAssignments(id);
+        await fetchModules(id);
       }
       setDeleteConfirmation(null);
     } catch (error) {
       console.error('Failed to delete:', error);
-      // Ideally show error toast
     }
-  };
+  }, [
+    deleteAssignment,
+    deleteConfirmation,
+    deleteModule,
+    deleteResource,
+    fetchAssignments,
+    fetchModules,
+    id,
+  ]);
+
+  const handleAIModuleGenerated = useCallback(() => {
+    setShowAIModuleGenerator(false);
+    if (!id) {
+      return;
+    }
+    void fetchModules(id);
+  }, [fetchModules, id]);
+
+  const handleAIAssignmentGenerated = useCallback(() => {
+    setShowAIAssignmentGenerator(false);
+    setSelectedModuleId(null);
+    if (!id) {
+      return;
+    }
+    void fetchAssignments(id);
+    void fetchModules(id);
+  }, [fetchAssignments, fetchModules, id]);
+
+  const handleEnrolled = useCallback(() => {
+    if (id) {
+      void fetchCourseById(id);
+      void fetchModules(id);
+      void fetchAssignments(id);
+    }
+    setShowEnrollModal(false);
+  }, [fetchAssignments, fetchCourseById, fetchModules, id]);
 
   if (isLoadingCourse || !currentCourse) {
     return <Loading />;
   }
 
-  const isInstructor = user?.role === 'TEACHER' || user?.role === 'SUPERADMIN';
-
-  // ... (tabs definition remains same)
-  const tabs = [
-    { id: 'modules', name: t('courses.modules'), icon: FolderIcon },
-    { id: 'assignments', name: t('assignments.title'), icon: DocumentTextIcon },
-    { id: 'members', name: t('courses.students'), icon: UserGroupIcon },
-    { id: 'grades', name: t('gradebook.title'), icon: AcademicCapIcon },
-  ];
-
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* ... (Header and Sidebar remains same) */}
+    <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
       <Header />
       <div className="flex">
         <Sidebar />
         <main className="flex-1 p-8">
-          <div className="max-w-7xl mx-auto">
-            {/* Course Header */}
-            <div className="mb-8">
-              <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-4">
-                <Link to="/courses" className="hover:text-blue-600 dark:hover:text-blue-400">
-                  {t('courses.title')}
-                </Link>
-                <span className="mx-2">/</span>
-                <span>{currentCourse.code}</span>
-              </div>
+          <div className="mx-auto max-w-7xl">
+            <CourseDetailHeader
+              courseId={courseId}
+              course={currentCourse}
+              isInstructor={isInstructor}
+              onOpenEnrollModal={() => setShowEnrollModal(true)}
+              t={t}
+            />
 
+            <CourseDetailTabs tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} />
+
+            {activeTab === 'modules' && (
+              <CourseModulesTab
+                courseId={courseId}
+                modules={modules}
+                expandedModules={expandedModules}
+                isInstructor={isInstructor}
+                onToggleModule={toggleModule}
+                onOpenAIModuleGenerator={() => setShowAIModuleGenerator(true)}
+                onOpenAIAssignmentGenerator={handleOpenAIAssignmentGenerator}
+                onOpenModuleModal={() => setShowModuleModal(true)}
+                onAddResource={handleAddResource}
+                onAddAssignment={handleAddAssignment}
+                onDeleteModule={requestDeleteModule}
+                onDeleteResource={requestDeleteResource}
+                onDeleteAssignment={requestDeleteAssignment}
+                t={t}
+              />
+            )}
+
+            {activeTab === 'assignments' && (
+              <CourseAssignmentsTab
+                assignments={assignments}
+                isInstructor={isInstructor}
+                onOpenAssignmentModal={() => setShowAssignmentModal(true)}
+                t={t}
+              />
+            )}
+
+            {activeTab === 'members' && (
               <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="flex items-center gap-3 mb-2">
-                        <AcademicCapIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                          {currentCourse.code}
-                        </h1>
-                      </div>
-                      <h2 className="text-xl text-gray-700 dark:text-gray-300">
-                        {currentCourse.title}
-                      </h2>
-                    </div>
-                    {isInstructor && (
-                      <div className="flex gap-2">
-                        <Link to={`/courses/${id}/edit`}>
-                          <Button variant="secondary" size="sm">
-                            {t('common.edit')}
-                          </Button>
-                        </Link>
-                        <Button size="sm" onClick={() => setShowEnrollModal(true)}>
-                          <PlusIcon className="h-4 w-4 mr-1" />
-                          {t('courses.enrollStudents')}
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
                 <CardBody>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    {currentCourse.description}
+                  <p className="py-12 text-center" style={{ color: 'var(--text-muted)' }}>
+                    {t('courses.membersComingSoon')}
                   </p>
-                  <div className="mt-4 flex gap-6 text-sm">
-                    <div>
-                      <span className="text-gray-500 dark:text-gray-400">{t('courses.instructor')}:</span>
-                      <span className="ml-2 font-medium text-gray-900 dark:text-white">
-                        {currentCourse.ownerName || 'Unknown'}
-                      </span>
-                    </div>
-                    {currentCourse.memberCount !== undefined && (
-                      <div>
-                        <span className="text-gray-500 dark:text-gray-400">{t('courses.students')}:</span>
-                        <span className="ml-2 font-medium text-gray-900 dark:text-white">
-                          {currentCourse.memberCount}
-                        </span>
-                      </div>
-                    )}
-                  </div>
                 </CardBody>
               </Card>
-            </div>
+            )}
 
-            {/* Tabs */}
-            <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
-              <nav className="flex space-x-8">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => handleTabChange(tab.id as 'modules' | 'assignments' | 'members' | 'grades')}
-                    className={`
-                      flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors
-                      ${activeTab === tab.id
-                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                      }
-                    `}
-                  >
-                    <tab.icon className="h-5 w-5 mr-2" />
-                    {tab.name}
-                  </button>
-                ))}
-              </nav>
-            </div>
-
-            {/* Tab Content */}
-            <div>
-              {activeTab === 'modules' && (
-                <div className="space-y-4">
-                  {isInstructor && (
-                    <div className="flex justify-end gap-3 mb-4">
-                      <Button
-                        variant="secondary"
-                        onClick={() => setShowAIModuleGenerator(true)}
-                      >
-                        <SparklesIcon className="h-4 w-4 mr-2" />
-                        🤖 AI Генерація
-                      </Button>
-                      <Button onClick={() => setShowModuleModal(true)}>
-                        <PlusIcon className="h-4 w-4 mr-2" />
-                        {t('modules.addModule')}
-                      </Button>
-                    </div>
-                  )}
-                  {!modules || modules.length === 0 ? (
-                    <Card>
-                      <CardBody>
-                        <p className="text-center text-gray-600 dark:text-gray-400 py-12">
-                          {t('modules.noModules')}
-                        </p>
-                      </CardBody>
-                    </Card>
-                  ) : (
-                    modules.map((module: Module) => (
-                      <Card key={module.id}>
-                        <CardHeader>
-                          <div
-                            className="flex items-center justify-between cursor-pointer"
-                            onClick={() => toggleModule(module.id)}
-                          >
-                            <div className="flex items-center gap-2">
-                              {expandedModules.has(module.id) ? (
-                                <ChevronDownIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                              ) : (
-                                <ChevronRightIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                              )}
-                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                                {module.title}
-                              </h3>
-                            </div>
-                            {module.is_published && (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                                <CheckCircleIcon className="h-4 w-4 mr-1" />
-                                {t('common.published')}
-                              </span>
-                            )}
-                          </div>
-                        </CardHeader>
-                        {expandedModules.has(module.id) && (
-                          <CardBody>
-                            {module.description && (
-                              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                                {module.description}
-                              </p>
-                            )}
-
-                            {/* Action Buttons for Instructor */}
-                            {isInstructor && (
-                              <div className="flex gap-2 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedModuleId(module.id);
-                                    setSelectedModuleContext(`${module.title}: ${module.description || ''}`);
-                                    setShowAIAssignmentGenerator(true);
-                                  }}
-                                >
-                                  <SparklesIcon className="h-4 w-4 mr-1" />
-                                  🤖 AI Завдання
-                                </Button>
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleAddResource(module.id);
-                                  }}
-                                >
-                                  <PlusIcon className="h-4 w-4 mr-1" />
-                                  {t('modules.addResource')}
-                                </Button>
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleAddAssignment(module.id);
-                                  }}
-                                >
-                                  <PlusIcon className="h-4 w-4 mr-1" />
-                                  {t('assignments.addAssignment')}
-                                </Button>
-                                <Button
-                                  variant="danger"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setDeleteConfirmation({
-                                      type: 'module',
-                                      id: module.id,
-                                      title: module.title
-                                    });
-                                  }}
-                                >
-                                  <TrashIcon className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            )}
-
-                            {/* RESOURCES BLOCK */}
-                            {module.resources && module.resources.length > 0 && (
-                              <div>
-                                <div className="flex items-center gap-2 mb-3">
-                                  <FolderIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                                  <h4 className="font-semibold text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                    {t('modules.resources')}
-                                  </h4>
-                                </div>
-                                <div className="space-y-2 pl-2">
-                                  {module.resources.map((resource) => (
-                                    <div
-                                      key={resource.id}
-                                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
-                                    >
-                                      <DocumentTextIcon className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                                      <div className="flex-1 min-w-0">
-                                        <Link
-                                          to={`/courses/${id}/modules/${module.id}/resources/${resource.id}`}
-                                          className="text-blue-600 dark:text-blue-400 hover:underline font-medium block truncate"
-                                        >
-                                          {resource.title}
-                                        </Link>
-                                        {resource.description && (
-                                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                            {resource.description}
-                                          </p>
-                                        )}
-                                      </div>
-                                      <span className="text-xs text-gray-400 uppercase tracking-wider">
-                                        {resource.resource_type}
-                                      </span>
-                                      {isInstructor && (
-                                        <button
-                                          onClick={(e) => {
-                                            e.preventDefault();
-                                            setDeleteConfirmation({
-                                              type: 'resource',
-                                              id: resource.id,
-                                              moduleId: module.id,
-                                              title: resource.title
-                                            });
-                                          }}
-                                          className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                                        >
-                                          <TrashIcon className="h-4 w-4" />
-                                        </button>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* DIVIDER */}
-                            {module.resources && module.resources.length > 0 &&
-                              module.assignments && module.assignments.length > 0 && (
-                                <div className="border-t border-gray-200 dark:border-gray-700/50 my-6 relative">
-                                  <div className="absolute inset-0 flex items-center justify-center">
-
-                                  </div>
-                                </div>
-                              )}
-
-                            {/* ASSIGNMENTS BLOCK */}
-                            {module.assignments && module.assignments.length > 0 && (
-                              <div>
-                                <div className="flex items-center gap-2 mb-3">
-                                  <DocumentTextIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
-                                  <h4 className="font-semibold text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                    {t('assignments.title')}
-                                  </h4>
-                                </div>
-                                <div className="space-y-2 pl-2">
-                                  {module.assignments.map((assignment) => (
-                                    <Link
-                                      key={assignment.id}
-                                      to={`/assignments/${assignment.id}`}
-                                      className="block"
-                                    >
-                                      <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group border border-transparent hover:border-green-200 dark:hover:border-green-800">
-                                        <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
-                                        <div className="flex-1 min-w-0">
-                                          <div className="font-medium text-gray-900 dark:text-white group-hover:text-green-600 dark:group-hover:text-green-400">
-                                            {assignment.title}
-                                          </div>
-                                          <div className="flex items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                            {assignment.due_date && (
-                                              <span className="flex items-center gap-1">
-                                                <ClockIcon className="h-4 w-4" />
-                                                {new Date(assignment.due_date).toLocaleDateString()}
-                                              </span>
-                                            )}
-                                            <span>{assignment.max_points} {t('assignments.points')}</span>
-                                          </div>
-                                        </div>
-                                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                                          {t('common.published')}
-                                        </span>
-
-                                        {isInstructor && (
-                                          <button
-                                            onClick={(e) => {
-                                              e.preventDefault();
-                                              setDeleteConfirmation({
-                                                type: 'assignment',
-                                                id: assignment.id,
-                                                title: assignment.title
-                                              });
-                                            }}
-                                            className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                                          >
-                                            <TrashIcon className="h-4 w-4" />
-                                          </button>
-                                        )}
-                                      </div>
-                                    </Link>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Empty State */}
-                            {(!module.resources || module.resources.length === 0) &&
-                              (!module.assignments || module.assignments.length === 0) && (
-                                <p className="text-sm text-gray-500 dark:text-gray-400 italic text-center py-8">
-                                  {t('modules.noContent')}
-                                </p>
-                              )}
-                          </CardBody>
-                        )}
-                      </Card>
-                    ))
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'assignments' && (
-                <div className="space-y-4">
-                  {isInstructor && (
-                    <div className="flex justify-end mb-4">
-                      <Button onClick={() => setShowAssignmentModal(true)}>
-                        <PlusIcon className="h-4 w-4 mr-2" />
-                        {t('assignments.createAssignment')}
-                      </Button>
-                    </div>
-                  )}
-                  {!assignments || assignments.length === 0 ? (
-                    <Card>
-                      <CardBody>
-                        <p className="text-center text-gray-600 dark:text-gray-400 py-12">
-                          {t('assignments.noAssignments')}
-                        </p>
-                      </CardBody>
-                    </Card>
-                  ) : (
-                    <div className="grid gap-4">
-                      {(assignments || []).map((assignment: Assignment) => (
-                        <Link key={assignment.id} to={`/assignments/${assignment.id}`}>
-                          <Card hoverable>
-                            <CardBody>
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                                    {assignment.title}
-                                  </h3>
-                                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                                    {assignment.description}
-                                  </p>
-                                  <div className="flex items-center gap-4 text-sm">
-                                    <span className="flex items-center text-gray-500 dark:text-gray-400">
-                                      <ClockIcon className="h-4 w-4 mr-1" />
-                                      {assignment.due_date
-                                        ? new Date(assignment.due_date).toLocaleDateString()
-                                        : t('assignments.noDueDate')}
-                                    </span>
-                                    <span className="text-gray-500 dark:text-gray-400">
-                                      {assignment.max_points} {t('assignments.points')}
-                                    </span>
-                                  </div>
-                                </div>
-                                {assignment.submission && (
-                                  <span className="px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                                    {t('assignments.submitted')}
-                                  </span>
-                                )}
-                              </div>
-                            </CardBody>
-                          </Card>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'members' && (
-                <Card>
-                  <CardBody>
-                    <p className="text-center text-gray-600 dark:text-gray-400 py-12">
-                      {t('courses.membersComingSoon')}
-                    </p>
-                  </CardBody>
-                </Card>
-              )}
-
-              {activeTab === 'grades' && (
-                isInstructor ? (
-                  <TeacherGradebook courseId={id!} />
-                ) : (
-                  <CourseGradesTab courseId={id!} />
-                )
-              )}
-            </div>
+            {activeTab === 'grades' &&
+              (isInstructor ? <TeacherGradebook courseId={courseId} /> : <CourseGradesTab courseId={courseId} />)}
           </div>
         </main>
       </div>
 
-      {/* Modals */}
-      {
-        isInstructor && (
-          <>
-            <CreateModuleModal
-              isOpen={showModuleModal}
-              onClose={() => setShowModuleModal(false)}
-              courseId={id!}
-              onModuleCreated={handleModuleCreated}
-            />
-            {/* Replaced CreateAssignmentModal with AssignmentWizard */}
-            <AssignmentWizard
-              isOpen={showAssignmentModal}
-              onClose={() => {
-                setShowAssignmentModal(false);
-                setSelectedModuleId(null);
-              }}
-              courseId={id!}
-              moduleId={selectedModuleId || ''}
-              onAssignmentCreated={handleAssignmentCreated}
-            />
-            {selectedModuleId && (
-              // Replaced CreateResourceModal with ResourceWizard
-              <ResourceWizard
-                isOpen={showResourceModal}
-                onClose={() => {
-                  setShowResourceModal(false);
-                  setSelectedModuleId(null);
-                }}
-                courseId={id!}
-                moduleId={selectedModuleId}
-                onResourceCreated={handleResourceCreated}
-              />
-            )}
-            {/* Enroll students modal */}
-            <EnrollStudentsModal
-              isOpen={showEnrollModal}
-              onClose={() => setShowEnrollModal(false)}
-              courseId={id!}
-              onEnrolled={() => {
-                // Refresh course and lists when new students are enrolled
-                if (id) {
-                  fetchCourseById(id);
-                  fetchModules(id);
-                  fetchAssignments(id);
-                }
-                setShowEnrollModal(false);
-              }}
-            />
-
-            {/* AI Module Generator Modal */}
-            {showAIModuleGenerator && currentCourse && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-                <div className="bg-white rounded-lg max-w-3xl w-full max-h-screen overflow-y-auto">
-                  <AIElementGenerator
-                    elementType="module"
-                    courseId={id}
-                    courseContext={`${currentCourse.code}: ${currentCourse.title} - ${currentCourse.description}`}
-                    onGenerated={(data) => {
-                      console.log('AI generated modules:', data);
-                      setShowAIModuleGenerator(false);
-                      if (id) {
-                        fetchModules(id);
-                      }
-                    }}
-                    onClose={() => setShowAIModuleGenerator(false)}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* AI Assignment Generator Modal */}
-            {showAIAssignmentGenerator && selectedModuleId && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-                <div className="bg-white rounded-lg max-w-3xl w-full max-h-screen overflow-y-auto">
-                  <AIElementGenerator
-                    elementType="assignment"
-                    moduleId={selectedModuleId}
-                    courseContext={currentCourse ? `${currentCourse.code}: ${currentCourse.title}` : ''}
-                    moduleContext={selectedModuleContext}
-                    onGenerated={(data) => {
-                      console.log('AI generated assignments:', data);
-                      setShowAIAssignmentGenerator(false);
-                      setSelectedModuleId(null);
-                      if (id) {
-                        fetchAssignments(id);
-                        fetchModules(id);
-                      }
-                    }}
-                    onClose={() => {
-                      setShowAIAssignmentGenerator(false);
-                      setSelectedModuleId(null);
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-          </>
-        )
-      }
-      {/* Delete Confirmation Modal */}
-      {deleteConfirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-              {t('common.deleteConfirmTitle')}
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              {t('common.deleteConfirmMessage', { title: deleteConfirmation.title })}
-            </p>
-            <div className="flex justify-end gap-3">
-              <Button
-                variant="secondary"
-                onClick={() => setDeleteConfirmation(null)}
-              >
-                {t('common.cancel')}
-              </Button>
-              <Button
-                variant="danger"
-                onClick={confirmDelete}
-              >
-                {t('common.delete')}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CourseDetailModals
+        isInstructor={isInstructor}
+        courseId={courseId}
+        currentCourse={currentCourse}
+        showModuleModal={showModuleModal}
+        showAssignmentModal={showAssignmentModal}
+        showResourceModal={showResourceModal}
+        showEnrollModal={showEnrollModal}
+        showAIModuleGenerator={showAIModuleGenerator}
+        showAIAssignmentGenerator={showAIAssignmentGenerator}
+        selectedModuleId={selectedModuleId}
+        selectedModuleContext={selectedModuleContext}
+        deleteConfirmation={deleteConfirmation}
+        onCloseModuleModal={() => setShowModuleModal(false)}
+        onCloseAssignmentModal={() => {
+          setShowAssignmentModal(false);
+          setSelectedModuleId(null);
+        }}
+        onCloseResourceModal={() => {
+          setShowResourceModal(false);
+          setSelectedModuleId(null);
+        }}
+        onCloseEnrollModal={() => setShowEnrollModal(false)}
+        onCloseAIModuleGenerator={() => setShowAIModuleGenerator(false)}
+        onCloseAIAssignmentGenerator={() => {
+          setShowAIAssignmentGenerator(false);
+          setSelectedModuleId(null);
+        }}
+        onModuleCreated={handleModuleCreated}
+        onAssignmentCreated={handleAssignmentCreated}
+        onResourceCreated={handleResourceCreated}
+        onEnrolled={handleEnrolled}
+        onAIModuleGenerated={handleAIModuleGenerated}
+        onAIAssignmentGenerated={handleAIAssignmentGenerated}
+        onConfirmDelete={() => {
+          void confirmDelete();
+        }}
+        onCancelDelete={() => setDeleteConfirmation(null)}
+        t={t}
+      />
     </div>
   );
 };

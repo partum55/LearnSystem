@@ -62,34 +62,34 @@ export const AtRiskStudents: React.FC = () => {
     }
   }, [courseId, fetchAtRiskStudents]);
 
-  const getRiskLevelColor = (level: string) => {
+  const getRiskBadgeStyle = (level: string) => {
     switch (level) {
       case 'CRITICAL':
-        return 'bg-red-100 text-red-800 border-red-300';
+        return { background: 'rgba(239, 68, 68, 0.15)', color: 'var(--fn-error)', border: '1px solid rgba(239, 68, 68, 0.3)' };
       case 'HIGH':
-        return 'bg-orange-100 text-orange-800 border-orange-300';
+        return { background: 'rgba(239, 68, 68, 0.08)', color: 'var(--fn-error)', border: '1px solid rgba(239, 68, 68, 0.15)' };
       case 'MEDIUM':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+        return { background: 'rgba(234, 179, 8, 0.08)', color: 'var(--fn-warning)', border: '1px solid rgba(234, 179, 8, 0.15)' };
       default:
-        return 'bg-green-100 text-green-800 border-green-300';
+        return { background: 'rgba(34, 197, 94, 0.08)', color: 'var(--fn-success)', border: '1px solid rgba(34, 197, 94, 0.15)' };
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
-        return 'text-red-600 font-semibold';
+        return 'var(--fn-error)';
       case 'medium':
-        return 'text-orange-600 font-semibold';
+        return 'var(--fn-warning)';
       default:
-        return 'text-blue-600';
+        return 'var(--text-secondary)';
     }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12" style={{ borderBottom: '2px solid var(--text-primary)' }}></div>
       </div>
     );
   }
@@ -97,26 +97,26 @@ export const AtRiskStudents: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+        <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
           {t('analytics.atRisk.title', 'At-Risk Students')}
         </h2>
         <button
           onClick={fetchAtRiskStudents}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="btn btn-primary"
         >
           {t('common.refresh', 'Refresh')}
         </button>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+        <div className="rounded-lg p-4" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', color: 'var(--fn-error)' }}>
           {error}
         </div>
       )}
 
       {students.length === 0 ? (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
-          <p className="text-green-800 font-medium">
+        <div className="rounded-lg p-6 text-center" style={{ background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.15)' }}>
+          <p className="font-medium" style={{ color: 'var(--fn-success)' }}>
             {t('analytics.atRisk.none', 'No at-risk students identified. Great job!')}
           </p>
         </div>
@@ -128,22 +128,26 @@ export const AtRiskStudents: React.FC = () => {
               <div
                 key={student.studentId}
                 onClick={() => setSelectedStudent(student)}
-                className={`border-2 rounded-lg p-4 cursor-pointer transition ${selectedStudent?.studentId === student.studentId
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                className="border-2 rounded-lg p-4 cursor-pointer transition"
+                style={{
+                  borderColor: selectedStudent?.studentId === student.studentId
+                    ? 'var(--text-primary)'
+                    : 'var(--border-default)',
+                  background: selectedStudent?.studentId === student.studentId
+                    ? 'var(--bg-elevated)'
+                    : 'transparent',
+                }}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h3 className="font-semibold text-gray-900">{student.studentName}</h3>
-                    <p className="text-sm text-gray-500">
+                    <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{student.studentName}</h3>
+                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                       {t('analytics.atRisk.riskScore', 'Risk Score')}: {student.riskScore.toFixed(1)}
                     </p>
                   </div>
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold border ${getRiskLevelColor(
-                      student.riskLevel
-                    )}`}
+                    className="px-3 py-1 rounded-full text-xs font-semibold"
+                    style={getRiskBadgeStyle(student.riskLevel)}
                   >
                     {student.riskLevel}
                   </span>
@@ -152,12 +156,12 @@ export const AtRiskStudents: React.FC = () => {
                 <div className="space-y-1">
                   {student.riskFactors.slice(0, 2).map((factor, idx) => (
                     <div key={idx} className="flex items-start gap-2 text-sm">
-                      <span className="text-red-500">⚠</span>
-                      <span className="text-gray-700">{factor.description}</span>
+                      <span style={{ color: 'var(--fn-warning)' }}>&#9888;</span>
+                      <span style={{ color: 'var(--text-secondary)' }}>{factor.description}</span>
                     </div>
                   ))}
                   {student.riskFactors.length > 2 && (
-                    <p className="text-xs text-gray-500 ml-6">
+                    <p className="text-xs ml-6" style={{ color: 'var(--text-faint)' }}>
                       +{student.riskFactors.length - 2} more factors
                     </p>
                   )}
@@ -167,25 +171,24 @@ export const AtRiskStudents: React.FC = () => {
           </div>
 
           {/* Student Details */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+          <div className="rounded-lg p-6" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
             {selectedStudent ? (
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                  <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
                     {selectedStudent.studentName}
                   </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                     {selectedStudent.courseCode} - {selectedStudent.courseTitle}
                   </p>
                   <div className="mt-3">
                     <span
-                      className={`px-3 py-1 rounded-full text-sm font-semibold border ${getRiskLevelColor(
-                        selectedStudent.riskLevel
-                      )}`}
+                      className="px-3 py-1 rounded-full text-sm font-semibold"
+                      style={getRiskBadgeStyle(selectedStudent.riskLevel)}
                     >
                       {selectedStudent.riskLevel} RISK
                     </span>
-                    <span className="ml-3 text-sm text-gray-600 dark:text-gray-400">
+                    <span className="ml-3 text-sm" style={{ color: 'var(--text-muted)' }}>
                       Score: {selectedStudent.riskScore.toFixed(1)}/100
                     </span>
                   </div>
@@ -193,28 +196,28 @@ export const AtRiskStudents: React.FC = () => {
 
                 {/* Risk Factors */}
                 <div>
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-3">
+                  <h4 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
                     {t('analytics.atRisk.riskFactors', 'Risk Factors')}
                   </h4>
                   <div className="space-y-2">
                     {selectedStudent.riskFactors.map((factor, idx) => (
-                      <div key={idx} className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-3">
+                      <div key={idx} className="rounded p-3" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
                         <div className="flex items-start gap-2">
-                          <span className="text-red-500 text-xl">⚠</span>
+                          <span className="text-xl" style={{ color: 'var(--fn-warning)' }}>&#9888;</span>
                           <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                               {factor.category.toUpperCase()}
                             </p>
-                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                               {factor.description}
                             </p>
-                            <div className="mt-2 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div className="mt-2 rounded-full h-2" style={{ background: 'var(--bg-overlay)' }}>
                               <div
-                                className="bg-red-500 h-2 rounded-full"
-                                style={{ width: `${factor.impact * 100}%` }}
+                                className="h-2 rounded-full"
+                                style={{ width: `${factor.impact * 100}%`, background: 'var(--fn-error)' }}
                               />
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            <p className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>
                               Impact: {(factor.impact * 100).toFixed(0)}%
                             </p>
                           </div>
@@ -226,30 +229,31 @@ export const AtRiskStudents: React.FC = () => {
 
                 {/* Recommendations */}
                 <div>
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-3">
+                  <h4 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
                     {t('analytics.atRisk.recommendations', 'Recommended Actions')}
                   </h4>
                   <div className="space-y-3">
                     {selectedStudent.recommendations.map((rec, idx) => (
                       <div
                         key={idx}
-                        className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                        className="rounded-lg p-4"
+                        style={{ border: '1px solid var(--border-default)' }}
                       >
                         <div className="flex items-start gap-3">
                           <div className="flex-shrink-0 text-2xl">
-                            {rec.type === 'intervention' && '👨‍🏫'}
-                            {rec.type === 'resource' && '📚'}
-                            {rec.type === 'contact' && '📧'}
+                            {rec.type === 'intervention' && String.fromCodePoint(0x1F468, 0x200D, 0x1F3EB)}
+                            {rec.type === 'resource' && String.fromCodePoint(0x1F4DA)}
+                            {rec.type === 'contact' && String.fromCodePoint(0x1F4E7)}
                           </div>
                           <div className="flex-1">
-                            <h5 className={`font-medium ${getPriorityColor(rec.priority)}`}>
+                            <h5 className="font-medium" style={{ color: getPriorityColor(rec.priority) }}>
                               {rec.title}
                             </h5>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                            <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                               {rec.description}
                             </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-                              Priority: <span className={getPriorityColor(rec.priority)}>{rec.priority}</span>
+                            <p className="text-xs mt-2" style={{ color: 'var(--text-faint)' }}>
+                              Priority: <span style={{ color: getPriorityColor(rec.priority), fontWeight: 600 }}>{rec.priority}</span>
                             </p>
                           </div>
                         </div>
@@ -259,17 +263,17 @@ export const AtRiskStudents: React.FC = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <button className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                <div className="flex gap-3 pt-4" style={{ borderTop: '1px solid var(--border-default)' }}>
+                  <button className="btn btn-primary flex-1">
                     {t('analytics.atRisk.contact', 'Contact Student')}
                   </button>
-                  <button className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
+                  <button className="btn btn-secondary flex-1">
                     {t('analytics.atRisk.viewProgress', 'View Full Progress')}
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+              <div className="text-center py-12" style={{ color: 'var(--text-muted)' }}>
                 {t('analytics.atRisk.selectStudent', 'Select a student to view details')}
               </div>
             )}

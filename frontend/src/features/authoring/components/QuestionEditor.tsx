@@ -38,20 +38,20 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, index, onChan
   const supportsOptions = question.type === 'MCQ' || question.type === 'MULTI_SELECT';
 
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
+    <div className="rounded-lg p-4 space-y-3" style={{ border: '1px solid var(--border-default)' }}>
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-gray-800 dark:text-gray-100">Question {index + 1}</h3>
+        <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Question {index + 1}</h3>
         {!readOnly && (
-          <button type="button" className="text-sm text-red-600" onClick={onRemove}>
+          <button type="button" className="text-sm" style={{ color: 'var(--fn-error)' }} onClick={onRemove}>
             Remove
           </button>
         )}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
+          <label className="label block mb-1">Type</label>
           <select
-            className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-2"
+            className="input w-full"
             value={question.type}
             disabled={readOnly}
             onChange={(event) => onChange({ ...question, type: event.target.value as QuestionDraft['type'] })}
@@ -99,10 +99,11 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, index, onChan
       {supportsOptions && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h4 className="font-semibold text-gray-700 dark:text-gray-200">Options</h4>
+            <h4 className="font-semibold" style={{ color: 'var(--text-secondary)' }}>Options</h4>
             <button
               type="button"
-              className="text-sm text-blue-600"
+              className="text-sm"
+              style={{ color: 'var(--text-primary)' }}
               onClick={addOption}
               disabled={readOnly}
             >
@@ -112,7 +113,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, index, onChan
           {question.options.map((option, optionIndex) => (
             <div key={option.id} className="flex flex-col md:flex-row gap-2 md:items-center">
               <input
-                className="flex-1 border border-gray-300 dark:border-gray-600 rounded px-2 py-2"
+                className="input flex-1"
                 value={option.text}
                 disabled={readOnly}
                 onChange={(event) => updateOption(optionIndex, { ...option, text: event.target.value })}
@@ -134,7 +135,8 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, index, onChan
               {!readOnly && question.options.length > 1 && (
                 <button
                   type="button"
-                  className="text-sm text-red-600"
+                  className="text-sm"
+                  style={{ color: 'var(--fn-error)' }}
                   onClick={() => removeOption(optionIndex)}
                 >
                   Remove

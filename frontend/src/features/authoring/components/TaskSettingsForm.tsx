@@ -15,7 +15,7 @@ const TaskSettingsForm: React.FC<TaskSettingsFormProps> = ({ settings, onChange,
 
   return (
     <section className="space-y-4">
-      <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Settings</h2>
+      <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Settings</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Input
           label="Time Limit (minutes)"
@@ -34,9 +34,9 @@ const TaskSettingsForm: React.FC<TaskSettingsFormProps> = ({ settings, onChange,
           onChange={(event) => updateField('attemptsAllowed', Number(event.target.value))}
         />
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Grading Mode</label>
+          <label className="label block mb-1">Grading Mode</label>
           <select
-            className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-2"
+            className="input w-full"
             value={settings.gradingMode}
             disabled={readOnly}
             onChange={(event) => updateField('gradingMode', event.target.value as TaskSettings['gradingMode'])}
@@ -48,7 +48,7 @@ const TaskSettingsForm: React.FC<TaskSettingsFormProps> = ({ settings, onChange,
         </div>
       </div>
       <div className="flex flex-wrap gap-4">
-        <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+        <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
           <input
             type="checkbox"
             checked={settings.allowLateSubmission ?? false}
@@ -57,7 +57,7 @@ const TaskSettingsForm: React.FC<TaskSettingsFormProps> = ({ settings, onChange,
           />
           Allow late submission
         </label>
-        <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+        <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
           <input
             type="checkbox"
             checked={settings.draftState === 'PUBLISHED'}

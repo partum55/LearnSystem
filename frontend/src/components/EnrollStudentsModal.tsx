@@ -246,20 +246,22 @@ export const EnrollStudentsModal: React.FC<EnrollStudentsModalProps> = ({
         <div className="flex gap-3 mb-6">
           <button
             onClick={() => setMethod('manual')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 transition-all ${method === 'manual'
-              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-              : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
-              }`}
+            className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 transition-all"
+            style={method === 'manual'
+              ? { borderColor: 'var(--text-primary)', background: 'var(--bg-elevated)', color: 'var(--text-primary)' }
+              : { borderColor: 'var(--border-default)', color: 'var(--text-secondary)' }
+            }
           >
             <UserPlusIcon className="h-5 w-5" />
             <span className="font-medium">{t('enrollment.manual')}</span>
           </button>
           <button
             onClick={() => setMethod('csv')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 transition-all ${method === 'csv'
-              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-              : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
-              }`}
+            className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 transition-all"
+            style={method === 'csv'
+              ? { borderColor: 'var(--text-primary)', background: 'var(--bg-elevated)', color: 'var(--text-primary)' }
+              : { borderColor: 'var(--border-default)', color: 'var(--text-secondary)' }
+            }
           >
             <DocumentArrowUpIcon className="h-5 w-5" />
             <span className="font-medium">{t('enrollment.csv')}</span>
@@ -267,11 +269,11 @@ export const EnrollStudentsModal: React.FC<EnrollStudentsModalProps> = ({
         </div>
 
         {error && (
-          <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
+          <div className="rounded-md p-4" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--fn-error)' }}>
             <div className="flex">
-              <ExclamationTriangleIcon className="h-5 w-5 text-red-400" />
+              <ExclamationTriangleIcon className="h-5 w-5" style={{ color: 'var(--fn-error)' }} />
               <div className="ml-3">
-                <p className="text-sm text-red-800 dark:text-red-400">{error}</p>
+                <p className="text-sm" style={{ color: 'var(--fn-error)' }}>{error}</p>
               </div>
             </div>
           </div>
@@ -281,13 +283,13 @@ export const EnrollStudentsModal: React.FC<EnrollStudentsModalProps> = ({
         {method === 'manual' && !result && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="label mb-1">
                 {t('enrollment.role')}
               </label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as 'STUDENT' | 'TA')}
-                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                className="input w-full"
               >
                 <option value="STUDENT">{t('enrollment.roles.student')}</option>
                 <option value="TA">{t('enrollment.roles.ta')}</option>
@@ -295,7 +297,7 @@ export const EnrollStudentsModal: React.FC<EnrollStudentsModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="label mb-1">
                 {t('enrollment.emailList')}
               </label>
               <textarea
@@ -303,9 +305,9 @@ export const EnrollStudentsModal: React.FC<EnrollStudentsModalProps> = ({
                 onChange={(e) => setEmailList(e.target.value)}
                 rows={8}
                 placeholder={t('enrollment.emailListPlaceholder')}
-                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white font-mono text-sm"
+                className="input w-full font-mono text-sm"
               />
-              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
                 {t('enrollment.emailListHint')}
               </p>
             </div>
@@ -315,24 +317,25 @@ export const EnrollStudentsModal: React.FC<EnrollStudentsModalProps> = ({
         {/* CSV Upload Form */}
         {method === 'csv' && !result && (
           <div className="space-y-4">
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="rounded-lg p-4" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
               <div className="flex">
-                <InformationCircleIcon className="h-5 w-5 text-blue-400 flex-shrink-0" />
+                <InformationCircleIcon className="h-5 w-5 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                  <h3 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                     {t('enrollment.csvFormat')}
                   </h3>
-                  <div className="mt-2 text-sm text-blue-700 dark:text-blue-400">
+                  <div className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
                     <p>{t('enrollment.csvFormatDesc')}</p>
                     <ul className="list-disc list-inside mt-2 space-y-1">
-                      <li><code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">email</code> - {t('enrollment.csvFields.email')}</li>
-                      <li><code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">name</code> - {t('enrollment.csvFields.name')}</li>
-                      <li><code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">role</code> - {t('enrollment.csvFields.role')}</li>
+                      <li><code className="px-1 rounded" style={{ background: 'var(--bg-surface)' }}>email</code> - {t('enrollment.csvFields.email')}</li>
+                      <li><code className="px-1 rounded" style={{ background: 'var(--bg-surface)' }}>name</code> - {t('enrollment.csvFields.name')}</li>
+                      <li><code className="px-1 rounded" style={{ background: 'var(--bg-surface)' }}>role</code> - {t('enrollment.csvFields.role')}</li>
                     </ul>
                   </div>
                   <button
                     onClick={downloadSampleCsv}
-                    className="mt-3 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+                    className="mt-3 text-sm font-medium"
+                    style={{ color: 'var(--text-primary)' }}
                   >
                     {t('enrollment.downloadSample')}
                   </button>
@@ -341,17 +344,18 @@ export const EnrollStudentsModal: React.FC<EnrollStudentsModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="label mb-2">
                 {t('enrollment.selectFile')}
               </label>
               <input
                 type="file"
                 accept=".csv"
                 onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
-                className="block w-full text-sm text-gray-900 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 focus:outline-none"
+                className="block w-full text-sm rounded-lg cursor-pointer"
+                style={{ color: 'var(--text-secondary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}
               />
               {csvFile && (
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
                   {t('enrollment.selectedFile')}: {csvFile.name}
                 </p>
               )}
@@ -362,14 +366,14 @@ export const EnrollStudentsModal: React.FC<EnrollStudentsModalProps> = ({
         {/* Results */}
         {result && (
           <div className="space-y-4">
-            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+            <div className="rounded-lg p-4" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--fn-success)' }}>
               <div className="flex">
-                <CheckCircleIcon className="h-5 w-5 text-green-400 flex-shrink-0" />
+                <CheckCircleIcon className="h-5 w-5 flex-shrink-0" style={{ color: 'var(--fn-success)' }} />
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-green-800 dark:text-green-300">
+                  <h3 className="text-sm font-medium" style={{ color: 'var(--fn-success)' }}>
                     {t('enrollment.success')}
                   </h3>
-                  <div className="mt-2 text-sm text-green-700 dark:text-green-400">
+                  <div className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
                     <ul className="list-disc list-inside space-y-1">
                       <li>{t('enrollment.totalEnrolled', { count: result.total_enrolled })}</li>
                       {result.total_created !== undefined && result.total_created > 0 && (
@@ -379,12 +383,12 @@ export const EnrollStudentsModal: React.FC<EnrollStudentsModalProps> = ({
                         <li>{t('enrollment.totalAlreadyEnrolled', { count: result.total_already_enrolled })}</li>
                       )}
                       {result.total_not_found > 0 && (
-                        <li className="text-yellow-700 dark:text-yellow-400">
+                        <li style={{ color: 'var(--fn-warning)' }}>
                           {t('enrollment.totalNotFound', { count: result.total_not_found })}
                         </li>
                       )}
                       {result.total_errors !== undefined && result.total_errors > 0 && (
-                        <li className="text-red-700 dark:text-red-400">
+                        <li style={{ color: 'var(--fn-error)' }}>
                           {t('enrollment.totalErrors', { count: result.total_errors })}
                         </li>
                       )}
@@ -397,15 +401,15 @@ export const EnrollStudentsModal: React.FC<EnrollStudentsModalProps> = ({
             {/* Detailed Results */}
             {result.enrolled.length > 0 && (
               <div>
-                <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                <h4 className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                   {t('enrollment.enrolledStudents')} ({result.enrolled.length})
                 </h4>
                 <div className="max-h-40 overflow-y-auto space-y-1">
                   {result.enrolled.map((student, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded">
-                      <CheckCircleIcon className="h-4 w-4 text-green-500" />
+                    <div key={idx} className="flex items-center gap-2 text-sm px-3 py-2 rounded" style={{ color: 'var(--text-secondary)', background: 'var(--bg-surface)' }}>
+                      <CheckCircleIcon className="h-4 w-4" style={{ color: 'var(--fn-success)' }} />
                       <span>{student.name} ({student.email})</span>
-                      <span className="text-xs text-gray-500">- {student.role}</span>
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>- {student.role}</span>
                     </div>
                   ))}
                 </div>
@@ -414,12 +418,12 @@ export const EnrollStudentsModal: React.FC<EnrollStudentsModalProps> = ({
 
             {result.not_found.length > 0 && (
               <div>
-                <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                <h4 className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                   {t('enrollment.notFoundUsers')} ({result.not_found.length})
                 </h4>
                 <div className="max-h-32 overflow-y-auto space-y-1">
                   {result.not_found.map((email, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-sm text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-2 rounded">
+                    <div key={idx} className="flex items-center gap-2 text-sm px-3 py-2 rounded" style={{ color: 'var(--fn-warning)', background: 'var(--bg-elevated)' }}>
                       <ExclamationTriangleIcon className="h-4 w-4" />
                       <span>{email}</span>
                     </div>
@@ -431,7 +435,7 @@ export const EnrollStudentsModal: React.FC<EnrollStudentsModalProps> = ({
         )}
 
         {/* Actions */}
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex justify-end gap-3 pt-4 border-t" style={{ borderColor: 'var(--border-default)' }}>
           {result ? (
             <>
               <Button variant="secondary" onClick={handleClose}>

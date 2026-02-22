@@ -82,7 +82,7 @@ export const ResourceWizard: React.FC<ResourceWizardProps> = ({
 
     const renderStep1 = () => (
         <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+            <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>
                 {t('resources.wizard.selectType')}
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -94,17 +94,24 @@ export const ResourceWizard: React.FC<ResourceWizardProps> = ({
                             setFormData(prev => ({ ...prev, resource_type: type.value }));
                             handleNext();
                         }}
-                        className={`
-                flex flex-col items-center p-4 border rounded-xl transition-all
-                hover:shadow-md hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10
-                ${formData.resource_type === type.value
-                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500'
-                                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'}
-            `}
+                        className="flex flex-col items-center p-4 rounded-xl transition-all"
+                        style={{
+                            border: formData.resource_type === type.value
+                                ? '2px solid var(--text-primary)'
+                                : '1px solid var(--border-default)',
+                            background: formData.resource_type === type.value
+                                ? 'var(--bg-active)'
+                                : 'var(--bg-surface)',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = formData.resource_type === type.value
+                                ? 'var(--bg-active)' : 'var(--bg-surface)';
+                        }}
                     >
-                        <type.icon className="w-8 h-8 mb-3 text-blue-600 dark:text-blue-400" />
-                        <span className="font-medium text-gray-900 dark:text-white">{type.label}</span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">{type.description}</span>
+                        <type.icon className="w-8 h-8 mb-3" style={{ color: 'var(--text-secondary)' }} />
+                        <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{type.label}</span>
+                        <span className="text-xs mt-1 text-center" style={{ color: 'var(--text-muted)' }}>{type.description}</span>
                     </button>
                 ))}
             </div>
@@ -118,7 +125,7 @@ export const ResourceWizard: React.FC<ResourceWizardProps> = ({
 
         return (
             <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>
                     {t('resources.wizard.details')}
                 </h3>
 
@@ -130,19 +137,22 @@ export const ResourceWizard: React.FC<ResourceWizardProps> = ({
                 />
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="label block mb-1">
                         {t('resources.description')}
                     </label>
                     <textarea
                         value={formData.description || ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                         rows={3}
-                        className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                        className="input w-full"
                     />
                 </div>
 
                 {requiresFile && (
-                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
+                    <div
+                        className="border-2 border-dashed rounded-lg p-6 text-center"
+                        style={{ borderColor: 'var(--border-default)' }}
+                    >
                         <input
                             type="file"
                             id="file-upload"
@@ -155,8 +165,8 @@ export const ResourceWizard: React.FC<ResourceWizardProps> = ({
                             }}
                         />
                         <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center">
-                            <ArrowUpTrayIcon className="w-10 h-10 text-gray-400 mb-2" />
-                            <span className="text-sm text-gray-600 dark:text-gray-300">
+                            <ArrowUpTrayIcon className="w-10 h-10 mb-2" style={{ color: 'var(--text-faint)' }} />
+                            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                                 {file ? file.name : t('resources.wizard.clickToUpload')}
                             </span>
                         </label>
@@ -175,14 +185,14 @@ export const ResourceWizard: React.FC<ResourceWizardProps> = ({
 
                 {requiresText && (
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <label className="label block mb-1">
                             {t('resources.textContent')} (LaTeX supported)
                         </label>
                         <textarea
                             value={formData.text_content || ''}
                             onChange={(e) => setFormData(prev => ({ ...prev, text_content: e.target.value }))}
                             rows={8}
-                            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white font-mono text-sm"
+                            className="input w-full font-mono text-sm"
                         />
                     </div>
                 )}
@@ -192,27 +202,27 @@ export const ResourceWizard: React.FC<ResourceWizardProps> = ({
 
     const renderStep3 = () => (
         <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+            <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>
                 {t('resources.wizard.preview')}
             </h3>
-            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{formData.title}</h4>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">{formData.description}</p>
+            <div className="p-4 rounded-lg" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
+                <h4 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>{formData.title}</h4>
+                <p className="mb-4" style={{ color: 'var(--text-muted)' }}>{formData.description}</p>
 
                 {/* Simple preview logic */}
                 {formData.resource_type === 'TEXT' && (
-                    <div className="prose dark:prose-invert max-w-none p-4 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                    <div className="prose max-w-none p-4 rounded" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}>
                         {formData.text_content}
                     </div>
                 )}
                 {file && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                    <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
                         <DocumentTextIcon className="w-5 h-5" />
                         {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
                     </div>
                 )}
                 {formData.resource_type === 'LINK' && (
-                    <a href={formData.external_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                    <a href={formData.external_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-primary)', textDecoration: 'underline' }}>
                         {formData.external_url}
                     </a>
                 )}
@@ -226,25 +236,25 @@ export const ResourceWizard: React.FC<ResourceWizardProps> = ({
                 <div className="flex items-center justify-between px-4">
                     {[1, 2, 3].map((s) => (
                         <div key={s} className="flex flex-col items-center relative z-10">
-                            <div className={`
-                            w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors
-                            ${step >= s ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}
-                        `}>
+                            <div
+                                className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors"
+                                style={{
+                                    background: step >= s ? 'var(--text-primary)' : 'var(--bg-overlay)',
+                                    color: step >= s ? 'var(--bg-base)' : 'var(--text-faint)',
+                                }}
+                            >
                                 {s}
                             </div>
-                            <span className="text-xs mt-1 text-gray-500 dark:text-gray-400">
+                            <span className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
                                 {s === 1 ? t('wizard.type') : s === 2 ? t('wizard.content') : t('wizard.preview')}
                             </span>
                         </div>
                     ))}
-                    {/* Progress bar line */}
-                    <div className="absolute left-0 w-full h-1 bg-gray-200 dark:bg-gray-700 top-4 -z-0 hidden md:block" />
-                    {/* (Note: Positioning of the line needs better CSS or just simple layout) */}
                 </div>
             </div>
 
             {error && (
-                <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">
+                <div className="mb-4 p-3 rounded-md text-sm" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', color: 'var(--fn-error)' }}>
                     {error}
                 </div>
             )}
@@ -255,7 +265,7 @@ export const ResourceWizard: React.FC<ResourceWizardProps> = ({
                 {step === 3 && renderStep3()}
             </div>
 
-            <div className="flex justify-between pt-6 border-t border-gray-200 dark:border-gray-700 mt-6">
+            <div className="flex justify-between pt-6 mt-6" style={{ borderTop: '1px solid var(--border-default)' }}>
                 <Button variant="secondary" onClick={step === 1 ? onClose : handleBack}>
                     {step === 1 ? t('common.cancel') : t('common.back')}
                 </Button>

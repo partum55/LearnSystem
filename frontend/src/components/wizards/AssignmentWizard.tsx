@@ -105,7 +105,7 @@ export const AssignmentWizard: React.FC<AssignmentWizardProps> = ({
 
     const renderStep1 = () => (
         <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+            <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>
                 {t('assignments.wizard.selectType')}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -117,17 +117,15 @@ export const AssignmentWizard: React.FC<AssignmentWizardProps> = ({
                             setFormData(prev => ({ ...prev, assignment_type: type.value as AssignmentType }));
                             handleNext();
                         }}
-                        className={`
-                flex flex-col items-center p-6 border rounded-xl transition-all
-                hover:shadow-md hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10
-                ${formData.assignment_type === type.value
-                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500'
-                                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'}
-            `}
+                        className="flex flex-col items-center p-6 rounded-xl transition-all"
+                        style={{
+                            background: formData.assignment_type === type.value ? 'var(--bg-active)' : 'var(--bg-surface)',
+                            border: formData.assignment_type === type.value ? '2px solid var(--text-primary)' : '1px solid var(--border-default)',
+                        }}
                     >
-                        <type.icon className="w-10 h-10 mb-4 text-blue-600 dark:text-blue-400" />
-                        <span className="font-medium text-lg text-gray-900 dark:text-white">{type.label}</span>
-                        <span className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-center">{type.description}</span>
+                        <type.icon className="w-10 h-10 mb-4" style={{ color: 'var(--text-secondary)' }} />
+                        <span className="font-medium text-lg" style={{ color: 'var(--text-primary)' }}>{type.label}</span>
+                        <span className="text-sm mt-2 text-center" style={{ color: 'var(--text-muted)' }}>{type.description}</span>
                     </button>
                 ))}
             </div>
@@ -136,7 +134,7 @@ export const AssignmentWizard: React.FC<AssignmentWizardProps> = ({
 
     const renderStep2 = () => (
         <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+            <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>
                 {t('assignments.wizard.details')}
             </h3>
 
@@ -148,14 +146,14 @@ export const AssignmentWizard: React.FC<AssignmentWizardProps> = ({
             />
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="label block mb-1">
                     {t('assignments.description')}
                 </label>
                 <textarea
                     value={formData.description}
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                     rows={3}
-                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                    className="input w-full"
                 />
             </div>
 
@@ -176,9 +174,9 @@ export const AssignmentWizard: React.FC<AssignmentWizardProps> = ({
 
             {formData.assignment_type === 'QUIZ' && (
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Quiz</label>
+                    <label className="label block mb-1">Select Quiz</label>
                     <select
-                        className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-800 dark:text-white"
+                        className="input w-full"
                         value={formData.quiz_id}
                         onChange={e => setFormData(prev => ({ ...prev, quiz_id: e.target.value }))}
                     >
@@ -195,9 +193,9 @@ export const AssignmentWizard: React.FC<AssignmentWizardProps> = ({
 
             {formData.assignment_type === 'CODE' && (
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Language</label>
+                    <label className="label block mb-1">Language</label>
                     <select
-                        className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-800 dark:text-white"
+                        className="input w-full"
                         value={formData.programming_language}
                         onChange={e => setFormData(prev => ({ ...prev, programming_language: e.target.value }))}
                     >
@@ -206,7 +204,7 @@ export const AssignmentWizard: React.FC<AssignmentWizardProps> = ({
                         <option value="java">Java</option>
                         <option value="cpp">C++</option>
                     </select>
-                    <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 text-sm mt-2 rounded">
+                    <div className="p-3 text-sm mt-2 rounded" style={{ background: 'rgba(234, 179, 8, 0.08)', border: '1px solid rgba(234, 179, 8, 0.15)', color: 'var(--fn-warning)' }}>
                         VPL and Test settings will be available after creation.
                     </div>
                 </div>
@@ -216,35 +214,35 @@ export const AssignmentWizard: React.FC<AssignmentWizardProps> = ({
 
     const renderStep3 = () => (
         <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+            <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>
                 {t('assignments.wizard.preview')}
             </h3>
-            <div className="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="p-6 rounded-lg" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
                 <h1 className="text-2xl font-bold mb-2">{formData.title}</h1>
-                <div className="prose dark:prose-invert max-w-none mb-6">
+                <div className="prose max-w-none mb-6" style={{ color: 'var(--text-secondary)' }}>
                     {formData.description}
                 </div>
 
                 <div className="flex gap-4 mb-6">
-                    <div className="bg-white dark:bg-gray-800 px-4 py-2 rounded border border-gray-200 dark:border-gray-700">
-                        <span className="text-sm text-gray-500 block">Due Date</span>
+                    <div className="px-4 py-2 rounded" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
+                        <span className="text-sm block" style={{ color: 'var(--text-muted)' }}>Due Date</span>
                         <span className="font-medium">{formData.due_date ? new Date(formData.due_date).toLocaleString() : 'No due date'}</span>
                     </div>
-                    <div className="bg-white dark:bg-gray-800 px-4 py-2 rounded border border-gray-200 dark:border-gray-700">
-                        <span className="text-sm text-gray-500 block">Points</span>
+                    <div className="px-4 py-2 rounded" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
+                        <span className="text-sm block" style={{ color: 'var(--text-muted)' }}>Points</span>
                         <span className="font-medium">{formData.max_points}</span>
                     </div>
                 </div>
 
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                <div className="pt-6" style={{ borderTop: '1px solid var(--border-default)' }}>
                     {/* Mock submission area */}
                     {formData.assignment_type === 'TEXT' && (
-                        <div className="p-4 border-2 border-dashed border-gray-300 text-center text-gray-500 rounded-lg">
+                        <div className="p-4 border-2 border-dashed text-center rounded-lg" style={{ borderColor: 'var(--border-default)', color: 'var(--text-muted)' }}>
                             Student submission area (Text/File)
                         </div>
                     )}
                     {formData.assignment_type === 'CODE' && (
-                        <div className="h-32 bg-gray-900 rounded-lg flex items-center justify-center text-gray-400 font-mono">
+                        <div className="h-32 rounded-lg flex items-center justify-center font-mono" style={{ background: 'var(--bg-base)', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
                          // Code Editor Preview ({formData.programming_language})
                         </div>
                     )}
@@ -266,11 +264,14 @@ export const AssignmentWizard: React.FC<AssignmentWizardProps> = ({
                         <div key={s} className="flex flex-col items-center relative z-10">
                             <div className={`
                             w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors
-                            ${step >= s ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}
-                        `}>
+                        `}
+                            style={{
+                                background: step >= s ? 'var(--text-primary)' : 'var(--bg-overlay)',
+                                color: step >= s ? 'var(--bg-base)' : 'var(--text-faint)',
+                            }}>
                                 {s}
                             </div>
-                            <span className="text-xs mt-1 text-gray-500 dark:text-gray-400">
+                            <span className="text-xs mt-1 " style={{ color: 'var(--text-muted)' }}>
                                 {s === 1 ? t('wizard.type') : s === 2 ? t('wizard.details') : t('wizard.preview')}
                             </span>
                         </div>
@@ -279,7 +280,7 @@ export const AssignmentWizard: React.FC<AssignmentWizardProps> = ({
             </div>
 
             {error && (
-                <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">
+                <div className="mb-4 p-3 rounded-md text-sm" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', color: 'var(--fn-error)' }}>
                     {error}
                 </div>
             )}
@@ -290,7 +291,7 @@ export const AssignmentWizard: React.FC<AssignmentWizardProps> = ({
                 {step === 3 && renderStep3()}
             </div>
 
-            <div className="flex justify-between pt-6 border-t border-gray-200 dark:border-gray-700 mt-6">
+            <div className="flex justify-between pt-6 mt-6" style={{ borderTop: '1px solid var(--border-default)' }}>
                 <Button variant="secondary" onClick={step === 1 ? onClose : handleBack}>
                     {step === 1 ? t('common.cancel') : t('common.back')}
                 </Button>

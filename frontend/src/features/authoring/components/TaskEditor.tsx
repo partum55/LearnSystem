@@ -106,7 +106,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
       <div className="flex flex-wrap gap-3">
         <button
           type="button"
-          className="px-4 py-2 bg-blue-600 text-white rounded"
+          className="btn btn-primary"
           onClick={handleSave}
           disabled={readOnly}
         >
@@ -114,27 +114,28 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
         </button>
         <button
           type="button"
-          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded"
+          className="btn btn-secondary"
           onClick={handleValidate}
         >
           Validate
         </button>
         <button
           type="button"
-          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded"
+          className="btn btn-secondary"
           onClick={handlePreview}
         >
           Preview
         </button>
         <button
           type="button"
-          className="px-4 py-2 bg-transparent border border-gray-300 rounded"
+          className="px-4 py-2 bg-transparent rounded"
+          style={{ border: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}
           onClick={handleReset}
           disabled={readOnly}
         >
           Reset
         </button>
-        {lastSaved && <span className="text-sm text-gray-500">Last saved just now.</span>}
+        {lastSaved && <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Last saved just now.</span>}
       </div>
 
       <TaskMetadataForm
@@ -189,22 +190,23 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
         }}
       />
 
-      <section className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
-        <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Validation</h2>
+      <section className="rounded-lg p-4 space-y-3" style={{ border: '1px solid var(--border-default)' }}>
+        <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Validation</h2>
         <ValidationSummary validation={validation} />
         {remoteValidation && (
           <div>
-            <p className="text-sm text-gray-500">Server validation</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Server validation</p>
             <ValidationSummary validation={remoteValidation} />
           </div>
         )}
       </section>
 
-      <section className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
-        <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Preview</h2>
+      <section className="rounded-lg p-4 space-y-3" style={{ border: '1px solid var(--border-default)' }}>
+        <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Preview</h2>
         <div
-          className="prose dark:prose-invert max-w-none"
-          dangerouslySetInnerHTML={{ __html: previewHtml || '<p class="text-gray-500">Run preview to render content.</p>' }}
+          className="prose max-w-none"
+          style={{ color: 'var(--text-secondary)' }}
+          dangerouslySetInnerHTML={{ __html: previewHtml || '<p style="color: var(--text-muted)">Run preview to render content.</p>' }}
         />
       </section>
     </div>

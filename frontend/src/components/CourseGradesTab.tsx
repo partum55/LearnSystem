@@ -73,6 +73,9 @@ interface CourseGradesTabProps {
   courseId: string;
 }
 
+const getPercentageColor = (pct: number) =>
+  pct >= 90 ? 'var(--fn-success)' : pct >= 70 ? 'var(--fn-warning)' : 'var(--fn-error)';
+
 export const CourseGradesTab: React.FC<CourseGradesTabProps> = ({ courseId }) => {
   const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
@@ -178,7 +181,7 @@ export const CourseGradesTab: React.FC<CourseGradesTabProps> = ({ courseId }) =>
   const getStatusBadge = (entry: GradeEntry) => {
     if (entry.is_excused) {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+        <span className="badge" style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
           <ExclamationCircleIcon className="w-4 h-4 mr-1" />
           {t('gradebook.excused')}
         </span>
@@ -188,35 +191,35 @@ export const CourseGradesTab: React.FC<CourseGradesTabProps> = ({ courseId }) =>
     switch (entry.status) {
       case 'GRADED':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+          <span className="badge badge-success">
             <CheckCircleIcon className="w-4 h-4 mr-1" />
             {t('gradebook.status.graded')}
           </span>
         );
       case 'SUBMITTED':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+          <span className="badge" style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
             <ClockIcon className="w-4 h-4 mr-1" />
             {t('gradebook.status.submitted')}
           </span>
         );
       case 'MISSING':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+          <span className="badge badge-error">
             <XCircleIcon className="w-4 h-4 mr-1" />
             {t('gradebook.status.missing')}
           </span>
         );
       case 'LATE':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+          <span className="badge badge-warning">
             <ClockIcon className="w-4 h-4 mr-1" />
             {t('gradebook.late')}
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+          <span className="badge" style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
             {t('gradebook.status.not_submitted')}
           </span>
         );
@@ -246,8 +249,8 @@ export const CourseGradesTab: React.FC<CourseGradesTabProps> = ({ courseId }) =>
   if (error) {
     return (
       <div className="text-center py-12">
-        <XCircleIcon className="mx-auto h-12 w-12 text-red-400" />
-        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">{error}</h3>
+        <XCircleIcon className="mx-auto h-12 w-12" style={{ color: 'var(--fn-error)' }} />
+        <h3 className="mt-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{error}</h3>
       </div>
     );
   }
@@ -264,14 +267,14 @@ export const CourseGradesTab: React.FC<CourseGradesTabProps> = ({ courseId }) =>
           <CardBody>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="text-center">
-                <AcademicCapIcon className="mx-auto h-8 w-8 text-primary-600 dark:text-primary-400 mb-2" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <AcademicCapIcon className="mx-auto h-8 w-8 mb-2" style={{ color: 'var(--text-secondary)' }} />
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                   {t('gradebook.current_grade')}
                 </p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
                   {gradebook.summary.letter_grade || 'N/A'}
                 </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                   {gradebook.summary.current_grade !== null && gradebook.summary.current_grade !== undefined
                     ? `${gradebook.summary.current_grade.toFixed(1)}%`
                     : '-'}
@@ -279,28 +282,28 @@ export const CourseGradesTab: React.FC<CourseGradesTabProps> = ({ courseId }) =>
               </div>
 
               <div className="text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                   {t('gradebook.points_earned')}
                 </p>
-                <p className="text-2xl font-semibold text-gray-900 dark:text-white mt-2">
+                <p className="text-2xl font-semibold mt-2" style={{ color: 'var(--text-primary)' }}>
                   {gradebook.summary.total_points_earned.toFixed(1)} / {gradebook.summary.total_points_possible}
                 </p>
               </div>
 
               <div className="text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                   {t('gradebook.assignments_completed')}
                 </p>
-                <p className="text-2xl font-semibold text-gray-900 dark:text-white mt-2">
+                <p className="text-2xl font-semibold mt-2" style={{ color: 'var(--text-primary)' }}>
                   {gradebook.summary.assignments_completed} / {gradebook.summary.assignments_total}
                 </p>
               </div>
 
               <div className="text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                   {t('gradebook.completion_rate')}
                 </p>
-                <p className="text-2xl font-semibold text-gray-900 dark:text-white mt-2">
+                <p className="text-2xl font-semibold mt-2" style={{ color: 'var(--text-primary)' }}>
                   {gradebook.summary.assignments_total > 0
                     ? `${((gradebook.summary.assignments_completed / gradebook.summary.assignments_total) * 100).toFixed(0)}%`
                     : '0%'}
@@ -313,7 +316,7 @@ export const CourseGradesTab: React.FC<CourseGradesTabProps> = ({ courseId }) =>
 
       {/* Grades by Module */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+        <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
           {t('gradebook.assignment_grades')}
         </h3>
 
@@ -321,11 +324,11 @@ export const CourseGradesTab: React.FC<CourseGradesTabProps> = ({ courseId }) =>
           <Card>
             <CardBody>
               <div className="text-center py-12">
-                <AcademicCapIcon className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+                <AcademicCapIcon className="mx-auto h-12 w-12" style={{ color: 'var(--text-faint)' }} />
+                <h3 className="mt-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                   {t('gradebook.no_grades')}
                 </h3>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
                   {t('gradebook.no_grades_description')}
                 </p>
               </div>
@@ -339,39 +342,42 @@ export const CourseGradesTab: React.FC<CourseGradesTabProps> = ({ courseId }) =>
             return (
               <Card key={module.module_id || 'unassigned'}>
                 <div
-                  className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  className="px-6 py-4 cursor-pointer transition-colors"
+                  style={{ borderBottom: '1px solid var(--border-default)' }}
                   onClick={() => toggleModule(module.module_id)}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = ''; }}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 flex-1">
                       {module.module_id && (
                         <>
                           {isExpanded ? (
-                            <ChevronDownIcon className="h-5 w-5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                            <ChevronDownIcon className="h-5 w-5 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
                           ) : (
-                            <ChevronRightIcon className="h-5 w-5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                            <ChevronRightIcon className="h-5 w-5 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
                           )}
                         </>
                       )}
-                      <FolderIcon className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                      <h4 className="text-base font-semibold text-gray-900 dark:text-white">
+                      <FolderIcon className="h-5 w-5 flex-shrink-0" style={{ color: 'var(--text-secondary)' }} />
+                      <h4 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
                         {module.module_title}
                       </h4>
                     </div>
                     <div className="flex items-center gap-6 text-sm">
                       <div className="text-right">
-                        <div className="text-gray-500 dark:text-gray-400">
+                        <div style={{ color: 'var(--text-muted)' }}>
                           {stats.completed}/{stats.total} {t('gradebook.assignments_completed')}
                         </div>
-                        <div className="font-semibold text-gray-900 dark:text-white">
+                        <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>
                           {stats.earnedPoints.toFixed(1)}/{stats.totalPoints} {t('gradebook.points')}
                         </div>
                       </div>
                       <div className="text-right min-w-[60px]">
-                        <div className={`text-lg font-bold ${stats.percentage >= 90 ? 'text-green-600 dark:text-green-400' :
-                          stats.percentage >= 70 ? 'text-yellow-600 dark:text-yellow-400' :
-                            'text-red-600 dark:text-red-400'
-                          }`}>
+                        <div
+                          className="text-lg font-bold"
+                          style={{ color: getPercentageColor(stats.percentage) }}
+                        >
                           {stats.percentage.toFixed(0)}%
                         </div>
                       </div>
@@ -382,62 +388,73 @@ export const CourseGradesTab: React.FC<CourseGradesTabProps> = ({ courseId }) =>
                 {isExpanded && (
                   <CardBody>
                     <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead className="bg-gray-50 dark:bg-gray-800">
+                      <table className="table-container min-w-full">
+                        <thead style={{ background: 'var(--bg-elevated)' }}>
                           <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                               {t('gradebook.assignment')}
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                               {t('gradebook.due_date')}
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                               {t('gradebook.status')}
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                               {t('gradebook.score')}
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                               {t('gradebook.percentage')}
                             </th>
                           </tr>
                         </thead>
-                        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                        <tbody style={{ background: 'var(--bg-surface)' }}>
                           {module.grades.map((grade) => (
-                            <tr key={grade.assignment_id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                            <tr
+                              key={grade.assignment_id}
+                              style={{ borderBottom: '1px solid var(--border-default)' }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = ''; }}
+                            >
                               <td className="px-6 py-4">
-                                <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                                   {grade.assignment_title}
                                 </div>
                                 {grade.category && (
-                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
                                     {grade.category}
                                   </div>
                                 )}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--text-muted)' }}>
                                 {formatDate(grade.due_date)}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 {getStatusBadge(grade)}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                <span className={`font-medium ${grade.score !== null && grade.score !== undefined
-                                  ? 'text-gray-900 dark:text-white'
-                                  : 'text-gray-400 dark:text-gray-500'
-                                  }`}>
+                                <span
+                                  className="font-medium"
+                                  style={{
+                                    color: grade.score !== null && grade.score !== undefined
+                                      ? 'var(--text-primary)'
+                                      : 'var(--text-faint)'
+                                  }}
+                                >
                                   {grade.score !== null && grade.score !== undefined
                                     ? `${grade.score.toFixed(1)} / ${grade.max_points}`
                                     : `- / ${grade.max_points}`}
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                <span className={`font-medium ${grade.percentage !== null && grade.percentage !== undefined
-                                  ? grade.percentage >= 90 ? 'text-green-600 dark:text-green-400' :
-                                    grade.percentage >= 70 ? 'text-yellow-600 dark:text-yellow-400' :
-                                      'text-red-600 dark:text-red-400'
-                                  : 'text-gray-400 dark:text-gray-500'
-                                  }`}>
+                                <span
+                                  className="font-medium"
+                                  style={{
+                                    color: grade.percentage !== null && grade.percentage !== undefined
+                                      ? getPercentageColor(grade.percentage)
+                                      : 'var(--text-faint)'
+                                  }}
+                                >
                                   {grade.percentage !== null && grade.percentage !== undefined
                                     ? `${grade.percentage.toFixed(1)}%`
                                     : '-'}

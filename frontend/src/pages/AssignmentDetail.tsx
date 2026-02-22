@@ -92,7 +92,6 @@ export const AssignmentDetail: React.FC = () => {
       const submissionsList = Array.isArray(raw) ? raw : raw.results || raw.content || [];
       setSubmissions(submissionsList);
 
-      // Find current user's submission if student
       if (isStudent && user) {
         const userSubmission = submissionsList.find((s: Submission) => s.user === user.id);
         setMySubmission(userSubmission || null);
@@ -103,7 +102,6 @@ export const AssignmentDetail: React.FC = () => {
   };
 
   const handleSubmitAssignment = () => {
-    // Navigate to submit page with correct route
     navigate(`/assignments/${assignmentId}/submit`);
   };
 
@@ -116,19 +114,15 @@ export const AssignmentDetail: React.FC = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const badges: Record<string, { bg: string; text: string; label: string }> = {
-      'DRAFT': { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-800 dark:text-gray-200', label: 'Draft' },
-      'SUBMITTED': { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-800 dark:text-blue-200', label: 'Submitted' },
-      'GRADED': { bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-800 dark:text-green-200', label: 'Graded' },
-      'RETURNED': { bg: 'bg-purple-100 dark:bg-purple-900', text: 'text-purple-800 dark:text-purple-200', label: 'Returned' },
+    const styles: Record<string, { className: string; label: string }> = {
+      'DRAFT': { className: 'badge', label: 'Draft' },
+      'SUBMITTED': { className: 'badge', label: 'Submitted' },
+      'GRADED': { className: 'badge badge-success', label: 'Graded' },
+      'RETURNED': { className: 'badge', label: 'Returned' },
     };
 
-    const badge = badges[status] || badges['DRAFT'];
-    return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-full ${badge.bg} ${badge.text}`}>
-        {badge.label}
-      </span>
-    );
+    const badge = styles[status] || styles['DRAFT'];
+    return <span className={badge.className}>{badge.label}</span>;
   };
 
   if (loading) {
@@ -147,41 +141,43 @@ export const AssignmentDetail: React.FC = () => {
           <div className="mb-8">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                <h1
+                  className="text-3xl font-bold"
+                  style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+                >
                   {assignment.title}
                 </h1>
-                <p className="mt-2 text-gray-600 dark:text-gray-400">
+                <p className="mt-2" style={{ color: 'var(--text-muted)' }}>
                   {t('assignment.due')}: {new Date(assignment.due_date).toLocaleString()}
                 </p>
               </div>
 
-              {/* Submit Button for Students */}
               {isStudent && (
                 <div className="flex gap-3">
                   {assignment.assignment_type === 'VIRTUAL_LAB' ? (
-                    <Button onClick={openVirtualLab} className="bg-green-600 hover:bg-green-700">
+                    <Button onClick={openVirtualLab}>
                       {t('assignment.open_virtual_lab')}
                     </Button>
                   ) : mySubmission && mySubmission.status !== 'DRAFT' ? (
                     <div className="text-right">
                       <div className="flex items-center gap-2 mb-2">
                         {mySubmission.status === 'SUBMITTED' && (
-                          <span className="px-3 py-1 text-sm bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">
-                            ✓ {t('submission.submitted_successfully')}
+                          <span className="badge">
+                            {t('submission.submitted_successfully')}
                           </span>
                         )}
                         {mySubmission.status === 'GRADED' && (
-                          <span className="px-3 py-1 text-sm bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full">
-                            ✓ {t('gradebook.status.graded')}: {mySubmission.grade} / {assignment.max_points}
+                          <span className="badge badge-success">
+                            {t('gradebook.status.graded')}: {mySubmission.grade} / {assignment.max_points}
                           </span>
                         )}
                       </div>
-                      <Button onClick={handleSubmitAssignment} variant="outline">
+                      <Button onClick={handleSubmitAssignment} variant="secondary">
                         {t('submission.view_submission')}
                       </Button>
                     </div>
                   ) : (
-                    <Button onClick={handleSubmitAssignment} className="bg-blue-600 hover:bg-blue-700">
+                    <Button onClick={handleSubmitAssignment}>
                       {t('submission.submit_assignment')}
                     </Button>
                   )}
@@ -195,10 +191,10 @@ export const AssignmentDetail: React.FC = () => {
             <Card>
               <CardBody>
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
                     {assignment.max_points}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                     Points
                   </p>
                 </div>
@@ -208,10 +204,10 @@ export const AssignmentDetail: React.FC = () => {
             <Card>
               <CardBody>
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
                     {assignment.submissions_count}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                     Submissions
                   </p>
                 </div>
@@ -221,10 +217,10 @@ export const AssignmentDetail: React.FC = () => {
             <Card>
               <CardBody>
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
                     {assignment.graded_count}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                     Graded
                   </p>
                 </div>
@@ -234,10 +230,10 @@ export const AssignmentDetail: React.FC = () => {
             <Card>
               <CardBody>
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
                     {assignment.submissions_count - assignment.graded_count}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                     To Grade
                   </p>
                 </div>
@@ -246,24 +242,26 @@ export const AssignmentDetail: React.FC = () => {
           </div>
 
           {/* Tabs */}
-          <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
+          <div className="mb-6" style={{ borderBottom: '1px solid var(--border-default)' }}>
             <nav className="-mb-px flex space-x-8">
               <button
                 onClick={() => setActiveTab('details')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'details'
-                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                  }`}
+                className="py-4 px-1 border-b-2 font-medium text-sm transition-colors"
+                style={activeTab === 'details'
+                  ? { borderColor: 'var(--text-primary)', color: 'var(--text-primary)' }
+                  : { borderColor: 'transparent', color: 'var(--text-muted)' }
+                }
               >
                 {t('assignment.tabs.basic')}
               </button>
               {isTeacher && (
                 <button
                   onClick={() => setActiveTab('submissions')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'submissions'
-                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                    }`}
+                  className="py-4 px-1 border-b-2 font-medium text-sm transition-colors"
+                  style={activeTab === 'submissions'
+                    ? { borderColor: 'var(--text-primary)', color: 'var(--text-primary)' }
+                    : { borderColor: 'transparent', color: 'var(--text-muted)' }
+                  }
                 >
                   {t('courses.assignments')} ({assignment.submissions_count})
                 </button>
@@ -275,25 +273,25 @@ export const AssignmentDetail: React.FC = () => {
           {activeTab === 'details' && (
             <Card>
               <CardHeader>
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h2
+                  className="text-xl font-semibold"
+                  style={{ color: 'var(--text-primary)' }}
+                >
                   {t('assignment.description')}
                 </h2>
               </CardHeader>
               <CardBody>
                 <div className="space-y-4">
                   <div>
-                    <h3 className="font-medium text-gray-900 dark:text-white mb-2">Description</h3>
-                    <p className="text-gray-600 dark:text-gray-400">{assignment.description}</p>
+                    <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Description</h3>
+                    <p style={{ color: 'var(--text-muted)' }}>{assignment.description}</p>
                   </div>
 
                   <div>
-                    <h3 className="font-medium text-gray-900 dark:text-white mb-2">Submission Types</h3>
+                    <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Submission Types</h3>
                     <div className="flex flex-wrap gap-2">
                       {assignment.submission_types.map((type) => (
-                        <span
-                          key={type}
-                          className="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full"
-                        >
+                        <span key={type} className="badge">
                           {type}
                         </span>
                       ))}
@@ -302,8 +300,8 @@ export const AssignmentDetail: React.FC = () => {
 
                   {assignment.allow_late_submission && (
                     <div>
-                      <h3 className="font-medium text-gray-900 dark:text-white mb-2">Late Policy</h3>
-                      <p className="text-gray-600 dark:text-gray-400">
+                      <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Late Policy</h3>
+                      <p style={{ color: 'var(--text-muted)' }}>
                         {assignment.late_penalty_percent}% penalty per day
                       </p>
                     </div>
@@ -311,9 +309,15 @@ export const AssignmentDetail: React.FC = () => {
 
                   {assignment.rubric && Object.keys(assignment.rubric).length > 0 && (
                     <div>
-                      <h3 className="font-medium text-gray-900 dark:text-white mb-2">Rubric</h3>
-                      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                        <pre className="text-sm text-gray-600 dark:text-gray-400">
+                      <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Rubric</h3>
+                      <div
+                        className="p-4 rounded-lg"
+                        style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
+                      >
+                        <pre
+                          className="text-sm"
+                          style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}
+                        >
                           {JSON.stringify(assignment.rubric, null, 2)}
                         </pre>
                       </div>
@@ -329,7 +333,10 @@ export const AssignmentDetail: React.FC = () => {
             <Card>
               <CardHeader>
                 <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  <h2
+                    className="text-xl font-semibold"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
                     {t('courses.assignments')}
                   </h2>
                   <Button onClick={openSpeedGrader}>
@@ -339,66 +346,57 @@ export const AssignmentDetail: React.FC = () => {
               </CardHeader>
               <CardBody>
                 {submissions.length === 0 ? (
-                  <p className="text-center text-gray-600 dark:text-gray-400 py-12">
+                  <p className="text-center py-12" style={{ color: 'var(--text-muted)' }}>
                     No submissions yet
                   </p>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                      <thead className="bg-gray-50 dark:bg-gray-800">
+                  <div className="table-container">
+                    <table>
+                      <thead>
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Student
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Status
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Submitted
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Grade
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Actions
-                          </th>
+                          <th>Student</th>
+                          <th>Status</th>
+                          <th>Submitted</th>
+                          <th>Grade</th>
+                          <th>Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                      <tbody>
                         {submissions.map((submission) => (
                           <tr key={submission.id}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900 dark:text-white">
+                            <td>
+                              <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                                 {submission.student_name}
                               </div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400">
+                              <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
                                 {submission.student_email}
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td>
                               <div className="flex items-center space-x-2">
                                 {getStatusBadge(submission.status)}
                                 {submission.is_late && (
-                                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                                    Late
-                                  </span>
+                                  <span className="badge badge-error">Late</span>
                                 )}
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            <td>
                               {submission.submitted_at
                                 ? new Date(submission.submitted_at).toLocaleString()
                                 : 'Not submitted'}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            <td style={{ color: 'var(--text-primary)' }}>
                               {submission.grade !== null
                                 ? `${submission.grade} / ${assignment.max_points}`
                                 : '-'}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <td>
                               <button
                                 onClick={() => navigate(`/speed-grader?assignmentId=${assignmentId}&submission=${submission.id}`)}
-                                className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                                className="text-sm font-medium transition-colors"
+                                style={{ color: 'var(--text-secondary)' }}
+                                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
                               >
                                 Grade
                               </button>

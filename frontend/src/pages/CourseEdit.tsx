@@ -28,7 +28,6 @@ export const CourseEdit: React.FC = () => {
 
     const handleUpdate = async (data: CourseCreateData) => {
         if (!id) return;
-        // Store expects Partial<Course> but API might need CourseCreateData structure (camelCase dates)
         await updateCourse(id, data as unknown as Partial<Course>);
         navigate(`/courses/${id}`);
     }
@@ -48,10 +47,13 @@ export const CourseEdit: React.FC = () => {
             <div className="p-4 sm:p-6 lg:p-8">
                 <div className="max-w-4xl mx-auto">
                     {/* Breadcrumb */}
-                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    <div className="flex items-center text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
                         <button
                             onClick={() => navigate(`/courses/${id}`)}
-                            className="flex items-center hover:text-blue-600 dark:hover:text-blue-400"
+                            className="flex items-center transition-colors"
+                            style={{ color: 'var(--text-muted)' }}
+                            onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
                         >
                             <ArrowLeftIcon className="h-4 w-4 mr-1" />
                             {t('courses.backToCourse')}
@@ -63,10 +65,13 @@ export const CourseEdit: React.FC = () => {
                     {/* Header */}
                     <div className="mb-8 flex justify-between items-start">
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                            <h1
+                                className="text-3xl font-bold"
+                                style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+                            >
                                 {t('courses.editCourse')}
                             </h1>
-                            <p className="mt-2 text-gray-600 dark:text-gray-400">
+                            <p className="mt-2" style={{ color: 'var(--text-muted)' }}>
                                 {currentCourse.code}: {currentCourse.title}
                             </p>
                         </div>
@@ -179,12 +184,21 @@ const CourseEditFormLogic: React.FC<CourseEditFormLogicProps> = ({ course, onSub
 
             {/* Delete Confirmation Modal */}
             {showDeleteConfirm && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                <div
+                    className="fixed inset-0 flex items-center justify-center z-50 p-4"
+                    style={{ background: 'rgba(0, 0, 0, 0.6)' }}
+                >
+                    <div
+                        className="rounded-lg max-w-md w-full p-6"
+                        style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}
+                    >
+                        <h3
+                            className="text-xl font-bold mb-4"
+                            style={{ color: 'var(--text-primary)' }}
+                        >
                             {t('courses.deleteCourseConfirmTitle')}
                         </h3>
-                        <p className="text-gray-600 dark:text-gray-400 mb-6">
+                        <p className="mb-6" style={{ color: 'var(--text-muted)' }}>
                             {t('courses.deleteCourseConfirmMessage')}
                         </p>
                         <div className="flex justify-end gap-3">
@@ -214,7 +228,6 @@ const CourseEditFormLogic: React.FC<CourseEditFormLogicProps> = ({ course, onSub
     );
 }
 
-// Internal Form Component to handle rendering
 interface CourseEditFormProps {
     onSubmit: (e: React.FormEvent) => void;
     errors: Record<string, string>;
@@ -239,13 +252,15 @@ const CourseEditForm: React.FC<CourseEditFormProps> = ({ onSubmit, errors, isLoa
         <form onSubmit={onSubmit}>
             <Card>
                 <CardHeader>
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    <h2
+                        className="text-xl font-semibold"
+                        style={{ color: 'var(--text-primary)' }}
+                    >
                         {t('courses.basicInformation')}
                     </h2>
                 </CardHeader>
                 <CardBody>
                     <div className="space-y-6">
-                        {/* Course Code */}
                         <div>
                             <Input
                                 label={t('courses.courseCode')}
@@ -258,7 +273,6 @@ const CourseEditForm: React.FC<CourseEditFormProps> = ({ onSubmit, errors, isLoa
                             />
                         </div>
 
-                        {/* Course Title */}
                         <div>
                             <Input
                                 label={t('courses.courseTitle')}
@@ -271,9 +285,8 @@ const CourseEditForm: React.FC<CourseEditFormProps> = ({ onSubmit, errors, isLoa
                             />
                         </div>
 
-                        {/* Description */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <div className="input-group">
+                            <label className="label">
                                 {t('courses.description')} *
                             </label>
                             <textarea
@@ -281,26 +294,24 @@ const CourseEditForm: React.FC<CourseEditFormProps> = ({ onSubmit, errors, isLoa
                                 value={formData.description}
                                 onChange={onChange}
                                 rows={5}
-                                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                                className="input"
+                                style={{ resize: 'vertical' }}
                                 required
                             />
                             {errors.description && (
-                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                                    {errors.description}
-                                </p>
+                                <p className="error-text">{errors.description}</p>
                             )}
                         </div>
 
-                        {/* Visibility */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <div className="input-group">
+                            <label className="label">
                                 {t('courses.visibility')}
                             </label>
                             <select
                                 name="visibility"
                                 value={formData.visibility}
                                 onChange={onChange}
-                                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                                className="input"
                             >
                                 <option value="PUBLIC">{t('courses.public')}</option>
                                 <option value="PRIVATE">{t('courses.private')}</option>
@@ -308,7 +319,6 @@ const CourseEditForm: React.FC<CourseEditFormProps> = ({ onSubmit, errors, isLoa
                             </select>
                         </div>
 
-                        {/* Dates */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <Input
@@ -331,7 +341,6 @@ const CourseEditForm: React.FC<CourseEditFormProps> = ({ onSubmit, errors, isLoa
                             </div>
                         </div>
 
-                        {/* Max Students */}
                         <div>
                             <Input
                                 label={t('courses.maxStudents')}
@@ -344,26 +353,26 @@ const CourseEditForm: React.FC<CourseEditFormProps> = ({ onSubmit, errors, isLoa
                             />
                         </div>
 
-                        {/* Submit Error */}
                         {errors.submit && (
-                            <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
-                                <p className="text-sm text-red-800 dark:text-red-400">
-                                    {errors.submit}
-                                </p>
+                            <div
+                                className="rounded-md px-3 py-2 text-sm"
+                                style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', color: 'var(--fn-error)' }}
+                            >
+                                {errors.submit}
                             </div>
                         )}
                         {errors.delete && (
-                            <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
-                                <p className="text-sm text-red-800 dark:text-red-400">
-                                    {errors.delete}
-                                </p>
+                            <div
+                                className="rounded-md px-3 py-2 text-sm"
+                                style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', color: 'var(--fn-error)' }}
+                            >
+                                {errors.delete}
                             </div>
                         )}
                     </div>
                 </CardBody>
             </Card>
 
-            {/* Actions */}
             <div className="mt-6 flex justify-end gap-4">
                 <Button
                     type="button"

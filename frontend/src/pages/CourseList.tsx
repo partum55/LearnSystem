@@ -46,7 +46,7 @@ export const CourseList: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
       <Header />
       <div className="flex">
         <Sidebar />
@@ -55,10 +55,13 @@ export const CourseList: React.FC = () => {
             {/* Header */}
             <div className="flex justify-between items-center mb-8">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                <h1
+                  className="text-3xl font-bold"
+                  style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+                >
                   {t('courses.title')}
                 </h1>
-                <p className="mt-2 text-gray-600 dark:text-gray-400">
+                <p className="mt-2" style={{ color: 'var(--text-muted)' }}>
                   {filteredCourses.length} {t('courses.title').toLowerCase()}
                 </p>
               </div>
@@ -69,7 +72,7 @@ export const CourseList: React.FC = () => {
                     onClick={() => setShowAIGenerator(true)}
                   >
                     <SparklesIcon className="h-5 w-5 mr-2" />
-                    🤖 AI Generator
+                    AI Generator
                   </Button>
                   <Link to="/courses/create">
                     <Button>
@@ -86,7 +89,10 @@ export const CourseList: React.FC = () => {
               <CardBody>
                 <div className="flex flex-col md:flex-row gap-4">
                   <div className="flex-1 relative">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <MagnifyingGlassIcon
+                      className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5"
+                      style={{ color: 'var(--text-faint)' }}
+                    />
                     <Input
                       type="text"
                       placeholder={t('common.search')}
@@ -115,7 +121,7 @@ export const CourseList: React.FC = () => {
             {filteredCourses.length === 0 ? (
               <Card>
                 <CardBody>
-                  <p className="text-center text-gray-600 dark:text-gray-400 py-12">
+                  <p className="text-center py-12" style={{ color: 'var(--text-muted)' }}>
                     {t('dashboard.noCourses')}
                   </p>
                 </CardBody>
@@ -127,48 +133,67 @@ export const CourseList: React.FC = () => {
                     <Card hoverable className="h-full">
                       <CardHeader>
                         <div className="flex justify-between items-start">
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                          <h3
+                            className="text-lg font-semibold"
+                            style={{ color: 'var(--text-primary)' }}
+                          >
                             {course.code}
                           </h3>
                           <span
-                            className={`px-2 py-1 text-xs font-medium rounded-full ${course.visibility === 'PUBLIC'
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                              : course.visibility === 'PRIVATE'
-                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                              }`}
+                            className={`badge ${
+                              course.visibility === 'PUBLIC'
+                                ? 'badge-success'
+                                : course.visibility === 'PRIVATE'
+                                  ? ''
+                                  : 'badge-warning'
+                            }`}
                           >
                             {t(`courses.${(course.visibility?.toLowerCase() || 'public')}`)}
                           </span>
                         </div>
                       </CardHeader>
                       <CardBody>
-                        <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                        <h4
+                          className="font-medium mb-2"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
                           {course.title}
                         </h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-4">
+                        <p
+                          className="text-sm line-clamp-2 mb-4"
+                          style={{ color: 'var(--text-muted)' }}
+                        >
                           {course.description}
                         </p>
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600 dark:text-gray-400">
+                          <span style={{ color: 'var(--text-muted)' }}>
                             {course.ownerName || t('courses.instructor')}
                           </span>
                           {course.memberCount !== undefined && (
-                            <span className="text-gray-600 dark:text-gray-400">
+                            <span style={{ color: 'var(--text-muted)' }}>
                               {course.memberCount} {t('courses.students')}
                             </span>
                           )}
                         </div>
                         {course.progress !== undefined && (
                           <div className="mt-4">
-                            <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
+                            <div
+                              className="flex justify-between text-xs mb-1"
+                              style={{ color: 'var(--text-muted)' }}
+                            >
                               <span>Progress</span>
                               <span>{course.progress}%</span>
                             </div>
-                            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                            <div
+                              className="w-full rounded-full h-2"
+                              style={{ background: 'var(--bg-overlay)' }}
+                            >
                               <div
-                                className="bg-blue-600 h-2 rounded-full transition-all"
-                                style={{ width: `${course.progress}%` }}
+                                className="h-2 rounded-full transition-all"
+                                style={{
+                                  width: `${course.progress}%`,
+                                  background: 'var(--text-primary)',
+                                }}
                               />
                             </div>
                           </div>
@@ -193,7 +218,7 @@ export const CourseList: React.FC = () => {
           onCourseGenerated={(course) => {
             console.log('AI generated course:', course);
             setShowAIGenerator(false);
-            fetchCourses(); // Refresh course list
+            fetchCourses();
           }}
         />
       )}

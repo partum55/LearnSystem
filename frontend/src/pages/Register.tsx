@@ -31,13 +31,11 @@ export const Register: React.FC = () => {
     e.preventDefault();
     setError('');
 
-    // Валідація
     if (!formData.email || !formData.password || !formData.display_name) {
       setError(t('auth.register.allFieldsRequired'));
       return;
     }
 
-    // Валідація UCU email
     if (!formData.email.toLowerCase().endsWith('@ucu.edu.ua')) {
       setError(t('auth.register.ucuEmailRequired', 'Only @ucu.edu.ua email addresses are allowed'));
       return;
@@ -56,7 +54,6 @@ export const Register: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Spring endpoint: POST /api/auth/register
       const response = await apiClient.post('/auth/register', {
         email: formData.email,
         password: formData.password,
@@ -96,120 +93,131 @@ export const Register: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-6 sm:space-y-8">
-        {/* Language Switcher at the top */}
-        <div className="flex justify-end">
+    <div
+      className="min-h-screen flex items-center justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8"
+      style={{ background: 'var(--bg-base)', fontFamily: 'var(--font-body)' }}
+    >
+      <div className="max-w-sm w-full">
+        {/* Language Switcher */}
+        <div className="flex justify-end mb-6">
           <LanguageSwitcher />
         </div>
 
-        <div>
-          <h2 className="mt-4 sm:mt-6 text-center text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white">
+        {/* Logo */}
+        <div className="flex items-center gap-2 mb-10">
+          <div
+            className="w-7 h-7 rounded flex items-center justify-center text-[11px] font-bold"
+            style={{ background: 'var(--text-primary)', color: 'var(--bg-base)' }}
+          >
+            LS
+          </div>
+          <span
+            className="text-sm font-semibold"
+            style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+          >
+            LearnSystem
+          </span>
+        </div>
+
+        {/* Heading */}
+        <div className="mb-8">
+          <h1
+            className="text-2xl font-semibold mb-1.5"
+            style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+          >
             {t('auth.register.title')}
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+          </h1>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
             {t('auth.register.subtitle')}
           </p>
         </div>
 
-        <form className="mt-6 sm:mt-8 space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <Input
-              label={t('auth.register.displayName')}
-              name="display_name"
-              type="text"
-              value={formData.display_name}
-              onChange={handleChange}
-              placeholder={t('auth.register.displayNamePlaceholder')}
-              required
-            />
-
-            <Input
-              label={t('auth.email')}
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="student@example.com"
-              required
-            />
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {t('auth.register.role')}
-              </label>
-              <select
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
-              >
-                <option value="STUDENT">{t('roles.student')}</option>
-                <option value="TEACHER">{t('roles.teacher')}</option>
-              </select>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {t('auth.register.roleHint')}
-              </p>
-            </div>
-
-            <Input
-              label={t('auth.password')}
-              name="password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="••••••••"
-              required
-            />
-
-            <Input
-              label={t('auth.register.confirmPassword')}
-              name="confirmPassword"
-              type="password"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="••••••••"
-              required
-            />
-
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              <p>{t('auth.register.passwordRequirements')}</p>
-              <ul className="list-disc list-inside mt-1 space-y-1">
-                <li>{t('auth.register.passwordMinLength')}</li>
-                <li>{t('auth.register.passwordMatch')}</li>
-              </ul>
-            </div>
+        {error && (
+          <div
+            className="mb-4 px-3 py-2 rounded-md text-sm"
+            style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', color: 'var(--fn-error)' }}
+          >
+            {error}
           </div>
+        )}
 
-          {error && (
-            <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
-              <p className="text-sm text-red-800 dark:text-red-400">
-                {error}
-              </p>
-            </div>
-          )}
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <Input
+            label={t('auth.register.displayName')}
+            name="display_name"
+            type="text"
+            value={formData.display_name}
+            onChange={handleChange}
+            placeholder={t('auth.register.displayNamePlaceholder')}
+            required
+          />
 
-          <div>
-            <Button
-              type="submit"
-              fullWidth
-              isLoading={isLoading}
+          <Input
+            label={t('auth.email')}
+            name="email"
+            type="email"
+            value={formData.email}
+            onChange={handleChange}
+            placeholder="student@ucu.edu.ua"
+            required
+          />
+
+          <div className="input-group">
+            <label className="label">
+              {t('auth.register.role')}
+            </label>
+            <select
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              className="input"
             >
-              {t('auth.register.createAccount')}
-            </Button>
-          </div>
-
-          <div className="text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {t('auth.register.alreadyHaveAccount')}{' '}
-              <Link
-                to="/login"
-                className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400"
-              >
-                {t('auth.login')}
-              </Link>
+              <option value="STUDENT">{t('roles.student')}</option>
+              <option value="TEACHER">{t('roles.teacher')}</option>
+            </select>
+            <p className="help-text">
+              {t('auth.register.roleHint')}
             </p>
           </div>
+
+          <Input
+            label={t('auth.password')}
+            name="password"
+            type="password"
+            value={formData.password}
+            onChange={handleChange}
+            placeholder="••••••••"
+            required
+          />
+
+          <Input
+            label={t('auth.register.confirmPassword')}
+            name="confirmPassword"
+            type="password"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            placeholder="••••••••"
+            required
+          />
+
+          <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            <p>{t('auth.register.passwordRequirements')}</p>
+            <ul className="list-disc list-inside mt-1 space-y-1">
+              <li>{t('auth.register.passwordMinLength')}</li>
+              <li>{t('auth.register.passwordMatch')}</li>
+            </ul>
+          </div>
+
+          <Button type="submit" fullWidth isLoading={isLoading}>
+            {t('auth.register.createAccount')}
+          </Button>
+
+          <p className="text-center text-sm" style={{ color: 'var(--text-muted)' }}>
+            {t('auth.register.alreadyHaveAccount')}{' '}
+            <Link to="/login" className="font-medium" style={{ color: 'var(--text-primary)' }}>
+              {t('auth.login')}
+            </Link>
+          </p>
         </form>
       </div>
     </div>

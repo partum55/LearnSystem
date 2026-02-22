@@ -111,20 +111,20 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title={t('resources.createResource')}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
-            <p className="text-sm text-red-800 dark:text-red-400">{error}</p>
+          <div className="rounded-md p-4" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+            <p className="text-sm" style={{ color: 'var(--fn-error)' }}>{error}</p>
           </div>
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="label block mb-1">
             {t('resources.type')}
           </label>
           <select
             name="resource_type"
             value={formData.resource_type}
             onChange={handleChange}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+            className="input w-full"
           >
             {resourceTypes.map(type => (
               <option key={type.value} value={type.value}>
@@ -144,7 +144,7 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
         />
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="label block mb-1">
             {t('resources.description')}
           </label>
           <textarea
@@ -152,30 +152,25 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
             value={formData.description}
             onChange={handleChange}
             rows={3}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+            className="input w-full"
             placeholder={t('resources.descriptionPlaceholder')}
           />
         </div>
 
         {requiresFile && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="label block mb-1">
               {t('resources.file')}
             </label>
             <input
               type="file"
               onChange={handleFileChange}
               required
-              className="block w-full text-sm text-gray-500 dark:text-gray-400
-                file:mr-4 file:py-2 file:px-4
-                file:rounded-md file:border-0
-                file:text-sm file:font-semibold
-                file:bg-blue-50 file:text-blue-700
-                hover:file:bg-blue-100
-                dark:file:bg-blue-900 dark:file:text-blue-200"
+              className="block w-full text-sm"
+              style={{ color: 'var(--text-secondary)' }}
             />
             {file && (
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
                 {t('resources.selectedFile')}: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
               </p>
             )}
@@ -196,7 +191,7 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
 
         {requiresText && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="label block mb-1">
               {t('resources.textContent')}
             </label>
             <textarea
@@ -205,7 +200,7 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
               onChange={handleChange}
               rows={8}
               required
-              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white font-mono text-sm"
+              className="input w-full font-mono text-sm"
               placeholder={t('resources.textContentPlaceholder')}
             />
           </div>
@@ -219,19 +214,20 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
               id="is_downloadable"
               checked={formData.is_downloadable}
               onChange={handleChange}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              className="h-4 w-4 rounded"
+              style={{ accentColor: 'var(--text-primary)' }}
             />
-            <label htmlFor="is_downloadable" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+            <label htmlFor="is_downloadable" className="ml-2 block text-sm" style={{ color: 'var(--text-secondary)' }}>
               {t('resources.allowDownload')}
             </label>
           </div>
         )}
 
         {loading && uploadProgress > 0 && (
-          <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+          <div className="w-full rounded-full h-2.5" style={{ background: 'var(--bg-elevated)' }}>
             <div
-              className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-              style={{ width: `${uploadProgress}%` }}
+              className="h-2.5 rounded-full transition-all duration-300"
+              style={{ width: `${uploadProgress}%`, background: 'var(--text-primary)' }}
             ></div>
           </div>
         )}

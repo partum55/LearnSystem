@@ -300,18 +300,18 @@ const SubmitAssignment: React.FC = () => {
         return (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="label mb-2">
                 {t('submission.code_editor')}
               </label>
               <textarea
                 value={codeAnswer}
                 onChange={(e) => setCodeAnswer(e.target.value)}
-                className="w-full h-96 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white font-mono text-sm"
+                className="input w-full h-96 font-mono text-sm"
                 placeholder="// Enter your code here..."
                 required
               />
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">
+            <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
               <p>{t('submission.language')}: <strong>{assignment.programming_language}</strong></p>
             </div>
           </div>
@@ -320,7 +320,7 @@ const SubmitAssignment: React.FC = () => {
       case 'TEXT':
         return (
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="label mb-2">
               {t('submission.text_answer')}
             </label>
             <textarea
@@ -328,7 +328,7 @@ const SubmitAssignment: React.FC = () => {
               onChange={(e) => setTextAnswer(e.target.value)}
               placeholder={t('submission.enter_answer')}
               rows={10}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              className="input w-full"
               required
             />
           </div>
@@ -337,7 +337,7 @@ const SubmitAssignment: React.FC = () => {
       case 'URL':
         return (
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="label mb-2">
               {t('submission.submission_url')}
             </label>
             <input
@@ -345,10 +345,10 @@ const SubmitAssignment: React.FC = () => {
               value={urlAnswer}
               onChange={(e) => setUrlAnswer(e.target.value)}
               placeholder="https://..."
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              className="input w-full"
               required
             />
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
               {t('submission.url_help')}
             </p>
           </div>
@@ -358,7 +358,7 @@ const SubmitAssignment: React.FC = () => {
         return (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="label mb-2">
                 {t('submission.upload_files')}
               </label>
               <input
@@ -366,15 +366,10 @@ const SubmitAssignment: React.FC = () => {
                 multiple
                 onChange={handleFileChange}
                 accept={assignment.allowed_file_types?.join(',') || '*'}
-                className="block w-full text-sm text-gray-500 dark:text-gray-400
-                  file:mr-4 file:py-2 file:px-4
-                  file:rounded-md file:border-0
-                  file:text-sm file:font-semibold
-                  file:bg-blue-50 file:text-blue-700
-                  hover:file:bg-blue-100
-                  dark:file:bg-blue-900 dark:file:text-blue-200"
+                className="block w-full text-sm"
+                style={{ color: 'var(--text-muted)' }}
               />
-              <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              <div className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
                 <p>{t('submission.max_files')}: {assignment.max_files}</p>
                 <p>{t('submission.max_size')}: {(assignment.max_file_size / 1048576).toFixed(1)}MB</p>
                 {assignment.allowed_file_types && assignment.allowed_file_types.length > 0 && (
@@ -384,13 +379,13 @@ const SubmitAssignment: React.FC = () => {
             </div>
 
             {files.length > 0 && (
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-4">
-                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <div className="rounded-md p-4" style={{ background: 'var(--bg-elevated)' }}>
+                <h4 className="text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
                   {t('submission.selected_files')}:
                 </h4>
                 <ul className="space-y-1">
                   {files.map((file, idx) => (
-                    <li key={idx} className="text-sm text-gray-600 dark:text-gray-400 flex items-center justify-between">
+                    <li key={idx} className="text-sm flex items-center justify-between" style={{ color: 'var(--text-muted)' }}>
                       <span className="flex-1 truncate">{file.name}</span>
                       <span className="text-xs ml-2">({(file.size / 1024).toFixed(1)}KB)</span>
                     </li>
@@ -400,10 +395,10 @@ const SubmitAssignment: React.FC = () => {
             )}
 
             {uploadProgress > 0 && uploadProgress < 100 && (
-              <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+              <div className="w-full rounded-full h-2.5" style={{ background: 'var(--bg-overlay)' }}>
                 <div
-                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
+                  className="h-2.5 rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%`, background: 'var(--text-primary)' }}
                 ></div>
               </div>
             )}
@@ -412,7 +407,7 @@ const SubmitAssignment: React.FC = () => {
 
       default:
         return (
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+          <div className="text-center py-8" style={{ color: 'var(--text-muted)' }}>
             {t('submission.type_not_supported')}
           </div>
         );
@@ -422,7 +417,7 @@ const SubmitAssignment: React.FC = () => {
   const renderContent = (content: string, format: string) => {
     if (format === 'MARKDOWN' || format === 'RICH') {
       // Simple rendering - in production use a markdown/rich text library
-      return <div className="prose dark:prose-invert max-w-none whitespace-pre-wrap">{content}</div>;
+      return <div className="max-w-none whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>{content}</div>;
     }
     return <p className="whitespace-pre-wrap">{content}</p>;
   };
@@ -430,7 +425,7 @@ const SubmitAssignment: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12" style={{ borderBottom: '2px solid var(--text-primary)' }}></div>
       </div>
     );
   }
@@ -438,8 +433,8 @@ const SubmitAssignment: React.FC = () => {
   if (error && !assignment) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-red-800 dark:text-red-200">{error}</p>
+        <div className="rounded-lg p-4" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+          <p style={{ color: 'var(--fn-error)' }}>{error}</p>
         </div>
       </div>
     );
@@ -467,7 +462,8 @@ const SubmitAssignment: React.FC = () => {
         <div className="mb-6">
           <button
             onClick={() => navigate(`/assignments/${assignmentId}`)}
-            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 flex items-center gap-2"
+            className="mb-4 flex items-center gap-2"
+            style={{ color: 'var(--text-secondary)' }}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -475,13 +471,13 @@ const SubmitAssignment: React.FC = () => {
             {t('common.back_to_course')}
           </button>
 
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
             {isSubmitted ? t('submission.view_submission') : t('submission.submit_assignment')}
           </h1>
-          <h2 className="text-xl text-gray-600 dark:text-gray-400 mt-2">
+          <h2 className="text-xl mt-2" style={{ color: 'var(--text-muted)' }}>
             {assignment.title}
           </h2>
-          <div className="flex items-center gap-4 mt-4 text-sm text-gray-600 dark:text-gray-400">
+          <div className="flex items-center gap-4 mt-4 text-sm" style={{ color: 'var(--text-muted)' }}>
             <span className="flex items-center gap-1">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -500,20 +496,20 @@ const SubmitAssignment: React.FC = () => {
         </div>
 
         {/* Assignment Description */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+        <div className="rounded-lg p-6 mb-6" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
+          <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
             {t('assignment.description')}
           </h3>
-          <div className="text-gray-700 dark:text-gray-300">
+          <div style={{ color: 'var(--text-secondary)' }}>
             {renderContent(assignment.description, assignment.description_format)}
           </div>
 
           {assignment.instructions && (
             <>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mt-6 mb-3">
+              <h3 className="text-lg font-semibold mt-6 mb-3" style={{ color: 'var(--text-primary)' }}>
                 {t('assignment.instructions')}
               </h3>
-              <div className="text-gray-700 dark:text-gray-300">
+              <div style={{ color: 'var(--text-secondary)' }}>
                 {renderContent(assignment.instructions, assignment.instructions_format)}
               </div>
             </>
@@ -521,7 +517,7 @@ const SubmitAssignment: React.FC = () => {
 
           {assignment.resources && assignment.resources.length > 0 && (
             <>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mt-6 mb-3">
+              <h3 className="text-lg font-semibold mt-6 mb-3" style={{ color: 'var(--text-primary)' }}>
                 {t('assignment.resources')}
               </h3>
               <ul className="space-y-2">
@@ -531,7 +527,8 @@ const SubmitAssignment: React.FC = () => {
                       href={resource.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 dark:text-blue-400 flex items-center gap-2"
+                      className="flex items-center gap-2"
+                      style={{ color: 'var(--text-secondary)' }}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -547,27 +544,27 @@ const SubmitAssignment: React.FC = () => {
 
         {/* Submission Status */}
         {isSubmitted && submission && (
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
+          <div className="rounded-lg p-4 mb-6" style={{ background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.15)' }}>
             <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-5 h-5" style={{ color: 'var(--fn-success)' }} fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
-              <p className="text-green-800 dark:text-green-200 font-medium">
+              <p className="font-medium" style={{ color: 'var(--fn-success)' }}>
                 {t('submission.submitted_successfully')}
               </p>
             </div>
-            <p className="text-sm text-green-700 dark:text-green-300 mt-2">
+            <p className="text-sm mt-2" style={{ color: 'var(--fn-success)' }}>
               {t('submission.submitted_at')}: {submission.submitted_at ? new Date(submission.submitted_at).toLocaleString() : 'N/A'}
             </p>
             {submission.grade !== null && (
-              <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+              <p className="text-sm mt-1" style={{ color: 'var(--fn-success)' }}>
                 {t('submission.grade')}: {submission.grade} / {assignment.max_points}
               </p>
             )}
             {submission.feedback && (
               <div className="mt-4">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('submission.feedback')}:</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 whitespace-pre-wrap">{submission.feedback}</p>
+                <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{t('submission.feedback')}:</p>
+                <p className="text-sm mt-1 whitespace-pre-wrap" style={{ color: 'var(--text-muted)' }}>{submission.feedback}</p>
               </div>
             )}
           </div>
@@ -575,14 +572,14 @@ const SubmitAssignment: React.FC = () => {
 
         {/* Submission Form */}
         {!isSubmitted && (
-          <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <form onSubmit={handleSubmit} className="rounded-lg p-6" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
+            <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
               {t('submission.your_submission')}
             </h3>
 
             {error && (
-              <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-                <p className="text-red-800 dark:text-red-200">{error}</p>
+              <div className="mb-4 rounded-lg p-4" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+                <p style={{ color: 'var(--fn-error)' }}>{error}</p>
               </div>
             )}
 
@@ -592,14 +589,15 @@ const SubmitAssignment: React.FC = () => {
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                className="btn btn-primary flex-1 py-3 px-6 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? t('submission.submitting') : t('submission.submit')}
               </button>
               <button
                 type="button"
                 onClick={() => navigate(`/assignments/${assignmentId}`)}
-                className="px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="btn px-6 py-3"
+                style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}
               >
                 {t('common.cancel')}
               </button>

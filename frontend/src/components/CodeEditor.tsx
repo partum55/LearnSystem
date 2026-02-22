@@ -22,7 +22,6 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     onChange(value || '');
   };
 
-  // Language mappings for Monaco Editor
   const languageMap: Record<string, string> = {
     python: 'python',
     javascript: 'javascript',
@@ -45,19 +44,23 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   const editorLanguage = languageMap[language.toLowerCase()] || 'python';
 
   return (
-    <div className="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
-      <div className="bg-gray-100 dark:bg-gray-700 px-4 py-2 flex items-center justify-between border-b border-gray-300 dark:border-gray-600">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Language: {language}
-          </span>
-        </div>
+    <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-default)' }}>
+      <div
+        className="px-4 py-2 flex items-center justify-between"
+        style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)' }}
+      >
+        <span className="text-xs" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+          {language}
+        </span>
         <button
           type="button"
           onClick={() => setTheme(theme === 'vs-dark' ? 'light' : 'vs-dark')}
-          className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+          className="text-xs transition-colors"
+          style={{ color: 'var(--text-faint)' }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-faint)')}
         >
-          {theme === 'vs-dark' ? '☀️ Light' : '🌙 Dark'}
+          {theme === 'vs-dark' ? 'Light' : 'Dark'}
         </button>
       </div>
       <Editor
@@ -75,6 +78,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
           automaticLayout: true,
           tabSize: 4,
           wordWrap: 'on',
+          fontFamily: 'var(--font-mono)',
         }}
       />
     </div>
@@ -82,4 +86,3 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
 };
 
 export default CodeEditor;
-

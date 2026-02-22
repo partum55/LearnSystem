@@ -8,17 +8,17 @@ interface ValidationSummaryProps {
 const ValidationSummary: React.FC<ValidationSummaryProps> = ({ validation }) => {
   if (validation.issues.length === 0) {
     return (
-      <div className="text-sm text-green-600 dark:text-green-400">No validation issues detected.</div>
+      <div className="text-sm" style={{ color: 'var(--fn-success)' }}>No validation issues detected.</div>
     );
   }
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Validation Issues</h3>
-      <ul className="text-sm text-gray-600 dark:text-gray-300 list-disc ml-4">
+      <h3 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Validation Issues</h3>
+      <ul className="text-sm list-disc ml-4" style={{ color: 'var(--text-secondary)' }}>
         {validation.issues.map((issue, index) => (
           <li key={`${issue.field}-${index}`}>
-            <span className={issue.severity === 'ERROR' ? 'text-red-600' : 'text-amber-600'}>
+            <span style={{ color: issue.severity === 'ERROR' ? 'var(--fn-error)' : 'var(--fn-warning)' }}>
               {issue.severity}:
             </span>{' '}
             {issue.message} ({issue.field})

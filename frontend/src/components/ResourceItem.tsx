@@ -30,20 +30,9 @@ const resourceTypeIcons: Record<ResourceType, React.ComponentType<{ className?: 
   OTHER: DocumentIcon,
 };
 
-const resourceTypeColors: Record<ResourceType, string> = {
-  VIDEO: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20',
-  PDF: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20',
-  SLIDE: 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20',
-  LINK: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20',
-  TEXT: 'text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700',
-  CODE: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20',
-  OTHER: 'text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700',
-};
-
 export const ResourceItem: React.FC<ResourceItemProps> = ({ resource, canEdit, onDelete }) => {
   const { t } = useTranslation();
   const Icon = resourceTypeIcons[resource.resource_type];
-  const colorClass = resourceTypeColors[resource.resource_type];
 
   const formatFileSize = (bytes?: number) => {
     if (!bytes) return '';
@@ -78,52 +67,49 @@ export const ResourceItem: React.FC<ResourceItemProps> = ({ resource, canEdit, o
   };
 
   return (
-    <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group">
+    <div
+      className="flex items-center justify-between p-3 rounded-lg transition-colors"
+      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
+      onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg-surface)')}
+    >
       <div className="flex items-center flex-1 min-w-0">
-        <div className={`flex-shrink-0 p-3 rounded-lg ${colorClass}`}>
-          <Icon className="h-6 w-6" />
+        <div
+          className="flex-shrink-0 p-2.5 rounded-md"
+          style={{ background: 'var(--bg-overlay)', color: 'var(--text-muted)' }}
+        >
+          <Icon className="h-5 w-5" />
         </div>
-        <div className="ml-4 flex-1 min-w-0">
+        <div className="ml-3 flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+            <h4 className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
               {resource.title}
             </h4>
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300">
+            <span
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-xs"
+              style={{ background: 'var(--bg-overlay)', color: 'var(--text-faint)' }}
+            >
               {t(`resources.types.${resource.resource_type.toLowerCase()}`)}
             </span>
           </div>
           {resource.description && (
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
+            <p className="mt-0.5 text-sm line-clamp-1" style={{ color: 'var(--text-muted)' }}>
               {resource.description}
             </p>
           )}
-          <div className="mt-1 flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-            {resource.file_size && (
-              <span>{formatFileSize(resource.file_size)}</span>
-            )}
-            {resource.uploaded_by_name && (
-              <span>{t('resources.uploadedBy')}: {resource.uploaded_by_name}</span>
-            )}
+          <div className="mt-0.5 flex items-center gap-3 text-xs" style={{ color: 'var(--text-faint)' }}>
+            {resource.file_size && <span>{formatFileSize(resource.file_size)}</span>}
+            {resource.uploaded_by_name && <span>{resource.uploaded_by_name}</span>}
             <span>{new Date(resource.created_at).toLocaleDateString()}</span>
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-2 ml-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleView}
-          title={t('common.view')}
-        >
+      <div className="flex items-center gap-1.5 ml-4">
+        <Button variant="ghost" size="sm" onClick={handleView} title={t('common.view')}>
           <EyeIcon className="h-4 w-4" />
         </Button>
         {resource.is_downloadable && resource.file_url && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleDownload}
-            title={t('common.download')}
-          >
+          <Button variant="ghost" size="sm" onClick={handleDownload} title={t('common.download')}>
             <ArrowDownTrayIcon className="h-4 w-4" />
           </Button>
         )}
@@ -133,7 +119,7 @@ export const ResourceItem: React.FC<ResourceItemProps> = ({ resource, canEdit, o
             size="sm"
             onClick={handleDelete}
             title={t('common.delete')}
-            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+            style={{ color: 'var(--fn-error)' }}
           >
             <TrashIcon className="h-4 w-4" />
           </Button>
@@ -142,4 +128,3 @@ export const ResourceItem: React.FC<ResourceItemProps> = ({ resource, canEdit, o
     </div>
   );
 };
-

@@ -15,7 +15,7 @@ const TaskMetadataForm: React.FC<TaskMetadataFormProps> = ({ metadata, onChange 
 
   return (
     <section className="space-y-4">
-      <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Metadata</h2>
+      <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Metadata</h2>
       <Input
         label="Title"
         placeholder="Enter task title"
@@ -32,9 +32,9 @@ const TaskMetadataForm: React.FC<TaskMetadataFormProps> = ({ metadata, onChange 
       />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="text-sm font-semibold text-gray-700 dark:text-gray-200">Difficulty</label>
+          <label className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Difficulty</label>
           <select
-            className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
+            className="input mt-1 w-full"
             value={metadata.difficulty}
             onChange={(event) => updateField('difficulty', event.target.value as TaskMetadata['difficulty'])}
           >
@@ -44,9 +44,9 @@ const TaskMetadataForm: React.FC<TaskMetadataFormProps> = ({ metadata, onChange 
           </select>
         </div>
         <div className="md:col-span-2">
-          <label className="text-sm font-semibold text-gray-700 dark:text-gray-200">Tags (comma separated)</label>
+          <label className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Tags (comma separated)</label>
           <input
-            className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
+            className="input mt-1 w-full"
             value={metadata.tags.join(', ')}
             onChange={(event) => updateField('tags', event.target.value.split(',').map((tag) => tag.trim()).filter(Boolean))}
           />

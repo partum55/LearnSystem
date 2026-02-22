@@ -194,24 +194,25 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-3xl mx-auto">
+    <div className="card rounded-lg p-6 max-w-3xl mx-auto" style={{ background: 'var(--bg-surface)' }}>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          🤖 Генерація {elementLabels[elementType][formData.language]}
+        <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+          Генерація {elementLabels[elementType][formData.language]}
         </h2>
         {onClose && !loading && (
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+          <button onClick={onClose} style={{ color: 'var(--text-muted)' }}>
             ✕
           </button>
         )}
       </div>
 
       {error && (
-        <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-red-800 dark:text-red-200">
-          {error}
+        <div className="mb-4 p-4 rounded-md flex items-start" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+          <span style={{ color: 'var(--fn-error)' }}>{error}</span>
           <button
             onClick={() => setError(null)}
-            className="ml-2 text-red-600 hover:text-red-800 dark:text-red-400"
+            className="ml-2"
+            style={{ color: 'var(--fn-error)' }}
           >
             ✕
           </button>
@@ -220,27 +221,29 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
 
       {/* Loading Progress Overlay */}
       {loading && (
-        <div className="mb-6 p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <div className="mb-6 p-6 rounded-lg" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-              <span className="text-blue-800 dark:text-blue-200 font-medium">
+              <div className="animate-spin rounded-full h-6 w-6" style={{ borderBottom: '2px solid var(--text-primary)' }}></div>
+              <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
                 {stageLabels[generationStage][formData.language]}
               </span>
             </div>
             <button
               onClick={handleCancel}
-              className="px-3 py-1 text-sm bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+              className="btn px-3 py-1 text-sm rounded transition-colors"
+              style={{ background: 'rgba(239, 68, 68, 0.08)', color: 'var(--fn-error)' }}
             >
               Скасувати
             </button>
           </div>
 
           {/* Progress bar */}
-          <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
+          <div className="w-full rounded-full h-2" style={{ background: 'var(--bg-base)' }}>
             <div
-              className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+              className="h-2 rounded-full transition-all duration-500"
               style={{
+                background: 'var(--text-secondary)',
                 width: generationStage === 'connecting' ? '25%' :
                   generationStage === 'generating' ? '50%' :
                     generationStage === 'processing' ? '75%' :
@@ -249,8 +252,8 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
             />
           </div>
 
-          <p className="mt-3 text-sm text-blue-600 dark:text-blue-400">
-            💡 Генерація може зайняти від 10 до 60 секунд залежно від складності запиту
+          <p className="mt-3 text-sm" style={{ color: 'var(--text-muted)' }}>
+            Генерація може зайняти від 10 до 60 секунд залежно від складності запиту
           </p>
         </div>
       )}
@@ -258,7 +261,7 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
       <div className="space-y-4">
         {/* Language Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="label block mb-2">
             Мова
           </label>
           <select
@@ -267,29 +270,29 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
               setFormData({ ...formData, language: e.target.value as 'uk' | 'en' })
             }
             disabled={loading}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+            className="input w-full disabled:opacity-50"
           >
-            <option value="uk">🇺🇦 Українська</option>
-            <option value="en">🇬🇧 English</option>
+            <option value="uk">Українська</option>
+            <option value="en">English</option>
           </select>
         </div>
 
         {/* Context Display */}
         {(courseContext || moduleContext) && (
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-            <p className="text-sm font-medium text-blue-900 mb-1">📚 Контекст:</p>
+          <div className="rounded-md p-3" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
+            <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Контекст:</p>
             {courseContext && (
-              <p className="text-sm text-blue-700">Курс: {courseContext}</p>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Курс: {courseContext}</p>
             )}
             {moduleContext && (
-              <p className="text-sm text-blue-700">Модуль: {moduleContext}</p>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Модуль: {moduleContext}</p>
             )}
           </div>
         )}
 
         {/* Additional Context */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="label block mb-2">
             Додатковий контекст (необов'язково)
           </label>
           <textarea
@@ -297,13 +300,13 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
             onChange={(e) => setFormData({ ...formData, context: e.target.value })}
             placeholder="Наприклад: Це для студентів 1 курсу, з базовими знаннями програмування"
             rows={2}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="input w-full"
           />
         </div>
 
         {/* Main Prompt */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="label block mb-2">
             Що згенерувати? *
           </label>
           <textarea
@@ -317,7 +320,7 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
                   : 'Наприклад: Квіз на перевірку знань про основи ООП'
             }
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="input w-full"
             required
           />
         </div>
@@ -327,7 +330,7 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
           {/* Count */}
           {elementType !== 'module' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="label block mb-2">
                 {elementType === 'quiz' ? 'Кількість питань' : 'Кількість завдань'}
               </label>
               <input
@@ -338,7 +341,7 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
                 }
                 min="1"
                 max={elementType === 'quiz' ? 50 : 10}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="input w-full"
               />
             </div>
           )}
@@ -346,7 +349,7 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
           {/* Module duration */}
           {elementType === 'module' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="label block mb-2">
                 Тривалість (тижні)
               </label>
               <input
@@ -357,7 +360,7 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
                 }
                 min="1"
                 max="12"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="input w-full"
               />
             </div>
           )}
@@ -366,7 +369,7 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
           {elementType === 'assignment' && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="label block mb-2">
                   Максимальний бал
                 </label>
                 <input
@@ -377,11 +380,11 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
                   }
                   min="1"
                   max="1000"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="input w-full"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="label block mb-2">
                   Тип подання
                 </label>
                 <select
@@ -389,7 +392,7 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
                   onChange={(e) =>
                     setFormData({ ...formData, submissionType: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="input w-full"
                 >
                   <option value="FILE">Файл</option>
                   <option value="TEXT">Текст</option>
@@ -404,7 +407,7 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
           {elementType === 'quiz' && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="label block mb-2">
                   Ліміт часу (хв)
                 </label>
                 <input
@@ -415,11 +418,11 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
                   }
                   min="5"
                   max="180"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="input w-full"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="label block mb-2">
                   Складність
                 </label>
                 <select
@@ -430,7 +433,7 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
                       difficulty: e.target.value as 'EASY' | 'MEDIUM' | 'HARD',
                     })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="input w-full"
                 >
                   <option value="EASY">Легкий</option>
                   <option value="MEDIUM">Середній</option>
@@ -443,20 +446,20 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
 
         {/* Preview of generated data */}
         {generatedData && (
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <h3 className="font-semibold text-gray-900 mb-2">✅ Згенеровано:</h3>
-            <pre className="text-sm text-gray-700 whitespace-pre-wrap max-h-60 overflow-y-auto">
+          <div className="mt-4 p-4 rounded-lg" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
+            <h3 className="font-semibold mb-2" style={{ color: 'var(--fn-success)' }}>Згенеровано:</h3>
+            <pre className="text-sm whitespace-pre-wrap max-h-60 overflow-y-auto" style={{ color: 'var(--text-secondary)' }}>
               {JSON.stringify(generatedData, null, 2)}
             </pre>
           </div>
         )}
 
         {/* Actions */}
-        <div className="flex justify-end space-x-3 pt-4 border-t">
+        <div className="flex justify-end space-x-3 pt-4" style={{ borderTop: '1px solid var(--border-default)' }}>
           {onClose && (
             <button
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              className="btn btn-secondary"
               disabled={loading}
             >
               Скасувати
@@ -465,15 +468,15 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
           <button
             onClick={handleGenerate}
             disabled={loading || !formData.prompt.trim()}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            className="btn btn-primary flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>
-                <span className="animate-spin">⏳</span>
+                <span className="animate-spin">...</span>
                 <span>Генерація...</span>
               </>
             ) : (
-              <span>🚀 Згенерувати</span>
+              <span>Згенерувати</span>
             )}
           </button>
         </div>
@@ -481,4 +484,3 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
     </div>
   );
 };
-

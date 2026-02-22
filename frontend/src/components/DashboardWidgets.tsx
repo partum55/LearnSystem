@@ -1,7 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Card, CardHeader, CardBody } from './Card';
 import {
   AcademicCapIcon,
   ClockIcon,
@@ -12,15 +11,18 @@ import {
   UserGroupIcon,
   ChartPieIcon,
   FireIcon,
-  CheckCircleIcon,
   LinkIcon,
+  ArrowTrendingUpIcon,
+  ChevronRightIcon,
 } from '@heroicons/react/24/outline';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow, isToday, isTomorrow, differenceInDays } from 'date-fns';
 import { DashboardWidgetConfig } from './DashboardBuilder';
+
+/* ─────────────────────────── Types ─────────────────────────── */
 
 interface DashboardData {
   courses?: Array<{ id: string; code: string; title: string; progress?: number }>;
-  deadlines?: Array<{ course: string; deadline: string }>;
+  deadlines?: Array<{ course: string; courseCode?: string; title?: string; deadline: string; id?: string }>;
   notifications?: Array<{ id: string; title: string; message: string; created_at: string; read: boolean }>;
   [key: string]: unknown;
 }
@@ -31,459 +33,506 @@ interface WidgetRendererProps {
 }
 
 export const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widget, data }) => {
-
-  const getWidgetSize = (size: string) => {
-    switch (size) {
-      case 'small':
-        return 'col-span-1';
-      case 'medium':
-        return 'col-span-1 md:col-span-2';
-      case 'large':
-        return 'col-span-1 md:col-span-3';
-      case 'full':
-        return 'col-span-1 md:col-span-4';
-      default:
-        return 'col-span-1 md:col-span-2';
-    }
+  const span: Record<string, string> = {
+    small: 'col-span-1',
+    medium: 'col-span-1 md:col-span-2',
+    large: 'col-span-1 md:col-span-3',
+    full: 'col-span-1 md:col-span-4',
   };
 
-  const renderWidgetContent = () => {
-    switch (widget.type) {
-      case 'stats':
-        return <StatsWidget data={data} />;
-      case 'courses':
-        return <CoursesWidget data={data} />;
-      case 'deadlines':
-        return <DeadlinesWidget data={data} />;
-      case 'notifications':
-        return <NotificationsWidget data={data} />;
-      case 'calendar':
-        return <CalendarWidget data={data} />;
-      case 'progress':
-        return <ProgressWidget data={data} />;
-      case 'recent-assignments':
-        return <RecentAssignmentsWidget data={data} />;
-      case 'study-groups':
-        return <StudyGroupsWidget data={data} />;
-      case 'grade-distribution':
-        return <GradeDistributionWidget data={data} />;
-      case 'streak':
-        return <StreakWidget data={data} />;
-      case 'completed-today':
-        return <CompletedTodayWidget data={data} />;
-      case 'quick-links':
-        return <QuickLinksWidget data={data} />;
-      default:
-        return <div>Unknown widget type</div>;
-    }
+  const content: Record<string, React.ReactNode> = {
+    stats: <StatsWidget data={data} />,
+    courses: <CoursesWidget data={data} />,
+    deadlines: <DeadlinesWidget data={data} />,
+    notifications: <NotificationsWidget data={data} />,
+    calendar: <CalendarWidget />,
+    progress: <ProgressWidget data={data} />,
+    'recent-assignments': <RecentAssignmentsWidget />,
+    'study-groups': <StudyGroupsWidget />,
+    'grade-distribution': <GradeDistributionWidget />,
+    streak: <StreakWidget />,
+    'completed-today': <CompletedTodayWidget />,
+    'quick-links': <QuickLinksWidget />,
   };
 
+  return <div className={span[widget.size] || 'col-span-1 md:col-span-2'}>{content[widget.type] || <div>Unknown widget</div>}</div>;
+};
+
+/* ─────────────────────────── Primitives ─────────────────────────── */
+
+const WidgetShell: React.FC<{ children: React.ReactNode; className?: string; noPad?: boolean }> = ({ children, className = '', noPad }) => (
+  <div
+    className={`rounded-lg h-full ${className}`}
+    style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
+  >
+    {noPad ? children : <div className="p-4">{children}</div>}
+  </div>
+);
+
+const WidgetHeader: React.FC<{ icon: React.ElementType; title: string; action?: React.ReactNode }> = ({ icon: Icon, title, action }) => (
+  <div className="flex items-center justify-between mb-3">
+    <div className="flex items-center gap-2">
+      <Icon className="h-3.5 w-3.5" style={{ color: 'var(--text-faint)' }} />
+      <h2 className="text-xs font-medium uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-muted)' }}>{title}</h2>
+    </div>
+    {action}
+  </div>
+);
+
+const EmptyState: React.FC<{ message: string; icon?: React.ElementType }> = ({ message, icon: Icon }) => (
+  <div className="flex flex-col items-center justify-center py-8">
+    {Icon && <Icon className="h-6 w-6 mb-2" style={{ color: 'var(--text-faint)' }} />}
+    <p className="text-xs" style={{ color: 'var(--text-faint)' }}>{message}</p>
+  </div>
+);
+
+/* ─── Mini sparkline (pure CSS) ─── */
+const Sparkline: React.FC<{ data: number[]; color?: string }> = ({ data, color = 'var(--text-muted)' }) => {
+  const max = Math.max(...data, 1);
   return (
-    <div className={getWidgetSize(widget.size)}>
-      {renderWidgetContent()}
+    <div className="flex items-end gap-px h-8">
+      {data.map((v, i) => (
+        <div
+          key={i}
+          className="flex-1 rounded-sm transition-all"
+          style={{
+            height: `${(v / max) * 100}%`,
+            minHeight: 2,
+            background: color,
+            opacity: i === data.length - 1 ? 1 : 0.4,
+          }}
+        />
+      ))}
     </div>
   );
 };
 
-// Individual Widget Components
+/* ─── Circular progress ring ─── */
+const ProgressRing: React.FC<{ value: number; size?: number; strokeWidth?: number; label?: string }> = ({
+  value,
+  size = 56,
+  strokeWidth = 4,
+  label,
+}) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const offset = circumference - (value / 100) * circumference;
+  return (
+    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--bg-overlay)" strokeWidth={strokeWidth} />
+        <circle
+          cx={size / 2} cy={size / 2} r={radius} fill="none"
+          stroke="var(--text-primary)"
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          className="transition-all duration-700"
+        />
+      </svg>
+      <span className="absolute text-xs font-semibold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+        {label ?? `${Math.round(value)}%`}
+      </span>
+    </div>
+  );
+};
+
+/* ─── Horizontal bar ─── */
+const HBar: React.FC<{ value: number; max?: number; color?: string }> = ({ value, max = 100, color = 'var(--text-primary)' }) => (
+  <div className="w-full h-1 rounded-full" style={{ background: 'var(--bg-overlay)' }}>
+    <div className="h-1 rounded-full transition-all duration-500" style={{ width: `${(value / max) * 100}%`, background: color }} />
+  </div>
+);
+
+/* ─── Deadline urgency color ─── */
+const deadlineColor = (dateStr: string) => {
+  const days = differenceInDays(new Date(dateStr), new Date());
+  if (days <= 1) return 'var(--fn-error)';
+  if (days <= 3) return 'var(--fn-warning)';
+  return 'var(--text-faint)';
+};
+
+const deadlineLabel = (dateStr: string) => {
+  const d = new Date(dateStr);
+  if (isToday(d)) return 'Today';
+  if (isTomorrow(d)) return 'Tomorrow';
+  return formatDistanceToNow(d, { addSuffix: true });
+};
+
+/* ─────────────────────────── Stats ─────────────────────────── */
 
 const StatsWidget: React.FC<{ data?: DashboardData }> = ({ data }) => {
   const { t } = useTranslation();
-  const { courses, deadlines, notifications } = data || {};
+  const courseCount = data?.courses?.length || 0;
+  const deadlineCount = data?.deadlines?.length || 0;
+  const unreadCount = data?.notifications?.filter(n => !n.read).length || 0;
+  const avgProgress = courseCount > 0
+    ? Math.round((data?.courses || []).reduce((a, c) => a + (c.progress || 0), 0) / courseCount)
+    : 0;
+
+  const stats = [
+    { label: t('dashboard.myCourses'), value: courseCount, spark: [2, 3, 5, 4, courseCount, courseCount + 1, courseCount] },
+    { label: t('dashboard.upcomingDeadlines'), value: deadlineCount, spark: [1, 3, 2, 4, 3, deadlineCount, deadlineCount] },
+    { label: 'Unread', value: unreadCount, spark: [5, 3, 4, 2, 1, unreadCount, unreadCount] },
+    { label: 'Avg. Progress', value: `${avgProgress}%`, spark: [20, 35, 40, 55, 50, 60, avgProgress] },
+  ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <Card>
-        <CardBody>
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <AcademicCapIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                {t('dashboard.myCourses')}
-              </p>
-              <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                {courses?.length || 0}
-              </p>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {stats.map((s) => (
+        <WidgetShell key={s.label}>
+          <p className="text-xs mb-1" style={{ color: 'var(--text-faint)' }}>{s.label}</p>
+          <div className="flex items-end justify-between gap-3">
+            <p className="text-2xl font-semibold leading-none" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+              {s.value}
+            </p>
+            <div className="w-16">
+              <Sparkline data={s.spark} />
             </div>
           </div>
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardBody>
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <ClockIcon className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                {t('dashboard.upcomingDeadlines')}
-              </p>
-              <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                {deadlines?.length || 0}
-              </p>
-            </div>
-          </div>
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardBody>
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <BellIcon className="h-8 w-8 text-red-600 dark:text-red-400" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                {t('notifications.title')}
-              </p>
-              <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                {notifications?.filter((n) => !n.read).length || 0}
-              </p>
-            </div>
-          </div>
-        </CardBody>
-      </Card>
+        </WidgetShell>
+      ))}
     </div>
   );
 };
+
+/* ─────────────────────────── Courses ─────────────────────────── */
 
 const CoursesWidget: React.FC<{ data?: DashboardData }> = ({ data }) => {
   const { t } = useTranslation();
   const courses = data?.courses || [];
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <AcademicCapIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {t('dashboard.myCourses')}
-          </h2>
+    <WidgetShell>
+      <WidgetHeader
+        icon={AcademicCapIcon}
+        title={t('dashboard.myCourses')}
+        action={
+          <Link to="/courses" className="text-xs transition-colors" style={{ color: 'var(--text-faint)' }}>
+            View all <ChevronRightIcon className="inline h-3 w-3" />
+          </Link>
+        }
+      />
+      {courses.length === 0 ? (
+        <EmptyState message={t('dashboard.noCourses')} icon={AcademicCapIcon} />
+      ) : (
+        <div className="space-y-1">
+          {courses.slice(0, 5).map((course) => (
+            <Link
+              key={course.id}
+              to={`/courses/${course.id}`}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors group"
+              style={{ color: 'var(--text-secondary)' }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            >
+              <ProgressRing value={course.progress || 0} size={36} strokeWidth={3} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{course.code}</p>
+                <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{course.title}</p>
+              </div>
+              <ChevronRightIcon className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--text-faint)' }} />
+            </Link>
+          ))}
         </div>
-      </CardHeader>
-      <CardBody>
-        {courses.length === 0 ? (
-          <p className="text-gray-600 dark:text-gray-400 text-center py-8">
-            {t('dashboard.noCourses')}
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {courses.slice(0, 5).map((course) => (
-              <Link
-                key={course.id}
-                to={`/courses/${course.id}`}
-                className="block p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                <h3 className="font-medium text-gray-900 dark:text-white">
-                  {course.code}
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  {course.title}
-                </p>
-                {course.progress !== undefined && (
-                  <div className="mt-2">
-                    <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full transition-all"
-                        style={{ width: `${course.progress}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </Link>
-            ))}
-          </div>
-        )}
-      </CardBody>
-    </Card>
+      )}
+    </WidgetShell>
   );
 };
+
+/* ─────────────────────────── Deadlines ─────────────────────────── */
 
 const DeadlinesWidget: React.FC<{ data?: DashboardData }> = ({ data }) => {
   const { t } = useTranslation();
   const deadlines = data?.deadlines || [];
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <ClockIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {t('dashboard.upcomingDeadlines')}
-          </h2>
-        </div>
-      </CardHeader>
-      <CardBody>
-        {deadlines.length === 0 ? (
-          <p className="text-gray-600 dark:text-gray-400 text-center py-8">
-            {t('dashboard.noDeadlines')}
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {deadlines.map((item, idx: number) => (
+    <WidgetShell>
+      <WidgetHeader icon={ClockIcon} title={t('dashboard.upcomingDeadlines')} />
+      {deadlines.length === 0 ? (
+        <EmptyState message={t('dashboard.noDeadlines')} icon={ClockIcon} />
+      ) : (
+        <div className="space-y-0.5">
+          {deadlines.slice(0, 6).map((item, idx) => {
+            const color = deadlineColor(item.deadline);
+            return (
               <div
                 key={idx}
-                className="p-4 rounded-lg border border-gray-200 dark:border-gray-700"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-md"
               >
-                <h4 className="font-medium text-gray-900 dark:text-white">
-                  {item.course}
-                </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  {format(new Date(item.deadline), 'PPp')}
-                </p>
+                {/* Urgency dot */}
+                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                    {item.title || item.course}
+                  </p>
+                  <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                    {item.courseCode || item.course}
+                  </p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-xs font-medium" style={{ color }}>{deadlineLabel(item.deadline)}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-faint)' }}>{format(new Date(item.deadline), 'MMM d, HH:mm')}</p>
+                </div>
               </div>
-            ))}
-          </div>
-        )}
-      </CardBody>
-    </Card>
+            );
+          })}
+        </div>
+      )}
+    </WidgetShell>
   );
 };
+
+/* ─────────────────────────── Notifications ─────────────────────────── */
 
 const NotificationsWidget: React.FC<{ data?: DashboardData }> = ({ data }) => {
   const { t } = useTranslation();
   const notifications = data?.notifications || [];
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <BellIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {t('dashboard.recentActivity')}
-          </h2>
-        </div>
-      </CardHeader>
-      <CardBody>
-        {notifications.length === 0 ? (
-          <p className="text-gray-600 dark:text-gray-400 text-center py-8">
-            {t('notifications.noNotifications')}
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {notifications.slice(0, 5).map((notification) => (
-              <div
-                key={notification.id}
-                className={`p-4 rounded-lg border ${notification.read
-                  ? 'border-gray-200 dark:border-gray-700'
-                  : 'border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20'
-                  }`}
-              >
-                <h4 className="font-medium text-gray-900 dark:text-white">
-                  {notification.title}
-                </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  {notification.message}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-                  {format(new Date(notification.created_at), 'PPp')}
-                </p>
+    <WidgetShell>
+      <WidgetHeader
+        icon={BellIcon}
+        title={t('dashboard.recentActivity')}
+        action={
+          notifications.filter(n => !n.read).length > 0
+            ? <span className="text-xs px-1.5 py-0.5 rounded-md" style={{ background: 'var(--bg-active)', color: 'var(--text-primary)' }}>{notifications.filter(n => !n.read).length}</span>
+            : undefined
+        }
+      />
+      {notifications.length === 0 ? (
+        <EmptyState message={t('notifications.noNotifications')} icon={BellIcon} />
+      ) : (
+        <div className="space-y-0.5">
+          {notifications.slice(0, 5).map((n) => (
+            <div
+              key={n.id}
+              className="flex items-start gap-3 px-3 py-2.5 rounded-md"
+              style={{ background: n.read ? 'transparent' : 'var(--bg-hover)' }}
+            >
+              {/* Unread dot */}
+              <div className="mt-1.5 flex-shrink-0">
+                {!n.read && <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--text-primary)' }} />}
               </div>
-            ))}
-          </div>
-        )}
-      </CardBody>
-    </Card>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{n.title}</p>
+                <p className="text-xs mt-0.5 line-clamp-1" style={{ color: 'var(--text-muted)' }}>{n.message}</p>
+              </div>
+              <span className="text-xs flex-shrink-0 mt-0.5" style={{ color: 'var(--text-faint)' }}>
+                {formatDistanceToNow(new Date(n.created_at), { addSuffix: false })}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </WidgetShell>
   );
 };
 
-const CalendarWidget: React.FC<{ data?: DashboardData }> = () => {
+/* ─────────────────────────── Calendar ─────────────────────────── */
+
+const CalendarWidget: React.FC = () => {
   const { t } = useTranslation();
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = now.getDate();
+  const dayNames = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <CalendarIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {t('dashboard.widgets.calendar', 'Calendar')}
-          </h2>
-        </div>
-      </CardHeader>
-      <CardBody>
-        <div className="text-center py-8">
-          <CalendarIcon className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">
-            {t('dashboard.widgets.calendarComingSoon', 'Calendar view coming soon')}
-          </p>
-        </div>
-      </CardBody>
-    </Card>
+    <WidgetShell>
+      <WidgetHeader icon={CalendarIcon} title={t('dashboard.widgets.calendar', 'Calendar')} />
+      <div className="text-center mb-3">
+        <p className="text-sm font-medium" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+          {format(now, 'MMMM yyyy')}
+        </p>
+      </div>
+      <div className="grid grid-cols-7 gap-0.5 text-center">
+        {dayNames.map((d) => (
+          <div key={d} className="text-xs py-1" style={{ color: 'var(--text-faint)' }}>{d}</div>
+        ))}
+        {Array.from({ length: firstDay }).map((_, i) => <div key={`e-${i}`} />)}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1;
+          const isToday = day === today;
+          return (
+            <div
+              key={day}
+              className="text-xs py-1.5 rounded-md"
+              style={{
+                background: isToday ? 'var(--text-primary)' : 'transparent',
+                color: isToday ? 'var(--bg-base)' : 'var(--text-secondary)',
+                fontWeight: isToday ? 600 : 400,
+              }}
+            >
+              {day}
+            </div>
+          );
+        })}
+      </div>
+    </WidgetShell>
   );
 };
+
+/* ─────────────────────────── Progress ─────────────────────────── */
 
 const ProgressWidget: React.FC<{ data?: DashboardData }> = ({ data }) => {
   const { t } = useTranslation();
   const courses = data?.courses || [];
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <TrophyIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {t('dashboard.widgets.progress', 'Course Progress')}
-          </h2>
-        </div>
-      </CardHeader>
-      <CardBody>
+    <WidgetShell>
+      <WidgetHeader icon={TrophyIcon} title={t('dashboard.widgets.progress', 'Course Progress')} />
+      {courses.length === 0 ? (
+        <EmptyState message="No courses" icon={TrophyIcon} />
+      ) : (
         <div className="space-y-4">
-          {courses.slice(0, 5).map((course) => (
-            <div key={course.id}>
-              <div className="flex justify-between mb-1">
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  {course.code}
-                </span>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {course.progress || 0}%
-                </span>
+          {courses.slice(0, 5).map((course) => {
+            const p = course.progress || 0;
+            return (
+              <div key={course.id}>
+                <div className="flex justify-between mb-1.5">
+                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{course.code}</span>
+                  <span className="text-xs tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{p}%</span>
+                </div>
+                <HBar value={p} color={p >= 80 ? 'var(--fn-success)' : p >= 40 ? 'var(--text-muted)' : 'var(--text-faint)'} />
               </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                <div
-                  className="bg-purple-600 h-2 rounded-full transition-all"
-                  style={{ width: `${course.progress || 0}%` }}
-                />
-              </div>
+            );
+          })}
+        </div>
+      )}
+    </WidgetShell>
+  );
+};
+
+/* ─────────────────────────── Recent Assignments ─────────────────────────── */
+
+const RecentAssignmentsWidget: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <WidgetShell>
+      <WidgetHeader icon={BookOpenIcon} title={t('dashboard.widgets.recentAssignments', 'Recent Assignments')} />
+      <EmptyState message={t('dashboard.widgets.noAssignments', 'No recent assignments')} icon={BookOpenIcon} />
+    </WidgetShell>
+  );
+};
+
+/* ─────────────────────────── Study Groups ─────────────────────────── */
+
+const StudyGroupsWidget: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <WidgetShell>
+      <WidgetHeader icon={UserGroupIcon} title={t('dashboard.widgets.studyGroups', 'Study Groups')} />
+      <EmptyState message={t('dashboard.widgets.noGroups', 'No study groups yet')} icon={UserGroupIcon} />
+    </WidgetShell>
+  );
+};
+
+/* ─────────────────────────── Grade Distribution ─────────────────────────── */
+
+const GradeDistributionWidget: React.FC = () => {
+  const { t } = useTranslation();
+  const grades = [
+    { label: 'A', count: 8, pct: 40 },
+    { label: 'B', count: 6, pct: 30 },
+    { label: 'C', count: 4, pct: 20 },
+    { label: 'D', count: 2, pct: 10 },
+  ];
+  const total = grades.reduce((a, g) => a + g.count, 0);
+
+  return (
+    <WidgetShell>
+      <WidgetHeader icon={ChartPieIcon} title={t('dashboard.widgets.gradeDistribution', 'Grade Distribution')} />
+      {/* Horizontal stacked bar */}
+      <div className="flex rounded-md overflow-hidden h-6 mb-4" style={{ background: 'var(--bg-overlay)' }}>
+        {grades.map((g, i) => (
+          <div
+            key={g.label}
+            className="flex items-center justify-center text-xs font-medium transition-all"
+            style={{
+              width: `${g.pct}%`,
+              background: `rgba(250,250,250,${0.9 - i * 0.2})`,
+              color: 'var(--bg-base)',
+            }}
+          >
+            {g.pct >= 15 && g.label}
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {grades.map((g) => (
+          <div key={g.label} className="text-center">
+            <p className="text-lg font-semibold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>{g.count}</p>
+            <p className="text-xs" style={{ color: 'var(--text-faint)' }}>Grade {g.label}</p>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-center mt-3" style={{ color: 'var(--text-faint)' }}>{total} total grades</p>
+    </WidgetShell>
+  );
+};
+
+/* ─────────────────────────── Streak ─────────────────────────── */
+
+const StreakWidget: React.FC = () => {
+  const { t } = useTranslation();
+  // Week heatmap data (mock)
+  const week = [true, true, true, false, true, true, true];
+  const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const streak = 7;
+
+  return (
+    <WidgetShell>
+      <div className="flex flex-col items-center">
+        <FireIcon className="h-5 w-5 mb-1" style={{ color: 'var(--text-primary)' }} />
+        <p className="text-3xl font-semibold leading-none" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>{streak}</p>
+        <p className="text-xs mt-1 mb-3" style={{ color: 'var(--text-muted)' }}>{t('dashboard.widgets.daysStreak', 'Day Streak')}</p>
+        {/* Week dots */}
+        <div className="flex gap-1.5">
+          {week.map((active, i) => (
+            <div key={i} className="flex flex-col items-center gap-1">
+              <div
+                className="w-5 h-5 rounded-md"
+                style={{ background: active ? 'var(--text-primary)' : 'var(--bg-overlay)' }}
+              />
+              <span className="text-[10px]" style={{ color: 'var(--text-faint)' }}>{dayLabels[i]}</span>
             </div>
           ))}
         </div>
-      </CardBody>
-    </Card>
+      </div>
+    </WidgetShell>
   );
 };
 
-const RecentAssignmentsWidget: React.FC<{ data?: DashboardData }> = () => {
+/* ─────────────────────────── Completed Today ─────────────────────────── */
+
+const CompletedTodayWidget: React.FC = () => {
   const { t } = useTranslation();
+  const completed = 3;
+  const total = 5;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <BookOpenIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {t('dashboard.widgets.recentAssignments', 'Recent Assignments')}
-          </h2>
+    <WidgetShell>
+      <div className="flex flex-col items-center">
+        <ProgressRing value={(completed / total) * 100} size={64} strokeWidth={5} label={`${completed}/${total}`} />
+        <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>{t('dashboard.widgets.completedToday', 'Completed Today')}</p>
+        <div className="flex items-center gap-1 mt-1">
+          <ArrowTrendingUpIcon className="h-3 w-3" style={{ color: 'var(--fn-success)' }} />
+          <span className="text-xs" style={{ color: 'var(--fn-success)' }}>+2 from yesterday</span>
         </div>
-      </CardHeader>
-      <CardBody>
-        <p className="text-gray-600 dark:text-gray-400 text-center py-8">
-          {t('dashboard.widgets.noAssignments', 'No recent assignments')}
-        </p>
-      </CardBody>
-    </Card>
+      </div>
+    </WidgetShell>
   );
 };
 
-const StudyGroupsWidget: React.FC<{ data?: DashboardData }> = () => {
+/* ─────────────────────────── Quick Links ─────────────────────────── */
+
+const QuickLinksWidget: React.FC = () => {
   const { t } = useTranslation();
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <UserGroupIcon className="h-5 w-5 text-pink-600 dark:text-pink-400" />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {t('dashboard.widgets.studyGroups', 'Study Groups')}
-          </h2>
-        </div>
-      </CardHeader>
-      <CardBody>
-        <p className="text-gray-600 dark:text-gray-400 text-center py-8">
-          {t('dashboard.widgets.noGroups', 'No study groups yet')}
-        </p>
-      </CardBody>
-    </Card>
-  );
-};
-
-const GradeDistributionWidget: React.FC<{ data?: DashboardData }> = () => {
-  const { t } = useTranslation();
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <ChartPieIcon className="h-5 w-5 text-teal-600 dark:text-teal-400" />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {t('dashboard.widgets.gradeDistribution', 'Grade Distribution')}
-          </h2>
-        </div>
-      </CardHeader>
-      <CardBody>
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600 dark:text-gray-400">A</span>
-            <div className="flex-1 mx-4 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-              <div className="bg-green-600 h-2 rounded-full" style={{ width: '40%' }} />
-            </div>
-            <span className="text-sm font-medium text-gray-900 dark:text-white">40%</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600 dark:text-gray-400">B</span>
-            <div className="flex-1 mx-4 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-              <div className="bg-blue-600 h-2 rounded-full" style={{ width: '30%' }} />
-            </div>
-            <span className="text-sm font-medium text-gray-900 dark:text-white">30%</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600 dark:text-gray-400">C</span>
-            <div className="flex-1 mx-4 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-              <div className="bg-yellow-600 h-2 rounded-full" style={{ width: '20%' }} />
-            </div>
-            <span className="text-sm font-medium text-gray-900 dark:text-white">20%</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600 dark:text-gray-400">D</span>
-            <div className="flex-1 mx-4 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-              <div className="bg-orange-600 h-2 rounded-full" style={{ width: '10%' }} />
-            </div>
-            <span className="text-sm font-medium text-gray-900 dark:text-white">10%</span>
-          </div>
-        </div>
-      </CardBody>
-    </Card>
-  );
-};
-const StreakWidget: React.FC<{ data?: DashboardData }> = () => {
-  const { t } = useTranslation();
-
-  return (
-    <Card>
-      <CardBody>
-        <div className="text-center">
-          <FireIcon className="h-12 w-12 mx-auto text-orange-500 mb-2" />
-          <p className="text-3xl font-bold text-gray-900 dark:text-white">7</p>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            {t('dashboard.widgets.daysStreak', 'Days Streak')}
-          </p>
-        </div>
-      </CardBody>
-    </Card>
-  );
-};
-const CompletedTodayWidget: React.FC<{ data?: DashboardData }> = () => {
-  const { t } = useTranslation();
-
-  return (
-    <Card>
-      <CardBody>
-        <div className="text-center">
-          <CheckCircleIcon className="h-12 w-12 mx-auto text-green-500 mb-2" />
-          <p className="text-3xl font-bold text-gray-900 dark:text-white">3</p>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            {t('dashboard.widgets.completedToday', 'Completed Today')}
-          </p>
-        </div>
-      </CardBody>
-    </Card>
-  );
-};
-const QuickLinksWidget: React.FC<{ data?: DashboardData }> = () => {
-  const { t } = useTranslation();
-
   const links = [
     { name: 'Courses', path: '/courses', icon: AcademicCapIcon },
     { name: 'Assignments', path: '/assignments', icon: BookOpenIcon },
@@ -491,34 +540,33 @@ const QuickLinksWidget: React.FC<{ data?: DashboardData }> = () => {
   ];
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <LinkIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {t('dashboard.widgets.quickLinks', 'Quick Links')}
-          </h2>
-        </div>
-      </CardHeader>
-      <CardBody>
-        <div className="space-y-2">
-          {links.map((link) => {
-            const Icon = link.icon;
-            return (
-              <Link
-                key={link.path}
-                to={link.path}
-                className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                <Icon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  {link.name}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-      </CardBody>
-    </Card>
+    <WidgetShell>
+      <WidgetHeader icon={LinkIcon} title={t('dashboard.widgets.quickLinks', 'Quick Links')} />
+      <div className="space-y-0.5">
+        {links.map((link) => {
+          const Icon = link.icon;
+          return (
+            <Link
+              key={link.path}
+              to={link.path}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-md transition-colors group"
+              style={{ color: 'var(--text-secondary)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--bg-hover)';
+                e.currentTarget.style.color = 'var(--text-primary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--text-secondary)';
+              }}
+            >
+              <Icon className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
+              <span className="text-sm font-medium flex-1">{link.name}</span>
+              <ChevronRightIcon className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--text-faint)' }} />
+            </Link>
+          );
+        })}
+      </div>
+    </WidgetShell>
   );
 };

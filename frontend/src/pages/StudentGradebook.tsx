@@ -59,6 +59,7 @@ const StudentGradebook: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'date' | 'title' | 'score'>('date');
+  const [hoveredRow, setHoveredRow] = useState<string | null>(null);
 
   useEffect(() => {
     fetchGradebook();
@@ -141,7 +142,7 @@ const StudentGradebook: React.FC = () => {
   const getStatusBadge = (status: string, isLate: boolean, isExcused: boolean) => {
     if (isExcused) {
       return (
-        <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+        <span className="badge">
           {t('gradebook.excused')}
         </span>
       );
@@ -149,32 +150,32 @@ const StudentGradebook: React.FC = () => {
 
     if (isLate) {
       return (
-        <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+        <span className="badge badge-warning">
           {t('gradebook.late')}
         </span>
       );
     }
 
-    const statusColors: Record<string, string> = {
-      GRADED: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      SUBMITTED: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      NOT_SUBMITTED: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+    const statusClasses: Record<string, string> = {
+      GRADED: 'badge badge-success',
+      SUBMITTED: 'badge',
+      NOT_SUBMITTED: 'badge badge-error',
     };
 
     return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[status] || 'bg-gray-100 text-gray-700'}`}>
+      <span className={statusClasses[status] || 'badge'}>
         {t(`gradebook.status.${status.toLowerCase()}`)}
       </span>
     );
   };
 
-  const getGradeColor = (percentage: number | null) => {
-    if (percentage === null) return 'text-gray-500';
-    if (percentage >= 90) return 'text-green-600 dark:text-green-400';
-    if (percentage >= 80) return 'text-blue-600 dark:text-blue-400';
-    if (percentage >= 70) return 'text-yellow-600 dark:text-yellow-400';
-    if (percentage >= 60) return 'text-orange-600 dark:text-orange-400';
-    return 'text-red-600 dark:text-red-400';
+  const getGradeStyle = (percentage: number | null): React.CSSProperties => {
+    if (percentage === null) return { color: 'var(--text-muted)' };
+    if (percentage >= 90) return { color: 'var(--fn-success)' };
+    if (percentage >= 80) return { color: 'var(--text-secondary)' };
+    if (percentage >= 70) return { color: 'var(--fn-warning)' };
+    if (percentage >= 60) return { color: 'var(--fn-warning)' };
+    return { color: 'var(--fn-error)' };
   };
 
   const filteredAndSortedGrades = () => {
@@ -208,7 +209,7 @@ const StudentGradebook: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12" style={{ borderBottom: '2px solid var(--text-primary)' }}></div>
       </div>
     );
   }
@@ -216,8 +217,8 @@ const StudentGradebook: React.FC = () => {
   if (error || !gradebook) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-red-800 dark:text-red-200">{error || t('gradebook.error')}</p>
+        <div className="rounded-lg p-4" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+          <p style={{ color: 'var(--fn-error)' }}>{error || t('gradebook.error')}</p>
         </div>
       </div>
     );
@@ -227,47 +228,47 @@ const StudentGradebook: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-6">
-        <Link to={`/courses/${gradebook.course_id}`} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-2 inline-block">
+        <Link to={`/courses/${gradebook.course_id}`} className="mb-2 inline-block" style={{ color: 'var(--text-secondary)' }}>
           ← {t('common.back_to_course')}
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+        <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
           {t('gradebook.title')}
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
+        <p className="mt-1" style={{ color: 'var(--text-muted)' }}>
           {gradebook.course_code} - {gradebook.course_title}
         </p>
       </div>
 
       {/* Summary Card */}
       {gradebook.summary && (
-        <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg p-6 mb-6 text-white">
+        <div className="rounded-lg p-6 mb-6" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-blue-100 text-sm">{t('gradebook.current_grade')}</p>
-              <p className="text-4xl font-bold">
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('gradebook.current_grade')}</p>
+              <p className="text-4xl font-bold" style={{ color: 'var(--text-primary)' }}>
                 {gradebook.summary.current_grade !== null
                   ? `${gradebook.summary.current_grade.toFixed(1)}%`
                   : 'N/A'}
               </p>
-              <p className="text-2xl font-semibold mt-1">
+              <p className="text-2xl font-semibold mt-1" style={{ color: 'var(--text-primary)' }}>
                 {gradebook.summary.letter_grade}
               </p>
             </div>
             <div>
-              <p className="text-blue-100 text-sm">{t('gradebook.points_earned')}</p>
-              <p className="text-2xl font-bold">
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('gradebook.points_earned')}</p>
+              <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                 {gradebook.summary.total_points_earned.toFixed(1)} / {gradebook.summary.total_points_possible.toFixed(1)}
               </p>
             </div>
             <div>
-              <p className="text-blue-100 text-sm">{t('gradebook.assignments_completed')}</p>
-              <p className="text-2xl font-bold">
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('gradebook.assignments_completed')}</p>
+              <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                 {gradebook.summary.assignments_completed} / {gradebook.summary.assignments_total}
               </p>
             </div>
             <div>
-              <p className="text-blue-100 text-sm">{t('gradebook.completion_rate')}</p>
-              <p className="text-2xl font-bold">
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('gradebook.completion_rate')}</p>
+              <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                 {gradebook.summary.assignments_total > 0
                   ? ((gradebook.summary.assignments_completed / gradebook.summary.assignments_total) * 100).toFixed(0)
                   : 0}%
@@ -278,16 +279,16 @@ const StudentGradebook: React.FC = () => {
       )}
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow mb-6 p-4">
+      <div className="rounded-lg mb-6 p-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
         <div className="flex flex-wrap gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
               {t('gradebook.filter_category')}
             </label>
             <select
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
-              className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="input"
             >
               <option value="all">{t('gradebook.all_categories')}</option>
               {categories.map((cat) => (
@@ -296,13 +297,13 @@ const StudentGradebook: React.FC = () => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
               {t('gradebook.sort_by')}
             </label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'date' | 'title' | 'score')}
-              className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="input"
             >
               <option value="date">{t('gradebook.sort.due_date')}</option>
               <option value="title">{t('gradebook.sort.title')}</option>
@@ -313,45 +314,54 @@ const StudentGradebook: React.FC = () => {
       </div>
 
       {/* Grades Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+      <div className="table-container">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-700">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+          <table className="min-w-full">
+            <thead>
+              <tr style={{ background: 'var(--bg-elevated)' }}>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                   {t('gradebook.assignment')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                   {t('gradebook.due_date')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                   {t('gradebook.status')}
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                   {t('gradebook.score')}
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                   {t('gradebook.percentage')}
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody>
               {filteredAndSortedGrades().map((grade) => (
-                <tr key={grade.assignment_id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                <tr
+                  key={grade.assignment_id}
+                  style={{
+                    background: hoveredRow === grade.assignment_id ? 'var(--bg-hover)' : 'transparent',
+                    borderBottom: '1px solid var(--border-subtle)',
+                  }}
+                  onMouseEnter={() => setHoveredRow(grade.assignment_id)}
+                  onMouseLeave={() => setHoveredRow(null)}
+                >
                   <td className="px-6 py-4">
                     <Link
                       to={`/assignments/${grade.assignment_id}`}
-                      className="text-blue-600 hover:text-blue-800 dark:text-blue-400 font-medium"
+                      className="font-medium"
+                      style={{ color: 'var(--text-secondary)' }}
                     >
                       {grade.assignment_title}
                     </Link>
                     {grade.category && (
-                      <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                      <span className="ml-2 text-xs" style={{ color: 'var(--text-muted)' }}>
                         ({grade.category})
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                  <td className="px-6 py-4 text-sm" style={{ color: 'var(--text-muted)' }}>
                     {grade.due_date
                       ? new Date(grade.due_date).toLocaleDateString()
                       : 'N/A'}
@@ -360,14 +370,14 @@ const StudentGradebook: React.FC = () => {
                     {getStatusBadge(grade.status, grade.is_late, grade.is_excused)}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <span className={`font-medium ${getGradeColor(grade.percentage)}`}>
+                    <span className="font-medium" style={getGradeStyle(grade.percentage)}>
                       {grade.score !== null
                         ? `${grade.score.toFixed(1)} / ${grade.max_points}`
                         : '-'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <span className={`text-lg font-bold ${getGradeColor(grade.percentage)}`}>
+                    <span className="text-lg font-bold" style={getGradeStyle(grade.percentage)}>
                       {grade.percentage !== null ? `${grade.percentage.toFixed(1)}%` : '-'}
                     </span>
                   </td>
@@ -380,7 +390,7 @@ const StudentGradebook: React.FC = () => {
 
       {filteredAndSortedGrades().length === 0 && (
         <div className="text-center py-12">
-          <p className="text-gray-500 dark:text-gray-400">{t('gradebook.no_grades')}</p>
+          <p style={{ color: 'var(--text-muted)' }}>{t('gradebook.no_grades')}</p>
         </div>
       )}
     </div>

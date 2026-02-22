@@ -23,12 +23,13 @@ export const AIErrorFallback: React.FC<AIErrorFallbackProps> = ({
                       error?.message?.includes('try again');
 
   return (
-    <div className="p-6 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-700 rounded-xl">
+    <div className="p-6 rounded-xl" style={{ background: 'rgba(234, 179, 8, 0.08)', border: '1px solid rgba(234, 179, 8, 0.15)' }}>
       <div className="flex flex-col items-center text-center">
         {/* AI Robot Icon */}
-        <div className="w-16 h-16 mb-4 flex items-center justify-center bg-amber-100 dark:bg-amber-800 rounded-full">
+        <div className="w-16 h-16 mb-4 flex items-center justify-center rounded-full" style={{ background: 'var(--bg-overlay)' }}>
           <svg
-            className="w-8 h-8 text-amber-600 dark:text-amber-300"
+            className="w-8 h-8"
+            style={{ color: 'var(--fn-warning)' }}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -43,20 +44,20 @@ export const AIErrorFallback: React.FC<AIErrorFallbackProps> = ({
           </svg>
         </div>
 
-        <h3 className="text-lg font-semibold text-amber-800 dark:text-amber-200 mb-2">
+        <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
           {title}
         </h3>
 
-        <p className="text-sm text-amber-700 dark:text-amber-300 mb-4 max-w-md">
+        <p className="text-sm mb-4 max-w-md" style={{ color: 'var(--text-secondary)' }}>
           {description}
         </p>
 
         {error?.message && (
           <details className="mb-4 text-left w-full max-w-md">
-            <summary className="text-xs text-amber-600 dark:text-amber-400 cursor-pointer hover:underline">
+            <summary className="text-xs cursor-pointer hover:underline" style={{ color: 'var(--text-muted)' }}>
               Technical details
             </summary>
-            <pre className="mt-2 p-2 text-xs bg-amber-100 dark:bg-amber-900/50 rounded overflow-x-auto">
+            <pre className="mt-2 p-2 text-xs rounded overflow-x-auto" style={{ background: 'var(--bg-overlay)', color: 'var(--text-secondary)' }}>
               {error.message}
             </pre>
           </details>
@@ -66,7 +67,7 @@ export const AIErrorFallback: React.FC<AIErrorFallbackProps> = ({
           {isTransient && onRetry && (
             <button
               onClick={onRetry}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-colors"
+              className="btn btn-primary inline-flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -77,7 +78,7 @@ export const AIErrorFallback: React.FC<AIErrorFallbackProps> = ({
 
           <button
             onClick={() => window.location.reload()}
-            className="inline-flex items-center px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-200 bg-amber-100 dark:bg-amber-800 hover:bg-amber-200 dark:hover:bg-amber-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-colors"
+            className="btn btn-secondary inline-flex items-center"
           >
             Refresh Page
           </button>
@@ -88,4 +89,3 @@ export const AIErrorFallback: React.FC<AIErrorFallbackProps> = ({
 };
 
 export default AIErrorFallback;
-

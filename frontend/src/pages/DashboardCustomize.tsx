@@ -20,52 +20,38 @@ export const DashboardCustomize: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadDashboardConfig();
-  }, []);
-
-  const loadDashboardConfig = () => {
     try {
       const saved = localStorage.getItem('dashboardWidgets');
-      if (saved) {
-        setWidgets(JSON.parse(saved));
-      } else {
-        setWidgets(DEFAULT_WIDGETS);
-      }
-    } catch (error) {
-      console.error('Failed to load dashboard config:', error);
+      setWidgets(saved ? JSON.parse(saved) : DEFAULT_WIDGETS);
+    } catch {
       setWidgets(DEFAULT_WIDGETS);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const handleSave = (updatedWidgets: DashboardWidgetConfig[]) => {
     try {
       localStorage.setItem('dashboardWidgets', JSON.stringify(updatedWidgets));
       setWidgets(updatedWidgets);
-      // Show success message
       alert(t('dashboard.builder.saved', 'Dashboard layout saved successfully!'));
-    } catch (error) {
-      console.error('Failed to save dashboard config:', error);
+    } catch {
       alert(t('dashboard.builder.saveFailed', 'Failed to save dashboard layout'));
     }
   };
 
   const handleReset = () => {
-    if (window.confirm(t('dashboard.builder.resetConfirm', 'Are you sure you want to reset to default layout?'))) {
+    if (window.confirm(t('dashboard.builder.resetConfirm', 'Reset to default layout?'))) {
       localStorage.removeItem('dashboardWidgets');
       setWidgets(DEFAULT_WIDGETS);
-      alert(t('dashboard.builder.resetSuccess', 'Dashboard reset to default layout'));
     }
   };
 
   if (loading) {
     return (
       <Layout>
-        <div className="p-4 sm:p-6 lg:p-8">
-          <div className="flex items-center justify-center h-96">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-spin rounded-full h-8 w-8" style={{ borderBottom: '2px solid var(--text-primary)' }} />
         </div>
       </Layout>
     );
@@ -73,88 +59,56 @@ export const DashboardCustomize: React.FC = () => {
 
   return (
     <Layout>
-      <div className="p-4 sm:p-6 lg:p-8 overflow-y-auto">
-          <div className="max-w-7xl mx-auto">
-            {/* Header */}
-            <div className="mb-6">
-              <div className="flex items-center gap-4 mb-4">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => navigate('/dashboard')}
-                  className="flex items-center gap-2"
-                >
-                  <ArrowLeftIcon className="h-4 w-4" />
-                  {t('common.back', 'Back')}
-                </Button>
-              </div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                {t('dashboard.customize', 'Customize Dashboard')}
-              </h1>
-              <p className="mt-2 text-gray-600 dark:text-gray-400">
-                {t('dashboard.builder.pageDesc', 'Personalize your dashboard by adding, removing, and rearranging widgets. Drag widgets to reorder them.')}
-              </p>
-            </div>
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="mb-6">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="flex items-center gap-1.5 mb-4">
+            <ArrowLeftIcon className="h-3.5 w-3.5" />
+            {t('common.back', 'Back')}
+          </Button>
+          <h1 className="text-xl font-semibold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+            {t('dashboard.customize', 'Customize Dashboard')}
+          </h1>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+            {t('dashboard.builder.pageDesc', 'Add, remove, and rearrange widgets.')}
+          </p>
+        </div>
 
-            {/* Builder Component */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-              <DashboardBuilder widgets={widgets} onSave={handleSave} asModal={false} />
+        {/* Builder */}
+        <div className="rounded-lg p-5" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
+          <DashboardBuilder widgets={widgets} onSave={handleSave} asModal={false} />
+          <div className="mt-5 pt-4 flex justify-between items-center" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            <Button variant="danger" size="sm" onClick={handleReset}>
+              {t('dashboard.builder.reset', 'Reset to Default')}
+            </Button>
+            <span className="text-xs" style={{ color: 'var(--text-faint)' }}>
+              {t('dashboard.builder.info', 'Changes are saved automatically')}
+            </span>
+          </div>
+        </div>
 
-              {/* Additional Actions */}
-              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                <Button
-                  variant="secondary"
-                  onClick={handleReset}
-                  className="text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
-                >
-                  {t('dashboard.builder.reset', 'Reset to Default')}
-                </Button>
-                
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                  {t('dashboard.builder.info', 'Changes are saved automatically')}
-                </div>
-              </div>
-            </div>
-
-            {/* Preview Section */}
-            <div className="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                {t('dashboard.builder.preview', 'Preview')}
-              </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                {t('dashboard.builder.previewDesc', 'This is how your dashboard will look:')}
-              </p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {widgets
-                  .filter(w => w.visible)
-                  .sort((a, b) => a.order - b.order)
-                  .map((widget) => {
-                    const getColSpan = (size: string) => {
-                      switch (size) {
-                        case 'small': return 'md:col-span-1';
-                        case 'medium': return 'md:col-span-2';
-                        case 'large': return 'md:col-span-3';
-                        case 'full': return 'md:col-span-4';
-                        default: return 'md:col-span-2';
-                      }
-                    };
-
-                    return (
-                      <div
-                        key={widget.id}
-                        className={`col-span-1 ${getColSpan(widget.size)} p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600`}
-                      >
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">
-                          {widget.title}
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {widget.size}
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
+        {/* Preview */}
+        <div className="mt-6 rounded-lg p-5" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
+          <h2 className="text-sm font-medium mb-4" style={{ color: 'var(--text-primary)' }}>
+            {t('dashboard.builder.preview', 'Preview')}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            {widgets
+              .filter(w => w.visible)
+              .sort((a, b) => a.order - b.order)
+              .map((widget) => {
+                const span = { small: 'md:col-span-1', medium: 'md:col-span-2', large: 'md:col-span-3', full: 'md:col-span-4' }[widget.size] || 'md:col-span-2';
+                return (
+                  <div
+                    key={widget.id}
+                    className={`col-span-1 ${span} p-3 rounded-md`}
+                    style={{ background: 'var(--bg-elevated)', border: '1px dashed var(--border-default)' }}
+                  >
+                    <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{widget.title}</div>
+                    <div className="text-xs mt-0.5" style={{ color: 'var(--text-faint)' }}>{widget.size}</div>
+                  </div>
+                );
+              })}
           </div>
         </div>
       </div>
@@ -163,4 +117,3 @@ export const DashboardCustomize: React.FC = () => {
 };
 
 export default DashboardCustomize;
-

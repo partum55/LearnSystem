@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Menu, Transition } from '@headlessui/react';
-import { BellIcon, UserCircleIcon, SunIcon, MoonIcon, LanguageIcon, Bars3Icon } from '@heroicons/react/24/outline';
+import { BellIcon, SunIcon, MoonIcon, LanguageIcon, Bars3Icon } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../store/authStore';
 import { useNotificationStore } from '../store/notificationStore';
 
@@ -15,23 +15,14 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { user, logout, updateUserPreferences } = useAuthStore();
   const { unreadCount } = useNotificationStore();
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark';
-    return savedTheme || 'light';
+    return (localStorage.getItem('theme') as 'light' | 'dark') || 'dark';
   });
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
     localStorage.setItem('theme', newTheme);
-
-    // Apply theme immediately
-    if (newTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-
-    // Also update user preferences on backend
+    document.documentElement.classList.toggle('dark', newTheme === 'dark');
     updateUserPreferences(undefined, newTheme);
   };
 
@@ -46,156 +37,203 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   };
 
   return (
-    <header className="bg-white dark:bg-gray-800 shadow-md border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30">
-      <div className="px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Mobile menu button and Logo */}
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={onMenuClick}
-              className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              aria-label="Toggle menu"
+    <header
+      className="sticky top-0 z-30 h-12 flex items-center px-4 sm:px-5"
+      style={{
+        background: 'var(--bg-surface)',
+        borderBottom: '1px solid var(--border-default)',
+        fontFamily: 'var(--font-body)',
+      }}
+    >
+      <div className="flex justify-between items-center w-full">
+        {/* Left: menu + logo */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onMenuClick}
+            className="lg:hidden p-1.5 -ml-1.5 rounded-md"
+            style={{ color: 'var(--text-muted)' }}
+            aria-label="Toggle menu"
+          >
+            <Bars3Icon className="h-5 w-5" />
+          </button>
+          <Link to="/dashboard" className="flex items-center gap-2">
+            <div
+              className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold"
+              style={{
+                background: 'var(--text-primary)',
+                color: 'var(--bg-base)',
+              }}
             >
-              <Bars3Icon className="h-6 w-6 text-gray-600 dark:text-gray-300" />
-            </button>
-            <Link to="/dashboard" className="flex items-center space-x-2">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                LMS
+              LS
+            </div>
+            <span
+              className="text-sm font-semibold hidden sm:block"
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+            >
+              LearnSystem
+            </span>
+          </Link>
+        </div>
+
+        {/* Right: actions */}
+        <div className="flex items-center gap-0.5">
+          {/* Theme */}
+          <button
+            onClick={toggleTheme}
+            className="hidden sm:flex items-center justify-center w-8 h-8 rounded-md transition-colors"
+            style={{ color: 'var(--text-muted)' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+            aria-label="Toggle theme"
+          >
+            {theme === 'light' ? <MoonIcon className="h-4 w-4" /> : <SunIcon className="h-4 w-4" />}
+          </button>
+
+          {/* Language */}
+          <Menu as="div" className="relative hidden sm:block">
+            <Menu.Button
+              className="flex items-center justify-center w-8 h-8 rounded-md transition-colors"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              <LanguageIcon className="h-4 w-4" />
+            </Menu.Button>
+            <Transition
+              enter="transition ease-out duration-100"
+              enterFrom="opacity-0 -translate-y-1"
+              enterTo="opacity-100 translate-y-0"
+              leave="transition ease-in duration-75"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <Menu.Items
+                className="absolute right-0 mt-1 w-40 rounded-lg overflow-hidden focus:outline-none z-10 animate-slide-down"
+                style={{
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
+                  boxShadow: 'var(--shadow-lg)',
+                }}
+              >
+                <div className="py-0.5">
+                  {([['uk', '🇺🇦 Українська'], ['en', '🇬🇧 English']] as const).map(([code, label]) => (
+                    <Menu.Item key={code}>
+                      {({ active }: { active: boolean }) => (
+                        <button
+                          onClick={() => changeLanguage(code)}
+                          className="block w-full text-left px-3 py-2 text-sm transition-colors"
+                          style={{
+                            background: active ? 'var(--bg-active)' : 'transparent',
+                            color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+                          }}
+                        >
+                          {label}
+                        </button>
+                      )}
+                    </Menu.Item>
+                  ))}
+                </div>
+              </Menu.Items>
+            </Transition>
+          </Menu>
+
+          {/* Notifications */}
+          <Link
+            to="/notifications"
+            className="relative flex items-center justify-center w-8 h-8 rounded-md transition-colors"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            <BellIcon className="h-4 w-4" />
+            {unreadCount > 0 && (
+              <span
+                className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full"
+                style={{ background: 'var(--text-primary)' }}
+              />
+            )}
+          </Link>
+
+          {/* User */}
+          <Menu as="div" className="relative ml-1">
+            <Menu.Button className="flex items-center gap-2 py-1 px-1.5 rounded-md transition-colors hover:bg-white/[0.04]">
+              <div
+                className="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-semibold"
+                style={{
+                  background: 'var(--bg-overlay)',
+                  color: 'var(--text-secondary)',
+                  border: '1px solid var(--border-default)',
+                }}
+              >
+                {user?.display_name?.charAt(0).toUpperCase() || 'U'}
               </div>
-            </Link>
-          </div>
-
-          {/* Right side actions */}
-          <div className="flex items-center space-x-2 sm:space-x-4">
-            {/* Theme toggle - Hidden on smallest screens */}
-            <button
-              onClick={toggleTheme}
-              className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              aria-label="Toggle theme"
-            >
-              {theme === 'light' ? (
-                <MoonIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
-              ) : (
-                <SunIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
-              )}
-            </button>
-
-            {/* Language toggle - Hidden on smallest screens */}
-            <Menu as="div" className="relative hidden sm:block">
-              <Menu.Button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                <LanguageIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
-              </Menu.Button>
-              <Transition
-                enter="transition ease-out duration-100"
-                enterFrom="transform opacity-0 scale-95"
-                enterTo="transform opacity-100 scale-100"
-                leave="transition ease-in duration-75"
-                leaveFrom="transform opacity-100 scale-100"
-                leaveTo="transform opacity-0 scale-95"
+              <span
+                className="text-sm hidden md:block"
+                style={{ color: 'var(--text-secondary)' }}
               >
-                <Menu.Items className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
-                  <div className="py-1">
-                    <Menu.Item>
-                      {({ active }: { active: boolean }) => (
-                        <button
-                          onClick={() => changeLanguage('uk')}
-                          className={`${
-                            active ? 'bg-gray-100 dark:bg-gray-700' : ''
-                          } block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300`}
-                        >
-                          Українська
-                        </button>
-                      )}
-                    </Menu.Item>
-                    <Menu.Item>
-                      {({ active }: { active: boolean }) => (
-                        <button
-                          onClick={() => changeLanguage('en')}
-                          className={`${
-                            active ? 'bg-gray-100 dark:bg-gray-700' : ''
-                          } block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300`}
-                        >
-                          English
-                        </button>
-                      )}
-                    </Menu.Item>
-                  </div>
-                </Menu.Items>
-              </Transition>
-            </Menu>
-
-            {/* Notifications */}
-            <Link
-              to="/notifications"
-              className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                {user?.display_name}
+              </span>
+            </Menu.Button>
+            <Transition
+              enter="transition ease-out duration-100"
+              enterFrom="opacity-0 -translate-y-1"
+              enterTo="opacity-100 translate-y-0"
+              leave="transition ease-in duration-75"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
             >
-              <BellIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
-              {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-                  {unreadCount}
-                </span>
-              )}
-            </Link>
-
-            {/* User menu */}
-            <Menu as="div" className="relative">
-              <Menu.Button className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                <UserCircleIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden md:block">
-                  {user?.display_name}
-                </span>
-              </Menu.Button>
-              <Transition
-                enter="transition ease-out duration-100"
-                enterFrom="transform opacity-0 scale-95"
-                enterTo="transform opacity-100 scale-100"
-                leave="transition ease-in duration-75"
-                leaveFrom="transform opacity-100 scale-100"
-                leaveTo="transform opacity-0 scale-95"
+              <Menu.Items
+                className="absolute right-0 mt-1 w-48 rounded-lg overflow-hidden focus:outline-none z-10 animate-slide-down"
+                style={{
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
+                  boxShadow: 'var(--shadow-lg)',
+                }}
               >
-                <Menu.Items className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
-                  <div className="py-1">
-                    <Menu.Item>
+                <div className="px-3 py-2.5" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    {user?.display_name}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                    {user?.email}
+                  </p>
+                </div>
+                <div className="py-0.5">
+                  {[
+                    { to: '/profile', label: t('nav.profile') },
+                    { to: '/settings', label: t('nav.settings') },
+                  ].map((item) => (
+                    <Menu.Item key={item.to}>
                       {({ active }: { active: boolean }) => (
                         <Link
-                          to="/profile"
-                          className={`${
-                            active ? 'bg-gray-100 dark:bg-gray-700' : ''
-                          } block px-4 py-2 text-sm text-gray-700 dark:text-gray-300`}
+                          to={item.to}
+                          className="block px-3 py-2 text-sm transition-colors"
+                          style={{
+                            background: active ? 'var(--bg-active)' : 'transparent',
+                            color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+                          }}
                         >
-                          {t('nav.profile')}
+                          {item.label}
                         </Link>
                       )}
                     </Menu.Item>
-                    <Menu.Item>
-                      {({ active }: { active: boolean }) => (
-                        <Link
-                          to="/settings"
-                          className={`${
-                            active ? 'bg-gray-100 dark:bg-gray-700' : ''
-                          } block px-4 py-2 text-sm text-gray-700 dark:text-gray-300`}
-                        >
-                          {t('nav.settings')}
-                        </Link>
-                      )}
-                    </Menu.Item>
-                    <Menu.Item>
-                      {({ active }: { active: boolean }) => (
-                        <button
-                          onClick={handleLogout}
-                          className={`${
-                            active ? 'bg-gray-100 dark:bg-gray-700' : ''
-                          } block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300`}
-                        >
-                          {t('auth.logout')}
-                        </button>
-                      )}
-                    </Menu.Item>
-                  </div>
-                </Menu.Items>
-              </Transition>
-            </Menu>
-          </div>
+                  ))}
+                </div>
+                <div style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                  <Menu.Item>
+                    {({ active }: { active: boolean }) => (
+                      <button
+                        onClick={handleLogout}
+                        className="block w-full text-left px-3 py-2 text-sm transition-colors"
+                        style={{
+                          background: active ? 'var(--bg-active)' : 'transparent',
+                          color: 'var(--text-muted)',
+                        }}
+                      >
+                        {t('auth.logout')}
+                      </button>
+                    )}
+                  </Menu.Item>
+                </div>
+              </Menu.Items>
+            </Transition>
+          </Menu>
         </div>
       </div>
     </header>

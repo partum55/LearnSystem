@@ -107,19 +107,19 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ type, on
       >
         <div className="space-y-4">
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            <div className="p-3 rounded-lg text-sm" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', color: 'var(--fn-error)' }}>
               {error}
             </div>
           )}
           {previewError && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            <div className="p-3 rounded-lg text-sm" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', color: 'var(--fn-error)' }}>
               {previewError}
             </div>
           )}
           {previewJson ? (
             <>
               <div className="space-y-2">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                   {t(
                     'ai.generator.previewDescription',
                     'Review and edit the exact AI output. Content is not saved until you confirm.'
@@ -128,7 +128,8 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ type, on
                 <textarea
                   value={previewJson}
                   onChange={(e) => setPreviewJson(e.target.value)}
-                  className="w-full h-80 px-3 py-2 border border-gray-300 rounded-lg font-mono text-xs focus:ring-2 focus:ring-blue-500"
+                  className="input w-full h-80 text-xs"
+                  style={{ fontFamily: 'var(--font-mono)' }}
                 />
               </div>
               <div className="flex gap-3 justify-end mt-6">
@@ -143,26 +144,26 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ type, on
           ) : (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="label block mb-2">
                   {t('ai.generator.topic', 'Topic')}
                 </label>
                 <textarea
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="input w-full"
                   rows={3}
                   placeholder={t('ai.generator.topicPlaceholder', 'Describe what you want to create...')}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="label block mb-2">
                   {t('ai.generator.difficulty', 'Difficulty')}
                 </label>
                 <select
                   value={difficulty}
                   onChange={(e) => setDifficulty(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="input w-full"
                 >
                   <option value="easy">{t('difficulty.easy', 'Easy')}</option>
                   <option value="medium">{t('difficulty.medium', 'Medium')}</option>
@@ -172,7 +173,7 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ type, on
 
               {type === 'quiz' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="label block mb-2">
                     {t('ai.generator.questionCount', 'Number of Questions')}
                   </label>
                   <input
@@ -181,14 +182,14 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ type, on
                     onChange={(e) => setQuestionCount(parseInt(e.target.value))}
                     min={5}
                     max={50}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="input w-full"
                   />
                 </div>
               )}
 
               {type === 'module' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="label block mb-2">
                     {t('ai.generator.weekDuration', 'Duration (weeks)')}
                   </label>
                   <input
@@ -197,7 +198,7 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ type, on
                     onChange={(e) => setWeekDuration(parseInt(e.target.value))}
                     min={1}
                     max={16}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="input w-full"
                   />
                 </div>
               )}

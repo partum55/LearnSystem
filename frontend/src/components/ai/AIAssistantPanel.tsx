@@ -130,7 +130,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
       return (
         <div className="py-8 text-center">
           <Loading />
-          <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+          <p className="mt-4 text-sm" style={{ color: 'var(--text-muted)' }}>
             {t('ai.generating')}
           </p>
         </div>
@@ -141,11 +141,11 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
       case 'modules':
         return (
           <div className="space-y-4">
-            <h4 className="font-semibold text-gray-900 dark:text-white">
+            <h4 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
               {t('ai.generateModules')}
             </h4>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="label block mb-1">
                 {t('ai.modulePrompt')}
               </label>
               <textarea
@@ -153,12 +153,11 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
                 onChange={(e) => setModulePrompt(e.target.value)}
                 placeholder={t('ai.modulePromptPlaceholder')}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md
-                         dark:bg-gray-700 dark:text-white text-sm"
+                className="input w-full text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="label block mb-1">
                 {t('ai.moduleCount')}
               </label>
               <input
@@ -167,8 +166,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
                 onChange={(e) => setModuleCount(Number(e.target.value))}
                 min={1}
                 max={10}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md
-                         dark:bg-gray-700 dark:text-white text-sm"
+                className="input w-full text-sm"
               />
             </div>
             <Button onClick={handleGenerateModules} disabled={!modulePrompt.trim()}>
@@ -181,11 +179,11 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
       case 'assignments':
         return (
           <div className="space-y-4">
-            <h4 className="font-semibold text-gray-900 dark:text-white">
+            <h4 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
               {t('ai.generateAssignments')}
             </h4>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="label block mb-1">
                 {t('ai.assignmentTopic')}
               </label>
               <input
@@ -193,12 +191,11 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
                 value={assignmentTopic}
                 onChange={(e) => setAssignmentTopic(e.target.value)}
                 placeholder={t('ai.assignmentTopicPlaceholder')}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md
-                         dark:bg-gray-700 dark:text-white text-sm"
+                className="input w-full text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="label block mb-1">
                 {t('ai.assignmentCount')}
               </label>
               <input
@@ -207,8 +204,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
                 onChange={(e) => setAssignmentCount(Number(e.target.value))}
                 min={1}
                 max={10}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md
-                         dark:bg-gray-700 dark:text-white text-sm"
+                className="input w-full text-sm"
               />
             </div>
             <Button onClick={handleGenerateAssignments} disabled={!assignmentTopic.trim()}>
@@ -221,11 +217,11 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
       case 'quiz':
         return (
           <div className="space-y-4">
-            <h4 className="font-semibold text-gray-900 dark:text-white">
+            <h4 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
               {t('ai.generateQuiz')}
             </h4>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="label block mb-1">
                 {t('ai.quizTopic')}
               </label>
               <input
@@ -233,12 +229,11 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
                 value={quizTopic}
                 onChange={(e) => setQuizTopic(e.target.value)}
                 placeholder={t('ai.quizTopicPlaceholder')}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md
-                         dark:bg-gray-700 dark:text-white text-sm"
+                className="input w-full text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="label block mb-1">
                 {t('ai.questionCount')}
               </label>
               <input
@@ -247,12 +242,11 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
                 onChange={(e) => setQuestionCount(Number(e.target.value))}
                 min={5}
                 max={50}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md
-                         dark:bg-gray-700 dark:text-white text-sm"
+                className="input w-full text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="label block mb-1">
                 {t('ai.timeLimit')} ({t('quiz.minutes')})
               </label>
               <input
@@ -261,8 +255,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
                 onChange={(e) => setTimeLimit(Number(e.target.value))}
                 min={5}
                 max={180}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md
-                         dark:bg-gray-700 dark:text-white text-sm"
+                className="input w-full text-sm"
               />
             </div>
             <Button onClick={handleGenerateQuiz} disabled={!quizTopic.trim()}>
@@ -280,15 +273,15 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed right-0 top-0 h-full w-96 bg-white dark:bg-gray-800 shadow-2xl z-50
-                    transform transition-transform duration-300 overflow-y-auto">
+    <div className="fixed right-0 top-0 h-full w-96 z-50 transform transition-transform duration-300 overflow-y-auto"
+         style={{ background: 'var(--bg-surface)', boxShadow: '-4px 0 24px rgba(0,0,0,0.3)' }}>
       {/* Header */}
-      <div className="sticky top-0 bg-purple-600 dark:bg-purple-700 text-white p-4 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
+      <div className="sticky top-0 p-4 flex items-center justify-between" style={{ background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-default)' }}>
+        <div className="flex items-center space-x-2" style={{ color: 'var(--text-primary)' }}>
           <SparklesIcon className="w-6 h-6" />
           <h3 className="font-semibold">{t('ai.assistant')}</h3>
         </div>
-        <button onClick={onClose} className="hover:bg-purple-700 dark:hover:bg-purple-800 rounded p-1">
+        <button onClick={onClose} className="rounded p-1" style={{ color: 'var(--text-muted)' }}>
           <XMarkIcon className="w-6 h-6" />
         </button>
       </div>
@@ -297,7 +290,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
       <div className="p-4 space-y-4">
         {!activeFunction && (
           <>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
               {t('ai.assistantHint')}
             </p>
 
@@ -306,15 +299,15 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
               {courseId && (
                 <button
                   onClick={() => setActiveFunction('modules')}
-                  className="w-full flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700
-                           hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-lg transition-colors"
+                  className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors"
+                  style={{ background: 'var(--bg-elevated)' }}
                 >
-                  <DocumentPlusIcon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                  <DocumentPlusIcon className="w-6 h-6" style={{ color: 'var(--text-secondary)' }} />
                   <div className="text-left">
-                    <div className="font-medium text-gray-900 dark:text-white">
+                    <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
                       {t('ai.generateModules')}
                     </div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                    <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
                       {t('ai.generateModulesHint')}
                     </div>
                   </div>
@@ -324,15 +317,15 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
               {moduleId && (
                 <button
                   onClick={() => setActiveFunction('assignments')}
-                  className="w-full flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700
-                           hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-lg transition-colors"
+                  className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors"
+                  style={{ background: 'var(--bg-elevated)' }}
                 >
-                  <ClipboardDocumentListIcon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                  <ClipboardDocumentListIcon className="w-6 h-6" style={{ color: 'var(--text-secondary)' }} />
                   <div className="text-left">
-                    <div className="font-medium text-gray-900 dark:text-white">
+                    <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
                       {t('ai.generateAssignments')}
                     </div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                    <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
                       {t('ai.generateAssignmentsHint')}
                     </div>
                   </div>
@@ -342,15 +335,15 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
               {courseId && (
                 <button
                   onClick={() => setActiveFunction('quiz')}
-                  className="w-full flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700
-                           hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-lg transition-colors"
+                  className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors"
+                  style={{ background: 'var(--bg-elevated)' }}
                 >
-                  <AcademicCapIcon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                  <AcademicCapIcon className="w-6 h-6" style={{ color: 'var(--text-secondary)' }} />
                   <div className="text-left">
-                    <div className="font-medium text-gray-900 dark:text-white">
+                    <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
                       {t('ai.generateQuiz')}
                     </div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                    <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
                       {t('ai.generateQuizHint')}
                     </div>
                   </div>
@@ -367,15 +360,16 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
                 setActiveFunction(null);
                 setError('');
               }}
-              className="text-sm text-purple-600 dark:text-purple-400 hover:underline"
+              className="text-sm hover:underline"
+              style={{ color: 'var(--text-secondary)' }}
             >
-              ← {t('common.back')}
+              &larr; {t('common.back')}
             </button>
 
             {renderFunctionForm()}
 
             {error && (
-              <div className="text-sm text-red-600 dark:text-red-400 p-3 bg-red-50 dark:bg-red-900/20 rounded">
+              <div className="text-sm p-3 rounded" style={{ color: 'var(--fn-error)', background: 'rgba(239, 68, 68, 0.08)' }}>
                 {error}
               </div>
             )}
@@ -385,4 +379,3 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
     </div>
   );
 };
-

@@ -28,7 +28,6 @@ export const CourseCreate: React.FC = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -95,10 +94,13 @@ export const CourseCreate: React.FC = () => {
       <div className="p-4 sm:p-6 lg:p-8">
         <div className="max-w-4xl mx-auto">
           {/* Breadcrumb */}
-          <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-4">
+          <div className="flex items-center text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
             <button
               onClick={() => navigate('/courses')}
-              className="flex items-center hover:text-blue-600 dark:hover:text-blue-400"
+              className="flex items-center transition-colors"
+              style={{ color: 'var(--text-muted)' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
             >
               <ArrowLeftIcon className="h-4 w-4 mr-1" />
               {t('courses.title')}
@@ -109,10 +111,13 @@ export const CourseCreate: React.FC = () => {
 
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            <h1
+              className="text-3xl font-bold"
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+            >
               {t('courses.createCourse')}
             </h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">
+            <p className="mt-2" style={{ color: 'var(--text-muted)' }}>
               {t('courses.createCourseDescription')}
             </p>
           </div>
@@ -121,13 +126,15 @@ export const CourseCreate: React.FC = () => {
           <form onSubmit={handleSubmit}>
             <Card>
               <CardHeader>
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h2
+                  className="text-xl font-semibold"
+                  style={{ color: 'var(--text-primary)' }}
+                >
                   {t('courses.basicInformation')}
                 </h2>
               </CardHeader>
               <CardBody>
                 <div className="space-y-6">
-                  {/* Course Code */}
                   <div>
                     <Input
                       label={t('courses.courseCode')}
@@ -138,12 +145,11 @@ export const CourseCreate: React.FC = () => {
                       error={errors.code}
                       required
                     />
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
                       {t('courses.courseCodeHint')}
                     </p>
                   </div>
 
-                  {/* Course Title */}
                   <div>
                     <Input
                       label={t('courses.courseTitle')}
@@ -156,9 +162,8 @@ export const CourseCreate: React.FC = () => {
                     />
                   </div>
 
-                  {/* Description */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <div className="input-group">
+                    <label className="label">
                       {t('courses.description')} *
                     </label>
                     <textarea
@@ -166,40 +171,37 @@ export const CourseCreate: React.FC = () => {
                       value={formData.description}
                       onChange={handleChange}
                       rows={5}
-                      className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                      className="input"
+                      style={{ resize: 'vertical' }}
                       placeholder={t('courses.descriptionPlaceholder')}
                       required
                     />
                     {errors.description && (
-                      <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                        {errors.description}
-                      </p>
+                      <p className="error-text">{errors.description}</p>
                     )}
                   </div>
 
-                  {/* Visibility */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <div className="input-group">
+                    <label className="label">
                       {t('courses.visibility')}
                     </label>
                     <select
                       name="visibility"
                       value={formData.visibility}
                       onChange={handleChange}
-                      className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                      className="input"
                     >
                       <option value="PUBLIC">{t('courses.public')}</option>
                       <option value="PRIVATE">{t('courses.private')}</option>
                       <option value="DRAFT">{t('courses.draft')}</option>
                     </select>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    <p className="help-text">
                       {formData.visibility === 'PUBLIC' && t('courses.publicHint')}
                       {formData.visibility === 'PRIVATE' && t('courses.privateHint')}
                       {formData.visibility === 'DRAFT' && t('courses.draftHint')}
                     </p>
                   </div>
 
-                  {/* Dates */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <Input
@@ -222,7 +224,6 @@ export const CourseCreate: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Max Students */}
                   <div>
                     <Input
                       label={t('courses.maxStudents')}
@@ -234,24 +235,23 @@ export const CourseCreate: React.FC = () => {
                       placeholder="50"
                       error={errors.max_students}
                     />
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
                       {t('courses.maxStudentsHint')}
                     </p>
                   </div>
 
-                  {/* Submit Error */}
                   {errors.submit && (
-                    <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
-                      <p className="text-sm text-red-800 dark:text-red-400">
-                        {errors.submit}
-                      </p>
+                    <div
+                      className="rounded-md px-3 py-2 text-sm"
+                      style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', color: 'var(--fn-error)' }}
+                    >
+                      {errors.submit}
                     </div>
                   )}
                 </div>
               </CardBody>
             </Card>
 
-            {/* Actions */}
             <div className="mt-6 flex justify-end gap-4">
               <Button
                 type="button"

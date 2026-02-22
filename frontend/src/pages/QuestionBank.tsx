@@ -138,17 +138,8 @@ export const QuestionBank: React.FC = () => {
     return labels[type] || type;
   };
 
-  const getQuestionTypeBadgeColor = (type: string) => {
-    const colors: Record<string, string> = {
-      'MULTIPLE_CHOICE': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      'TRUE_FALSE': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      'FILL_BLANK': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-      'SHORT_ANSWER': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-      'ESSAY': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-      'MATCHING': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
-      'NUMERICAL': 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
-    };
-    return colors[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
+  const getQuestionTypeBadgeColor = (_type: string) => {
+    return 'badge';
   };
 
   const filteredQuestions = questions.filter(q => {
@@ -180,10 +171,10 @@ export const QuestionBank: React.FC = () => {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
                   {t('questionBank.title')}
                 </h1>
-                <p className="mt-2 text-gray-600 dark:text-gray-400">
+                <p className="mt-2" style={{ color: 'var(--text-muted)' }}>
                   {t('questionBank.description')}
                 </p>
               </div>
@@ -199,10 +190,10 @@ export const QuestionBank: React.FC = () => {
             <Card>
               <CardBody>
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
                     {questions.length}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                     {t('questionBank.totalQuestions')}
                   </p>
                 </div>
@@ -212,10 +203,10 @@ export const QuestionBank: React.FC = () => {
             <Card>
               <CardBody>
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
                     {questions.filter(q => q.question_type === 'MULTIPLE_CHOICE').length}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                     Multiple Choice
                   </p>
                 </div>
@@ -225,10 +216,10 @@ export const QuestionBank: React.FC = () => {
             <Card>
               <CardBody>
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
                     {questions.filter(q => ['SHORT_ANSWER', 'ESSAY'].includes(q.question_type)).length}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                     Open-Ended
                   </p>
                 </div>
@@ -238,10 +229,10 @@ export const QuestionBank: React.FC = () => {
             <Card>
               <CardBody>
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
                     {questions.reduce((sum, q) => sum + q.points, 0)}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                     {t('questionBank.totalPoints')}
                   </p>
                 </div>
@@ -259,15 +250,15 @@ export const QuestionBank: React.FC = () => {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder={t('questionBank.searchPlaceholder')}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    className="input w-full"
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <FunnelIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                  <FunnelIcon className="h-5 w-5" style={{ color: 'var(--text-muted)' }} />
                   <select
                     value={filterType}
                     onChange={(e) => setFilterType(e.target.value)}
-                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    className="input"
                   >
                     {questionTypes.map(type => (
                       <option key={type} value={type}>
@@ -285,7 +276,7 @@ export const QuestionBank: React.FC = () => {
             <Card>
               <CardBody>
                 <div className="text-center py-12">
-                  <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  <p className="mb-4" style={{ color: 'var(--text-muted)' }}>
                     {searchQuery || filterType !== 'ALL'
                       ? t('questionBank.noQuestionsFiltered')
                       : t('questionBank.noQuestions')}
@@ -312,7 +303,7 @@ export const QuestionBank: React.FC = () => {
                         </span>
 
                         {/* Question Stem */}
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                        <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                           {question.stem}
                         </h3>
 
@@ -320,18 +311,18 @@ export const QuestionBank: React.FC = () => {
                         {question.question_type === 'MULTIPLE_CHOICE' && question.options?.choices && (
                           <div className="mt-3 space-y-1">
                             {question.options.choices.slice(0, 3).map((choice: string, idx: number) => (
-                              <div key={idx} className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                                <span className="w-6 h-6 flex items-center justify-center border border-gray-300 dark:border-gray-600 rounded mr-2">
+                              <div key={idx} className="flex items-center text-sm" style={{ color: 'var(--text-muted)' }}>
+                                <span className="w-6 h-6 flex items-center justify-center border rounded mr-2" style={{ borderColor: 'var(--border-default)' }}>
                                   {String.fromCharCode(65 + idx)}
                                 </span>
                                 <span>{choice}</span>
                                 {((question.correct_answer as unknown) as { index: number })?.index === idx && (
-                                  <span className="ml-2 text-green-600 dark:text-green-400">✓</span>
+                                  <span className="ml-2" style={{ color: 'var(--fn-success)' }}>✓</span>
                                 )}
                               </div>
                             ))}
                             {(question.options.choices.length || 0) > 3 && (
-                              <p className="text-xs text-gray-500 dark:text-gray-400 ml-8">
+                              <p className="text-xs ml-8" style={{ color: 'var(--text-muted)' }}>
                                 +{(question.options.choices.length || 0) - 3} more options
                               </p>
                             )}
@@ -339,7 +330,7 @@ export const QuestionBank: React.FC = () => {
                         )}
 
                         {/* Metadata */}
-                        <div className="mt-3 flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                        <div className="mt-3 flex items-center gap-4 text-sm" style={{ color: 'var(--text-muted)' }}>
                           <span>{question.points} {t('question.points')}</span>
                           {question.created_by_name && (
                             <span>{t('question.createdBy')}: {question.created_by_name}</span>
@@ -349,7 +340,7 @@ export const QuestionBank: React.FC = () => {
 
                         {/* Explanation Preview */}
                         {question.explanation && (
-                          <div className="mt-2 text-sm text-gray-600 dark:text-gray-400 italic">
+                          <div className="mt-2 text-sm italic" style={{ color: 'var(--text-muted)' }}>
                             {t('question.explanation')}: {question.explanation.substring(0, 100)}
                             {question.explanation.length > 100 && '...'}
                           </div>
@@ -360,14 +351,20 @@ export const QuestionBank: React.FC = () => {
                       <div className="flex items-center gap-2 ml-4">
                         <button
                           onClick={handleEditQuestion}
-                          className="p-2 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                          className="p-2 rounded-lg transition-colors"
+                          style={{ color: 'var(--text-secondary)' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                           title={t('common.edit')}
                         >
                           <PencilIcon className="h-5 w-5" />
                         </button>
                         <button
                           onClick={() => handleDeleteQuestion(question.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          className="p-2 rounded-lg transition-colors"
+                          style={{ color: 'var(--text-faint)' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--fn-error)'; e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-faint)'; e.currentTarget.style.backgroundColor = 'transparent'; }}
                           title={t('common.delete')}
                         >
                           <TrashIcon className="h-5 w-5" />
@@ -382,7 +379,7 @@ export const QuestionBank: React.FC = () => {
 
           {/* Pagination Info */}
           {filteredQuestions.length > 0 && (
-            <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+            <div className="mt-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
               {t('questionBank.showing')} {filteredQuestions.length} {t('questionBank.of')} {questions.length} {t('questionBank.questions')}
             </div>
           )}

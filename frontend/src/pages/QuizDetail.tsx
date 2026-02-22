@@ -49,6 +49,7 @@ export const QuizDetail: React.FC = () => {
   const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
+  const [hoveredQuestionId, setHoveredQuestionId] = useState<string | null>(null);
 
   const fetchQuiz = useCallback(async () => {
     if (!quizId) return;
@@ -198,10 +199,10 @@ export const QuizDetail: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           {/* Quiz Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
               {quiz.title}
             </h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">
+            <p className="mt-2" style={{ color: 'var(--text-muted)' }}>
               {quiz.description}
             </p>
           </div>
@@ -211,10 +212,10 @@ export const QuizDetail: React.FC = () => {
             <Card>
               <CardBody>
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
                     {quiz.questions_count}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                     {t('quiz.questions')}
                   </p>
                 </div>
@@ -224,10 +225,10 @@ export const QuizDetail: React.FC = () => {
             <Card>
               <CardBody>
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
                     {quiz.total_points}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                     {t('quiz.totalPoints')}
                   </p>
                 </div>
@@ -237,10 +238,10 @@ export const QuizDetail: React.FC = () => {
             <Card>
               <CardBody>
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
                     {quiz.time_limit || '∞'}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                     {t('quiz.minutes')}
                   </p>
                 </div>
@@ -250,10 +251,10 @@ export const QuizDetail: React.FC = () => {
             <Card>
               <CardBody>
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
                     {quiz.attempts_allowed}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                     {t('quiz.attempts')}
                   </p>
                 </div>
@@ -265,7 +266,7 @@ export const QuizDetail: React.FC = () => {
           <Card className="mb-8">
             <CardHeader>
               <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                   {t('quiz.questions')}
                 </h2>
                 <Button onClick={() => setIsQuestionModalOpen(true)}>
@@ -275,7 +276,7 @@ export const QuizDetail: React.FC = () => {
             </CardHeader>
             <CardBody>
               {quiz.questions.length === 0 ? (
-                <p className="text-center text-gray-600 dark:text-gray-400 py-12">
+                <p className="text-center py-12" style={{ color: 'var(--text-muted)' }}>
                   {t('quiz.noQuestions')}
                 </p>
               ) : (
@@ -283,26 +284,27 @@ export const QuizDetail: React.FC = () => {
                   {quiz.questions.map((quizQuestion, index) => (
                     <div
                       key={quizQuestion.id}
-                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+                      className="rounded-lg p-4"
+                      style={{ border: '1px solid var(--border-default)' }}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center space-x-3 mb-2">
-                            <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                            <span className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
                               {index + 1}.
                             </span>
-                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                            <span className="badge">
                               {getQuestionTypeLabel(quizQuestion.question_detail.question_type)}
                             </span>
-                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
                               {quizQuestion.points_override || quizQuestion.question_detail.points} {t('quiz.points')}
                             </span>
                           </div>
-                          <p className="text-gray-900 dark:text-white mb-2">
+                          <p className="mb-2" style={{ color: 'var(--text-primary)' }}>
                             {quizQuestion.question_detail.stem}
                           </p>
                           {quizQuestion.question_detail.explanation && (
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                               💡 {quizQuestion.question_detail.explanation}
                             </p>
                           )}
@@ -318,13 +320,13 @@ export const QuizDetail: React.FC = () => {
           {/* Add Questions from Bank */}
           <Card>
             <CardHeader>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {t('quiz.addFromBank')}
               </h2>
             </CardHeader>
             <CardBody>
               {availableQuestions.length === 0 ? (
-                <p className="text-center text-gray-600 dark:text-gray-400 py-8">
+                <p className="text-center py-8" style={{ color: 'var(--text-muted)' }}>
                   {t('quiz.noAvailableQuestions')}
                 </p>
               ) : (
@@ -333,7 +335,13 @@ export const QuizDetail: React.FC = () => {
                     {availableQuestions.map((question) => (
                       <label
                         key={question.id}
-                        className="flex items-start space-x-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                        className="flex items-start space-x-3 p-3 rounded-lg cursor-pointer"
+                        style={{
+                          border: '1px solid var(--border-default)',
+                          backgroundColor: hoveredQuestionId === question.id ? 'var(--bg-hover)' : 'transparent',
+                        }}
+                        onMouseEnter={() => setHoveredQuestionId(question.id)}
+                        onMouseLeave={() => setHoveredQuestionId(null)}
                       >
                         <input
                           type="checkbox"
@@ -345,18 +353,19 @@ export const QuizDetail: React.FC = () => {
                               setSelectedQuestions(selectedQuestions.filter(id => id !== question.id));
                             }
                           }}
-                          className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          className="mt-1 rounded"
+                          style={{ accentColor: 'var(--text-primary)' }}
                         />
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-1">
-                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+                            <span className="badge">
                               {getQuestionTypeLabel(question.question_type)}
                             </span>
-                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
                               {question.points} {t('quiz.points')}
                             </span>
                           </div>
-                          <p className="text-gray-900 dark:text-white">
+                          <p style={{ color: 'var(--text-primary)' }}>
                             {question.stem}
                           </p>
                         </div>

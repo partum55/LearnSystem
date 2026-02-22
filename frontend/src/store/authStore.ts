@@ -14,6 +14,8 @@ interface AuthState {
   logout: () => Promise<void>;
   fetchCurrentUser: () => Promise<void>;
   updateUserPreferences: (locale?: 'uk' | 'en', theme?: 'light' | 'dark') => Promise<void>;
+  /** Dev-only: set a mock user without hitting the backend */
+  setUser: (user: User) => void;
 }
 
 interface ApiUser {
@@ -67,6 +69,10 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+
+      setUser: (user: User) => {
+        set({ user, isAuthenticated: true, isLoading: false, error: null });
+      },
 
       login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });

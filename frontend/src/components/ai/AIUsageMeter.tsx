@@ -20,17 +20,17 @@ export const AIUsageMeter: React.FC<AIUsageMeterProps> = ({
 
   if (isLoading) {
     return (
-      <div className="animate-pulse bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-2"></div>
-        <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+      <div className="animate-pulse rounded-lg p-4" style={{ background: 'var(--bg-surface)' }}>
+        <div className="h-4 rounded w-24 mb-2" style={{ background: 'var(--bg-overlay)' }}></div>
+        <div className="h-2 rounded w-full" style={{ background: 'var(--bg-overlay)' }}></div>
       </div>
     );
   }
 
   if (!usage) {
     return (
-      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-4">
-        <p className="text-sm text-green-700 dark:text-green-300">
+      <div className="rounded-lg p-4" style={{ background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.15)' }}>
+        <p className="text-sm" style={{ color: 'var(--fn-success)' }}>
           No AI usage this period
         </p>
       </div>
@@ -43,74 +43,72 @@ export const AIUsageMeter: React.FC<AIUsageMeterProps> = ({
   const isOverLimit = percentUsed >= 100;
 
   const progressColor = isOverLimit
-    ? 'bg-red-500'
+    ? 'var(--fn-error)'
     : isNearLimit
-      ? 'bg-yellow-500'
-      : 'bg-blue-500';
+      ? 'var(--fn-warning)'
+      : 'var(--text-primary)';
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+    <div className="rounded-lg p-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
       <div className="flex justify-between items-center mb-2">
-        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <h4 className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
           AI Usage This Month
         </h4>
-        <span className={`text-xs font-semibold ${
-          isOverLimit ? 'text-red-600 dark:text-red-400' : 
-          isNearLimit ? 'text-yellow-600 dark:text-yellow-400' : 
-          'text-blue-600 dark:text-blue-400'
-        }`}>
+        <span className="text-xs font-semibold" style={{
+          color: isOverLimit ? 'var(--fn-error)' : isNearLimit ? 'var(--fn-warning)' : 'var(--text-secondary)'
+        }}>
           {percentUsed.toFixed(1)}%
         </span>
       </div>
 
       {/* Progress bar */}
-      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
+      <div className="w-full rounded-full h-2 mb-3" style={{ background: 'var(--bg-overlay)' }}>
         <div
-          className={`h-2 rounded-full transition-all duration-300 ${progressColor}`}
-          style={{ width: `${Math.min(percentUsed, 100)}%` }}
+          className="h-2 rounded-full transition-all duration-300"
+          style={{ width: `${Math.min(percentUsed, 100)}%`, background: progressColor }}
         />
       </div>
 
       {/* Token counts */}
-      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+      <div className="flex justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
         <span>{usage.totalTokens.toLocaleString()} tokens used</span>
         <span>{(remaining || 0).toLocaleString()} remaining</span>
       </div>
 
       {/* Detailed breakdown */}
       {showDetails && (
-        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border-default)' }}>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-gray-500 dark:text-gray-400">Requests</p>
-              <p className="font-medium text-gray-900 dark:text-gray-100">
+              <p style={{ color: 'var(--text-muted)' }}>Requests</p>
+              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
                 {usage.requestCount}
               </p>
             </div>
             <div>
-              <p className="text-gray-500 dark:text-gray-400">Failed</p>
-              <p className="font-medium text-gray-900 dark:text-gray-100">
+              <p style={{ color: 'var(--text-muted)' }}>Failed</p>
+              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
                 {usage.failedRequestCount}
               </p>
             </div>
             <div>
-              <p className="text-gray-500 dark:text-gray-400">Prompt Tokens</p>
-              <p className="font-medium text-gray-900 dark:text-gray-100">
+              <p style={{ color: 'var(--text-muted)' }}>Prompt Tokens</p>
+              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
                 {usage.promptTokens.toLocaleString()}
               </p>
             </div>
             <div>
-              <p className="text-gray-500 dark:text-gray-400">Completion Tokens</p>
-              <p className="font-medium text-gray-900 dark:text-gray-100">
+              <p style={{ color: 'var(--text-muted)' }}>Completion Tokens</p>
+              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
                 {usage.completionTokens.toLocaleString()}
               </p>
             </div>
           </div>
 
           {usage.estimatedCostUsd > 0 && (
-            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-              <p className="text-gray-500 dark:text-gray-400">Estimated Cost</p>
-              <p className="font-medium text-gray-900 dark:text-gray-100">
+            <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border-default)' }}>
+              <p style={{ color: 'var(--text-muted)' }}>Estimated Cost</p>
+              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
                 ${usage.estimatedCostUsd.toFixed(4)}
               </p>
             </div>
@@ -120,13 +118,13 @@ export const AIUsageMeter: React.FC<AIUsageMeterProps> = ({
 
       {/* Warning message */}
       {isNearLimit && !isOverLimit && (
-        <p className="mt-3 text-xs text-yellow-600 dark:text-yellow-400">
-          ⚠️ You're approaching your monthly AI usage limit
+        <p className="mt-3 text-xs" style={{ color: 'var(--fn-warning)' }}>
+          You're approaching your monthly AI usage limit
         </p>
       )}
       {isOverLimit && (
-        <p className="mt-3 text-xs text-red-600 dark:text-red-400">
-          🚫 You've reached your monthly AI usage limit
+        <p className="mt-3 text-xs" style={{ color: 'var(--fn-error)' }}>
+          You've reached your monthly AI usage limit
         </p>
       )}
     </div>
@@ -134,4 +132,3 @@ export const AIUsageMeter: React.FC<AIUsageMeterProps> = ({
 };
 
 export default AIUsageMeter;
-

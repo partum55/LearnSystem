@@ -345,8 +345,8 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
   if (error) {
     return (
       <div className="text-center py-12">
-        <XMarkIcon className="mx-auto h-12 w-12 text-red-400" />
-        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">{error}</h3>
+        <XMarkIcon className="mx-auto h-12 w-12" style={{ color: 'var(--fn-error)' }} />
+        <h3 className="mt-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{error}</h3>
         <Button onClick={fetchGradebook} className="mt-4">
           {t('common.retry')}
         </Button>
@@ -362,15 +362,15 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
     <div className="space-y-6">
       {/* Header with Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+        <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
           {t('gradebook.teacher_view')}
         </h2>
         <div className="flex gap-2">
-          <Button onClick={() => setShowFilters(!showFilters)} variant="outline">
+          <Button onClick={() => setShowFilters(!showFilters)} variant="secondary">
             <FunnelIcon className="h-5 w-5 mr-2" />
             {t('gradebook.filters')}
           </Button>
-          <Button onClick={recalculateGrades} variant="outline">
+          <Button onClick={recalculateGrades} variant="secondary">
             <ArrowPathIcon className="h-5 w-5 mr-2" />
             {t('gradebook.recalculate')}
           </Button>
@@ -384,7 +384,7 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Search */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="label block mb-2">
                   <MagnifyingGlassIcon className="h-4 w-4 inline mr-1" />
                   {t('gradebook.search_student')}
                 </label>
@@ -398,13 +398,13 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
 
               {/* Module Filter */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="label block mb-2">
                   {t('gradebook.filter_by_module')}
                 </label>
                 <select
                   value={selectedModule}
                   onChange={(e) => setSelectedModule(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                  className="input w-full"
                 >
                   <option value="all">{t('gradebook.all_modules')}</option>
                   {groupedAssignments.map((module) => (
@@ -417,13 +417,13 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
 
               {/* Grade Status Filter */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="label block mb-2">
                   {t('gradebook.filter_by_status')}
                 </label>
                 <select
                   value={gradeFilter}
                   onChange={(e) => setGradeFilter(e.target.value as 'all' | 'graded' | 'pending' | 'missing')}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                  className="input w-full"
                 >
                   <option value="all">{t('gradebook.all_students')}</option>
                   <option value="graded">{t('gradebook.has_graded')}</option>
@@ -435,14 +435,14 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
 
             {/* Expand/Collapse Controls */}
             <div className="mt-4 flex gap-2">
-              <Button onClick={expandAll} variant="outline" size="sm">
+              <Button onClick={expandAll} variant="secondary" size="sm">
                 {t('gradebook.expand_all')}
               </Button>
-              <Button onClick={collapseAll} variant="outline" size="sm">
+              <Button onClick={collapseAll} variant="secondary" size="sm">
                 {t('gradebook.collapse_all')}
               </Button>
               {(searchQuery || gradeFilter !== 'all') && (
-                <span className="ml-auto text-sm text-gray-600 dark:text-gray-400 self-center">
+                <span className="ml-auto text-sm self-center" style={{ color: 'var(--text-muted)' }}>
                   {t('gradebook.showing_students', { count: filteredStudents.length })}
                 </span>
               )}
@@ -461,20 +461,22 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
               <CardBody>
                 {/* Student Header */}
                 <div
-                  className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -m-6 p-6 rounded-t-lg"
+                  className="flex items-center justify-between cursor-pointer -m-6 p-6 rounded-t-lg transition-colors"
                   onClick={() => toggleStudentExpansion(student.student_id)}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = ''; }}
                 >
                   <div className="flex items-center gap-3">
                     {isExpanded ? (
-                      <ChevronDownIcon className="h-5 w-5 text-gray-500" />
+                      <ChevronDownIcon className="h-5 w-5" style={{ color: 'var(--text-muted)' }} />
                     ) : (
-                      <ChevronRightIcon className="h-5 w-5 text-gray-500" />
+                      <ChevronRightIcon className="h-5 w-5" style={{ color: 'var(--text-muted)' }} />
                     )}
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
                         {student.student_name}
                       </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                         {student.student_email}
                       </p>
                     </div>
@@ -484,23 +486,23 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
                   {student.summary && (
                     <div className="flex items-center gap-6">
                       <div className="text-right">
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                        <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
                           {t('gradebook.current_grade')}
                         </div>
-                        <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                        <div className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                           {student.summary.letter_grade || '-'}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
                           {student.summary.current_grade !== undefined && student.summary.current_grade !== null
                             ? `${student.summary.current_grade.toFixed(1)}%`
                             : '-'}
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                        <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
                           {t('gradebook.points')}
                         </div>
-                        <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                        <div className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
                           {student.summary.total_points_earned.toFixed(1)} / {student.summary.total_points_possible.toFixed(1)}
                         </div>
                       </div>
@@ -514,8 +516,8 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
                     {groupedAssignments
                       .filter(module => selectedModule === 'all' || module.module_id === selectedModule)
                       .map((module) => (
-                        <div key={module.module_id} className="border-l-4 border-indigo-500 pl-4">
-                          <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-3">
+                        <div key={module.module_id} className="pl-4" style={{ borderLeft: '4px solid var(--text-secondary)' }}>
+                          <h4 className="text-md font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
                             {module.module_title}
                           </h4>
 
@@ -528,13 +530,14 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
                               return (
                                 <div
                                   key={assignment.id}
-                                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                                  className="flex items-center justify-between p-3 rounded-lg"
+                                  style={{ background: 'var(--bg-base)' }}
                                 >
                                   <div className="flex-1">
-                                    <div className="font-medium text-gray-900 dark:text-white">
+                                    <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
                                       {assignment.title}
                                     </div>
-                                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                                    <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
                                       {t('gradebook.max_points')}: {assignment.max_points}
                                       {assignment.due_date && ` • ${t('gradebook.due')}: ${new Date(assignment.due_date).toLocaleDateString()}`}
                                     </div>
@@ -555,18 +558,24 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
                                           disabled={saving}
                                           autoFocus
                                         />
-                                        <span className="text-gray-500">/ {assignment.max_points}</span>
+                                        <span style={{ color: 'var(--text-muted)' }}>/ {assignment.max_points}</span>
                                         <button
                                           onClick={() => saveGrade(grade?.entry_id)}
                                           disabled={saving}
-                                          className="p-2 text-green-600 hover:text-green-800 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
+                                          className="p-2 rounded transition-colors"
+                                          style={{ color: 'var(--fn-success)' }}
+                                          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(34, 197, 94, 0.1)'; }}
+                                          onMouseLeave={(e) => { e.currentTarget.style.background = ''; }}
                                         >
                                           <CheckIcon className="h-5 w-5" />
                                         </button>
                                         <button
                                           onClick={cancelEdit}
                                           disabled={saving}
-                                          className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                                          className="p-2 rounded transition-colors"
+                                          style={{ color: 'var(--fn-error)' }}
+                                          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
+                                          onMouseLeave={(e) => { e.currentTarget.style.background = ''; }}
                                         >
                                           <XMarkIcon className="h-5 w-5" />
                                         </button>
@@ -575,20 +584,20 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
                                       <>
                                         <div className="min-w-[120px] text-right">
                                           {grade?.is_excused ? (
-                                            <span className="text-gray-400 italic">
+                                            <span className="italic" style={{ color: 'var(--text-faint)' }}>
                                               {t('gradebook.excused')}
                                             </span>
                                           ) : grade?.score !== undefined && grade?.score !== null ? (
-                                            <span className="font-semibold text-gray-900 dark:text-white">
+                                            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
                                               {grade.score.toFixed(1)} / {grade.max_score}
                                               {grade.percentage !== undefined && (
-                                                <span className="ml-2 text-sm text-gray-500">
+                                                <span className="ml-2 text-sm" style={{ color: 'var(--text-muted)' }}>
                                                   ({grade.percentage.toFixed(0)}%)
                                                 </span>
                                               )}
                                             </span>
                                           ) : (
-                                            <span className="text-gray-400">
+                                            <span style={{ color: 'var(--text-faint)' }}>
                                               {t('gradebook.not_graded')}
                                             </span>
                                           )}
@@ -597,17 +606,17 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
                                         {/* Status Badges */}
                                         <div className="flex gap-1">
                                           {grade?.is_late && (
-                                            <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 rounded">
+                                            <span className="badge badge-warning">
                                               {t('gradebook.late')}
                                             </span>
                                           )}
                                           {grade?.status === 'PENDING' && (
-                                            <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 rounded">
+                                            <span className="badge" style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
                                               {t('gradebook.pending')}
                                             </span>
                                           )}
                                           {(!grade || grade.status === 'NOT_SUBMITTED') && (
-                                            <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400 rounded">
+                                            <span className="badge" style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
                                               {t('gradebook.not_submitted')}
                                             </span>
                                           )}
@@ -615,7 +624,10 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
 
                                         <button
                                           onClick={() => startEdit(student.student_id, assignment.id, grade?.score ?? undefined)}
-                                          className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                                          className="p-2 rounded transition-colors"
+                                          style={{ color: 'var(--text-faint)' }}
+                                          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                                          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-faint)'; e.currentTarget.style.background = ''; }}
                                         >
                                           <PencilSquareIcon className="h-5 w-5" />
                                         </button>
@@ -639,7 +651,7 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
           <Card>
             <CardBody>
               <div className="text-center py-12">
-                <p className="text-gray-500 dark:text-gray-400">
+                <p style={{ color: 'var(--text-muted)' }}>
                   {searchQuery || gradeFilter !== 'all'
                     ? t('gradebook.no_students_match_filter')
                     : t('gradebook.no_students')}

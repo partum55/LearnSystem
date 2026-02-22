@@ -97,6 +97,7 @@ export const QuizResults: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
+  const [hoveredQuestion, setHoveredQuestion] = useState<string | null>(null);
 
   const evaluateAnswer = (
     questionType: string,
@@ -279,7 +280,7 @@ export const QuizResults: React.FC = () => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return question.options.choices[(question.correct_answer as any).index];
         }
-        return '—';
+        return '\u2014';
 
       case 'TRUE_FALSE':
         return (question.correct_answer as { value?: boolean })?.value ? t('question.true') : t('question.false');
@@ -288,7 +289,7 @@ export const QuizResults: React.FC = () => {
         if ((question.correct_answer as { answers?: string[] })?.answers) {
           return (question.correct_answer as { answers: string[] }).answers.join(', ');
         }
-        return '—';
+        return '\u2014';
 
       case 'SHORT_ANSWER':
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -302,7 +303,7 @@ export const QuizResults: React.FC = () => {
         return t('quiz.manuallyGraded');
 
       default:
-        return '—';
+        return '\u2014';
     }
   };
 
@@ -316,7 +317,7 @@ export const QuizResults: React.FC = () => {
         <div className="p-4 sm:p-6 lg:p-8">
           <Card>
             <CardBody>
-              <p className="text-center text-red-600 dark:text-red-400">
+              <p className="text-center" style={{ color: 'var(--fn-error)' }}>
                 {error || t('quiz.errors.resultNotFound')}
               </p>
             </CardBody>
@@ -340,57 +341,71 @@ export const QuizResults: React.FC = () => {
           <Card className="mb-6">
             <CardBody>
               <div className="text-center py-8">
-                <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${passed ? 'bg-green-100 dark:bg-green-900/20' : 'bg-red-100 dark:bg-red-900/20'
-                  }`}>
+                <div
+                  className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4"
+                  style={{
+                    background: passed
+                      ? 'rgba(34, 197, 94, 0.08)'
+                      : 'rgba(239, 68, 68, 0.08)',
+                  }}
+                >
                   {passed ? (
-                    <TrophyIcon className="h-10 w-10 text-green-600 dark:text-green-400" />
+                    <TrophyIcon className="h-10 w-10" style={{ color: 'var(--fn-success)' }} />
                   ) : (
-                    <XCircleIcon className="h-10 w-10 text-red-600 dark:text-red-400" />
+                    <XCircleIcon className="h-10 w-10" style={{ color: 'var(--fn-error)' }} />
                   )}
                 </div>
 
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                <h1
+                  className="text-3xl font-bold mb-2"
+                  style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}
+                >
                   {needsManualGrading ? t('quiz.pendingGrading') : passed ? t('quiz.passed') : t('quiz.failed')}
                 </h1>
 
-                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                <p className="mb-6" style={{ color: 'var(--text-muted)' }}>
                   {result.quiz.title}
                 </p>
 
                 {/* Score Display */}
                 <div className="flex items-center justify-center gap-8 mb-6">
                   <div>
-                    <div className="text-4xl font-bold text-gray-900 dark:text-white">
+                    <div className="text-4xl font-bold" style={{ color: 'var(--text-primary)' }}>
                       {result.final_score.toFixed(1)}
                     </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                    <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
                       {t('quiz.outOf')} {totalPoints}
                     </div>
                   </div>
 
-                  <div className="w-px h-12 bg-gray-300 dark:bg-gray-600" />
+                  <div className="w-px h-12" style={{ background: 'var(--border-default)' }} />
 
                   <div>
-                    <div className={`text-4xl font-bold ${passed ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                      }`}>
+                    <div
+                      className="text-4xl font-bold"
+                      style={{ color: passed ? 'var(--fn-success)' : 'var(--fn-error)' }}
+                    >
                       {percentage.toFixed(1)}%
                     </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                    <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
                       {t('quiz.percentage')}
                     </div>
                   </div>
                 </div>
 
                 {needsManualGrading && (
-                  <div className="rounded-md bg-yellow-50 dark:bg-yellow-900/20 p-4 mb-6">
-                    <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                  <div
+                    className="rounded-md p-4 mb-6"
+                    style={{ background: 'rgba(234, 179, 8, 0.08)', border: '1px solid rgba(234, 179, 8, 0.15)' }}
+                  >
+                    <p className="text-sm" style={{ color: 'var(--fn-warning)' }}>
                       {t('quiz.awaitingManualGrading')}
                     </p>
                   </div>
                 )}
 
                 {/* Time Info */}
-                <div className="flex items-center justify-center gap-6 text-sm text-gray-600 dark:text-gray-400">
+                <div className="flex items-center justify-center gap-6 text-sm" style={{ color: 'var(--text-muted)' }}>
                   <div className="flex items-center gap-2">
                     <ClockIcon className="h-4 w-4" />
                     <span>
@@ -409,12 +424,15 @@ export const QuizResults: React.FC = () => {
           {result.feedback && (
             <Card className="mb-6">
               <CardHeader>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                <h2
+                  className="text-lg font-semibold"
+                  style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}
+                >
                   {t('quiz.instructorFeedback')}
                 </h2>
               </CardHeader>
               <CardBody>
-                <p className="text-gray-700 dark:text-gray-300">{result.feedback}</p>
+                <p style={{ color: 'var(--text-secondary)' }}>{result.feedback}</p>
               </CardBody>
             </Card>
           )}
@@ -422,7 +440,10 @@ export const QuizResults: React.FC = () => {
           {/* Questions Review */}
           <Card>
             <CardHeader>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              <h2
+                className="text-lg font-semibold"
+                style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}
+              >
                 {t('quiz.questionsReview')}
               </h2>
             </CardHeader>
@@ -431,31 +452,36 @@ export const QuizResults: React.FC = () => {
                 {result.questions.map((item, index) => {
                   const isExpanded = expandedQuestions.has(item.question.id);
                   const showCorrectAnswer = result.quiz.show_correct_answers;
+                  const isHovered = hoveredQuestion === item.question.id;
 
                   return (
                     <div
                       key={item.question.id}
-                      className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+                      className="rounded-lg overflow-hidden"
+                      style={{ border: '1px solid var(--border-default)' }}
                     >
                       {/* Question Header */}
                       <button
                         onClick={() => toggleQuestion(item.question.id)}
-                        className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                        onMouseEnter={() => setHoveredQuestion(item.question.id)}
+                        onMouseLeave={() => setHoveredQuestion(null)}
+                        className="w-full p-4 flex items-center justify-between transition-colors"
+                        style={{ background: isHovered ? 'var(--bg-hover)' : 'transparent' }}
                       >
                         <div className="flex items-center gap-3 flex-1 text-left">
                           {item.is_correct === true ? (
-                            <CheckCircleIcon className="h-6 w-6 text-green-600 dark:text-green-400 flex-shrink-0" />
+                            <CheckCircleIcon className="h-6 w-6 flex-shrink-0" style={{ color: 'var(--fn-success)' }} />
                           ) : item.is_correct === false ? (
-                            <XCircleIcon className="h-6 w-6 text-red-600 dark:text-red-400 flex-shrink-0" />
+                            <XCircleIcon className="h-6 w-6 flex-shrink-0" style={{ color: 'var(--fn-error)' }} />
                           ) : (
-                            <ClockIcon className="h-6 w-6 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+                            <ClockIcon className="h-6 w-6 flex-shrink-0" style={{ color: 'var(--fn-warning)' }} />
                           )}
 
                           <div className="flex-1">
-                            <span className="font-medium text-gray-900 dark:text-white">
+                            <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
                               {t('quiz.question')} {index + 1}
                             </span>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                            <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                               {item.question.stem.length > 100
                                 ? item.question.stem.substring(0, 100) + '...'
                                 : item.question.stem
@@ -464,12 +490,16 @@ export const QuizResults: React.FC = () => {
                           </div>
 
                           <div className="text-right">
-                            <span className={`text-sm font-medium ${item.is_correct === true
-                              ? 'text-green-600 dark:text-green-400'
-                              : item.is_correct === false
-                                ? 'text-red-600 dark:text-red-400'
-                                : 'text-gray-600 dark:text-gray-400'
-                              }`}>
+                            <span
+                              className="text-sm font-medium"
+                              style={{
+                                color: item.is_correct === true
+                                  ? 'var(--fn-success)'
+                                  : item.is_correct === false
+                                    ? 'var(--fn-error)'
+                                    : 'var(--text-muted)',
+                              }}
+                            >
                               {item.points_earned.toFixed(1)} / {item.question.points}
                             </span>
                           </div>
@@ -478,33 +508,48 @@ export const QuizResults: React.FC = () => {
 
                       {/* Question Details */}
                       {isExpanded && (
-                        <div className="p-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+                        <div
+                          className="p-4"
+                          style={{ background: 'var(--bg-elevated)', borderTop: '1px solid var(--border-default)' }}
+                        >
                           <div className="space-y-4">
                             <div>
-                              <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                              <h4 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                                 {item.question.stem}
                               </h4>
-                              <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">
+                              <span className="text-xs uppercase" style={{ color: 'var(--text-muted)' }}>
                                 {item.question.question_type.replace('_', ' ')}
                               </span>
                             </div>
 
                             <div className="grid md:grid-cols-2 gap-4">
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                <label
+                                  className="block text-sm font-medium mb-1"
+                                  style={{ color: 'var(--text-secondary)' }}
+                                >
                                   {t('quiz.yourAnswer')}:
                                 </label>
-                                <div className="p-3 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-600">
+                                <div
+                                  className="p-3 rounded"
+                                  style={{ background: 'var(--bg-base)', border: '1px solid var(--border-default)' }}
+                                >
                                   {getAnswerDisplay(item.question, item.student_answer)}
                                 </div>
                               </div>
 
                               {showCorrectAnswer && (
                                 <div>
-                                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                  <label
+                                    className="block text-sm font-medium mb-1"
+                                    style={{ color: 'var(--text-secondary)' }}
+                                  >
                                     {t('quiz.correctAnswer')}:
                                   </label>
-                                  <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
+                                  <div
+                                    className="p-3 rounded"
+                                    style={{ background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.15)' }}
+                                  >
                                     {getCorrectAnswerDisplay(item.question)}
                                   </div>
                                 </div>
@@ -513,10 +558,16 @@ export const QuizResults: React.FC = () => {
 
                             {item.question.explanation && showCorrectAnswer && (
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                <label
+                                  className="block text-sm font-medium mb-1"
+                                  style={{ color: 'var(--text-secondary)' }}
+                                >
                                   {t('quiz.explanation')}:
                                 </label>
-                                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800 text-sm">
+                                <div
+                                  className="p-3 rounded text-sm"
+                                  style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
+                                >
                                   {item.question.explanation}
                                 </div>
                               </div>

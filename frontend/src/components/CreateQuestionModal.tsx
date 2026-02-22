@@ -163,20 +163,20 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title={t('question.createQuestion')} size="large">
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
-          <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
-            <p className="text-sm text-red-800 dark:text-red-400">{error}</p>
+          <div className="rounded-md p-4" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+            <p className="text-sm" style={{ color: 'var(--fn-error)' }}>{error}</p>
           </div>
         )}
 
         {/* Question Type */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="label block mb-2">
             {t('question.type')} *
           </label>
           <select
             value={formData.question_type}
             onChange={(e) => setFormData(prev => ({ ...prev, question_type: e.target.value as QuestionType }))}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+            className="input w-full"
           >
             {QUESTION_TYPES.map(type => (
               <option key={type.value} value={type.value}>
@@ -188,7 +188,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
 
         {/* Question Text */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="label block mb-1">
             {t('question.stem')} *
           </label>
           <textarea
@@ -196,7 +196,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
             onChange={(e) => setFormData(prev => ({ ...prev, stem: e.target.value }))}
             rows={4}
             required
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+            className="input w-full"
             placeholder={t('question.stemPlaceholder')}
           />
         </div>
@@ -204,7 +204,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         {/* Type-specific fields */}
         {formData.question_type === 'MULTIPLE_CHOICE' && (
           <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="label block">
               {t('question.options')} *
             </label>
             {formData.options.map((option, index) => (
@@ -214,20 +214,21 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                   name="correct_answer"
                   checked={formData.correct_answer_index === index}
                   onChange={() => setFormData(prev => ({ ...prev, correct_answer_index: index }))}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                  className="h-4 w-4"
+                  style={{ accentColor: 'var(--text-primary)' }}
                 />
                 <input
                   type="text"
                   value={option}
                   onChange={(e) => handleOptionChange(index, e.target.value)}
                   placeholder={`${t('question.option')} ${index + 1}`}
-                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                  className="input flex-1"
                 />
                 {formData.options.length > 2 && (
                   <button
                     type="button"
                     onClick={() => removeOption(index)}
-                    className="text-red-600 hover:text-red-700 dark:text-red-400"
+                    style={{ color: 'var(--fn-error)' }}
                   >
                     ✕
                   </button>
@@ -237,7 +238,8 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
             <button
               type="button"
               onClick={addOption}
-              className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400"
+              className="text-sm"
+              style={{ color: 'var(--text-secondary)' }}
             >
               + {t('question.addOption')}
             </button>
@@ -246,7 +248,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
 
         {formData.question_type === 'TRUE_FALSE' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="label block mb-2">
               {t('question.correctAnswer')} *
             </label>
             <div className="flex gap-4">
@@ -255,18 +257,20 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                   type="radio"
                   checked={formData.true_false_answer === true}
                   onChange={() => setFormData(prev => ({ ...prev, true_false_answer: true }))}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                  className="h-4 w-4"
+                  style={{ accentColor: 'var(--text-primary)' }}
                 />
-                <span className="ml-2 text-gray-900 dark:text-white">{t('question.true')}</span>
+                <span className="ml-2" style={{ color: 'var(--text-primary)' }}>{t('question.true')}</span>
               </label>
               <label className="flex items-center">
                 <input
                   type="radio"
                   checked={formData.true_false_answer === false}
                   onChange={() => setFormData(prev => ({ ...prev, true_false_answer: false }))}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                  className="h-4 w-4"
+                  style={{ accentColor: 'var(--text-primary)' }}
                 />
-                <span className="ml-2 text-gray-900 dark:text-white">{t('question.false')}</span>
+                <span className="ml-2" style={{ color: 'var(--text-primary)' }}>{t('question.false')}</span>
               </label>
             </div>
           </div>
@@ -274,10 +278,10 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
 
         {formData.question_type === 'FILL_BLANK' && (
           <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="label block">
               {t('question.correctAnswers')} *
             </label>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{t('question.fillBlankHint')}</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('question.fillBlankHint')}</p>
             {formData.fill_blank_answers.map((answer, index) => (
               <Input
                 key={index}
@@ -290,7 +294,8 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
             <button
               type="button"
               onClick={addBlank}
-              className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400"
+              className="text-sm"
+              style={{ color: 'var(--text-secondary)' }}
             >
               + {t('question.addBlank')}
             </button>
@@ -299,7 +304,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
 
         {formData.question_type === 'SHORT_ANSWER' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="label block mb-1">
               {t('question.keywords')}
             </label>
             <input
@@ -307,17 +312,17 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               value={formData.short_answer_keywords}
               onChange={(e) => setFormData(prev => ({ ...prev, short_answer_keywords: e.target.value }))}
               placeholder="keyword1, keyword2, keyword3"
-              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+              className="input w-full"
             />
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
               {t('question.keywordsHint')}
             </p>
           </div>
         )}
 
         {formData.question_type === 'ESSAY' && (
-          <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 p-4">
-            <p className="text-sm text-blue-800 dark:text-blue-300">
+          <div className="rounded-md p-4" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
               {t('question.manualGradingNote')}
             </p>
           </div>
@@ -337,19 +342,19 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
 
         {/* Explanation */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="label block mb-1">
             {t('question.explanation')}
           </label>
           <textarea
             value={formData.explanation}
             onChange={(e) => setFormData(prev => ({ ...prev, explanation: e.target.value }))}
             rows={3}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+            className="input w-full"
             placeholder={t('question.explanationPlaceholder')}
           />
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex justify-end gap-3 pt-4" style={{ borderTop: '1px solid var(--border-default)' }}>
           <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
             {t('common.cancel')}
           </Button>

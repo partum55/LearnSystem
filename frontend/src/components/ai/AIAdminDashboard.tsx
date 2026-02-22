@@ -16,7 +16,7 @@ export const AIAdminDashboard: React.FC = () => {
       <div className="space-y-6 animate-pulse">
         <div className="grid grid-cols-4 gap-4">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="bg-gray-100 dark:bg-gray-800 rounded-lg h-24" />
+            <div key={i} className="rounded-lg h-24" style={{ background: 'var(--bg-surface)' }} />
           ))}
         </div>
       </div>
@@ -25,7 +25,7 @@ export const AIAdminDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+      <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
         AI Service Dashboard
       </h2>
 
@@ -35,44 +35,40 @@ export const AIAdminDashboard: React.FC = () => {
           title="Total Requests"
           value={summary?.totalRequests.toLocaleString() || '0'}
           subtitle={`${summary?.totalFailedRequests || 0} failed`}
-          color="blue"
         />
         <SummaryCard
           title="Total Tokens"
           value={summary?.totalTokens.toLocaleString() || '0'}
           subtitle={`${summary?.averageTokensPerRequest.toFixed(0) || 0} avg/request`}
-          color="green"
         />
         <SummaryCard
           title="Active Users"
           value={summary?.activeUsers.toString() || '0'}
           subtitle={`Period: ${summary?.period || 'N/A'}`}
-          color="purple"
         />
         <SummaryCard
           title="Avg Latency"
           value={`${summary?.averageLatencyMs.toFixed(0) || 0}ms`}
           subtitle="Response time"
-          color="yellow"
         />
       </div>
 
       {/* Success Rate */}
       {stats && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="rounded-lg p-6" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
+          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
             Success Rate
           </h3>
           <div className="flex items-center gap-4">
             <div className="flex-1">
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4">
+              <div className="w-full rounded-full h-4" style={{ background: 'var(--bg-overlay)' }}>
                 <div
-                  className="bg-green-500 h-4 rounded-full transition-all duration-300"
-                  style={{ width: `${stats.successRate}%` }}
+                  className="h-4 rounded-full transition-all duration-300"
+                  style={{ width: `${stats.successRate}%`, background: 'var(--fn-success)' }}
                 />
               </div>
             </div>
-            <span className="text-2xl font-bold text-green-600 dark:text-green-400">
+            <span className="text-2xl font-bold" style={{ color: 'var(--fn-success)' }}>
               {stats.successRate.toFixed(1)}%
             </span>
           </div>
@@ -81,43 +77,43 @@ export const AIAdminDashboard: React.FC = () => {
 
       {/* Provider Breakdown */}
       {stats?.byProvider && Object.keys(stats.byProvider).length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="rounded-lg p-6" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
+          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
             Provider Stats
           </h3>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <table className="min-w-full">
               <thead>
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase" style={{ color: 'var(--text-muted)' }}>
                     Provider
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase" style={{ color: 'var(--text-muted)' }}>
                     Tokens
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase" style={{ color: 'var(--text-muted)' }}>
                     Failures
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase" style={{ color: 'var(--text-muted)' }}>
                     Avg Latency
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody>
                 {Object.entries(stats.byProvider).map(([provider, data]) => (
-                  <tr key={provider}>
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">
+                  <tr key={provider} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                    <td className="px-4 py-3 text-sm font-medium capitalize" style={{ color: 'var(--text-primary)' }}>
                       {provider}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-right">
+                    <td className="px-4 py-3 text-sm text-right" style={{ color: 'var(--text-muted)' }}>
                       {data.tokens.toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-sm text-right">
-                      <span className={data.failures > 0 ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}>
+                      <span style={{ color: data.failures > 0 ? 'var(--fn-error)' : 'var(--text-muted)' }}>
                         {data.failures}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-right">
+                    <td className="px-4 py-3 text-sm text-right" style={{ color: 'var(--text-muted)' }}>
                       {data.avgLatencyMs.toFixed(0)}ms
                     </td>
                   </tr>
@@ -130,22 +126,22 @@ export const AIAdminDashboard: React.FC = () => {
 
       {/* Top Users */}
       {!topUsersLoading && topUsers && topUsers.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="rounded-lg p-6" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
+          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
             Top Users by Token Usage
           </h3>
           <div className="space-y-3">
             {topUsers.map((user, index) => (
               <div key={user.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-full text-xs font-medium">
+                  <span className="w-6 h-6 flex items-center justify-center rounded-full text-xs font-medium" style={{ background: 'var(--bg-overlay)', color: 'var(--text-secondary)' }}>
                     {index + 1}
                   </span>
-                  <span className="text-sm text-gray-900 dark:text-gray-100">
+                  <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
                     {user.userId}
                   </span>
                 </div>
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                <span className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
                   {user.totalTokens.toLocaleString()} tokens
                 </span>
               </div>
@@ -156,8 +152,8 @@ export const AIAdminDashboard: React.FC = () => {
 
       {/* Latency Percentiles */}
       {stats && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="rounded-lg p-6" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
+          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
             Response Time Percentiles
           </h3>
           <div className="grid grid-cols-4 gap-4">
@@ -176,22 +172,14 @@ interface SummaryCardProps {
   title: string;
   value: string;
   subtitle: string;
-  color: 'blue' | 'green' | 'purple' | 'yellow';
 }
 
-const SummaryCard: React.FC<SummaryCardProps> = ({ title, value, subtitle, color }) => {
-  const colorClasses = {
-    blue: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700',
-    green: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700',
-    purple: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-700',
-    yellow: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700',
-  };
-
+const SummaryCard: React.FC<SummaryCardProps> = ({ title, value, subtitle }) => {
   return (
-    <div className={`rounded-lg p-4 border ${colorClasses[color]}`}>
-      <p className="text-sm text-gray-600 dark:text-gray-400">{title}</p>
-      <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</p>
-      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">{subtitle}</p>
+    <div className="rounded-lg p-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
+      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{title}</p>
+      <p className="text-2xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>{value}</p>
+      <p className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>{subtitle}</p>
     </div>
   );
 };
@@ -203,15 +191,15 @@ interface LatencyCardProps {
 
 const LatencyCard: React.FC<LatencyCardProps> = ({ label, value }) => {
   const getColor = (ms: number) => {
-    if (ms < 1000) return 'text-green-600 dark:text-green-400';
-    if (ms < 3000) return 'text-yellow-600 dark:text-yellow-400';
-    return 'text-red-600 dark:text-red-400';
+    if (ms < 1000) return 'var(--fn-success)';
+    if (ms < 3000) return 'var(--fn-warning)';
+    return 'var(--fn-error)';
   };
 
   return (
-    <div className="text-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{label}</p>
-      <p className={`text-xl font-bold mt-1 ${getColor(value)}`}>
+    <div className="text-center p-3 rounded-lg" style={{ background: 'var(--bg-elevated)' }}>
+      <p className="text-xs uppercase" style={{ color: 'var(--text-muted)' }}>{label}</p>
+      <p className="text-xl font-bold mt-1" style={{ color: getColor(value) }}>
         {value.toFixed(0)}ms
       </p>
     </div>
@@ -219,4 +207,3 @@ const LatencyCard: React.FC<LatencyCardProps> = ({ label, value }) => {
 };
 
 export default AIAdminDashboard;
-

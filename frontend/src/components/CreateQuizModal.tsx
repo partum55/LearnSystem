@@ -106,14 +106,12 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({
       });
       const quizId = (quizResponse.data as { id: string }).id;
 
-      // Add questions to quiz one-by-one (backend endpoint is per-question)
       await Promise.all(
         selectedQuestions.map((questionId) =>
           apiClient.post(`/assessments/quizzes/${quizId}/questions/${questionId}`)
         )
       );
 
-      // Reset form
       setFormData({
         title: '',
         description: '',
@@ -159,8 +157,8 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({
       {step === 'basic' ? (
         <form onSubmit={handleBasicSubmit} className="space-y-6">
           {error && (
-            <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
-              <p className="text-sm text-red-800 dark:text-red-400">{error}</p>
+            <div className="rounded-md p-4" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+              <p className="text-sm" style={{ color: 'var(--fn-error)' }}>{error}</p>
             </div>
           )}
 
@@ -174,14 +172,14 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="label block mb-1">
               {t('quiz.description')}
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               rows={3}
-              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+              className="input w-full"
               placeholder={t('quiz.descriptionPlaceholder')}
             />
           </div>
@@ -227,9 +225,10 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({
                 id="shuffle_questions"
                 checked={formData.shuffle_questions}
                 onChange={(e) => setFormData(prev => ({ ...prev, shuffle_questions: e.target.checked }))}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 rounded"
+                style={{ accentColor: 'var(--text-primary)' }}
               />
-              <label htmlFor="shuffle_questions" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+              <label htmlFor="shuffle_questions" className="ml-2 block text-sm" style={{ color: 'var(--text-secondary)' }}>
                 {t('quiz.shuffleQuestions')}
               </label>
             </div>
@@ -240,9 +239,10 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({
                 id="shuffle_answers"
                 checked={formData.shuffle_answers}
                 onChange={(e) => setFormData(prev => ({ ...prev, shuffle_answers: e.target.checked }))}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 rounded"
+                style={{ accentColor: 'var(--text-primary)' }}
               />
-              <label htmlFor="shuffle_answers" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+              <label htmlFor="shuffle_answers" className="ml-2 block text-sm" style={{ color: 'var(--text-secondary)' }}>
                 {t('quiz.shuffleAnswers')}
               </label>
             </div>
@@ -253,15 +253,16 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({
                 id="show_correct_answers"
                 checked={formData.show_correct_answers}
                 onChange={(e) => setFormData(prev => ({ ...prev, show_correct_answers: e.target.checked }))}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 rounded"
+                style={{ accentColor: 'var(--text-primary)' }}
               />
-              <label htmlFor="show_correct_answers" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+              <label htmlFor="show_correct_answers" className="ml-2 block text-sm" style={{ color: 'var(--text-secondary)' }}>
                 {t('quiz.showCorrectAnswers')}
               </label>
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex justify-end gap-3 pt-4" style={{ borderTop: '1px solid var(--border-default)' }}>
             <Button type="button" variant="secondary" onClick={onClose}>
               {t('common.cancel')}
             </Button>
@@ -273,26 +274,26 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({
       ) : (
         <div className="space-y-6">
           {error && (
-            <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
-              <p className="text-sm text-red-800 dark:text-red-400">{error}</p>
+            <div className="rounded-md p-4" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+              <p className="text-sm" style={{ color: 'var(--fn-error)' }}>{error}</p>
             </div>
           )}
 
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
               {t('quiz.selectedQuestions')}: {selectedQuestions.length}
             </p>
           </div>
 
           {loadingQuestions ? (
             <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{t('common.loading')}</p>
+              <div className="animate-spin rounded-full h-8 w-8 mx-auto" style={{ borderBottom: '2px solid var(--text-primary)' }}></div>
+              <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</p>
             </div>
           ) : availableQuestions.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-600 dark:text-gray-400">{t('quiz.noAvailableQuestions')}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+              <p style={{ color: 'var(--text-muted)' }}>{t('quiz.noAvailableQuestions')}</p>
+              <p className="text-sm mt-2" style={{ color: 'var(--text-muted)' }}>
                 {t('quiz.createQuestionsFirst')}
               </p>
             </div>
@@ -301,25 +302,27 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({
               {availableQuestions.map((question) => (
                 <label
                   key={question.id}
-                  className={`flex items-start p-4 border rounded-lg cursor-pointer transition-colors ${selectedQuestions.includes(question.id)
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                    : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
-                    }`}
+                  className="flex items-start p-4 rounded-lg cursor-pointer transition-colors"
+                  style={{
+                    border: selectedQuestions.includes(question.id) ? '2px solid var(--text-primary)' : '1px solid var(--border-default)',
+                    background: selectedQuestions.includes(question.id) ? 'var(--bg-active)' : 'transparent',
+                  }}
                 >
                   <input
                     type="checkbox"
                     checked={selectedQuestions.includes(question.id)}
                     onChange={() => toggleQuestion(question.id)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
+                    className="h-4 w-4 rounded mt-1"
+                    style={{ accentColor: 'var(--text-primary)' }}
                   />
                   <div className="ml-3 flex-1">
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                    <span className="text-xs font-medium uppercase" style={{ color: 'var(--text-muted)' }}>
                       {question.question_type.replace('_', ' ')}
                     </span>
-                    <p className="text-sm text-gray-900 dark:text-white mt-1">
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
                       {question.stem}
                     </p>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 inline-block">
+                    <span className="text-xs mt-1 inline-block" style={{ color: 'var(--text-muted)' }}>
                       {question.points} {t('quiz.points')}
                     </span>
                   </div>
@@ -328,7 +331,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex justify-end gap-3 pt-4" style={{ borderTop: '1px solid var(--border-default)' }}>
             <Button type="button" variant="secondary" onClick={handleBack}>
               {t('common.back')}
             </Button>

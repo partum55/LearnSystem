@@ -1,78 +1,24 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Layout, Card, CardHeader, CardBody, Button, Loading } from '../components';
+import { Card, CardBody, Layout, Loading } from '../components';
 import { UnsavedChangesPrompt } from '../components/common/UnsavedChangesPrompt';
 import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning';
-import apiClient from '../api/client';
-import { ClockIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-
-interface Question {
-  id: string;
-  question_type: string;
-  stem: string;
-  options?: { choices: string[] };
-  points: number;
-}
-
-interface Quiz {
-  id: string;
-  title: string;
-  description: string;
-  time_limit: number | null;
-  attempts_allowed: number;
-  shuffle_questions: boolean;
-  shuffle_answers: boolean;
-  questions: Array<{ id: string; question: Question; position: number }>;
-}
-
-interface StudentAnswer {
-  selected_index?: number;
-  value?: boolean;
-  text?: string;
-  [key: string]: unknown;
-}
-
-interface QuizAttempt {
-  id: string;
-  attempt_number: number;
-  started_at: string;
-  answers: Record<string, StudentAnswer>;
-}
-
-interface ApiQuestion {
-  id: string;
-  questionType: string;
-  stem: string;
-  options?: { choices?: string[] };
-  points: number;
-}
-
-interface ApiQuizQuestion {
-  id: string;
-  questionId?: string;
-  position: number;
-  effectivePoints?: number;
-  question?: ApiQuestion;
-}
-
-interface ApiQuiz {
-  id: string;
-  title: string;
-  description: string;
-  timeLimit?: number | null;
-  attemptsAllowed?: number;
-  shuffleQuestions?: boolean;
-  shuffleAnswers?: boolean;
-  questions?: ApiQuizQuestion[];
-}
-
-interface ApiQuizAttempt {
-  id: string;
-  attemptNumber: number;
-  startedAt: string;
-  answers?: Record<string, unknown>;
-}
+import apiClient, { extractErrorMessage } from '../api/client';
+import { QuizQuestionContent } from './quiz-taking/QuizQuestionContent';
+import { QuizTakingNavigation } from './quiz-taking/QuizTakingNavigation';
+import { QuizTakingProgress } from './quiz-taking/QuizTakingProgress';
+import { QuizTakingStatusHeader } from './quiz-taking/QuizTakingStatusHeader';
+import {
+  ApiQuiz,
+  ApiQuizAttempt,
+  Quiz,
+  QuizAttempt,
+  StudentAnswer,
+  buildQuizSubmitPayload,
+  mapAttemptAnswersFromApi,
+  mapQuiz,
+} from './quiz-taking/quizTakingModel';
 
 export const QuizTaking: React.FC = () => {
   const { id: quizId } = useParams<{ id: string }>();
@@ -93,10 +39,8 @@ export const QuizTaking: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const hasPlayedWarningRef = useRef(false);
 
-  // Track if user has unsaved answers (quiz in progress)
   const hasUnsavedAnswers = attempt !== null && Object.keys(answers).length > 0 && !submitting;
 
-  // Unsaved changes warning for navigation
   const {
     isPromptOpen,
     handleSaveAndLeave,
@@ -104,140 +48,110 @@ export const QuizTaking: React.FC = () => {
     handleStay,
   } = useUnsavedChangesWarning({
     isDirty: hasUnsavedAnswers,
-    message: t('quiz.unsavedWarning', 'You have a quiz in progress. Leaving will not submit your answers automatically. Are you sure you want to leave?'),
+    message: t(
+      'quiz.unsavedWarning',
+      'You have a quiz in progress. Leaving will not submit your answers automatically. Are you sure you want to leave?'
+    ),
   });
 
-  // Storage key for answer persistence
-  const getStorageKey = useCallback(() => `quiz_answers_${quizId}_${attempt?.id}`, [quizId, attempt?.id]);
+  const getStorageKey = useCallback(
+    () => `quiz_answers_${quizId}_${attempt?.id}`,
+    [attempt?.id, quizId]
+  );
 
-  // Save answers to localStorage
-  const saveAnswersToStorage = useCallback((answersToSave: Record<string, StudentAnswer>) => {
-    if (!quizId || !attempt?.id) return;
-    try {
-      localStorage.setItem(getStorageKey(), JSON.stringify({
-        answers: answersToSave,
-        savedAt: new Date().toISOString(),
-        attemptId: attempt.id,
-      }));
-      setLastSaved(new Date());
-    } catch (e) {
-      console.error('Failed to save answers to storage:', e);
-    }
-  }, [quizId, attempt?.id, getStorageKey]);
+  const saveAnswersToStorage = useCallback(
+    (answersToSave: Record<string, StudentAnswer>) => {
+      if (!quizId || !attempt?.id) {
+        return;
+      }
 
-  // Load answers from localStorage on mount
+      try {
+        localStorage.setItem(
+          getStorageKey(),
+          JSON.stringify({
+            answers: answersToSave,
+            savedAt: new Date().toISOString(),
+            attemptId: attempt.id,
+          })
+        );
+        setLastSaved(new Date());
+      } catch (storageError) {
+        console.error('Failed to save answers to storage:', storageError);
+      }
+    },
+    [attempt?.id, getStorageKey, quizId]
+  );
+
   const loadAnswersFromStorage = useCallback(() => {
-    if (!quizId || !attempt?.id) return null;
+    if (!quizId || !attempt?.id) {
+      return null;
+    }
+
     try {
       const stored = localStorage.getItem(getStorageKey());
       if (stored) {
-        const parsed = JSON.parse(stored);
+        const parsed = JSON.parse(stored) as {
+          answers?: Record<string, StudentAnswer>;
+          attemptId?: string;
+        };
         if (parsed.attemptId === attempt.id) {
-          return parsed.answers;
+          return parsed.answers || null;
         }
       }
-    } catch (e) {
-      console.error('Failed to load answers from storage:', e);
+    } catch (storageError) {
+      console.error('Failed to load answers from storage:', storageError);
     }
-    return null;
-  }, [quizId, attempt?.id, getStorageKey]);
 
-  // Clear stored answers
+    return null;
+  }, [attempt?.id, getStorageKey, quizId]);
+
   const clearStoredAnswers = useCallback(() => {
-    if (!quizId || !attempt?.id) return;
+    if (!quizId || !attempt?.id) {
+      return;
+    }
+
     try {
       localStorage.removeItem(getStorageKey());
-    } catch (e) {
-      console.error('Failed to clear stored answers:', e);
+    } catch (storageError) {
+      console.error('Failed to clear stored answers:', storageError);
     }
-  }, [quizId, attempt?.id, getStorageKey]);
+  }, [attempt?.id, getStorageKey, quizId]);
 
-  // Auto-save answers periodically
   useEffect(() => {
-    if (!attempt || Object.keys(answers).length === 0) return;
+    if (!attempt || Object.keys(answers).length === 0) {
+      return;
+    }
 
     const saveInterval = setInterval(() => {
       setIsSaving(true);
       saveAnswersToStorage(answers);
       setTimeout(() => setIsSaving(false), 500);
-    }, 30000); // Save every 30 seconds
+    }, 30000);
 
     return () => clearInterval(saveInterval);
   }, [answers, attempt, saveAnswersToStorage]);
 
-  // Load stored answers when attempt is ready
   useEffect(() => {
-    if (attempt?.id) {
-      const storedAnswers = loadAnswersFromStorage();
-      if (storedAnswers && Object.keys(storedAnswers).length > 0) {
-        setAnswers(storedAnswers);
-      }
+    if (!attempt?.id) {
+      return;
+    }
+
+    const storedAnswers = loadAnswersFromStorage();
+    if (storedAnswers && Object.keys(storedAnswers).length > 0) {
+      setAnswers(storedAnswers);
     }
   }, [attempt?.id, loadAnswersFromStorage]);
 
-  const mapQuiz = (apiQuiz: ApiQuiz): Quiz => {
-    const mappedQuestions = (apiQuiz.questions || []).map((q) => ({
-      id: q.id,
-      position: q.position,
-      question: {
-        id: q.question?.id || q.questionId || '',
-        question_type: q.question?.questionType || 'SHORT_ANSWER',
-        stem: q.question?.stem || '',
-        options: q.question?.options?.choices ? { choices: q.question.options.choices } : undefined,
-        points: Number(q.effectivePoints ?? q.question?.points ?? 0),
-      },
-    }));
-
-    return {
-      id: apiQuiz.id,
-      title: apiQuiz.title,
-      description: apiQuiz.description,
-      time_limit: apiQuiz.timeLimit ?? null,
-      attempts_allowed: apiQuiz.attemptsAllowed ?? 1,
-      shuffle_questions: Boolean(apiQuiz.shuffleQuestions),
-      shuffle_answers: Boolean(apiQuiz.shuffleAnswers),
-      questions: mappedQuestions,
-    };
-  };
-
-  const mapAttemptAnswersFromApi = (quizData: Quiz, apiAnswers?: Record<string, unknown>): Record<string, StudentAnswer> => {
-    if (!apiAnswers) return {};
-    const result: Record<string, StudentAnswer> = {};
-
-    for (const quizQuestion of quizData.questions) {
-      const questionId = quizQuestion.question.id;
-      if (!questionId || !(questionId in apiAnswers)) continue;
-      const answerValue = apiAnswers[questionId];
-
-      if (quizQuestion.question.question_type === 'MULTIPLE_CHOICE') {
-        const choices = quizQuestion.question.options?.choices || [];
-        const selectedIndex = choices.findIndex((choice) => choice === answerValue);
-        result[questionId] = selectedIndex >= 0 ? { selected_index: selectedIndex } : { text: String(answerValue) };
-      } else if (quizQuestion.question.question_type === 'TRUE_FALSE') {
-        result[questionId] = { value: Boolean(answerValue) };
-      } else if (quizQuestion.question.question_type === 'FILL_BLANK' && typeof answerValue === 'object' && answerValue !== null) {
-        const answersArray = (answerValue as { answers?: string[] }).answers || [];
-        result[questionId] = { text: answersArray[0] || '' };
-      } else if (typeof answerValue === 'string') {
-        result[questionId] = { text: answerValue };
-      } else {
-        result[questionId] = { text: String(answerValue ?? '') };
-      }
+  const startQuiz = useCallback(async () => {
+    if (!quizId) {
+      return;
     }
 
-    return result;
-  };
-
-  const startQuiz = useCallback(async () => {
-    if (!quizId) return;
     setLoading(true);
     try {
-      // Fetch quiz details
       const quizResponse = await apiClient.get<ApiQuiz>(`/assessments/quizzes/${quizId}`);
-      const quizData = mapQuiz(quizResponse.data);
-      setQuiz(quizData);
+      let quizData = mapQuiz(quizResponse.data);
 
-      // Try to resume in-progress attempt first, otherwise start a new one
       const inProgressResponse = await apiClient.get<ApiQuizAttempt>(
         `/assessments/quiz-attempts/quiz/${quizId}/user/in-progress`,
         {
@@ -249,10 +163,20 @@ export const QuizTaking: React.FC = () => {
       if (inProgressResponse.status === 200 && inProgressResponse.data?.id) {
         attemptData = inProgressResponse.data;
       } else {
-        const started = await apiClient.post<ApiQuizAttempt>(`/assessments/quiz-attempts/quiz/${quizId}/start`);
-        attemptData = started.data;
+        const startedAttempt = await apiClient.post<ApiQuizAttempt>(
+          `/assessments/quiz-attempts/quiz/${quizId}/start`
+        );
+        attemptData = startedAttempt.data;
       }
 
+      if (quizData.shuffle_questions) {
+        quizData = {
+          ...quizData,
+          questions: [...quizData.questions].sort(() => Math.random() - 0.5),
+        };
+      }
+
+      setQuiz(quizData);
       setAttempt({
         id: attemptData.id,
         attempt_number: attemptData.attemptNumber,
@@ -260,25 +184,16 @@ export const QuizTaking: React.FC = () => {
         answers: {},
       });
 
-      // Initialize timer
       if (quizData.time_limit) {
-        setTimeRemaining(quizData.time_limit * 60); // Convert minutes to seconds
+        setTimeRemaining(quizData.time_limit * 60);
       }
 
       const restoredAnswers = mapAttemptAnswersFromApi(quizData, attemptData.answers);
       if (Object.keys(restoredAnswers).length > 0) {
         setAnswers(restoredAnswers);
       }
-
-      // Shuffle questions if needed
-      if (quizData.shuffle_questions) {
-        const shuffled = [...quizData.questions].sort(() => Math.random() - 0.5);
-        setQuiz({ ...quizData, questions: shuffled });
-      }
-    } catch (err: unknown) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const error = err as any;
-      setError(error.response?.data?.error || t('quiz.errors.startFailed'));
+    } catch (startError) {
+      setError(extractErrorMessage(startError) || t('quiz.errors.startFailed'));
     } finally {
       setLoading(false);
     }
@@ -286,212 +201,82 @@ export const QuizTaking: React.FC = () => {
 
   useEffect(() => {
     if (quizId) {
-      startQuiz();
+      void startQuiz();
     }
   }, [quizId, startQuiz]);
 
   const handleAnswerChange = (questionId: string, answer: StudentAnswer) => {
-    const newAnswers = {
+    const nextAnswers = {
       ...answers,
       [questionId]: answer,
     };
-    setAnswers(newAnswers);
-    // Save immediately on answer change
-    saveAnswersToStorage(newAnswers);
+    setAnswers(nextAnswers);
+    saveAnswersToStorage(nextAnswers);
   };
 
   const handleSubmit = useCallback(async () => {
-    if (!attempt || submitting) return;
+    if (!attempt || submitting) {
+      return;
+    }
 
     const unansweredCount = (quiz?.questions.length || 0) - Object.keys(answers).length;
     if (unansweredCount > 0 && timeRemaining !== 0) {
-      // Don't show confirm on auto-submit (time = 0)
-      const confirmSubmit = window.confirm(
-        t('quiz.confirmSubmitWithUnanswered', { count: unansweredCount })
-      );
-      if (!confirmSubmit) return;
+      const confirmSubmit = window.confirm(t('quiz.confirmSubmitWithUnanswered', { count: unansweredCount }));
+      if (!confirmSubmit) {
+        return;
+      }
     }
 
     setSubmitting(true);
     try {
-      const answerPayload: Record<string, unknown> = {};
-      (quiz?.questions || []).forEach((quizQuestion) => {
-        const questionId = quizQuestion.question.id;
-        const answer = answers[questionId];
-        if (!answer) return;
-
-        if (quizQuestion.question.question_type === 'MULTIPLE_CHOICE') {
-          const choices = quizQuestion.question.options?.choices || [];
-          if (typeof answer.selected_index === 'number' && choices[answer.selected_index] !== undefined) {
-            answerPayload[questionId] = choices[answer.selected_index];
-          } else if (answer.text) {
-            answerPayload[questionId] = answer.text;
-          }
-        } else if (quizQuestion.question.question_type === 'TRUE_FALSE') {
-          if (typeof answer.value === 'boolean') {
-            answerPayload[questionId] = answer.value;
-          }
-        } else if (quizQuestion.question.question_type === 'FILL_BLANK') {
-          answerPayload[questionId] = { answers: [answer.text || ''] };
-        } else {
-          answerPayload[questionId] = answer.text || '';
-        }
-      });
-
+      const answerPayload = buildQuizSubmitPayload(quiz?.questions || [], answers);
       await apiClient.post(`/assessments/quiz-attempts/${attempt.id}/submit`, answerPayload);
 
-      // Clear stored answers on successful submit
       clearStoredAnswers();
-
-      // Navigate to results page
       navigate(`/quiz/${quizId}/results`);
-    } catch (err: unknown) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const error = err as any;
-      setError(error.response?.data?.error || t('quiz.errors.submitFailed'));
+    } catch (submitError) {
+      setError(extractErrorMessage(submitError) || t('quiz.errors.submitFailed'));
       setSubmitting(false);
     }
-  }, [attempt, submitting, quiz?.questions, answers, t, navigate, quizId, timeRemaining, clearStoredAnswers]);
+  }, [answers, attempt, clearStoredAnswers, navigate, quiz?.questions, quizId, submitting, t, timeRemaining]);
 
-  // Timer countdown with warning
   useEffect(() => {
-    if (!quiz?.time_limit || timeRemaining === null) return;
+    if (!quiz?.time_limit || timeRemaining === null) {
+      return;
+    }
 
-    // Show warning at 5 minutes and play sound
     if (timeRemaining === 300 && !hasPlayedWarningRef.current) {
       setShowTimeWarning(true);
       hasPlayedWarningRef.current = true;
-      // Play warning sound
       try {
-        audioRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JjYuGfnV1e4OKjYyHf3Z0eYKKjYyIgHh2eoOKjYyJgXl3e4OLjYyJgXl4e4OLjYyJgXl4e4OLjIyJgHl4eoKLjIyJgHl4eoKLjIyKgHl4eoKLjIyKgHp5eoKLjIyKgHp5eoKKjIyKgHp5eoKKjIyKgHp5eoKKjIyKgHp5eoKKi4uKf3p5eoKKi4uKf3p5eoKKi4uKf3p5eoGKi4uKf3p5eoGKi4uKf3p5eoGKi4uKf3p5eoGKi4uKf3p5eoGKi4uKf3p5eoGKioqKf3p5eoGKioqKf3p5eoGKioqKf3p5eoGKioqKf3p5eYGKioqKfnp5eYGKioqKfnp5eYGKioqKfnp5eYGKioqKfnp5eYGKioqKfnp5eYCKioqKfnp5eYCJioqJfnp5eYCJioqJfnp5eYCJioqJfnp4eYCJioqJfXp4eYCJioqJfXp4eICJioqJfXp4eICJioqJfXp4eICJioqJfXp4eICJiomJfXp4d4CJiomJfXl4d4CJiomJfXl4d4CJiomIfXl4d4CJiomIfXl3d4CJiomIfXl3d3+JiomIfXl3d3+JiomIfXl3d3+JiYmIfXl3d3+JiYmIfXl3d3+JiYmIfXl3dn+JiYmIfHl3dn+JiYmIfHl2dn+JiYmHfHl2dn+IiYmHfHl2dn+IiYmHfHh2dn+IiYmHfHh2dn+IiYiHfHh2dn6IiYiHe3h2dn6IiYiHe3h2dn6IiYiHe3h1dn6IiYiHe3h1dn6IiIiHe3h1dX6IiIiHe3h1dX6IiIiGe3h1dX6IiIiGe3h1dX6IiIiGe3d1dX6IiIiGend1dX6HiIiGend1dX2HiIiGend1dX2HiIiFend0dX2HiIiFend0dX2HiIiFend0dH2HiIiFend0dH2HiIiFend0dH2Hh4iFend0dH2Hh4iFend0dH2Hh4iEendzdH2Hh4iEeXdzdH2Gh4iEeXdzdHyGh4iEeXdzdHyGh4iEeXdzdHyGh4eDOA==');
-        audioRef.current.play().catch(() => { }); // Ignore if autoplay blocked
+        audioRef.current = new Audio(
+          'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JjYuGfnV1e4OKjYyHf3Z0eYKKjYyIgHh2eoOKjYyJgXl3e4OLjYyJgXl4e4OLjYyJgXl4e4OLjIyJgHl4eoKLjIyJgHl4eoKLjIyKgHl4eoKLjIyKgHp5eoKLjIyKgHp5eoKKjIyKgHp5eoKKjIyKgHp5eoKKjIyKgHp5eoKKi4uKf3p5eoKKi4uKf3p5eoKKi4uKf3p5eoGKi4uKf3p5eoGKi4uKf3p5eoGKi4uKf3p5eoGKi4uKf3p5eoGKi4uKf3p5eoGKioqKf3p5eoGKioqKf3p5eoGKioqKf3p5eoGKioqKf3p5eYGKioqKfnp5eYGKioqKfnp5eYGKioqKfnp5eYGKioqKfnp5eYGKioqKfnp5eYCKioqKfnp5eYCJioqJfnp5eYCJioqJfnp5eYCJioqJfnp4eYCJioqJfXp4eYCJioqJfXp4eICJioqJfXp4eICJioqJfXp4eICJioqJfXp4eICJiomJfXp4d4CJiomJfXl4d4CJiomJfXl4d4CJiomIfXl4d4CJiomIfXl3d4CJiomIfXl3d3+JiomIfXl3d3+JiomIfXl3d3+JiYmIfXl3d3+JiYmIfXl3d3+JiYmIfXl3dn+JiYmIfHl3dn+JiYmIfHl2dn+JiYmHfHl2dn+IiYmHfHl2dn+IiYmHfHh2dn+IiYmHfHh2dn+IiYiHfHh2dn6IiYiHe3h2dn6IiYiHe3h2dn6IiYiHe3h1dn6IiYiHe3h1dn6IiIiHe3h1dX6IiIiHe3h1dX6IiIiGe3h1dX6IiIiGe3h1dX6IiIiGe3d1dX6IiIiGend1dX2HiIiGend1dX2HiIiFend0dX2HiIiFend0dX2HiIiFend0dH2HiIiFend0dH2HiIiFend0dH2Hh4iFend0dH2Hh4iFend0dH2Hh4iEendzdH2Hh4iEeXdzdH2Gh4iEeXdzdHyGh4iEeXdzdHyGh4iEeXdzdHyGh4eDOA=='
+        );
+        void audioRef.current.play().catch(() => undefined);
       } catch {
-        // Ignore if autoplay blocked
+        // Ignore audio errors
       }
-      // Hide warning after 5 seconds
       setTimeout(() => setShowTimeWarning(false), 5000);
     }
 
     const timer = setInterval(() => {
-      setTimeRemaining(prev => {
-        if (prev === null || prev <= 0) {
+      setTimeRemaining((previous) => {
+        if (previous === null || previous <= 0) {
           clearInterval(timer);
           return 0;
         }
-        return prev - 1;
+        return previous - 1;
       });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [quiz, timeRemaining]);
+  }, [quiz?.time_limit, timeRemaining]);
 
-  // Auto-submit when time runs out
   useEffect(() => {
     if (timeRemaining === 0 && !submitting && attempt) {
-      handleSubmit();
+      void handleSubmit();
     }
-  }, [timeRemaining, submitting, attempt, handleSubmit]);
-
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const renderQuestion = (quizQuestion: { question: Question }) => {
-    const question = quizQuestion.question;
-    const questionId = question.id;
-    const currentAnswer = answers[questionId];
-
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-start">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-            {question.stem}
-          </h3>
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            {question.points} {t('quiz.points')}
-          </span>
-        </div>
-
-        {question.question_type === 'MULTIPLE_CHOICE' && question.options?.choices && (
-          <div className="space-y-2">
-            {question.options.choices.map((choice: string, index: number) => (
-              <label
-                key={index}
-                className="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
-              >
-                <input
-                  type="radio"
-                  name={questionId}
-                  checked={currentAnswer?.selected_index === index}
-                  onChange={() => handleAnswerChange(questionId, { selected_index: index })}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="ml-3 text-gray-900 dark:text-white">{choice}</span>
-              </label>
-            ))}
-          </div>
-        )}
-
-        {question.question_type === 'TRUE_FALSE' && (
-          <div className="space-y-2">
-            <label className="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
-              <input
-                type="radio"
-                name={questionId}
-                checked={currentAnswer?.value === true}
-                onChange={() => handleAnswerChange(questionId, { value: true })}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="ml-3 text-gray-900 dark:text-white">{t('question.true')}</span>
-            </label>
-            <label className="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
-              <input
-                type="radio"
-                name={questionId}
-                checked={currentAnswer?.value === false}
-                onChange={() => handleAnswerChange(questionId, { value: false })}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="ml-3 text-gray-900 dark:text-white">{t('question.false')}</span>
-            </label>
-          </div>
-        )}
-
-        {question.question_type === 'FILL_BLANK' && (
-          <input
-            type="text"
-            value={currentAnswer?.text || ''}
-            onChange={(e) => handleAnswerChange(questionId, { text: e.target.value })}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
-            placeholder={t('question.enterAnswer')}
-          />
-        )}
-
-        {question.question_type === 'SHORT_ANSWER' && (
-          <textarea
-            value={currentAnswer?.text || ''}
-            onChange={(e) => handleAnswerChange(questionId, { text: e.target.value })}
-            rows={4}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
-            placeholder={t('question.enterAnswer')}
-          />
-        )}
-
-        {question.question_type === 'ESSAY' && (
-          <textarea
-            value={currentAnswer?.text || ''}
-            onChange={(e) => handleAnswerChange(questionId, { text: e.target.value })}
-            rows={10}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
-            placeholder={t('question.enterEssay')}
-          />
-        )}
-      </div>
-    );
-  };
+  }, [attempt, handleSubmit, submitting, timeRemaining]);
 
   if (loading) {
     return <Loading />;
@@ -503,7 +288,9 @@ export const QuizTaking: React.FC = () => {
         <div className="p-4 sm:p-6 lg:p-8">
           <Card>
             <CardBody>
-              <p className="text-center text-red-600 dark:text-red-400">{error || t('quiz.errors.notFound')}</p>
+              <p className="text-center" style={{ color: 'var(--fn-error)' }}>
+                {error || t('quiz.errors.notFound')}
+              </p>
             </CardBody>
           </Card>
         </div>
@@ -512,161 +299,73 @@ export const QuizTaking: React.FC = () => {
   }
 
   const currentQuestion = quiz.questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / quiz.questions.length) * 100;
-  const isLastQuestion = currentQuestionIndex === quiz.questions.length - 1;
   const answeredCount = Object.keys(answers).length;
 
   return (
     <Layout>
-      {/* Unsaved Changes Warning Modal */}
       <UnsavedChangesPrompt
         isOpen={isPromptOpen}
         onSaveAndLeave={handleSaveAndLeave}
         onLeaveWithoutSaving={handleLeaveWithoutSaving}
         onStay={handleStay}
         title={t('quiz.leaveQuiz', 'Leave Quiz?')}
-        message={t('quiz.unsavedWarning', 'You have a quiz in progress. Your answers are saved locally, but leaving without submitting may affect your score. Are you sure you want to leave?')}
+        message={t(
+          'quiz.unsavedWarning',
+          'You have a quiz in progress. Your answers are saved locally, but leaving without submitting may affect your score. Are you sure you want to leave?'
+        )}
       />
 
       <div className="p-4 sm:p-6 lg:p-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Time Warning Banner */}
-          {showTimeWarning && (
-            <div className="mb-4 p-4 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg flex items-center gap-3 animate-pulse">
-              <ExclamationTriangleIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
-              <div>
-                <p className="font-semibold text-red-800 dark:text-red-200">
-                  {t('quiz.timeWarning', '⚠️ Only 5 minutes remaining!')}
-                </p>
-                <p className="text-sm text-red-700 dark:text-red-300">
-                  {t('quiz.timeWarningHint', 'Please review your answers and submit soon.')}
-                </p>
-              </div>
-            </div>
-          )}
+        <div className="mx-auto max-w-4xl">
+          <QuizTakingStatusHeader
+            showTimeWarning={showTimeWarning}
+            quiz={quiz}
+            attempt={attempt}
+            timeRemaining={timeRemaining}
+            lastSaved={lastSaved}
+            isSaving={isSaving}
+            t={t}
+          />
 
-          {/* Quiz Header */}
-          <Card className="mb-6">
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {quiz.title}
-                  </h1>
-                  <div className="flex items-center gap-3 mt-1">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {t('quiz.attemptNumber')} {attempt.attempt_number}
-                    </p>
-                    {/* Auto-save indicator */}
-                    {lastSaved && (
-                      <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                        {isSaving ? (
-                          <>
-                            <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
-                            {t('quiz.saving', 'Saving...')}
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircleIcon className="h-3 w-3" />
-                            {t('quiz.answersSaved', 'Answers saved')}
-                          </>
-                        )}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {timeRemaining !== null && (
-                  <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${timeRemaining < 300
-                    ? 'bg-red-100 dark:bg-red-900/30 animate-pulse'
-                    : 'bg-blue-50 dark:bg-blue-900/20'
-                    }`}>
-                    <ClockIcon className={`h-5 w-5 ${timeRemaining < 300 ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'
-                      }`} />
-                    <span className={`text-lg font-semibold ${timeRemaining < 300 ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'
-                      }`}>
-                      {formatTime(timeRemaining)}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </CardHeader>
-          </Card>
-
-          {/* Progress */}
-          <div className="mb-6">
-            <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
-              <span>
-                {t('quiz.question')} {currentQuestionIndex + 1} {t('quiz.of')} {quiz.questions.length}
-              </span>
-              <span>
-                {t('quiz.answered')}: {answeredCount} / {quiz.questions.length}
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-              <div
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
+          <QuizTakingProgress
+            currentQuestionIndex={currentQuestionIndex}
+            totalQuestions={quiz.questions.length}
+            answeredCount={answeredCount}
+            t={t}
+          />
 
           {error && (
-            <div className="mb-6 rounded-md bg-red-50 dark:bg-red-900/20 p-4">
-              <p className="text-sm text-red-800 dark:text-red-400">{error}</p>
+            <div className="mb-6 rounded-md p-4" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+              <p className="text-sm" style={{ color: 'var(--fn-error)' }}>{error}</p>
             </div>
           )}
 
-          {/* Question */}
           <Card className="mb-6">
             <CardBody>
-              {renderQuestion(currentQuestion)}
+              <QuizQuestionContent
+                question={currentQuestion.question}
+                currentAnswer={answers[currentQuestion.question.id]}
+                onAnswerChange={handleAnswerChange}
+                t={t}
+              />
             </CardBody>
           </Card>
 
-          {/* Navigation */}
-          <div className="flex justify-between items-center">
-            <Button
-              variant="secondary"
-              onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
-              disabled={currentQuestionIndex === 0}
-            >
-              {t('common.previous')}
-            </Button>
-
-            <div className="flex gap-2">
-              {quiz.questions.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentQuestionIndex(index)}
-                  className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${index === currentQuestionIndex
-                    ? 'bg-blue-600 text-white'
-                    : answers[quiz.questions[index].question.id]
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                      : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
-                    }`}
-                >
-                  {index + 1}
-                </button>
-              ))}
-            </div>
-
-            {isLastQuestion ? (
-              <Button
-                onClick={handleSubmit}
-                isLoading={submitting}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <CheckCircleIcon className="h-5 w-5 mr-2" />
-                {t('quiz.submitQuiz')}
-              </Button>
-            ) : (
-              <Button
-                onClick={() => setCurrentQuestionIndex(prev => Math.min(quiz.questions.length - 1, prev + 1))}
-              >
-                {t('common.next')}
-              </Button>
-            )}
-          </div>
+          <QuizTakingNavigation
+            questions={quiz.questions}
+            currentQuestionIndex={currentQuestionIndex}
+            answers={answers}
+            submitting={submitting}
+            onPrevious={() => setCurrentQuestionIndex((previous) => Math.max(0, previous - 1))}
+            onNext={() =>
+              setCurrentQuestionIndex((previous) => Math.min(quiz.questions.length - 1, previous + 1))
+            }
+            onJumpToQuestion={setCurrentQuestionIndex}
+            onSubmit={() => {
+              void handleSubmit();
+            }}
+            t={t}
+          />
         </div>
       </div>
     </Layout>

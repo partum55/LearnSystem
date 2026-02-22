@@ -100,15 +100,15 @@ export const AIContentEditor: React.FC<AIContentEditorProps> = ({
   }
 
   return (
-    <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-4 space-y-4">
+    <div className="rounded-lg p-4 space-y-4" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2 text-purple-600 dark:text-purple-400">
+        <div className="flex items-center space-x-2" style={{ color: 'var(--text-primary)' }}>
           <SparklesIcon className="w-5 h-5" />
           <h4 className="font-semibold">{t('ai.improveContent')}</h4>
         </div>
         <button
           onClick={handleCancel}
-          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          style={{ color: 'var(--text-faint)' }}
         >
           <XMarkIcon className="w-5 h-5" />
         </button>
@@ -116,7 +116,7 @@ export const AIContentEditor: React.FC<AIContentEditorProps> = ({
 
       {/* Quick suggestions */}
       <div className="space-y-2">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
           {t('ai.quickSuggestions')}:
         </p>
         <div className="flex flex-wrap gap-2">
@@ -125,9 +125,8 @@ export const AIContentEditor: React.FC<AIContentEditorProps> = ({
               key={index}
               onClick={() => handleEdit(suggestion)}
               disabled={loading}
-              className="px-3 py-1 text-sm bg-white dark:bg-gray-800 border border-purple-300
-                       dark:border-purple-600 rounded-full hover:bg-purple-100 dark:hover:bg-purple-900/40
-                       disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1 text-sm rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}
             >
               {suggestion}
             </button>
@@ -137,7 +136,7 @@ export const AIContentEditor: React.FC<AIContentEditorProps> = ({
 
       {/* Custom prompt */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label className="label block mb-1">
           {t('ai.customPrompt')}:
         </label>
         <div className="flex space-x-2">
@@ -146,8 +145,7 @@ export const AIContentEditor: React.FC<AIContentEditorProps> = ({
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder={t('ai.customPromptPlaceholder')}
-            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md
-                     focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white text-sm"
+            className="input flex-1 text-sm"
             disabled={loading}
           />
           <Button
@@ -172,7 +170,7 @@ export const AIContentEditor: React.FC<AIContentEditorProps> = ({
 
       {/* Error */}
       {error && (
-        <div className="text-sm text-red-600 dark:text-red-400">
+        <div className="text-sm" style={{ color: 'var(--fn-error)' }}>
           {error}
         </div>
       )}
@@ -180,11 +178,11 @@ export const AIContentEditor: React.FC<AIContentEditorProps> = ({
       {/* Preview edited content */}
       {editedContent && !loading && (
         <div className="space-y-3">
-          <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md p-3">
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <div className="rounded-md p-3" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
+            <p className="text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
               {t('ai.editedContent')}:
             </p>
-            <div className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
+            <div className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
               {editedContent}
             </div>
           </div>
@@ -203,4 +201,3 @@ export const AIContentEditor: React.FC<AIContentEditorProps> = ({
     </div>
   );
 };
-

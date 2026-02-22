@@ -258,10 +258,10 @@ export const SpeedGrader: React.FC = () => {
 
   if (!assignment || submissions.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
         <div className="flex items-center justify-center h-screen">
           <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
               No Submissions to Grade
             </h2>
             <Button onClick={() => navigate(`/assignments/${assignmentId}`)}>
@@ -274,7 +274,7 @@ export const SpeedGrader: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
       {/* Unsaved Changes Modal */}
       <ConfirmModal
         isOpen={showUnsavedModal}
@@ -297,45 +297,43 @@ export const SpeedGrader: React.FC = () => {
       />
 
       {/* SpeedGrader uses custom layout without sidebar */}
-      <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        <div className="px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                {assignment.title}
-              </h1>
-              <div className="flex items-center gap-3">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  SpeedGrader - {currentIndex + 1} of {submissions.length}
-                </p>
-                {isDirty && (
-                  <span className="text-xs text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
-                    <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                    Unsaved changes
-                  </span>
-                )}
-              </div>
+      <div className="px-8 py-4" style={{ borderBottom: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
+              {assignment.title}
+            </h1>
+            <div className="flex items-center gap-3">
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                SpeedGrader - {currentIndex + 1} of {submissions.length}
+              </p>
+              {isDirty && (
+                <span className="text-xs flex items-center gap-1" style={{ color: 'var(--fn-warning)' }}>
+                  <span className="w-2 h-2 rounded-full" style={{ background: 'var(--fn-warning)' }}></span>
+                  Unsaved changes
+                </span>
+              )}
             </div>
+          </div>
 
-            <div className="flex items-center space-x-4">
-              <Button
-                onClick={navigateToPrevious}
-                disabled={currentIndex === 0}
-                variant="secondary"
-              >
-                ← Previous
-              </Button>
-              <Button
-                onClick={navigateToNext}
-                disabled={currentIndex === submissions.length - 1}
-                variant="secondary"
-              >
-                Next →
-              </Button>
-              <Button onClick={handleExit}>
-                Exit
-              </Button>
-            </div>
+          <div className="flex items-center space-x-4">
+            <Button
+              onClick={navigateToPrevious}
+              disabled={currentIndex === 0}
+              variant="secondary"
+            >
+              &larr; Previous
+            </Button>
+            <Button
+              onClick={navigateToNext}
+              disabled={currentIndex === submissions.length - 1}
+              variant="secondary"
+            >
+              Next &rarr;
+            </Button>
+            <Button onClick={handleExit}>
+              Exit
+            </Button>
           </div>
         </div>
       </div>
@@ -350,19 +348,19 @@ export const SpeedGrader: React.FC = () => {
                 <CardBody>
                   <div className="flex items-center justify-between">
                     <div>
-                      <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
                         {currentSubmission.student_name}
                       </h2>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                         {currentSubmission.student_email}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                         Submitted: {new Date(currentSubmission.submitted_at).toLocaleString()}
                       </p>
                       {currentSubmission.is_late && (
-                        <span className="inline-block mt-1 px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                        <span className="badge badge-error inline-block mt-1">
                           Late ({currentSubmission.days_late} days)
                         </span>
                       )}
@@ -375,13 +373,13 @@ export const SpeedGrader: React.FC = () => {
               {currentSubmission.text_answer && (
                 <Card>
                   <CardHeader>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
                       Text Answer
                     </h3>
                   </CardHeader>
                   <CardBody>
-                    <div className="prose dark:prose-invert max-w-none">
-                      <p className="text-gray-900 dark:text-white whitespace-pre-wrap">
+                    <div className="max-w-none" style={{ color: 'var(--text-secondary)' }}>
+                      <p className="whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
                         {currentSubmission.text_answer}
                       </p>
                     </div>
@@ -393,7 +391,7 @@ export const SpeedGrader: React.FC = () => {
               {currentSubmission.uploaded_files && currentSubmission.uploaded_files.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
                       Uploaded Files
                     </h3>
                   </CardHeader>
@@ -405,17 +403,20 @@ export const SpeedGrader: React.FC = () => {
                           href={file.file_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="flex items-center justify-between p-3 rounded-lg"
+                          style={{ background: 'var(--bg-elevated)' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-elevated)'; }}
                         >
                           <div>
-                            <p className="font-medium text-gray-900 dark:text-white">
+                            <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
                               {file.filename}
                             </p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                               {(file.file_size / 1024).toFixed(2)} KB
                             </p>
                           </div>
-                          <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                           </svg>
                         </a>
@@ -429,7 +430,7 @@ export const SpeedGrader: React.FC = () => {
               {currentSubmission.submission_url && (
                 <Card>
                   <CardHeader>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
                       Submission URL
                     </h3>
                   </CardHeader>
@@ -438,7 +439,7 @@ export const SpeedGrader: React.FC = () => {
                       href={currentSubmission.submission_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                      style={{ color: 'var(--text-secondary)' }}
                     >
                       {currentSubmission.submission_url}
                     </a>
@@ -449,23 +450,23 @@ export const SpeedGrader: React.FC = () => {
               {/* Comments */}
               <Card>
                 <CardHeader>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
                     Comments
                   </h3>
                 </CardHeader>
                 <CardBody>
                   <div className="space-y-4">
                     {currentSubmission.comments?.map((c) => (
-                      <div key={c.id} className="border-l-4 border-blue-500 pl-4 py-2">
+                      <div key={c.id} className="pl-4 py-2" style={{ borderLeft: '4px solid var(--border-strong)' }}>
                         <div className="flex items-center justify-between mb-1">
-                          <p className="font-medium text-gray-900 dark:text-white">
+                          <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
                             {c.author_name}
                           </p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                             {new Date(c.created_at).toLocaleString()}
                           </p>
                         </div>
-                        <p className="text-gray-700 dark:text-gray-300">{c.comment}</p>
+                        <p style={{ color: 'var(--text-secondary)' }}>{c.comment}</p>
                       </div>
                     ))}
 
@@ -475,7 +476,7 @@ export const SpeedGrader: React.FC = () => {
                         onChange={(e) => setComment(e.target.value)}
                         placeholder="Add a comment..."
                         rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                        className="input w-full"
                       />
                       <Button
                         onClick={handleAddComment}
@@ -495,14 +496,14 @@ export const SpeedGrader: React.FC = () => {
               {/* Grade Input */}
               <Card>
                 <CardHeader>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
                     Grade
                   </h3>
                 </CardHeader>
                 <CardBody>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      <label className="label block mb-2">
                         Points
                       </label>
                       <div className="flex items-center space-x-2">
@@ -513,21 +514,21 @@ export const SpeedGrader: React.FC = () => {
                           min="0"
                           max={assignment.max_points}
                           step="0.01"
-                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                          className="input flex-1"
                         />
-                        <span className="text-gray-600 dark:text-gray-400">
+                        <span style={{ color: 'var(--text-muted)' }}>
                           / {assignment.max_points}
                         </span>
                       </div>
                       {currentSubmission.is_late && assignment.late_penalty_percent > 0 && (
-                        <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                        <p className="text-sm mt-1" style={{ color: 'var(--fn-error)' }}>
                           Late penalty: {assignment.late_penalty_percent}% per day
                         </p>
                       )}
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      <label className="label block mb-2">
                         Feedback
                       </label>
                       <textarea
@@ -535,7 +536,7 @@ export const SpeedGrader: React.FC = () => {
                         onChange={(e) => setFeedback(e.target.value)}
                         rows={6}
                         placeholder="Provide feedback to the student..."
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                        className="input w-full"
                       />
                     </div>
                   </div>
@@ -547,7 +548,7 @@ export const SpeedGrader: React.FC = () => {
                 <Card>
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
                         Rubric
                       </h3>
                       <Button onClick={applyRubricToGrade} variant="secondary" size="sm">
@@ -559,7 +560,7 @@ export const SpeedGrader: React.FC = () => {
                     <div className="space-y-3">
                       {Object.entries(assignment.rubric).map(([criterion, maxPoints]: [string, number]) => (
                         <div key={criterion}>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          <label className="label block mb-1">
                             {criterion}
                           </label>
                           <input
@@ -572,15 +573,15 @@ export const SpeedGrader: React.FC = () => {
                             min="0"
                             max={maxPoints}
                             step="0.5"
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+                            className="input w-full text-sm"
                           />
-                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
                             Max: {maxPoints} points
                           </p>
                         </div>
                       ))}
-                      <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      <div className="pt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                           Total: {calculateRubricTotal()} points
                         </p>
                       </div>

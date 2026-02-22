@@ -45,14 +45,15 @@ const CodeQuestion: React.FC<CodeQuestionProps> = ({
   return (
     <div className="code-question">
       <div className="mb-4">
-        <p className="text-lg font-medium text-gray-900 mb-2">{question.text}</p>
-        <div className="flex items-center space-x-2 text-sm text-gray-600">
-          <span className="px-2 py-1 bg-gray-100 rounded">Language: {language}</span>
+        <p className="text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{question.text}</p>
+        <div className="flex items-center space-x-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+          <span className="px-2 py-1 rounded" style={{ background: 'var(--bg-elevated)' }}>Language: {language}</span>
           {testCases.length > 0 && (
             <button
               type="button"
               onClick={() => setShowTests(!showTests)}
-              className="text-blue-600 hover:underline"
+              className="hover:underline"
+              style={{ color: 'var(--text-secondary)' }}
             >
               {showTests ? 'Hide' : 'Show'} test cases ({testCases.length})
             </button>
@@ -61,16 +62,16 @@ const CodeQuestion: React.FC<CodeQuestionProps> = ({
       </div>
 
       {showTests && testCases.length > 0 && (
-        <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-          <h4 className="font-medium text-gray-900 mb-2">Test Cases:</h4>
+        <div className="mb-4 p-4 rounded-lg" style={{ background: 'var(--bg-elevated)' }}>
+          <h4 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Test Cases:</h4>
           <div className="space-y-2">
             {testCases.map((testCase, index) => (
-              <div key={index} className="text-sm bg-white p-3 rounded border border-gray-200">
-                <div className="font-mono">
-                  <span className="text-gray-600">Input:</span> {testCase.input}
+              <div key={index} className="text-sm p-3 rounded" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
+                <div style={{ fontFamily: 'var(--font-mono)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Input:</span> <span style={{ color: 'var(--text-primary)' }}>{testCase.input}</span>
                 </div>
-                <div className="font-mono">
-                  <span className="text-gray-600">Expected:</span> {testCase.expected}
+                <div style={{ fontFamily: 'var(--font-mono)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Expected:</span> <span style={{ color: 'var(--text-primary)' }}>{testCase.expected}</span>
                 </div>
               </div>
             ))}
@@ -80,12 +81,13 @@ const CodeQuestion: React.FC<CodeQuestionProps> = ({
 
       <div className="relative">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-700">Code Editor</span>
+          <span className="label">Code Editor</span>
           <button
             type="button"
             onClick={handleRun}
             disabled={disabled}
-            className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="px-3 py-1 text-sm rounded disabled:cursor-not-allowed"
+            style={{ background: disabled ? 'var(--bg-overlay)' : 'var(--fn-success)', color: disabled ? 'var(--text-faint)' : '#fff' }}
           >
             Run Code
           </button>
@@ -96,14 +98,19 @@ const CodeQuestion: React.FC<CodeQuestionProps> = ({
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
           rows={20}
-          className={`w-full px-4 py-3 font-mono text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-gray-900 text-green-400'
-            }`}
-          style={{ tabSize: 4 }}
+          className={`w-full px-4 py-3 text-sm rounded-lg resize-y ${disabled ? 'cursor-not-allowed' : ''}`}
+          style={{
+            background: disabled ? 'var(--bg-elevated)' : 'var(--bg-base)',
+            color: disabled ? 'var(--text-faint)' : 'var(--fn-success)',
+            fontFamily: 'var(--font-mono)',
+            border: '1px solid var(--border-default)',
+            tabSize: 4,
+          }}
           spellCheck={false}
         />
       </div>
 
-      <div className="mt-2 text-xs text-gray-500">
+      <div className="mt-2 text-xs" style={{ color: 'var(--text-faint)' }}>
         Tip: Use Tab for indentation. Your code will be tested against {testCases.length} test case(s).
       </div>
     </div>
@@ -111,4 +118,3 @@ const CodeQuestion: React.FC<CodeQuestionProps> = ({
 };
 
 export default CodeQuestion;
-

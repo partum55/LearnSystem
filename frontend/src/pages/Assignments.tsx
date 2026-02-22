@@ -22,10 +22,13 @@ export const Assignments: React.FC = () => {
       <div className="p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
           <div className="mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+            <h1
+              className="text-2xl sm:text-3xl font-bold"
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+            >
               {t('assignments.title')}
             </h1>
-            <p className="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">
+            <p className="mt-2 text-sm sm:text-base" style={{ color: 'var(--text-muted)' }}>
               All your assignments in one place
             </p>
           </div>
@@ -34,8 +37,8 @@ export const Assignments: React.FC = () => {
               <Card>
                 <CardBody>
                   <div className="text-center">
-                    <p className="text-3xl font-bold text-gray-900 dark:text-white">0</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>0</p>
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                       {t('assignments.pending')}
                     </p>
                   </div>
@@ -44,8 +47,8 @@ export const Assignments: React.FC = () => {
               <Card>
                 <CardBody>
                   <div className="text-center">
-                    <p className="text-3xl font-bold text-gray-900 dark:text-white">0</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>0</p>
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                       {t('assignments.submitted')}
                     </p>
                   </div>
@@ -54,8 +57,8 @@ export const Assignments: React.FC = () => {
               <Card>
                 <CardBody>
                   <div className="text-center">
-                    <p className="text-3xl font-bold text-gray-900 dark:text-white">0</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>0</p>
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                       {t('assignments.graded')}
                     </p>
                   </div>
@@ -65,12 +68,15 @@ export const Assignments: React.FC = () => {
 
             <Card>
               <CardHeader>
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h2
+                  className="text-xl font-semibold"
+                  style={{ color: 'var(--text-primary)' }}
+                >
                   All Assignments
                 </h2>
               </CardHeader>
               <CardBody>
-                <p className="text-center text-gray-600 dark:text-gray-400 py-12">
+                <p className="text-center py-12" style={{ color: 'var(--text-muted)' }}>
                   No assignments available
                 </p>
               </CardBody>

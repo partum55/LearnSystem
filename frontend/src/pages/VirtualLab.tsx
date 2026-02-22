@@ -150,7 +150,7 @@ const VirtualLab: React.FC = () => {
           setError('Execution cancelled');
         }
       } else if (error.response?.status === 408 || error.message?.includes('timeout')) {
-        setError(`⏱️ Execution timed out after ${EXECUTION_TIMEOUT_SECONDS} seconds. Your code may contain an infinite loop or be too slow.`);
+        setError(`Execution timed out after ${EXECUTION_TIMEOUT_SECONDS} seconds. Your code may contain an infinite loop or be too slow.`);
       } else {
         console.error('Code execution failed:', error);
         setError(error.response?.data?.message || 'Failed to execute code');
@@ -182,7 +182,7 @@ const VirtualLab: React.FC = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12" style={{ borderBottom: '2px solid var(--text-primary)' }}></div>
       </div>
     );
   }
@@ -190,26 +190,26 @@ const VirtualLab: React.FC = () => {
   if (!assignment) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500 dark:text-gray-400">Assignment not found</p>
+        <p style={{ color: 'var(--text-muted)' }}>Assignment not found</p>
       </div>
     );
   }
 
   return (
     <div className="max-w-7xl mx-auto p-6">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg mb-6 p-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+      <div className="rounded-lg mb-6 p-6" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
+        <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
           {assignment.title}
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
+        <p className="mb-4" style={{ color: 'var(--text-muted)' }}>
           {assignment.description}
         </p>
         {assignment.instructions && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 p-4 mb-4">
-            <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">
+          <div className="p-4 mb-4" style={{ background: 'var(--bg-elevated)', borderLeft: '4px solid var(--text-secondary)' }}>
+            <h3 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
               Instructions
             </h3>
-            <div className="text-blue-800 dark:text-blue-200 whitespace-pre-wrap">
+            <div className="whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>
               {assignment.instructions}
             </div>
           </div>
@@ -218,12 +218,12 @@ const VirtualLab: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Code Editor */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <div className="rounded-lg p-6" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
               Code Editor
             </h2>
-            <span className="text-sm text-gray-500 dark:text-gray-400">
+            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
               Language: {assignment.programming_language || 'python'}
             </span>
           </div>
@@ -238,13 +238,14 @@ const VirtualLab: React.FC = () => {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="label block mb-2">
               Input (optional)
             </label>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white font-mono text-sm"
+              className="input w-full text-sm"
+              style={{ fontFamily: 'var(--font-mono)' }}
               rows={3}
               placeholder="Enter program input here..."
             />
@@ -254,14 +255,15 @@ const VirtualLab: React.FC = () => {
             <button
               onClick={executeCode}
               disabled={executing || !code.trim()}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors"
+              style={{ background: 'var(--fn-success)', color: '#fff' }}
             >
               <PlayIcon className="w-5 h-5" />
               {executing ? (
                 <>
                   Running...
                   {timeoutRemaining !== null && (
-                    <span className="ml-2 text-green-200">
+                    <span className="ml-2" style={{ color: 'rgba(255,255,255,0.7)' }}>
                       ({timeoutRemaining}s)
                     </span>
                   )}
@@ -272,7 +274,8 @@ const VirtualLab: React.FC = () => {
             {executing && (
               <button
                 onClick={handleAbortExecution}
-                className="px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                className="px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+                style={{ background: 'var(--fn-error)', color: '#fff' }}
               >
                 <StopIcon className="w-5 h-5" />
                 Stop
@@ -281,25 +284,25 @@ const VirtualLab: React.FC = () => {
           </div>
 
           {executing && (
-            <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-              <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                ⏱️ Timeout in {timeoutRemaining} seconds. Code will be terminated if it runs too long.
+            <div className="mt-3 p-3 rounded-lg" style={{ background: 'rgba(234, 179, 8, 0.08)', border: '1px solid rgba(234, 179, 8, 0.15)' }}>
+              <p className="text-sm" style={{ color: 'var(--fn-warning)' }}>
+                Timeout in {timeoutRemaining} seconds. Code will be terminated if it runs too long.
               </p>
             </div>
           )}
         </div>
 
         {/* Output */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="rounded-lg p-6" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
+          <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
             Output
           </h2>
 
           {executionResult && (
             <div className="mb-4">
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
                 <span>Execution time: {executionResult.executionTime}ms</span>
-                <span className={executionResult.success ? 'text-green-600' : 'text-red-600'}>
+                <span style={{ color: executionResult.success ? 'var(--fn-success)' : 'var(--fn-error)' }}>
                   • {executionResult.success ? 'Success' : 'Failed'}
                 </span>
               </div>
@@ -308,10 +311,10 @@ const VirtualLab: React.FC = () => {
 
           {output && (
             <div className="mb-4">
-              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
                 Standard Output
               </h3>
-              <pre className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 text-sm font-mono overflow-x-auto text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+              <pre className="rounded-lg p-4 text-sm overflow-x-auto whitespace-pre-wrap" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
                 {output}
               </pre>
             </div>
@@ -319,10 +322,10 @@ const VirtualLab: React.FC = () => {
 
           {error && (
             <div className="mb-4">
-              <h3 className="text-sm font-medium text-red-700 dark:text-red-300 mb-2">
+              <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--fn-error)' }}>
                 Error Output
               </h3>
-              <pre className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-sm font-mono overflow-x-auto text-red-800 dark:text-red-200 whitespace-pre-wrap">
+              <pre className="rounded-lg p-4 text-sm overflow-x-auto whitespace-pre-wrap" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', color: 'var(--fn-error)', fontFamily: 'var(--font-mono)' }}>
                 {error}
               </pre>
             </div>
@@ -331,12 +334,12 @@ const VirtualLab: React.FC = () => {
           {executionResult?.testResults && executionResult.testResults.length > 0 && (
             <div>
               <div className="flex justify-between items-center mb-3">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
                   Test Results
                 </h3>
                 <div className="text-sm">
-                  <span className="font-semibold">Score: </span>
-                  <span className="text-blue-600 dark:text-blue-400">
+                  <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Score: </span>
+                  <span style={{ color: 'var(--text-secondary)' }}>
                     {String(calculateScore())} / {getTotalPoints()}
                   </span>
                 </div>
@@ -346,49 +349,50 @@ const VirtualLab: React.FC = () => {
                 {executionResult.testResults.map((test, index) => (
                   <div
                     key={index}
-                    className={`border rounded-lg p-3 ${test.passed
-                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                      : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                      }`}
+                    className="rounded-lg p-3"
+                    style={test.passed
+                      ? { background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.15)' }
+                      : { background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)' }
+                    }
                   >
                     <div className="flex items-center gap-2 mb-2">
                       {test.passed ? (
-                        <CheckCircleIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
+                        <CheckCircleIcon className="w-5 h-5" style={{ color: 'var(--fn-success)' }} />
                       ) : (
-                        <XCircleIcon className="w-5 h-5 text-red-600 dark:text-red-400" />
+                        <XCircleIcon className="w-5 h-5" style={{ color: 'var(--fn-error)' }} />
                       )}
-                      <span className="font-medium text-gray-900 dark:text-white">
+                      <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
                         {test.name || `Test Case ${index + 1}`}
                       </span>
-                      <span className="ml-auto text-sm text-gray-600 dark:text-gray-400">
+                      <span className="ml-auto text-sm" style={{ color: 'var(--text-muted)' }}>
                         {test.passed ? test.points : 0} / {test.points} points
                       </span>
                     </div>
 
                     {test.input && (
                       <div className="text-xs mb-1">
-                        <span className="text-gray-600 dark:text-gray-400">Input: </span>
-                        <code className="text-gray-800 dark:text-gray-200">{test.input}</code>
+                        <span style={{ color: 'var(--text-muted)' }}>Input: </span>
+                        <code style={{ color: 'var(--text-primary)' }}>{test.input}</code>
                       </div>
                     )}
 
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div>
-                        <span className="text-gray-600 dark:text-gray-400">Expected: </span>
-                        <code className="text-gray-800 dark:text-gray-200">
+                        <span style={{ color: 'var(--text-muted)' }}>Expected: </span>
+                        <code style={{ color: 'var(--text-primary)' }}>
                           {test.expectedOutput}
                         </code>
                       </div>
                       <div>
-                        <span className="text-gray-600 dark:text-gray-400">Actual: </span>
-                        <code className={test.passed ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}>
+                        <span style={{ color: 'var(--text-muted)' }}>Actual: </span>
+                        <code style={{ color: test.passed ? 'var(--fn-success)' : 'var(--fn-error)' }}>
                           {test.actualOutput}
                         </code>
                       </div>
                     </div>
 
                     {test.error && (
-                      <div className="mt-2 text-xs text-red-600 dark:text-red-400">
+                      <div className="mt-2 text-xs" style={{ color: 'var(--fn-error)' }}>
                         Error: {test.error}
                       </div>
                     )}
@@ -399,7 +403,7 @@ const VirtualLab: React.FC = () => {
           )}
 
           {!output && !error && !executionResult && (
-            <div className="text-center py-12 text-gray-400 dark:text-gray-500">
+            <div className="text-center py-12" style={{ color: 'var(--text-faint)' }}>
               Run your code to see the output
             </div>
           )}

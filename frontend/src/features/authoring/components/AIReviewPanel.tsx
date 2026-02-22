@@ -19,27 +19,28 @@ const AIReviewPanel: React.FC<AIReviewPanelProps> = ({
 }) => {
   if (drafts.length === 0) {
     return (
-      <section className="border border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4">
-        <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">AI Drafts</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400">No AI drafts yet. Generate one to review.</p>
+      <section className="border border-dashed rounded-lg p-4" style={{ borderColor: 'var(--border-default)' }}>
+        <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>AI Drafts</h2>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No AI drafts yet. Generate one to review.</p>
       </section>
     );
   }
 
   return (
     <section className="space-y-4">
-      <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">AI Drafts (Review Required)</h2>
+      <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>AI Drafts (Review Required)</h2>
       {drafts.map((draft) => (
-        <div key={draft.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
+        <div key={draft.id} className="rounded-lg p-4 space-y-3" style={{ border: '1px solid var(--border-default)' }}>
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-gray-800 dark:text-gray-100">{draft.summary}</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Status: {draft.status}</p>
+              <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{draft.summary}</h3>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Status: {draft.status}</p>
             </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="px-2 py-1 text-sm bg-green-600 text-white rounded"
+                className="px-2 py-1 text-sm rounded"
+                style={{ background: 'var(--fn-success)', color: 'white' }}
                 onClick={() => onApprove(draft.id)}
                 disabled={readOnly}
               >
@@ -47,7 +48,7 @@ const AIReviewPanel: React.FC<AIReviewPanelProps> = ({
               </button>
               <button
                 type="button"
-                className="px-2 py-1 text-sm bg-gray-200 dark:bg-gray-700 rounded"
+                className="btn btn-secondary px-2 py-1 text-sm"
                 onClick={() => onApply(draft.id)}
                 disabled={readOnly}
               >
@@ -55,7 +56,8 @@ const AIReviewPanel: React.FC<AIReviewPanelProps> = ({
               </button>
               <button
                 type="button"
-                className="px-2 py-1 text-sm bg-red-500 text-white rounded"
+                className="px-2 py-1 text-sm rounded"
+                style={{ background: 'var(--fn-error)', color: 'white' }}
                 onClick={() => onReject(draft.id)}
                 disabled={readOnly}
               >

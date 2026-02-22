@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from './Modal';
 import { Input } from './Input';
-import { Button } from './Button';
 import { AssignmentType } from '../types';
 import { assignmentsApi, quizzesApi } from '../api/assessments';
 import { extractErrorMessage } from '../api/client';
@@ -218,27 +217,25 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title={t('assignments.createAssignment')} size="large">
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
-          <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
-            <p className="text-sm text-red-800 dark:text-red-400">{error}</p>
+          <div className="rounded-md p-4" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--fn-error)' }}>
+            <p className="text-sm" style={{ color: 'var(--fn-error)' }}>{error}</p>
           </div>
         )}
 
         {/* Assignment Type Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+          <label className="label mb-3">
             {t('assignments.type')} *
           </label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {ASSIGNMENT_TYPES.map((type) => (
               <label
                 key={type.value}
-                className={`
-                  relative flex cursor-pointer rounded-lg border p-4 focus:outline-none
-                  ${formData.assignment_type === type.value
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500'
-                    : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800'
-                  }
-                `}
+                className="relative flex cursor-pointer rounded-lg border p-4 focus:outline-none"
+                style={formData.assignment_type === type.value
+                  ? { borderColor: 'var(--text-primary)', background: 'var(--bg-elevated)', boxShadow: '0 0 0 2px var(--text-primary)' }
+                  : { borderColor: 'var(--border-default)', background: 'var(--bg-surface)' }
+                }
               >
                 <input
                   type="radio"
@@ -249,16 +246,16 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                   className="sr-only"
                 />
                 <div className="flex flex-col flex-1">
-                  <span className={`block text-sm font-medium ${formData.assignment_type === type.value
-                    ? 'text-blue-900 dark:text-blue-200'
-                    : 'text-gray-900 dark:text-white'
-                    }`}>
+                  <span
+                    className="block text-sm font-medium"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
                     {t(type.labelKey)}
                   </span>
-                  <span className={`mt-1 text-xs ${formData.assignment_type === type.value
-                    ? 'text-blue-700 dark:text-blue-300'
-                    : 'text-gray-500 dark:text-gray-400'
-                    }`}>
+                  <span
+                    className="mt-1 text-xs"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
                     {t(type.descriptionKey)}
                   </span>
                 </div>
@@ -268,8 +265,8 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
         </div>
 
         {/* Basic Information */}
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+        <div className="border-t pt-6" style={{ borderColor: 'var(--border-default)' }}>
+          <h3 className="text-lg font-medium mb-4" style={{ color: 'var(--text-primary)' }}>
             {t('assignments.basicInfo')}
           </h3>
 
@@ -284,7 +281,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
             />
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="label mb-1">
                 {t('assignments.description')} *
               </label>
               <textarea
@@ -293,13 +290,13 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                 onChange={handleChange}
                 rows={3}
                 required
-                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                className="input w-full"
                 placeholder={t('assignments.descriptionPlaceholder')}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="label mb-1">
                 {t('assignments.instructions')}
               </label>
               <textarea
@@ -307,7 +304,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                 value={formData.instructions}
                 onChange={handleChange}
                 rows={4}
-                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                className="input w-full"
                 placeholder={t('assignments.instructionsPlaceholder')}
               />
             </div>
@@ -315,8 +312,8 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
         </div>
 
         {/* Dates and Points */}
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+        <div className="border-t pt-6" style={{ borderColor: 'var(--border-default)' }}>
+          <h3 className="text-lg font-medium mb-4" style={{ color: 'var(--text-primary)' }}>
             {t('assignments.schedule')}
           </h3>
 
@@ -365,9 +362,10 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                 id="allow_late_submission"
                 checked={formData.allow_late_submission}
                 onChange={handleChange}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 rounded"
+                style={{ accentColor: 'var(--text-primary)' }}
               />
-              <label htmlFor="allow_late_submission" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+              <label htmlFor="allow_late_submission" className="ml-2 block text-sm" style={{ color: 'var(--text-secondary)' }}>
                 {t('assignments.allowLateSubmission')}
               </label>
             </div>
@@ -389,13 +387,13 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
 
         {/* Type-Specific Settings */}
         {formData.assignment_type === 'FILE_UPLOAD' && (
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+          <div className="border-t pt-6" style={{ borderColor: 'var(--border-default)' }}>
+            <h3 className="text-lg font-medium mb-4" style={{ color: 'var(--text-primary)' }}>
               {t('assignments.fileUploadSettings')}
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="label mb-1">
                   {t('assignments.allowedFileTypes')}
                 </label>
                 <input
@@ -403,17 +401,17 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                   name="allowed_file_types"
                   value={formData.allowed_file_types}
                   onChange={handleChange}
-                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                  className="input w-full"
                   placeholder=".pdf, .docx, .zip"
                 />
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
                   {t('assignments.allowedFileTypesHelp')}
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="label mb-1">
                     {t('assignments.maxFileSize')} (MB)
                   </label>
                   <input
@@ -428,7 +426,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                       } as React.ChangeEvent<HTMLInputElement>);
                     }}
                     min="1"
-                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                    className="input w-full"
                   />
                 </div>
 
@@ -446,20 +444,20 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
         )}
 
         {formData.assignment_type === 'CODE' && (
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+          <div className="border-t pt-6" style={{ borderColor: 'var(--border-default)' }}>
+            <h3 className="text-lg font-medium mb-4" style={{ color: 'var(--text-primary)' }}>
               {t('assignments.codeSubmissionSettings')}
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="label mb-1">
                   {t('assignments.programmingLanguage')} *
                 </label>
                 <select
                   name="programming_language"
                   value={formData.programming_language}
                   onChange={handleChange}
-                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                  className="input w-full"
                 >
                   {PROGRAMMING_LANGUAGES.map(lang => (
                     <option key={lang.value} value={lang.value}>{lang.label}</option>
@@ -474,15 +472,16 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                   id="auto_grading_enabled"
                   checked={formData.auto_grading_enabled}
                   onChange={handleChange}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  className="h-4 w-4 rounded"
+                  style={{ accentColor: 'var(--text-primary)' }}
                 />
-                <label htmlFor="auto_grading_enabled" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+                <label htmlFor="auto_grading_enabled" className="ml-2 block text-sm" style={{ color: 'var(--text-secondary)' }}>
                   {t('assignments.enableAutoGrading')}
                 </label>
               </div>
 
               {formData.auto_grading_enabled && (
-                <p className="text-sm text-blue-600 dark:text-blue-400">
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                   {t('assignments.autoGradingNote')}
                 </p>
               )}
@@ -491,8 +490,8 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
         )}
 
         {formData.assignment_type === 'EXTERNAL' && (
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+          <div className="border-t pt-6" style={{ borderColor: 'var(--border-default)' }}>
+            <h3 className="text-lg font-medium mb-4" style={{ color: 'var(--text-primary)' }}>
               {t('assignments.externalToolSettings')}
             </h3>
             <Input
@@ -508,19 +507,19 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
         )}
 
         {formData.assignment_type === 'QUIZ' && (
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+          <div className="border-t pt-6" style={{ borderColor: 'var(--border-default)' }}>
+            <h3 className="text-lg font-medium mb-4" style={{ color: 'var(--text-primary)' }}>
               {t('assignments.quizSettings')}
             </h3>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="label mb-1">
                 {t('assignments.selectQuiz')} *
               </label>
               <select
                 name="quiz_id"
                 value={formData.quiz_id}
                 onChange={handleChange}
-                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                className="input w-full"
                 disabled={loadingQuizzes}
               >
                 <option value="">{t('common.select')}...</option>
@@ -531,7 +530,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                 ))}
               </select>
               {loadingQuizzes && (
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
                   {t('common.loading')}...
                 </p>
               )}
@@ -540,8 +539,8 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
         )}
 
         {/* Grading Options */}
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+        <div className="border-t pt-6" style={{ borderColor: 'var(--border-default)' }}>
+          <h3 className="text-lg font-medium mb-4" style={{ color: 'var(--text-primary)' }}>
             {t('assignments.gradingOptions')}
           </h3>
           <div className="space-y-3">
@@ -552,9 +551,10 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                 id="grade_anonymously"
                 checked={formData.grade_anonymously}
                 onChange={handleChange}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 rounded"
+                style={{ accentColor: 'var(--text-primary)' }}
               />
-              <label htmlFor="grade_anonymously" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+              <label htmlFor="grade_anonymously" className="ml-2 block text-sm" style={{ color: 'var(--text-secondary)' }}>
                 {t('assignments.gradeAnonymously')}
               </label>
             </div>
@@ -566,9 +566,10 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                 id="peer_review_enabled"
                 checked={formData.peer_review_enabled}
                 onChange={handleChange}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 rounded"
+                style={{ accentColor: 'var(--text-primary)' }}
               />
-              <label htmlFor="peer_review_enabled" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+              <label htmlFor="peer_review_enabled" className="ml-2 block text-sm" style={{ color: 'var(--text-secondary)' }}>
                 {t('assignments.enablePeerReview')}
               </label>
             </div>
@@ -588,7 +589,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
         </div>
 
         {/* Publish Settings */}
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+        <div className="border-t pt-6" style={{ borderColor: 'var(--border-default)' }}>
           <div className="flex items-center">
             <input
               type="checkbox"
@@ -596,29 +597,31 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
               id="is_published_assignment"
               checked={formData.is_published}
               onChange={handleChange}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              className="h-4 w-4 rounded"
+              style={{ accentColor: 'var(--text-primary)' }}
             />
-            <label htmlFor="is_published_assignment" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+            <label htmlFor="is_published_assignment" className="ml-2 block text-sm" style={{ color: 'var(--text-secondary)' }}>
               {t('assignments.publishImmediately')}
             </label>
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <Button
+        <div className="flex justify-end gap-3 pt-4 border-t" style={{ borderColor: 'var(--border-default)' }}>
+          <button
             type="button"
-            variant="secondary"
+            className="btn btn-secondary"
             onClick={onClose}
             disabled={loading}
           >
             {t('common.cancel')}
-          </Button>
-          <Button
+          </button>
+          <button
             type="submit"
-            isLoading={loading}
+            className="btn btn-primary"
+            disabled={loading}
           >
-            {t('assignments.createAssignment')}
-          </Button>
+            {loading ? t('common.loading') + '...' : t('assignments.createAssignment')}
+          </button>
         </div>
       </form>
     </Modal>

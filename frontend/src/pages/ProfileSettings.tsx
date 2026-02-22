@@ -22,7 +22,6 @@ export const ProfileSettings: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Profile form
   const [profileData, setProfileData] = useState({
     displayName: user?.display_name || '',
     firstName: user?.first_name || '',
@@ -30,7 +29,6 @@ export const ProfileSettings: React.FC = () => {
     bio: user?.bio || '',
   });
 
-  // Password form
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -112,20 +110,26 @@ export const ProfileSettings: React.FC = () => {
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+            <h1
+              className="text-2xl sm:text-3xl font-bold"
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+            >
               {t('settings.title', 'Settings')}
             </h1>
-            <p className="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">
+            <p className="mt-2 text-sm sm:text-base" style={{ color: 'var(--text-muted)' }}>
               {t('settings.description', 'Manage your account settings and preferences')}
             </p>
           </div>
 
           {/* Message */}
           {message && (
-            <div className={`mb-6 p-4 rounded-lg ${message.type === 'success'
-              ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200'
-              : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
-              }`}>
+            <div
+              className="mb-6 p-4 rounded-lg text-sm"
+              style={message.type === 'success'
+                ? { background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.15)', color: 'var(--fn-success)' }
+                : { background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', color: 'var(--fn-error)' }
+              }
+            >
               {message.text}
             </div>
           )}
@@ -134,77 +138,84 @@ export const ProfileSettings: React.FC = () => {
           <Card className="mb-6">
             <CardHeader>
               <div className="flex items-center gap-2">
-                <UserCircleIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <UserCircleIcon className="h-6 w-6" style={{ color: 'var(--text-secondary)' }} />
+                <h2
+                  className="text-xl font-semibold"
+                  style={{ color: 'var(--text-primary)' }}
+                >
                   {t('settings.profileInfo', 'Profile Information')}
                 </h2>
               </div>
             </CardHeader>
             <CardBody>
               <form onSubmit={handleProfileUpdate} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <div className="input-group">
+                  <label className="label">
                     {t('settings.email', 'Email')}
                   </label>
-                  <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                    <EnvelopeIcon className="h-5 w-5 text-gray-400" />
-                    <span className="text-gray-900 dark:text-white">{user?.email}</span>
-                    <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">
+                  <div
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg"
+                    style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
+                  >
+                    <EnvelopeIcon className="h-5 w-5" style={{ color: 'var(--text-faint)' }} />
+                    <span style={{ color: 'var(--text-primary)' }}>{user?.email}</span>
+                    <span className="ml-auto text-xs" style={{ color: 'var(--text-muted)' }}>
                       {t('settings.emailCannotChange', 'Cannot be changed')}
                     </span>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <div className="input-group">
+                  <label className="label">
                     {t('settings.displayName', 'Display Name')}
                   </label>
                   <input
                     type="text"
                     value={profileData.displayName}
                     onChange={(e) => setProfileData({ ...profileData, displayName: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    className="input"
                     placeholder={t('settings.displayNamePlaceholder', 'Your display name')}
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <div className="input-group">
+                    <label className="label">
                       {t('settings.firstName', 'First Name')}
                     </label>
                     <input
                       type="text"
                       value={profileData.firstName}
                       onChange={(e) => setProfileData({ ...profileData, firstName: e.target.value })}
-                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                      className="input"
                       placeholder={t('settings.firstNamePlaceholder', 'First name')}
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <div className="input-group">
+                    <label className="label">
                       {t('settings.lastName', 'Last Name')}
                     </label>
                     <input
                       type="text"
                       value={profileData.lastName}
                       onChange={(e) => setProfileData({ ...profileData, lastName: e.target.value })}
-                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                      className="input"
                       placeholder={t('settings.lastNamePlaceholder', 'Last name')}
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <div className="input-group">
+                  <label className="label">
                     {t('settings.bio', 'Bio')}
                   </label>
                   <textarea
                     value={profileData.bio}
                     onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
                     rows={3}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    className="input"
+                    style={{ resize: 'vertical' }}
                     placeholder={t('settings.bioPlaceholder', 'Tell us about yourself...')}
                   />
                 </div>
@@ -222,8 +233,11 @@ export const ProfileSettings: React.FC = () => {
           <Card className="mb-6">
             <CardHeader>
               <div className="flex items-center gap-2">
-                <MoonIcon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <MoonIcon className="h-6 w-6" style={{ color: 'var(--text-secondary)' }} />
+                <h2
+                  className="text-xl font-semibold"
+                  style={{ color: 'var(--text-primary)' }}
+                >
                   {t('settings.appearance', 'Appearance')}
                 </h2>
               </div>
@@ -232,23 +246,24 @@ export const ProfileSettings: React.FC = () => {
               <div className="space-y-6">
                 {/* Theme */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  <label className="label mb-3 block">
                     {t('settings.theme', 'Theme')}
                   </label>
                   <div className="grid grid-cols-2 gap-4">
                     <button
                       onClick={() => handleThemeChange('light')}
-                      className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${theme === 'light'
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                        }`}
+                      className="flex items-center gap-3 p-4 rounded-lg border-2 transition-all"
+                      style={theme === 'light'
+                        ? { borderColor: 'var(--text-primary)', background: 'var(--bg-active)' }
+                        : { borderColor: 'var(--border-default)', background: 'transparent' }
+                      }
                     >
-                      <SunIcon className="h-6 w-6 text-yellow-500" />
+                      <SunIcon className="h-6 w-6" style={{ color: 'var(--fn-warning)' }} />
                       <div className="text-left">
-                        <div className="font-medium text-gray-900 dark:text-white">
+                        <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
                           {t('settings.light', 'Light')}
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                        <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
                           {t('settings.lightDesc', 'Light mode')}
                         </div>
                       </div>
@@ -256,17 +271,18 @@ export const ProfileSettings: React.FC = () => {
 
                     <button
                       onClick={() => handleThemeChange('dark')}
-                      className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${theme === 'dark'
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                        }`}
+                      className="flex items-center gap-3 p-4 rounded-lg border-2 transition-all"
+                      style={theme === 'dark'
+                        ? { borderColor: 'var(--text-primary)', background: 'var(--bg-active)' }
+                        : { borderColor: 'var(--border-default)', background: 'transparent' }
+                      }
                     >
-                      <MoonIcon className="h-6 w-6 text-indigo-500" />
+                      <MoonIcon className="h-6 w-6" style={{ color: 'var(--text-secondary)' }} />
                       <div className="text-left">
-                        <div className="font-medium text-gray-900 dark:text-white">
+                        <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
                           {t('settings.dark', 'Dark')}
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                        <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
                           {t('settings.darkDesc', 'Dark mode')}
                         </div>
                       </div>
@@ -276,39 +292,41 @@ export const ProfileSettings: React.FC = () => {
 
                 {/* Language */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  <label className="label mb-3 block">
                     {t('settings.language', 'Language')}
                   </label>
                   <div className="grid grid-cols-2 gap-4">
                     <button
                       onClick={() => handleLanguageChange('en')}
-                      className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${language === 'en'
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                        }`}
+                      className="flex items-center gap-3 p-4 rounded-lg border-2 transition-all"
+                      style={language === 'en'
+                        ? { borderColor: 'var(--text-primary)', background: 'var(--bg-active)' }
+                        : { borderColor: 'var(--border-default)', background: 'transparent' }
+                      }
                     >
-                      <LanguageIcon className="h-6 w-6 text-blue-500" />
+                      <LanguageIcon className="h-6 w-6" style={{ color: 'var(--text-secondary)' }} />
                       <div className="text-left">
-                        <div className="font-medium text-gray-900 dark:text-white">
+                        <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
                           {t('settings.lang_en', 'English')}
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">EN</div>
+                        <div className="text-xs" style={{ color: 'var(--text-muted)' }}>EN</div>
                       </div>
                     </button>
 
                     <button
                       onClick={() => handleLanguageChange('uk')}
-                      className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${language === 'uk'
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                        }`}
+                      className="flex items-center gap-3 p-4 rounded-lg border-2 transition-all"
+                      style={language === 'uk'
+                        ? { borderColor: 'var(--text-primary)', background: 'var(--bg-active)' }
+                        : { borderColor: 'var(--border-default)', background: 'transparent' }
+                      }
                     >
-                      <LanguageIcon className="h-6 w-6 text-yellow-500" />
+                      <LanguageIcon className="h-6 w-6" style={{ color: 'var(--text-secondary)' }} />
                       <div className="text-left">
-                        <div className="font-medium text-gray-900 dark:text-white">
+                        <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
                           {t('settings.lang_uk', 'Українська')}
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">UK</div>
+                        <div className="text-xs" style={{ color: 'var(--text-muted)' }}>UK</div>
                       </div>
                     </button>
                   </div>
@@ -321,49 +339,52 @@ export const ProfileSettings: React.FC = () => {
           <Card className="mb-6">
             <CardHeader>
               <div className="flex items-center gap-2">
-                <KeyIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <KeyIcon className="h-6 w-6" style={{ color: 'var(--fn-error)' }} />
+                <h2
+                  className="text-xl font-semibold"
+                  style={{ color: 'var(--text-primary)' }}
+                >
                   {t('settings.security', 'Security')}
                 </h2>
               </div>
             </CardHeader>
             <CardBody>
               <form onSubmit={handlePasswordChange} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <div className="input-group">
+                  <label className="label">
                     {t('settings.currentPassword', 'Current Password')}
                   </label>
                   <input
                     type="password"
                     value={passwordData.currentPassword}
                     onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    className="input"
                     placeholder="••••••••"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <div className="input-group">
+                  <label className="label">
                     {t('settings.newPassword', 'New Password')}
                   </label>
                   <input
                     type="password"
                     value={passwordData.newPassword}
                     onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    className="input"
                     placeholder="••••••••"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <div className="input-group">
+                  <label className="label">
                     {t('settings.confirmNewPassword', 'Confirm New Password')}
                   </label>
                   <input
                     type="password"
                     value={passwordData.confirmPassword}
                     onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    className="input"
                     placeholder="••••••••"
                   />
                 </div>
@@ -381,29 +402,38 @@ export const ProfileSettings: React.FC = () => {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
-                <ShieldCheckIcon className="h-6 w-6 text-green-600 dark:text-green-400" />
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <ShieldCheckIcon className="h-6 w-6" style={{ color: 'var(--fn-success)' }} />
+                <h2
+                  className="text-xl font-semibold"
+                  style={{ color: 'var(--text-primary)' }}
+                >
                   {t('settings.accountInfo', 'Account Information')}
                 </h2>
               </div>
             </CardHeader>
             <CardBody>
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-                  <span className="text-gray-600 dark:text-gray-400">{t('settings.role', 'Role')}</span>
-                  <span className="font-medium text-gray-900 dark:text-white capitalize">
+                <div
+                  className="flex justify-between py-2"
+                  style={{ borderBottom: '1px solid var(--border-subtle)' }}
+                >
+                  <span style={{ color: 'var(--text-muted)' }}>{t('settings.role', 'Role')}</span>
+                  <span className="font-medium capitalize" style={{ color: 'var(--text-primary)' }}>
                     {user?.role?.toLowerCase()}
                   </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-                  <span className="text-gray-600 dark:text-gray-400">{t('settings.accountCreated', 'Account Created')}</span>
-                  <span className="font-medium text-gray-900 dark:text-white">
+                <div
+                  className="flex justify-between py-2"
+                  style={{ borderBottom: '1px solid var(--border-subtle)' }}
+                >
+                  <span style={{ color: 'var(--text-muted)' }}>{t('settings.accountCreated', 'Account Created')}</span>
+                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
                     {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
                   </span>
                 </div>
                 <div className="flex justify-between py-2">
-                  <span className="text-gray-600 dark:text-gray-400">{t('settings.studentId', 'Student ID')}</span>
-                  <span className="font-medium text-gray-900 dark:text-white">
+                  <span style={{ color: 'var(--text-muted)' }}>{t('settings.studentId', 'Student ID')}</span>
+                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
                     {user?.student_id || 'N/A'}
                   </span>
                 </div>

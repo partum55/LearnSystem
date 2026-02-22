@@ -13,10 +13,13 @@ export const Profile: React.FC = () => {
       <div className="p-4 sm:p-6 lg:p-8">
         <div className="max-w-4xl mx-auto">
           <div className="mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+            <h1
+              className="text-2xl sm:text-3xl font-bold"
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+            >
               {t('nav.profile')}
             </h1>
-            <p className="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">
+            <p className="mt-2 text-sm sm:text-base" style={{ color: 'var(--text-muted)' }}>
               Manage your account settings and preferences
             </p>
           </div>
@@ -24,29 +27,26 @@ export const Profile: React.FC = () => {
             <div className="space-y-6">
               <Card>
                 <CardHeader>
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  <h2
+                    className="text-xl font-semibold"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
                     Personal Information
                   </h2>
                 </CardHeader>
                 <CardBody>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Name
-                      </label>
-                      <p className="text-gray-900 dark:text-white">{user?.display_name}</p>
+                      <label className="label mb-1 block">Name</label>
+                      <p style={{ color: 'var(--text-primary)' }}>{user?.display_name}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Email
-                      </label>
-                      <p className="text-gray-900 dark:text-white">{user?.email}</p>
+                      <label className="label mb-1 block">Email</label>
+                      <p style={{ color: 'var(--text-primary)' }}>{user?.email}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Role
-                      </label>
-                      <p className="text-gray-900 dark:text-white capitalize">{user?.role}</p>
+                      <label className="label mb-1 block">Role</label>
+                      <p className="capitalize" style={{ color: 'var(--text-primary)' }}>{user?.role}</p>
                     </div>
                   </div>
                 </CardBody>
@@ -54,25 +54,24 @@ export const Profile: React.FC = () => {
 
               <Card>
                 <CardHeader>
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  <h2
+                    className="text-xl font-semibold"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
                     Preferences
                   </h2>
                 </CardHeader>
                 <CardBody>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        {t('settings.language')}
-                      </label>
-                      <p className="text-gray-900 dark:text-white">
+                      <label className="label mb-1 block">{t('settings.language')}</label>
+                      <p style={{ color: 'var(--text-primary)' }}>
                         {user?.locale === 'uk' ? 'Українська' : 'English'}
                       </p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        {t('settings.theme')}
-                      </label>
-                      <p className="text-gray-900 dark:text-white capitalize">
+                      <label className="label mb-1 block">{t('settings.theme')}</label>
+                      <p className="capitalize" style={{ color: 'var(--text-primary)' }}>
                         {user?.theme || 'light'}
                       </p>
                     </div>

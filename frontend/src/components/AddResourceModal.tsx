@@ -157,13 +157,14 @@ export const AddResourceModal: React.FC<AddResourceModalProps> = ({
               <button
                 key={type}
                 onClick={() => handleTypeSelect(type)}
-                className="flex flex-col items-center p-6 border-2 border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all group"
+                className="flex flex-col items-center p-6 rounded-lg transition-all group"
+                style={{ border: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}
               >
-                <Icon className="h-12 w-12 text-gray-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 mb-3" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                <Icon className="h-12 w-12 mb-3" style={{ color: 'var(--text-muted)' }} />
+                <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
                   {label}
                 </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                <p className="text-sm text-center" style={{ color: 'var(--text-muted)' }}>
                   {description}
                 </p>
               </button>
@@ -173,8 +174,8 @@ export const AddResourceModal: React.FC<AddResourceModalProps> = ({
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
-              <p className="text-sm text-red-800 dark:text-red-400">{error}</p>
+            <div className="rounded-md p-4" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+              <p className="text-sm" style={{ color: 'var(--fn-error)' }}>{error}</p>
             </div>
           )}
 
@@ -188,7 +189,7 @@ export const AddResourceModal: React.FC<AddResourceModalProps> = ({
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="label block mb-1">
               {t('resources.description')}
             </label>
             <textarea
@@ -196,7 +197,7 @@ export const AddResourceModal: React.FC<AddResourceModalProps> = ({
               value={formData.description}
               onChange={handleChange}
               rows={3}
-              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+              className="input w-full"
               placeholder={t('resources.descriptionPlaceholder')}
             />
           </div>
@@ -213,7 +214,7 @@ export const AddResourceModal: React.FC<AddResourceModalProps> = ({
             />
           ) : selectedType === 'TEXT' ? (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="label block mb-1">
                 {t('resources.content')}
               </label>
               <textarea
@@ -222,13 +223,13 @@ export const AddResourceModal: React.FC<AddResourceModalProps> = ({
                 onChange={handleChange}
                 required
                 rows={8}
-                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white font-mono text-sm"
+                className="input w-full font-mono text-sm"
                 placeholder={t('resources.contentPlaceholder')}
               />
             </div>
           ) : (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="label block mb-1">
                 {t('resources.file')}
               </label>
               <input
@@ -236,10 +237,10 @@ export const AddResourceModal: React.FC<AddResourceModalProps> = ({
                 onChange={handleFileChange}
                 required
                 accept={selectedType === 'PDF' ? '.pdf' : selectedType === 'VIDEO' ? 'video/*' : selectedType === 'SLIDE' ? '.ppt,.pptx,.odp' : '*'}
-                className="block w-full text-sm text-gray-900 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 focus:outline-none"
+                className="input w-full cursor-pointer"
               />
               {formData.file && (
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
                   {t('resources.selectedFile')}: {formData.file.name} ({(formData.file.size / 1024 / 1024).toFixed(2)} MB)
                 </p>
               )}
@@ -247,10 +248,10 @@ export const AddResourceModal: React.FC<AddResourceModalProps> = ({
           )}
 
           {uploadProgress > 0 && uploadProgress < 100 && (
-            <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+            <div className="w-full rounded-full h-2.5" style={{ background: 'var(--bg-overlay)' }}>
               <div
-                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                style={{ width: `${uploadProgress}%` }}
+                className="h-2.5 rounded-full transition-all duration-300"
+                style={{ background: 'var(--text-primary)', width: `${uploadProgress}%` }}
               />
             </div>
           )}
@@ -262,9 +263,9 @@ export const AddResourceModal: React.FC<AddResourceModalProps> = ({
               id="is_downloadable"
               checked={formData.is_downloadable}
               onChange={handleChange}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              className="h-4 w-4 rounded" style={{ accentColor: 'var(--text-primary)' }}
             />
-            <label htmlFor="is_downloadable" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+            <label htmlFor="is_downloadable" className="ml-2 block text-sm" style={{ color: 'var(--text-secondary)' }}>
               {t('resources.allowDownload')}
             </label>
           </div>

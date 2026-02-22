@@ -16,16 +16,17 @@ export const AILoadingState: React.FC<AILoadingStateProps> = ({
   stage,
 }) => {
   return (
-    <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-xl">
+    <div className="p-6 rounded-xl" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
       <div className="flex flex-col items-center text-center">
         {/* Animated AI Icon */}
         <div className="relative w-16 h-16 mb-4">
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-16 h-16 border-4 border-blue-200 dark:border-blue-700 rounded-full animate-pulse"></div>
+            <div className="w-16 h-16 rounded-full animate-pulse" style={{ border: '4px solid var(--border-default)' }}></div>
           </div>
           <div className="absolute inset-0 flex items-center justify-center">
             <svg
-              className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-bounce"
+              className="w-8 h-8 animate-bounce"
+              style={{ color: 'var(--text-primary)' }}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -41,32 +42,32 @@ export const AILoadingState: React.FC<AILoadingStateProps> = ({
           </div>
         </div>
 
-        <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+        <p className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
           {message}
         </p>
 
         {stage && (
-          <p className="text-xs text-blue-600 dark:text-blue-400 mb-3">
+          <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
             {stage}
           </p>
         )}
 
         {progress !== undefined && (
           <div className="w-full max-w-xs">
-            <div className="flex justify-between text-xs text-blue-600 dark:text-blue-400 mb-1">
+            <div className="flex justify-between text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
               <span>Progress</span>
               <span>{Math.round(progress)}%</span>
             </div>
-            <div className="w-full bg-blue-100 dark:bg-blue-800 rounded-full h-2 overflow-hidden">
+            <div className="w-full rounded-full h-2 overflow-hidden" style={{ background: 'var(--bg-overlay)' }}>
               <div
-                className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${progress}%` }}
+                className="h-full rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${progress}%`, background: 'var(--text-primary)' }}
               />
             </div>
           </div>
         )}
 
-        <p className="mt-4 text-xs text-blue-500 dark:text-blue-400">
+        <p className="mt-4 text-xs" style={{ color: 'var(--text-faint)' }}>
           This may take a few moments...
         </p>
       </div>
@@ -75,4 +76,3 @@ export const AILoadingState: React.FC<AILoadingStateProps> = ({
 };
 
 export default AILoadingState;
-

@@ -10,6 +10,8 @@ interface RichTextEditorProps {
   enableCode?: boolean;
 }
 
+const toolbarBtnClass = 'px-2 py-1 text-xs rounded transition-colors';
+
 const RichTextEditor: React.FC<RichTextEditorProps> = ({
   value,
   onChange,
@@ -35,7 +37,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     const newValue = before + prefix + selectedText + suffix + after;
     onChange(newValue);
 
-    // Set cursor position
     setTimeout(() => {
       textarea.focus();
       const newPosition = start + prefix.length + selectedText.length;
@@ -43,147 +44,129 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }, 0);
   }, [value, onChange]);
 
-  // Render markdown with LaTeX support
   const renderPreview = () => {
     let html = value;
-
-    // Convert markdown headers
-    html = html.replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>');
-    html = html.replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold mt-4 mb-2">$1</h2>');
-    html = html.replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>');
-
-    // Bold and italic
+    html = html.replace(/^### (.*$)/gim, '<h3 class="text-base font-semibold mt-4 mb-2">$1</h3>');
+    html = html.replace(/^## (.*$)/gim, '<h2 class="text-lg font-semibold mt-4 mb-2">$1</h2>');
+    html = html.replace(/^# (.*$)/gim, '<h1 class="text-xl font-bold mt-4 mb-2">$1</h1>');
     html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-
-    // Links
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-600 hover:underline" target="_blank">$1</a>');
-
-    // Code blocks
-    html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded-md overflow-x-auto my-2"><code>$2</code></pre>');
-
-    // Inline code
-    html = html.replace(/`([^`]+)`/g, '<code class="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">$1</code>');
-
-    // LaTeX (placeholder - would need actual LaTeX renderer like KaTeX)
-    html = html.replace(/\$\$([\s\S]*?)\$\$/g, '<div class="bg-blue-50 dark:bg-blue-900/20 p-3 my-2 rounded border border-blue-200 dark:border-blue-800"><em>LaTeX Block:</em> $1</div>');
-
-    html = html.replace(/\$([^$]+)\$/g, '<span class="bg-blue-50 dark:bg-blue-900/20 px-1 rounded"><em>LaTeX:</em> $1</span>');
-
-    // Lists
-    html = html.replace(/^- (.+)$/gim, '<li class="ml-4">• $1</li>');
-    html = html.replace(/^\d+\. (.+)$/gim, '<li class="ml-4 list-decimal">$1</li>');
-
-    // Blockquotes
-    html = html.replace(/^> (.+)$/gim, '<blockquote class="border-l-4 border-gray-300 pl-4 italic my-2">$1</blockquote>');
-
-    // Line breaks
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color:var(--text-primary);text-decoration:underline" target="_blank">$1</a>');
+    html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre style="background:var(--bg-overlay);padding:12px;border-radius:6px;overflow-x:auto;margin:8px 0"><code>$2</code></pre>');
+    html = html.replace(/`([^`]+)`/g, '<code style="background:var(--bg-overlay);padding:2px 6px;border-radius:4px;font-family:var(--font-mono)">$1</code>');
+    html = html.replace(/\$\$([\s\S]*?)\$\$/g, '<div style="background:var(--bg-overlay);padding:12px;margin:8px 0;border-radius:6px;border:1px solid var(--border-default)"><em>LaTeX:</em> $1</div>');
+    html = html.replace(/\$([^$]+)\$/g, '<span style="background:var(--bg-overlay);padding:2px 4px;border-radius:4px"><em>LaTeX:</em> $1</span>');
+    html = html.replace(/^- (.+)$/gim, '<li style="margin-left:16px">$1</li>');
+    html = html.replace(/^\d+\. (.+)$/gim, '<li style="margin-left:16px;list-style-type:decimal">$1</li>');
+    html = html.replace(/^> (.+)$/gim, '<blockquote style="border-left:3px solid var(--border-strong);padding-left:12px;font-style:italic;margin:8px 0">$1</blockquote>');
     html = html.replace(/\n/g, '<br />');
-
-    // Sanitize
-    const clean = DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
-    return clean;
+    return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
   };
 
   return (
-    <div className="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+    <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-default)' }}>
       {/* Toolbar */}
-      <div className="bg-gray-100 dark:bg-gray-700 px-2 py-2 flex items-center gap-1 border-b border-gray-300 dark:border-gray-600 flex-wrap">
-        {/* Base formatting */}
-        <button type="button" onClick={() => insertMarkdown('**', '**')} title="Bold" className="px-2 py-1 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors">B</button>
-        <button type="button" onClick={() => insertMarkdown('*', '*')} title="Italic" className="px-2 py-1 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors">I</button>
-        <button type="button" onClick={() => insertMarkdown('# ')} title="Heading 1" className="px-2 py-1 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors">H1</button>
-        <button type="button" onClick={() => insertMarkdown('## ')} title="Heading 2" className="px-2 py-1 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors">H2</button>
-        <button type="button" onClick={() => insertMarkdown('[', '](url)')} title="Insert Link" className="px-2 py-1 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors">Link</button>
-        <button type="button" onClick={() => insertMarkdown('> ')} title="Blockquote" className="px-2 py-1 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors">Quote</button>
-        <button type="button" onClick={() => insertMarkdown('- ')} title="Bullet List" className="px-2 py-1 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors">List</button>
-        <button type="button" onClick={() => insertMarkdown('1. ')} title="Numbered List" className="px-2 py-1 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors">1.</button>
+      <div
+        className="px-2 py-2 flex items-center gap-1 flex-wrap"
+        style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)' }}
+      >
+        <button type="button" onClick={() => insertMarkdown('**', '**')} title="Bold" className={toolbarBtnClass} style={{ color: 'var(--text-secondary)' }}>B</button>
+        <button type="button" onClick={() => insertMarkdown('*', '*')} title="Italic" className={toolbarBtnClass} style={{ color: 'var(--text-secondary)' }}>I</button>
+        <button type="button" onClick={() => insertMarkdown('# ')} title="Heading 1" className={toolbarBtnClass} style={{ color: 'var(--text-secondary)' }}>H1</button>
+        <button type="button" onClick={() => insertMarkdown('## ')} title="Heading 2" className={toolbarBtnClass} style={{ color: 'var(--text-secondary)' }}>H2</button>
+        <button type="button" onClick={() => insertMarkdown('[', '](url)')} title="Insert Link" className={toolbarBtnClass} style={{ color: 'var(--text-secondary)' }}>Link</button>
+        <button type="button" onClick={() => insertMarkdown('> ')} title="Blockquote" className={toolbarBtnClass} style={{ color: 'var(--text-secondary)' }}>Quote</button>
+        <button type="button" onClick={() => insertMarkdown('- ')} title="Bullet List" className={toolbarBtnClass} style={{ color: 'var(--text-secondary)' }}>List</button>
+        <button type="button" onClick={() => insertMarkdown('1. ')} title="Numbered List" className={toolbarBtnClass} style={{ color: 'var(--text-secondary)' }}>1.</button>
 
-        {/* Optional formatting */}
-        {
-          enableCode && (
-            <>
-              <button type="button" onClick={() => insertMarkdown('`', '`')} title="Inline Code" className="px-2 py-1 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors">Code</button>
-              <button type="button" onClick={() => insertMarkdown('```\n', '\n```')} title="Code Block" className="px-2 py-1 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors">Code Block</button>
-            </>
-          )
-        }
+        {enableCode && (
+          <>
+            <button type="button" onClick={() => insertMarkdown('`', '`')} title="Inline Code" className={toolbarBtnClass} style={{ color: 'var(--text-secondary)' }}>Code</button>
+            <button type="button" onClick={() => insertMarkdown('```\n', '\n```')} title="Code Block" className={toolbarBtnClass} style={{ color: 'var(--text-secondary)' }}>Block</button>
+          </>
+        )}
 
-        {
-          enableLatex && (
-            <>
-              <button type="button" onClick={() => insertMarkdown('$', '$')} title="Inline LaTeX" className="px-2 py-1 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors">LaTeX</button>
-              <button type="button" onClick={() => insertMarkdown('$$\n', '\n$$')} title="LaTeX Block" className="px-2 py-1 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors">LaTeX Block</button>
-            </>
-          )
-        }
-        <div className="flex-1"></div>
+        {enableLatex && (
+          <>
+            <button type="button" onClick={() => insertMarkdown('$', '$')} title="Inline LaTeX" className={toolbarBtnClass} style={{ color: 'var(--text-secondary)' }}>LaTeX</button>
+            <button type="button" onClick={() => insertMarkdown('$$\n', '\n$$')} title="LaTeX Block" className={toolbarBtnClass} style={{ color: 'var(--text-secondary)' }}>$$</button>
+          </>
+        )}
+
+        <div className="flex-1" />
         <button
           type="button"
           onClick={() => setShowPreview(!showPreview)}
-          className="px-3 py-1 text-sm bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
+          className="px-2.5 py-1 text-xs rounded-md transition-colors"
+          style={{
+            background: showPreview ? 'var(--bg-active)' : 'transparent',
+            color: showPreview ? 'var(--text-primary)' : 'var(--text-muted)',
+          }}
         >
           {showPreview ? 'Edit' : 'Preview'}
         </button>
         <button
           type="button"
           onClick={() => setShowHelp(!showHelp)}
-          className="px-2 py-1 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+          className="px-2 py-1 text-xs rounded transition-colors"
+          style={{ color: 'var(--text-faint)' }}
           title="Help"
         >
           ?
         </button>
-      </div >
+      </div>
 
       {/* Help Panel */}
-      {
-        showHelp && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 p-4 text-sm">
-            <h4 className="font-semibold text-blue-900 dark:text-blue-200 mb-2">Markdown & LaTeX Help</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-gray-700 dark:text-gray-300">
-              <div>
-                <p><code>**bold**</code> → <strong>bold</strong></p>
-                <p><code>*italic*</code> → <em>italic</em></p>
-                <p><code>`code`</code> → inline code</p>
-                <p><code>```code block```</code></p>
-              </div>
-              <div>
-                <p><code># Heading 1</code></p>
-                <p><code>## Heading 2</code></p>
-                <p><code>[link](url)</code> → link</p>
-                {enableLatex && <p><code>$x^2$</code> → inline LaTeX</p>}
-                {enableLatex && <p><code>$$...$$</code> → LaTeX block</p>}
-              </div>
+      {showHelp && (
+        <div className="p-4 text-sm" style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)' }}>
+          <h4 className="font-medium mb-2" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>Markdown & LaTeX Help</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2" style={{ color: 'var(--text-muted)' }}>
+            <div>
+              <p><code style={{ fontFamily: 'var(--font-mono)' }}>**bold**</code> — <strong>bold</strong></p>
+              <p><code style={{ fontFamily: 'var(--font-mono)' }}>*italic*</code> — <em>italic</em></p>
+              <p><code style={{ fontFamily: 'var(--font-mono)' }}>`code`</code> — inline code</p>
+              <p><code style={{ fontFamily: 'var(--font-mono)' }}>```code block```</code></p>
+            </div>
+            <div>
+              <p><code style={{ fontFamily: 'var(--font-mono)' }}># Heading 1</code></p>
+              <p><code style={{ fontFamily: 'var(--font-mono)' }}>## Heading 2</code></p>
+              <p><code style={{ fontFamily: 'var(--font-mono)' }}>[link](url)</code> — link</p>
+              {enableLatex && <p><code style={{ fontFamily: 'var(--font-mono)' }}>$x^2$</code> — inline LaTeX</p>}
+              {enableLatex && <p><code style={{ fontFamily: 'var(--font-mono)' }}>$$...$$</code> — LaTeX block</p>}
             </div>
           </div>
-        )
-      }
+        </div>
+      )}
 
       {/* Editor or Preview */}
-      {
-        showPreview ? (
-          <div
-            className="p-4 prose dark:prose-invert max-w-none overflow-y-auto"
-            style={{ height, minHeight: height }}
-            dangerouslySetInnerHTML={{ __html: renderPreview() }}
-          />
-        ) : (
-          <textarea
-            ref={editorRef}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={placeholder}
-            className="w-full p-4 bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:outline-none font-mono text-sm"
-            style={{ height, minHeight: height }}
-          />
-        )
-      }
+      {showPreview ? (
+        <div
+          className="p-4 overflow-y-auto"
+          style={{ height, minHeight: height, color: 'var(--text-primary)', background: 'var(--bg-elevated)' }}
+          dangerouslySetInnerHTML={{ __html: renderPreview() }}
+        />
+      ) : (
+        <textarea
+          ref={editorRef}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full p-4 resize-none focus:outline-none text-sm"
+          style={{
+            height,
+            minHeight: height,
+            background: 'var(--bg-elevated)',
+            color: 'var(--text-primary)',
+            fontFamily: 'var(--font-mono)',
+          }}
+        />
+      )}
 
       {/* Character count */}
-      <div className="bg-gray-50 dark:bg-gray-700 px-4 py-1 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-300 dark:border-gray-600">
+      <div className="px-4 py-1 text-xs" style={{ background: 'var(--bg-surface)', color: 'var(--text-faint)', borderTop: '1px solid var(--border-subtle)' }}>
         {value.length} characters
       </div>
-    </div >
+    </div>
   );
 };
 

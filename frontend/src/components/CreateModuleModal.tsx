@@ -63,8 +63,8 @@ export const CreateModuleModal: React.FC<CreateModuleModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title={t('modules.createModule')}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
-            <p className="text-sm text-red-800 dark:text-red-400">{error}</p>
+          <div className="rounded-md p-4" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+            <p className="text-sm" style={{ color: 'var(--fn-error)' }}>{error}</p>
           </div>
         )}
 
@@ -78,7 +78,7 @@ export const CreateModuleModal: React.FC<CreateModuleModalProps> = ({
         />
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="label block mb-1">
             {t('modules.description')}
           </label>
           <textarea
@@ -86,7 +86,7 @@ export const CreateModuleModal: React.FC<CreateModuleModalProps> = ({
             value={formData.description}
             onChange={handleChange}
             rows={4}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+            className="input w-full"
             placeholder={t('modules.descriptionPlaceholder')}
           />
         </div>
@@ -98,9 +98,10 @@ export const CreateModuleModal: React.FC<CreateModuleModalProps> = ({
             id="is_published"
             checked={formData.is_published}
             onChange={handleChange}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            className="h-4 w-4 rounded"
+            style={{ accentColor: 'var(--text-primary)' }}
           />
-          <label htmlFor="is_published" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+          <label htmlFor="is_published" className="ml-2 block text-sm" style={{ color: 'var(--text-secondary)' }}>
             {t('modules.publishImmediately')}
           </label>
         </div>

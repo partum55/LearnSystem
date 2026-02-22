@@ -95,22 +95,11 @@ export const CourseMembersTab: React.FC<CourseMembers> = ({ courseId, canManage,
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'TEACHER':
-        return <AcademicCapIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />;
+        return <AcademicCapIcon className="h-5 w-5" style={{ color: 'var(--text-secondary)' }} />;
       case 'TA':
-        return <UserIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />;
+        return <UserIcon className="h-5 w-5" style={{ color: 'var(--text-secondary)' }} />;
       default:
-        return <UserGroupIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />;
-    }
-  };
-
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'TEACHER':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-      case 'TA':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+        return <UserGroupIcon className="h-5 w-5" style={{ color: 'var(--text-muted)' }} />;
     }
   };
 
@@ -130,10 +119,10 @@ export const CourseMembersTab: React.FC<CourseMembers> = ({ courseId, canManage,
           <CardBody>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{t('enrollment.totalStudents')}</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{students.length}</p>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('enrollment.totalStudents')}</p>
+                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{students.length}</p>
               </div>
-              <UserGroupIcon className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+              <UserGroupIcon className="h-10 w-10" style={{ color: 'var(--text-secondary)' }} />
             </div>
           </CardBody>
         </Card>
@@ -142,10 +131,10 @@ export const CourseMembersTab: React.FC<CourseMembers> = ({ courseId, canManage,
           <CardBody>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{t('enrollment.totalTAs')}</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{tas.length}</p>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('enrollment.totalTAs')}</p>
+                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{tas.length}</p>
               </div>
-              <UserIcon className="h-10 w-10 text-green-600 dark:text-green-400" />
+              <UserIcon className="h-10 w-10" style={{ color: 'var(--text-secondary)' }} />
             </div>
           </CardBody>
         </Card>
@@ -154,10 +143,10 @@ export const CourseMembersTab: React.FC<CourseMembers> = ({ courseId, canManage,
           <CardBody>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{t('enrollment.totalTeachers')}</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{teachers.length}</p>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('enrollment.totalTeachers')}</p>
+                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{teachers.length}</p>
               </div>
-              <AcademicCapIcon className="h-10 w-10 text-purple-600 dark:text-purple-400" />
+              <AcademicCapIcon className="h-10 w-10" style={{ color: 'var(--text-secondary)' }} />
             </div>
           </CardBody>
         </Card>
@@ -165,13 +154,13 @@ export const CourseMembersTab: React.FC<CourseMembers> = ({ courseId, canManage,
 
       {/* Filter */}
       <div className="flex items-center gap-3">
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <label className="label">
           {t('enrollment.filterByRole')}:
         </label>
         <select
           value={filterRole}
           onChange={(e) => setFilterRole(e.target.value as 'ALL' | 'STUDENT' | 'TA' | 'TEACHER')}
-          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+          className="input"
         >
           <option value="ALL">{t('enrollment.allRoles')}</option>
           <option value="STUDENT">{t('enrollment.roles.student')}</option>
@@ -185,8 +174,8 @@ export const CourseMembersTab: React.FC<CourseMembers> = ({ courseId, canManage,
         <Card>
           <CardBody>
             <div className="text-center py-12">
-              <UserGroupIcon className="h-12 w-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-600 dark:text-gray-400">
+              <UserGroupIcon className="h-12 w-12 mx-auto mb-3" style={{ color: 'var(--text-faint)' }} />
+              <p style={{ color: 'var(--text-muted)' }}>
                 {t('enrollment.noMembers')}
               </p>
             </div>
@@ -195,54 +184,54 @@ export const CourseMembersTab: React.FC<CourseMembers> = ({ courseId, canManage,
       ) : (
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
               {t('enrollment.membersList')} ({members.length})
             </h3>
           </CardHeader>
           <CardBody>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-800">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <table className="min-w-full">
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                       {t('enrollment.name')}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                       {t('enrollment.email')}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                       {t('enrollment.role')}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                       {t('enrollment.enrolledDate')}
                     </th>
                     {canManage && (
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                         {t('common.actions')}
                       </th>
                     )}
                   </tr>
                 </thead>
-                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody>
                   {members.map((member) => (
-                    <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <tr key={member.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           {getRoleIcon(member.roleInCourse)}
-                          <span className="ml-3 text-sm font-medium text-gray-900 dark:text-white">
+                          <span className="ml-3 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                             {member.userName}
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--text-muted)' }}>
                         {member.userEmail}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(member.roleInCourse)}`}>
+                        <span className="badge">
                           {t(`enrollment.roles.${member.roleInCourse.toLowerCase()}`)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--text-muted)' }}>
                         {new Date(member.addedAt).toLocaleDateString()}
                       </td>
                       {canManage && (
@@ -252,7 +241,7 @@ export const CourseMembersTab: React.FC<CourseMembers> = ({ courseId, canManage,
                               variant="ghost"
                               size="sm"
                               onClick={() => handleUnenroll(member.id, member.userId)}
-                              className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                              style={{ color: 'var(--fn-error)' }}
                             >
                               <TrashIcon className="h-4 w-4" />
                             </Button>

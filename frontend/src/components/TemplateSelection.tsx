@@ -60,10 +60,10 @@ export const TemplateSelection: React.FC<TemplateSelectionProps> = ({
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+        <h3 className="text-lg font-semibold mb-2" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
           {t('templates.selectTemplate')}
         </h3>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
           {t('templates.selectTemplateHint')}
         </p>
       </div>
@@ -72,17 +72,19 @@ export const TemplateSelection: React.FC<TemplateSelectionProps> = ({
       <div className="flex flex-wrap gap-2 justify-center">
         {categories.map((category) => {
           const Icon = category.icon;
+          const isActive = selectedCategory === category.id;
           return (
             <button
               key={category.id}
               onClick={() => setSelectedCategory(category.id)}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors ${
-                selectedCategory === category.id
-                  ? 'bg-purple-600 text-white border-purple-600'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-purple-400'
-              }`}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors"
+              style={{
+                background: isActive ? 'var(--bg-active)' : 'transparent',
+                color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
+                border: `1px solid ${isActive ? 'var(--border-strong)' : 'var(--border-default)'}`,
+              }}
             >
-              <Icon className="w-5 h-5" />
+              <Icon className="w-4 h-4" />
               <span>{category.name}</span>
             </button>
           );
@@ -90,32 +92,36 @@ export const TemplateSelection: React.FC<TemplateSelectionProps> = ({
       </div>
 
       {/* Templates Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {templates.map((template) => (
           <button
             key={template.id}
             onClick={() => onSelectTemplate(template)}
-            className="text-left p-4 border border-gray-300 dark:border-gray-600 rounded-lg
-                     hover:border-purple-500 hover:shadow-lg transition-all
-                     bg-white dark:bg-gray-800"
+            className="text-left p-4 rounded-lg transition-all"
+            style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)'; }}
           >
             <div className="flex items-start justify-between mb-2">
-              <h4 className="font-semibold text-gray-900 dark:text-white">
+              <h4 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                 {template.name}
               </h4>
-              <span className="text-xs text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 px-2 py-1 rounded">
+              <span
+                className="text-xs px-2 py-0.5 rounded-md"
+                style={{ background: 'var(--bg-overlay)', color: 'var(--text-muted)' }}
+              >
                 {template.category}
               </span>
             </div>
 
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+            <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
               {template.description}
             </p>
 
-            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-500">
-              <span>⚡ {template.usageCount} {t('templates.uses')}</span>
+            <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-faint)' }}>
+              <span>{template.usageCount} {t('templates.uses')}</span>
               {template.averageRating > 0 && (
-                <span>⭐ {template.averageRating.toFixed(1)}</span>
+                <span>{template.averageRating.toFixed(1)}/5</span>
               )}
             </div>
           </button>
@@ -126,7 +132,10 @@ export const TemplateSelection: React.FC<TemplateSelectionProps> = ({
       <div className="text-center pt-4">
         <button
           onClick={onSkip}
-          className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline"
+          className="text-sm underline transition-colors"
+          style={{ color: 'var(--text-muted)' }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
         >
           {t('templates.skipAndWriteOwn')}
         </button>
@@ -134,4 +143,3 @@ export const TemplateSelection: React.FC<TemplateSelectionProps> = ({
     </div>
   );
 };
-

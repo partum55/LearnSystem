@@ -24,11 +24,15 @@ const SettingsBar: React.FC = () => {
   };
 
   return (
-    <header role="banner" className="w-full border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur sticky top-0 z-40">
+    <header
+      role="banner"
+      className="w-full backdrop-blur sticky top-0 z-40"
+      style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)' }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between gap-4">
-        <div className="text-sm text-gray-600 dark:text-gray-300">
+        <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
           <span className="sr-only">{t('settings.appControls', 'Application controls')}</span>
-          <strong className="font-semibold">{t('settings.title', 'Settings')}</strong>
+          <strong className="font-medium" style={{ fontFamily: 'var(--font-display)' }}>{t('settings.title', 'Settings')}</strong>
         </div>
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 text-sm" htmlFor="lang-select">
@@ -36,7 +40,7 @@ const SettingsBar: React.FC = () => {
             <select
               id="lang-select"
               aria-label={t('settings.language', 'Language')}
-              className="rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input text-xs py-1 px-2"
               value={language}
               onChange={(e) => onLangChange(e.target.value as 'en' | 'uk')}
             >
@@ -46,11 +50,11 @@ const SettingsBar: React.FC = () => {
           </label>
 
           <label className="flex items-center gap-2 text-sm" htmlFor="size-select">
-            <span>{t('settings.size', 'Size')}</span>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('settings.size', 'Size')}</span>
             <select
               id="size-select"
               aria-label={t('settings.size', 'Size')}
-              className="rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input text-xs py-1 px-2"
               value={size}
               onChange={(e) => setSize(e.target.value as 'sm' | 'md' | 'lg')}
             >
@@ -63,7 +67,7 @@ const SettingsBar: React.FC = () => {
           <button
             type="button"
             onClick={onToggleTheme}
-            className="inline-flex items-center gap-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="btn btn-ghost btn-sm"
             aria-pressed={theme === 'dark'}
             aria-label={theme === 'dark' ? t('settings.switchToLight', 'Switch to light mode') : t('settings.switchToDark', 'Switch to dark mode')}
             title={theme === 'dark' ? t('settings.switchToLight', 'Switch to light mode') : t('settings.switchToDark', 'Switch to dark mode')}

@@ -101,17 +101,17 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
 
   const renderPromptStep = () => (
     <div className="space-y-4">
-      <div className="flex items-center space-x-3 text-purple-600 dark:text-purple-400">
+      <div className="flex items-center space-x-3" style={{ color: 'var(--text-primary)' }}>
         <SparklesIcon className="w-8 h-8" />
         <h3 className="text-xl font-semibold">{t('ai.generateCourse')}</h3>
       </div>
 
-      <p className="text-sm text-gray-600 dark:text-gray-400">
+      <p className="text-sm " style={{ color: 'var(--text-muted)' }}>
         {t('ai.coursePromptHint')}
       </p>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
           {t('ai.coursePrompt')}
         </label>
         <textarea
@@ -119,13 +119,12 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
           onChange={(e) => setPrompt(e.target.value)}
           placeholder={t('ai.coursePromptPlaceholder')}
           rows={6}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md
-                     focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white"
+          className="input w-full"
         />
       </div>
 
       {error && (
-        <div className="flex items-center space-x-2 text-red-600 text-sm">
+        <div className="flex items-center space-x-2 text-sm" style={{ color: 'var(--fn-error)' }}>
           <XCircleIcon className="w-5 h-5" />
           <span>{error}</span>
         </div>
@@ -144,19 +143,18 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
 
   const renderOptionsStep = () => (
     <div className="space-y-4">
-      <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+      <h3 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
         {t('ai.generationOptions')}
       </h3>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
           {t('ai.language')}
         </label>
         <select
           value={options.language}
           onChange={(e) => setOptions({ ...options, language: e.target.value as 'uk' | 'en' })}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md
-                     dark:bg-gray-700 dark:text-white"
+          className="input w-full"
         >
           <option value="uk">Українська</option>
           <option value="en">English</option>
@@ -164,7 +162,7 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
           {t('ai.academicYear')}
         </label>
         <Input
@@ -181,9 +179,9 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
             type="checkbox"
             checked={options.include_modules}
             onChange={(e) => setOptions({ ...options, include_modules: e.target.checked })}
-            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+            className="rounded" style={{ accentColor: 'var(--text-primary)' }}
           />
-          <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+          <span className="ml-2 text-sm " style={{ color: 'var(--text-secondary)' }}>
             {t('ai.includeModules')}
           </span>
         </label>
@@ -193,10 +191,10 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
             type="checkbox"
             checked={options.include_assignments}
             onChange={(e) => setOptions({ ...options, include_assignments: e.target.checked })}
-            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+            className="rounded" style={{ accentColor: 'var(--text-primary)' }}
             disabled={!options.include_modules}
           />
-          <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+          <span className="ml-2 text-sm " style={{ color: 'var(--text-secondary)' }}>
             {t('ai.includeAssignments')}
           </span>
         </label>
@@ -206,10 +204,10 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
             type="checkbox"
             checked={options.include_quizzes}
             onChange={(e) => setOptions({ ...options, include_quizzes: e.target.checked })}
-            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+            className="rounded" style={{ accentColor: 'var(--text-primary)' }}
             disabled={!options.include_modules}
           />
-          <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+          <span className="ml-2 text-sm " style={{ color: 'var(--text-secondary)' }}>
             {t('ai.includeQuizzes')}
           </span>
         </label>
@@ -219,7 +217,7 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
         <Button variant="secondary" onClick={() => setStep('prompt')}>
           {t('common.back')}
         </Button>
-        <Button onClick={handleGenerate} className="bg-purple-600 hover:bg-purple-700">
+        <Button onClick={handleGenerate}>
           <SparklesIcon className="w-5 h-5 mr-2" />
           {t('ai.generate')}
         </Button>
@@ -231,10 +229,10 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
     <div className="py-12 text-center space-y-4">
       <Loading />
       <div className="space-y-2">
-        <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <h3 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
           {t('ai.generating')}
         </h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-sm " style={{ color: 'var(--text-muted)' }}>
           {t('ai.generatingHint')}
         </p>
       </div>
@@ -248,31 +246,31 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
 
     return (
       <div className="space-y-4 max-h-[600px] overflow-y-auto">
-        <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <h3 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
           {t('ai.previewCourse')}
         </h3>
 
         {/* Course Info */}
-        <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg space-y-2">
+        <div className="p-4 rounded-lg space-y-2" style={{ background: 'var(--bg-elevated)' }}>
           <div>
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+            <span className="text-sm font-medium " style={{ color: 'var(--text-muted)' }}>
               {t('course.code')}:
             </span>
-            <span className="ml-2 text-gray-900 dark:text-white">{course.code}</span>
+            <span className="ml-2 " style={{ color: 'var(--text-primary)' }}>{course.code}</span>
           </div>
           <div>
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+            <span className="text-sm font-medium " style={{ color: 'var(--text-muted)' }}>
               {t('course.title')}:
             </span>
-            <span className="ml-2 text-gray-900 dark:text-white">
+            <span className="ml-2 " style={{ color: 'var(--text-primary)' }}>
               {options.language === 'uk' ? course.titleUk : course.titleEn}
             </span>
           </div>
           <div>
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+            <span className="text-sm font-medium " style={{ color: 'var(--text-muted)' }}>
               {t('course.description')}:
             </span>
-            <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+            <p className="mt-1 text-sm " style={{ color: 'var(--text-secondary)' }}>
               {options.language === 'uk' ? course.descriptionUk : course.descriptionEn}
             </p>
           </div>
@@ -281,24 +279,24 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
         {/* Modules */}
         {modules && modules.length > 0 && (
           <div className="space-y-3">
-            <h4 className="font-semibold text-gray-900 dark:text-white">
+            <h4 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
               {t('course.modules')} ({modules.length})
             </h4>
             {modules.map((module, index) => (
-              <div key={index} className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                <h5 className="font-medium text-gray-900 dark:text-white">
+              <div key={index} className="p-3 rounded-lg" style={{ background: 'var(--bg-elevated)' }}>
+                <h5 className="font-medium" style={{ color: 'var(--text-primary)' }}>
                   {index + 1}. {module.title}
                 </h5>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                   {module.description}
                 </p>
                 {module.assignments && module.assignments.length > 0 && (
-                  <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="mt-2 text-sm " style={{ color: 'var(--text-muted)' }}>
                     📝 {module.assignments.length} {t('course.assignments')}
                   </div>
                 )}
                 {module.quizzes && module.quizzes.length > 0 && (
-                  <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="mt-1 text-sm " style={{ color: 'var(--text-muted)' }}>
                     📊 {module.quizzes.length} {t('course.quizzes')}
                   </div>
                 )}
@@ -308,7 +306,7 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
         )}
 
         {error && (
-          <div className="flex items-center space-x-2 text-red-600 text-sm">
+          <div className="flex items-center space-x-2 text-sm" style={{ color: 'var(--fn-error)' }}>
             <XCircleIcon className="w-5 h-5" />
             <span>{error}</span>
           </div>
@@ -331,12 +329,12 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
 
   const renderSuccessStep = () => (
     <div className="py-12 text-center space-y-4">
-      <CheckCircleIcon className="w-16 h-16 text-green-500 mx-auto" />
+      <CheckCircleIcon className="w-16 h-16 mx-auto" style={{ color: 'var(--fn-success)' }} />
       <div className="space-y-2">
-        <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <h3 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
           {t('ai.courseCreated')}
         </h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-sm " style={{ color: 'var(--text-muted)' }}>
           {t('ai.courseCreatedHint')}
         </p>
       </div>

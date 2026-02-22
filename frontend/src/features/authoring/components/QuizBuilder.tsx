@@ -43,10 +43,10 @@ const QuizBuilder: React.FC<QuizBuilderProps> = ({ questions, onChange, readOnly
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Questions</h2>
+        <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Questions</h2>
         <button
           type="button"
-          className="px-3 py-1 text-sm bg-blue-600 text-white rounded"
+          className="btn btn-primary px-3 py-1 text-sm"
           onClick={addQuestion}
           disabled={readOnly}
         >
@@ -54,7 +54,7 @@ const QuizBuilder: React.FC<QuizBuilderProps> = ({ questions, onChange, readOnly
         </button>
       </div>
       {questions.length === 0 ? (
-        <div className="text-sm text-gray-500 dark:text-gray-400">No questions yet. Add one to begin.</div>
+        <div className="text-sm" style={{ color: 'var(--text-muted)' }}>No questions yet. Add one to begin.</div>
       ) : (
         questions.map((question, index) => (
           <QuestionEditor

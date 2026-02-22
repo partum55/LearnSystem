@@ -45,10 +45,10 @@ const RubricEditor: React.FC<RubricEditorProps> = ({ rubric, onChange, readOnly 
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Rubric</h2>
+        <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Rubric</h2>
         <button
           type="button"
-          className="px-3 py-1 text-sm bg-blue-600 text-white rounded"
+          className="btn btn-primary px-3 py-1 text-sm"
           onClick={addCriterion}
           disabled={readOnly}
         >
@@ -56,7 +56,7 @@ const RubricEditor: React.FC<RubricEditorProps> = ({ rubric, onChange, readOnly 
         </button>
       </div>
       {rubric.criteria.map((criterion, index) => (
-        <div key={criterion.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
+        <div key={criterion.id} className="rounded-lg p-4 space-y-3" style={{ border: '1px solid var(--border-default)' }}>
           <div className="flex items-start justify-between gap-4">
             <Input
               label={`Criterion ${index + 1} Title`}
@@ -92,7 +92,8 @@ const RubricEditor: React.FC<RubricEditorProps> = ({ rubric, onChange, readOnly 
           {!readOnly && rubric.criteria.length > 1 && (
             <button
               type="button"
-              className="text-sm text-red-600 hover:underline"
+              className="text-sm hover:underline"
+              style={{ color: 'var(--fn-error)' }}
               onClick={() => removeCriterion(index)}
             >
               Remove criterion
@@ -100,7 +101,7 @@ const RubricEditor: React.FC<RubricEditorProps> = ({ rubric, onChange, readOnly 
           )}
         </div>
       ))}
-      <div className="text-sm text-gray-600 dark:text-gray-300">
+      <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
         Total weight: {totalWeight} / {rubric.totalPoints} points
       </div>
     </section>
