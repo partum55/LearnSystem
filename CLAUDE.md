@@ -4,178 +4,119 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a full-stack Learning Management System with:
-- **Backend**: Spring Boot microservices architecture with 8 services
-- **Frontend**: React + TypeScript with Tailwind CSS
-- **Infrastructure**: Docker-based development and deployment
+Full-stack Learning Management System: Spring Boot microservices backend, React + TypeScript frontend, Docker-based infrastructure.
 
 ## Architecture
 
 ```
-┌─────────────────┐
-│   Frontend      │
-│ (React + TS)    │
-│  :3000          │
-└────────┬────────┘
+Frontend (React+TS, Vite :5173 / Nginx :3000)
+    │
+API Gateway (Spring Cloud Gateway :8080, Eureka, Resilience4j, Bucket4j rate limiting)
+    │
+    ├── User Service (:8081) — Auth, JWT, user management
+    ├── Learning Service (:8089) — Modular monolith: courses, assessments, gradebook, submissions, deadlines
+    ├── AI Service (:8085) — Groq Llama API integration, content generation (WebFlux)
+    ├── Analytics Service (:8088) — Teacher analytics, Feign clients to other services
+    └── Eureka Server (:8761) — Service discovery
          │
-┌────────▼────────┐
-│   API Gateway   │
-│     :8080       │
-└────────┬────────┘
-         │
-    ┌────┴────┬────────────┬────────────┬────────────┐
-    ▼         ▼            ▼            ▼            ▼
-┌────────┐ ┌──────┐  ┌──────────┐  ┌──────────┐ ┌──────────┐
-│  User  │ │Course│  │Assessment│  │Gradebook │ │    AI    │
-│Service │ │Service│ │Service   │  │Service   │ │Service   │
-│:8081   │ │:8082  │ │:8083     │  │:8084     │ │:8085     │
-└────────┘ └──────┘  └──────────┘  └──────────┘ └──────────┘
-     │         │           │             │            │
-     └─────────┴───────────┴─────────────┴────────────┘
-                          │
-                ┌─────────┴─────────┐
-                │   PostgreSQL      │
-                │   Redis Cache     │
-                └───────────────────┘
+    PostgreSQL (:5432) + Redis (:6380)
 ```
 
-## Common Development Commands
+The Learning Service is a **modular monolith** — one Spring Boot app with distinct domain packages (courses, assessments, gradebook, submissions, deadlines) rather than separate microservices.
 
-### Quick Start
+## Development Commands
+
+### Docker (full stack)
 ```bash
-# First time setup
-cp .env.local .env
-# Edit .env and add your LLAMA_API_KEY (get from https://console.groq.com/keys)
-
-# Start everything
-./run-local.sh build
-
-# After first build, just use:
-./run-local.sh
+./run-local.sh build    # First time: build + start all containers
+./run-local.sh          # Start (after first build)
+./run-local.sh stop     # Stop all
+./run-local.sh clean    # Stop + remove data volumes
+./run-local.sh status   # Health check all services
+./run-local.sh logs     # Stream logs
 ```
 
-### Service Management
+### Frontend
 ```bash
-# Check service status
-./run-local.sh status
-
-# View logs
-./run-local.sh logs
-
-# Stop all services
-./run-local.sh stop
-
-# Clean everything including data
-./run-local.sh clean
-```
-
-### Backend Development (Local)
-```bash
-# Navigate to backend directory
-cd backend-spring
-
-# Build all services
-mvn clean install
-
-# Run a specific service (from its directory)
-mvn spring-boot:run
-```
-
-### Frontend Development
-```bash
-# Navigate to frontend directory
 cd frontend
-
-# Install dependencies
-npm install
-
-# Start development server
-npm start
-
-# Run tests
-npm test
-
-# Build for production
-npm run build
+npm install             # Install deps
+npm run dev             # Vite dev server (:5173), proxies /api → localhost:8080
+npm run build           # TypeScript check + Vite production build
+npm run lint            # ESLint (flat config)
+npm run test:contracts  # API contract tests (Node native test runner)
+npx tsc --noEmit        # Type check only
 ```
 
-### Docker Development
+### Backend
 ```bash
-# Start with docker-compose
-docker-compose up -d
-
-# Start with rebuild
-docker-compose up --build -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
+cd backend-spring
+mvn clean install                           # Build all services
+mvn test                                    # Unit tests
+mvn verify                                  # Integration tests
+mvn test -Dtest=ClassName                   # Single test class
+mvn test -Dtest=ClassName#methodName        # Single test method
+cd lms-learning-service && mvn spring-boot:run  # Run one service locally
 ```
 
 ## Code Structure
 
-### Backend (Spring Boot Microservices)
-- `lms-user-service`: Authentication, authorization, user management (:8081)
-- `lms-learning-service`: Course, assessment, gradebook, submission, and deadline management (:8089)
-- `lms-ai-service`: AI-powered content generation (:8085)
-- `lms-analytics-service`: Teacher analytics (:8088)
-- `lms-api-gateway`: Unified API entry point (:8080)
-- `lms-eureka-server`: Service discovery (:8761)
-- `lms-common`: Shared libraries
+### Backend (`backend-spring/`)
+- **lms-common** — Shared DTOs, security helpers, rate limiting (bucket4j), validation
+- **lms-user-service** — Spring Security + JWT (jjwt 0.12.3), user CRUD
+- **lms-learning-service** — Domain modules under `com.university.lms.{course,assessment,gradebook,submission,deadline}`. Flyway migrations, iCal4j calendar, WebSocket, mail support
+- **lms-ai-service** — Spring WebFlux async HTTP to Groq/Llama API
+- **lms-analytics-service** — Feign clients to other services for cross-service queries
+- **lms-api-gateway** — Route predicates in `application.yml`, circuit breaker, rate limiting
+- **lms-eureka-server** — Netflix Eureka
 
-### Frontend (React + TypeScript)
-- Component-based architecture with TypeScript
-- Tailwind CSS for styling
-- Zustand for state management
-- React Query for server state management
-- Monaco Editor integration for code editing
+Tech: Java 21, Spring Boot 3.2.2, Spring Cloud 2023.0.0, PostgreSQL, Redis, Flyway, Lombok, MapStruct.
 
-## Testing
+### Frontend (`frontend/src/`)
+- **api/** — Axios clients (`client.ts` base instance with token refresh), per-domain endpoints
+- **queries/** + **mutations/** — React Query hooks for data fetching/mutations
+- **store/** — Zustand stores (auth, UI state)
+- **pages/** — Route-level components
+- **components/** — Reusable UI, design system components
+- **i18n/** — i18next with `en.json` and `uk.json` locales
+- **types/** — TypeScript interfaces matching backend DTOs
+- **hooks/** — Custom hooks (network status, etc.)
 
-### Frontend Testing
-```bash
-cd frontend
-npm test                # Run tests
-npm run test:watch      # Run tests in watch mode
-```
+Tech: React 18, TypeScript 5.9, Vite 7, Tailwind CSS 3, Zustand, React Query 5, Monaco Editor, Recharts, HeadlessUI, i18next.
 
-### Backend Testing
-```bash
-cd backend-spring
-mvn test               # Run unit tests
-mvn verify             # Run integration tests
-```
+### Frontend Design System ("Obsidian")
+Dark monochrome design using CSS custom properties in `design-system.css`:
+- Colors: Zinc scale (`--bg-base: #09090b` through `--text-primary: #fafafa`), no accent colors in chrome
+- Functional colors only: `--fn-success`, `--fn-error`, `--fn-warning`
+- Fonts: Sora (display), Outfit (body), JetBrains Mono (code)
+- Borders: `rgba(255,255,255,0.08)` default
+- Component classes: `.btn`, `.btn-primary`, `.card`, `.input`, `.badge`, `.table-container`
+
+## Contract Testing
+
+Frontend and backend contracts ensure API consistency:
+- **Frontend**: `contracts/frontend-gateway-route-contract.test.mjs` — scans `.tsx` files for API calls, validates they match gateway route patterns
+- **Backend**: `LearningEndpointContractTest.java` — validates controller paths match `application.yml`
+- **CI**: GitHub Actions runs contract tests on PRs touching frontend or gateway config
 
 ## Environment Setup
 
-1. **Prerequisites**:
-   - Docker & Docker Compose
-   - Node.js 18+
-   - Java 21
-   - Maven 3.9+
-
-2. **Environment Variables**:
-   - Copy `.env.local` to `.env`
-   - Configure `LLAMA_API_KEY` for AI features
-   - Set database passwords and JWT secrets
-
-## Key URLs for Local Development
-
-- Frontend: http://localhost:3000
-- API Gateway: http://localhost:8080
-- Eureka Dashboard: http://localhost:8761
-- Individual Services: http://localhost:8081-8088
-
-## Health Checks
+Prerequisites: Docker + Docker Compose, Node.js 18+, Java 21, Maven 3.9+.
 
 ```bash
-# Check all services
-./run-local.sh status
-
-# Manual health checks
-curl http://localhost:8081/api/actuator/health  # User Service
-curl http://localhost:8082/api/actuator/health  # Course Service
-curl http://localhost:8085/api/actuator/health  # AI Service
+cp .env.example .env   # Configure LLAMA_API_KEY, DB passwords, JWT_SECRET
 ```
+
+Key env vars: `LLAMA_API_KEY` (Groq), `JWT_SECRET`, `POSTGRES_PASSWORD`, `VITE_API_URL` (default `/api`), `VITE_API_TARGET` (Vite proxy target, default `http://localhost:8080`).
+
+## Local URLs
+
+| Service | URL |
+|---------|-----|
+| Frontend (Vite dev) | http://localhost:5173 |
+| Frontend (Docker) | http://localhost:3000 |
+| API Gateway | http://localhost:8080 |
+| Eureka Dashboard | http://localhost:8761 |
+| User Service | http://localhost:8081 |
+| Learning Service | http://localhost:8089 |
+| AI Service | http://localhost:8085 |
+| Analytics Service | http://localhost:8088 |

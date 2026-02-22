@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.util.List;
 import java.util.UUID;
 
-@FeignClient(name = "lms-learning-service", path = "/api/gradebook", fallback = GradebookServiceFallback.class)
+@FeignClient(name = "lms-learning-service", contextId = "gradebook-service-client", path = "/api/gradebook", fallback = GradebookServiceFallback.class)
 public interface GradebookServiceClient {
 
     @GetMapping("/grades")

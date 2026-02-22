@@ -1,5 +1,6 @@
 package com.university.lms.gradebook.service;
 
+import com.university.lms.course.repository.CourseMemberRepository;
 import com.university.lms.gradebook.domain.CourseGradeSummary;
 import com.university.lms.gradebook.domain.GradebookEntry;
 import com.university.lms.gradebook.repository.CourseGradeSummaryRepository;
@@ -12,14 +13,35 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class GradebookSummaryService {
 
+    private static final String STUDENT_ROLE = "STUDENT";
+
     private final CourseGradeSummaryRepository summaryRepository;
     private final GradebookEntryRepository entryRepository;
+    private final CourseMemberRepository courseMemberRepository;
+
+    @Transactional
+    public int recalculateCourseGrades(UUID courseId) {
+        List<UUID> activeStudentIds = courseMemberRepository
+                .findByCourseIdAndRoleInCourse(courseId, STUDENT_ROLE)
+                .stream()
+                .filter(member -> member.isActive())
+                .map(member -> member.getUserId())
+                .filter(Objects::nonNull)
+                .toList();
+
+        for (UUID studentId : activeStudentIds) {
+            recalculateCourseGrade(courseId, studentId);
+        }
+
+        return activeStudentIds.size();
+    }
 
     @Transactional
     public void recalculateCourseGrade(UUID courseId, UUID studentId) {
@@ -83,4 +105,3 @@ public class GradebookSummaryService {
         return "F";
     }
 }
-

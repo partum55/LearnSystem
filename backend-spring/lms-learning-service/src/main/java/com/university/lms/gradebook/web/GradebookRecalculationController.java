@@ -1,15 +1,12 @@
 package com.university.lms.gradebook.web;
 
-import com.university.lms.gradebook.dto.CourseGradeSummaryDto;
-import com.university.lms.gradebook.mapper.CourseGradeSummaryMapper;
 import com.university.lms.gradebook.service.GradebookSummaryService;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.UUID;
 
 /**
  * REST controller for grade recalculation operations.
@@ -36,8 +33,8 @@ public class GradebookRecalculationController {
     @PreAuthorize("hasAnyRole('TEACHER', 'SUPERADMIN')")
     public ResponseEntity<String> recalculateCourseGrades(@PathVariable UUID courseId) {
         log.info("Recalculating all grades for course: {}", courseId);
-        // TODO: implement bulk recalculation by iterating enrolled students from internal repositories.
-        // For now, return success
-        return ResponseEntity.ok("Course grades recalculation initiated");
+        int recalculatedStudents = summaryService.recalculateCourseGrades(courseId);
+        return ResponseEntity.ok(
+                "Course grades recalculated for " + recalculatedStudents + " active students");
     }
 }

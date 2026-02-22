@@ -24,5 +24,7 @@ public interface DeadlineRepository extends JpaRepository<Deadline, Long> {
     List<Deadline> findByStudentGroupIdAndDate(Long studentGroupId, java.time.LocalDate date);
 
     List<Deadline> findByStudentGroupIdAndType(Long studentGroupId, DeadlineType type);
-}
 
+    @Query("select distinct d.studentGroupId from Deadline d")
+    List<Long> findDistinctStudentGroupIds();
+}

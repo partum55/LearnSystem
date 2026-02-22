@@ -2,11 +2,15 @@ package com.university.lms.submission.service;
 
 import com.university.lms.common.exception.ResourceNotFoundException;
 import com.university.lms.common.exception.ValidationException;
-import com.university.lms.course.assessment.repository.AssignmentRepository;
 import com.university.lms.submission.domain.Submission;
 import com.university.lms.submission.domain.SubmissionComment;
 import com.university.lms.submission.domain.SubmissionFile;
-import com.university.lms.submission.dto.*;
+import com.university.lms.submission.dto.AddCommentRequest;
+import com.university.lms.submission.dto.CreateSubmissionRequest;
+import com.university.lms.submission.dto.GradeSubmissionRequest;
+import com.university.lms.submission.dto.SpeedGraderResponse;
+import com.university.lms.submission.dto.SubmissionResponse;
+import com.university.lms.submission.dto.SubmitSubmissionRequest;
 import com.university.lms.submission.repository.SubmissionCommentRepository;
 import com.university.lms.submission.repository.SubmissionFileRepository;
 import com.university.lms.submission.repository.SubmissionRepository;
@@ -22,9 +26,11 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
-import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -39,56 +45,45 @@ public class SubmissionService {
     private final SubmissionFileRepository submissionFileRepository;
     private final SubmissionCommentRepository submissionCommentRepository;
     private final SubmissionFileStorageService fileStorageService;
-    private final AssignmentRepository assignmentRepository;
+    private final SubmissionAccessService submissionAccessService;
+    private final SubmissionLateStatusService submissionLateStatusService;
+    private final SubmissionMapper submissionMapper;
 
     @Transactional(readOnly = true)
     public List<SubmissionResponse> getSubmissionsForAssignment(UUID assignmentId, UUID requesterId, String requesterRole) {
-        List<Submission> submissions = isStaff(requesterRole)
+        List<Submission> submissions = submissionAccessService.isStaff(requesterRole)
                 ? submissionRepository.findByAssignmentIdOrderByCreatedAtAsc(assignmentId)
                 : submissionRepository.findByAssignmentIdAndUserIdOrderByCreatedAtAsc(assignmentId, requesterId);
 
-        return submissions.stream().map(this::toResponse).collect(Collectors.toList());
+        return submissions.stream().map(submissionMapper::toResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public SubmissionResponse getMySubmission(UUID assignmentId, UUID userId) {
         return submissionRepository.findByAssignmentIdAndUserId(assignmentId, userId)
-                .map(this::toResponse)
+                .map(submissionMapper::toResponse)
                 .orElse(null);
     }
 
     @Transactional(readOnly = true)
     public SubmissionResponse getSubmission(UUID submissionId, UUID requesterId, String requesterRole) {
         Submission submission = findSubmission(submissionId);
-        assertCanAccess(submission, requesterId, requesterRole);
-        return toResponse(submission);
+        submissionAccessService.assertCanAccess(submission, requesterId, requesterRole);
+        return submissionMapper.toResponse(submission);
     }
 
     @Transactional
     public SubmissionResponse createOrGetDraft(CreateSubmissionRequest request, UUID userId, String userEmail) {
-        Submission submission = submissionRepository.findByAssignmentIdAndUserId(request.getAssignmentId(), userId)
-                .orElseGet(() -> Submission.builder()
-                        .assignmentId(request.getAssignmentId())
-                        .userId(userId)
-                        .studentEmail(userEmail)
-                        .studentName(deriveNameFromEmail(userEmail))
-                        .status("DRAFT")
-                        .build());
+        Submission submission = findOrCreateSubmission(request.getAssignmentId(), userId, userEmail);
 
         if (StringUtils.hasText(request.getContent())) {
             submission.setTextAnswer(request.getContent());
         }
 
-        if (!StringUtils.hasText(submission.getStudentEmail()) && StringUtils.hasText(userEmail)) {
-            submission.setStudentEmail(userEmail);
-        }
-
-        if (!StringUtils.hasText(submission.getStudentName()) && StringUtils.hasText(userEmail)) {
-            submission.setStudentName(deriveNameFromEmail(userEmail));
-        }
+        ensureStudentIdentity(submission, userEmail);
 
         Submission saved = submissionRepository.save(submission);
-        return toResponse(saved);
+        return submissionMapper.toResponse(saved);
     }
 
     @Transactional
@@ -99,27 +94,19 @@ public class SubmissionService {
             UUID userId,
             String userEmail) {
 
-        Submission submission = submissionRepository.findByAssignmentIdAndUserId(assignmentId, userId)
-                .orElseGet(() -> Submission.builder()
-                        .assignmentId(assignmentId)
-                        .userId(userId)
-                        .studentEmail(userEmail)
-                        .studentName(deriveNameFromEmail(userEmail))
-                        .status("DRAFT")
-                        .build());
+        Submission submission = findOrCreateSubmission(assignmentId, userId, userEmail);
 
         if (StringUtils.hasText(content)) {
             submission.setTextAnswer(content);
         }
 
-        submission.setStatus("SUBMITTED");
-        submission.setSubmittedAt(LocalDateTime.now());
-        applyLateFlags(submission, submission.getSubmittedAt());
+        ensureStudentIdentity(submission, userEmail);
+        markSubmitted(submission);
 
         Submission saved = submissionRepository.save(submission);
         addFilesInternal(saved, files);
 
-        return toResponse(findSubmission(saved.getId()));
+        return submissionMapper.toResponse(findSubmission(saved.getId()));
     }
 
     @Transactional
@@ -130,10 +117,10 @@ public class SubmissionService {
             String requesterRole) {
 
         Submission submission = findSubmission(submissionId);
-        assertOwnerOrStaff(submission, requesterId, requesterRole);
+        submissionAccessService.assertOwnerOrStaff(submission, requesterId, requesterRole);
 
         addFilesInternal(submission, files);
-        return toResponse(findSubmission(submissionId));
+        return submissionMapper.toResponse(findSubmission(submissionId));
     }
 
     @Transactional
@@ -144,8 +131,144 @@ public class SubmissionService {
             String requesterRole) {
 
         Submission submission = findSubmission(submissionId);
-        assertOwnerOrStaff(submission, requesterId, requesterRole);
+        submissionAccessService.assertOwnerOrStaff(submission, requesterId, requesterRole);
 
+        applySubmissionPayload(submission, request);
+        markSubmitted(submission);
+
+        submissionRepository.save(submission);
+        return submissionMapper.toResponse(findSubmission(submissionId));
+    }
+
+    @Transactional
+    public SubmissionResponse grade(
+            UUID submissionId,
+            GradeSubmissionRequest request,
+            UUID graderId,
+            String requesterRole) {
+
+        submissionAccessService.assertStaff(requesterRole, "Only teaching staff can grade submissions");
+
+        Submission submission = findSubmission(submissionId);
+        BigDecimal grade = request.resolvedGrade();
+
+        if (grade == null) {
+            throw new ValidationException("grade", "Grade value is required");
+        }
+
+        submission.setGrade(grade);
+        submission.setFeedback(request.getFeedback());
+        if (request.getRubricEvaluation() != null) {
+            submission.setRubricEvaluation(request.getRubricEvaluation());
+        }
+        submission.setStatus("GRADED");
+        submission.setGradedAt(LocalDateTime.now());
+        submission.setGraderId(graderId);
+
+        submissionRepository.save(submission);
+        return submissionMapper.toResponse(findSubmission(submissionId));
+    }
+
+    @Transactional
+    public SubmissionResponse addComment(
+            UUID submissionId,
+            AddCommentRequest request,
+            UUID authorId,
+            String authorEmail,
+            String requesterRole) {
+
+        Submission submission = findSubmission(submissionId);
+        submissionAccessService.assertOwnerOrStaff(submission, authorId, requesterRole);
+
+        SubmissionComment comment = SubmissionComment.builder()
+                .submission(submission)
+                .authorId(authorId)
+                .authorEmail(authorEmail)
+                .authorName(submissionMapper.deriveNameFromEmail(authorEmail))
+                .comment(request.getComment())
+                .build();
+
+        submissionCommentRepository.save(comment);
+        return submissionMapper.toResponse(findSubmission(submissionId));
+    }
+
+    @Transactional(readOnly = true)
+    public SpeedGraderResponse getSpeedGraderQueue(UUID assignmentId, String requesterRole) {
+        submissionAccessService.assertStaff(requesterRole, "Only teaching staff can access speedgrader queue");
+
+        List<Submission> all = submissionRepository.findByAssignmentIdOrderByCreatedAtAsc(assignmentId);
+
+        List<SubmissionResponse> ungraded = all.stream()
+                .filter(s -> !"GRADED".equalsIgnoreCase(s.getStatus()))
+                .map(submissionMapper::toResponse)
+                .collect(Collectors.toList());
+
+        List<SubmissionResponse> recentlyGraded = all.stream()
+                .filter(s -> "GRADED".equalsIgnoreCase(s.getStatus()))
+                .sorted(Comparator.comparing(Submission::getGradedAt,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .map(submissionMapper::toResponse)
+                .collect(Collectors.toList());
+
+        return SpeedGraderResponse.builder()
+                .ungraded(ungraded)
+                .recentlyGraded(recentlyGraded)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public DownloadedFile loadFile(
+            UUID submissionId,
+            UUID fileId,
+            UUID requesterId,
+            String requesterRole) {
+
+        Submission submission = findSubmission(submissionId);
+        submissionAccessService.assertCanAccess(submission, requesterId, requesterRole);
+
+        SubmissionFile file = submissionFileRepository.findByIdAndSubmission_Id(fileId, submissionId)
+                .orElseThrow(() -> new ResourceNotFoundException("SubmissionFile", "id", fileId));
+
+        Resource resource = new PathResource(file.getStoragePath());
+        if (!resource.exists() || !resource.isReadable()) {
+            throw new ResourceNotFoundException("Submission file content not found");
+        }
+
+        MediaType mediaType = MediaTypeFactory.getMediaType(file.getFilename())
+                .orElse(MediaType.APPLICATION_OCTET_STREAM);
+
+        return new DownloadedFile(resource, mediaType, file.getFilename());
+    }
+
+    private Submission findOrCreateSubmission(UUID assignmentId, UUID userId, String userEmail) {
+        return submissionRepository.findByAssignmentIdAndUserId(assignmentId, userId)
+                .orElseGet(() -> Submission.builder()
+                        .assignmentId(assignmentId)
+                        .userId(userId)
+                        .studentEmail(userEmail)
+                        .studentName(submissionMapper.deriveNameFromEmail(userEmail))
+                        .status("DRAFT")
+                        .build());
+    }
+
+    private void ensureStudentIdentity(Submission submission, String userEmail) {
+        if (!StringUtils.hasText(submission.getStudentEmail()) && StringUtils.hasText(userEmail)) {
+            submission.setStudentEmail(userEmail);
+        }
+
+        if (!StringUtils.hasText(submission.getStudentName()) && StringUtils.hasText(userEmail)) {
+            submission.setStudentName(submissionMapper.deriveNameFromEmail(userEmail));
+        }
+    }
+
+    private void markSubmitted(Submission submission) {
+        LocalDateTime submittedAt = LocalDateTime.now();
+        submission.setStatus("SUBMITTED");
+        submission.setSubmittedAt(submittedAt);
+        submissionLateStatusService.applyLateFlags(submission, submittedAt);
+    }
+
+    private void applySubmissionPayload(Submission submission, SubmitSubmissionRequest request) {
         String submissionType = normalize(request.getType(), "UNKNOWN");
 
         switch (submissionType) {
@@ -178,117 +301,6 @@ public class SubmissionService {
                 }
             }
         }
-
-        submission.setStatus("SUBMITTED");
-        submission.setSubmittedAt(LocalDateTime.now());
-        applyLateFlags(submission, submission.getSubmittedAt());
-
-        submissionRepository.save(submission);
-        return toResponse(findSubmission(submissionId));
-    }
-
-    @Transactional
-    public SubmissionResponse grade(
-            UUID submissionId,
-            GradeSubmissionRequest request,
-            UUID graderId,
-            String requesterRole) {
-
-        if (!isStaff(requesterRole)) {
-            throw new ValidationException("Only teaching staff can grade submissions");
-        }
-
-        Submission submission = findSubmission(submissionId);
-        BigDecimal grade = request.resolvedGrade();
-
-        if (grade == null) {
-            throw new ValidationException("grade", "Grade value is required");
-        }
-
-        submission.setGrade(grade);
-        submission.setFeedback(request.getFeedback());
-        if (request.getRubricEvaluation() != null) {
-            submission.setRubricEvaluation(request.getRubricEvaluation());
-        }
-        submission.setStatus("GRADED");
-        submission.setGradedAt(LocalDateTime.now());
-        submission.setGraderId(graderId);
-
-        submissionRepository.save(submission);
-        return toResponse(findSubmission(submissionId));
-    }
-
-    @Transactional
-    public SubmissionResponse addComment(
-            UUID submissionId,
-            AddCommentRequest request,
-            UUID authorId,
-            String authorEmail,
-            String requesterRole) {
-
-        Submission submission = findSubmission(submissionId);
-        assertOwnerOrStaff(submission, authorId, requesterRole);
-
-        SubmissionComment comment = SubmissionComment.builder()
-                .submission(submission)
-                .authorId(authorId)
-                .authorEmail(authorEmail)
-                .authorName(deriveNameFromEmail(authorEmail))
-                .comment(request.getComment())
-                .build();
-
-        submissionCommentRepository.save(comment);
-        return toResponse(findSubmission(submissionId));
-    }
-
-    @Transactional(readOnly = true)
-    public SpeedGraderResponse getSpeedGraderQueue(UUID assignmentId, String requesterRole) {
-        if (!isStaff(requesterRole)) {
-            throw new ValidationException("Only teaching staff can access speedgrader queue");
-        }
-
-        List<Submission> all = submissionRepository.findByAssignmentIdOrderByCreatedAtAsc(assignmentId);
-
-        List<SubmissionResponse> ungraded = all.stream()
-                .filter(s -> !"GRADED".equalsIgnoreCase(s.getStatus()))
-                .map(this::toResponse)
-                .collect(Collectors.toList());
-
-        List<SubmissionResponse> recentlyGraded = all.stream()
-                .filter(s -> "GRADED".equalsIgnoreCase(s.getStatus()))
-                .sorted(Comparator.comparing(Submission::getGradedAt,
-                        Comparator.nullsLast(Comparator.reverseOrder())))
-                .map(this::toResponse)
-                .collect(Collectors.toList());
-
-        return SpeedGraderResponse.builder()
-                .ungraded(ungraded)
-                .recentlyGraded(recentlyGraded)
-                .build();
-    }
-
-    @Transactional(readOnly = true)
-    public DownloadedFile loadFile(
-            UUID submissionId,
-            UUID fileId,
-            UUID requesterId,
-            String requesterRole) {
-
-        Submission submission = findSubmission(submissionId);
-        assertCanAccess(submission, requesterId, requesterRole);
-
-        SubmissionFile file = submissionFileRepository.findByIdAndSubmission_Id(fileId, submissionId)
-                .orElseThrow(() -> new ResourceNotFoundException("SubmissionFile", "id", fileId));
-
-        Resource resource = new PathResource(file.getStoragePath());
-        if (!resource.exists() || !resource.isReadable()) {
-            throw new ResourceNotFoundException("Submission file content not found");
-        }
-
-        MediaType mediaType = MediaTypeFactory.getMediaType(file.getFilename())
-                .orElse(MediaType.APPLICATION_OCTET_STREAM);
-
-        return new DownloadedFile(resource, mediaType, file.getFilename());
     }
 
     private void addFilesInternal(Submission submission, List<MultipartFile> files) {
@@ -319,122 +331,6 @@ public class SubmissionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Submission", "id", submissionId));
     }
 
-    private void assertCanAccess(Submission submission, UUID requesterId, String requesterRole) {
-        if (requesterId == null && !StringUtils.hasText(requesterRole)) {
-            // Internal service-to-service read where no end-user context is propagated.
-            return;
-        }
-
-        if (isStaff(requesterRole)) {
-            return;
-        }
-
-        if (requesterId == null || !submission.getUserId().equals(requesterId)) {
-            throw new ValidationException("You do not have access to this submission");
-        }
-    }
-
-    private void assertOwnerOrStaff(Submission submission, UUID requesterId, String requesterRole) {
-        if (isStaff(requesterRole)) {
-            return;
-        }
-
-        if (!submission.getUserId().equals(requesterId)) {
-            throw new ValidationException("Only submission owner or teaching staff can perform this action");
-        }
-    }
-
-    private boolean isStaff(String role) {
-        return "TEACHER".equalsIgnoreCase(role)
-                || "TA".equalsIgnoreCase(role)
-                || "SUPERADMIN".equalsIgnoreCase(role);
-    }
-
-    private void applyLateFlags(Submission submission, LocalDateTime submittedAt) {
-        try {
-            LocalDateTime dueDate = assignmentRepository.findById(submission.getAssignmentId())
-                    .map(assignment -> assignment.getDueDate())
-                    .orElse(null);
-
-            if (dueDate == null || submittedAt == null) {
-                submission.setIsLate(false);
-                submission.setDaysLate(0);
-                return;
-            }
-
-            if (submittedAt.isAfter(dueDate)) {
-                long minutesLate = Duration.between(dueDate, submittedAt).toMinutes();
-                int daysLate = (int) Math.max(1, Math.ceil(minutesLate / 1440.0));
-                submission.setIsLate(true);
-                submission.setDaysLate(daysLate);
-            } else {
-                submission.setIsLate(false);
-                submission.setDaysLate(0);
-            }
-        } catch (Exception ex) {
-            log.debug("Unable to resolve assignment due date for late calculation: {}", ex.getMessage());
-            submission.setIsLate(false);
-            submission.setDaysLate(0);
-        }
-    }
-
-    private SubmissionResponse toResponse(Submission submission) {
-        List<SubmissionFileResponse> files = Optional.ofNullable(submission.getFiles())
-                .orElseGet(List::of)
-                .stream()
-                .sorted(Comparator.comparing(SubmissionFile::getUploadedAt, Comparator.nullsLast(Comparator.naturalOrder())))
-                .map(file -> SubmissionFileResponse.builder()
-                        .id(file.getId())
-                        .filename(file.getFilename())
-                        .fileUrl(file.getFileUrl())
-                        .fileSize(file.getFileSize())
-                        .uploadedAt(file.getUploadedAt())
-                        .build())
-                .collect(Collectors.toList());
-
-        List<SubmissionCommentResponse> comments = Optional.ofNullable(submission.getComments())
-                .orElseGet(List::of)
-                .stream()
-                .sorted(Comparator.comparing(SubmissionComment::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
-                .map(comment -> SubmissionCommentResponse.builder()
-                        .id(comment.getId())
-                        .authorId(comment.getAuthorId())
-                        .authorName(comment.getAuthorName())
-                        .authorEmail(comment.getAuthorEmail())
-                        .comment(comment.getComment())
-                        .createdAt(comment.getCreatedAt())
-                        .build())
-                .collect(Collectors.toList());
-
-        String studentEmail = firstNonBlank(submission.getStudentEmail());
-        String studentName = firstNonBlank(submission.getStudentName(), deriveNameFromEmail(studentEmail));
-
-        return SubmissionResponse.builder()
-                .id(submission.getId())
-                .assignmentId(submission.getAssignmentId())
-                .userId(submission.getUserId())
-                .user(submission.getUserId() != null ? submission.getUserId().toString() : null)
-                .studentName(studentName)
-                .studentEmail(studentEmail)
-                .status(submission.getStatus())
-                .textAnswer(submission.getTextAnswer())
-                .submissionUrl(submission.getSubmissionUrl())
-                .programmingLanguage(submission.getProgrammingLanguage())
-                .grade(submission.getGrade())
-                .feedback(submission.getFeedback())
-                .rubricEvaluation(submission.getRubricEvaluation())
-                .isLate(submission.getIsLate())
-                .daysLate(submission.getDaysLate())
-                .submittedAt(submission.getSubmittedAt())
-                .gradedAt(submission.getGradedAt())
-                .createdAt(submission.getCreatedAt())
-                .updatedAt(submission.getUpdatedAt())
-                .files(files)
-                .uploadedFiles(files)
-                .comments(comments)
-                .build();
-    }
-
     private String normalize(String value, String fallback) {
         if (!StringUtils.hasText(value)) {
             return fallback;
@@ -449,23 +345,6 @@ public class SubmissionService {
             }
         }
         return null;
-    }
-
-    private String deriveNameFromEmail(String email) {
-        if (!StringUtils.hasText(email)) {
-            return "Student";
-        }
-
-        String localPart = email.split("@")[0];
-        if (!StringUtils.hasText(localPart)) {
-            return "Student";
-        }
-
-        String[] tokens = localPart.replace('.', ' ').replace('_', ' ').split("\\s+");
-        return Arrays.stream(tokens)
-                .filter(StringUtils::hasText)
-                .map(token -> Character.toUpperCase(token.charAt(0)) + token.substring(1))
-                .collect(Collectors.joining(" "));
     }
 
     public record DownloadedFile(Resource resource, MediaType mediaType, String fileName) {

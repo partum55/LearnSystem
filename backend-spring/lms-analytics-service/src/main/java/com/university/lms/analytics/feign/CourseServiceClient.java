@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import java.util.List;
 import java.util.UUID;
 
-@FeignClient(name = "lms-learning-service", path = "/api/courses", fallback = CourseServiceFallback.class)
+@FeignClient(name = "lms-learning-service", contextId = "course-service-client", path = "/api/courses", fallback = CourseServiceFallback.class)
 public interface CourseServiceClient {
 
     @GetMapping("/{courseId}/students")
