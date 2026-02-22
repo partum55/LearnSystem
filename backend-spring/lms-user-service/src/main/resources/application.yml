@@ -78,7 +78,7 @@ spring:
 
 # JWT Configuration
 jwt:
-  secret: ${JWT_SECRET:dev-secret-key-change-in-production-must-be-at-least-256-bits-long-for-hs256}
+  secret: ${JWT_SECRET:CHANGE-ME-set-a-secure-jwt-secret-in-env-vars}
   expiration: ${JWT_EXPIRATION:86400000} # 24 hours
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:2592000000} # 30 days
 
@@ -102,7 +102,7 @@ management:
         include: health,info,prometheus,metrics
   endpoint:
     health:
-      show-details: always
+      show-details: when-authorized
   health:
     mail:
       enabled: false

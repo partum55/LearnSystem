@@ -34,7 +34,7 @@ spring:
 
 # JWT Configuration (less secure defaults for development)
 jwt:
-  secret: dev-secret-key-for-testing-only-not-for-production-use-at-least-256-bits
+  secret: CHANGE-ME-set-a-secure-jwt-secret-in-env-vars
   expiration: 86400000 # 24 hours
   refresh-expiration: 2592000000 # 30 days
 

@@ -11,8 +11,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-lms_db}
       POSTGRES_USER: ${POSTGRES_USER:-lms_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lms_password}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -29,8 +27,6 @@ services:
     container_name: lms-redis
     restart: unless-stopped
     command: redis-server --appendonly yes
-    ports:
-      - "6380:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -54,8 +50,6 @@ services:
         SERVICE_NAME: lms-eureka-server
     container_name: lms-eureka-server
     restart: unless-stopped
-    ports:
-      - "8761:8761"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - JAVA_OPTS=-Xmx512m -Xms256m
@@ -80,8 +74,6 @@ services:
         SERVICE_NAME: lms-user-service
     container_name: lms-user-service
     restart: unless-stopped
-    ports:
-      - "8081:8081"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SERVER_PORT=8081
@@ -90,7 +82,7 @@ services:
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-lms_password}
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
-      - JWT_SECRET=${JWT_SECRET:-dev-secret-key-change-in-production-must-be-at-least-256-bits-long-for-hs256}
+      - JWT_SECRET=${JWT_SECRET:-CHANGE-ME-set-a-secure-jwt-secret-in-env-vars}
       - JWT_EXPIRATION=${JWT_EXPIRATION:-86400000}
       - EUREKA_URI=http://eureka-server:8761/eureka
       - JAVA_OPTS=-Xmx512m -Xms256m
@@ -118,8 +110,6 @@ services:
         SERVICE_NAME: lms-learning-service
     container_name: lms-learning-service
     restart: unless-stopped
-    ports:
-      - "8089:8089"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SERVER_PORT=8089
@@ -128,7 +118,7 @@ services:
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-lms_password}
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
-      - JWT_SECRET=${JWT_SECRET:-dev-secret-key-change-in-production-must-be-at-least-256-bits-long-for-hs256}
+      - JWT_SECRET=${JWT_SECRET:-CHANGE-ME-set-a-secure-jwt-secret-in-env-vars}
       - EUREKA_URI=http://eureka-server:8761/eureka
       - SUBMISSION_STORAGE_PATH=/tmp/lms-submissions
       - JAVA_OPTS=-Xmx768m -Xms384m
@@ -160,8 +150,6 @@ services:
         SERVICE_NAME: lms-ai-service
     container_name: lms-ai-service
     restart: unless-stopped
-    ports:
-      - "8085:8085"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SERVER_PORT=8085
@@ -204,8 +192,6 @@ services:
         SERVICE_NAME: lms-analytics-service
     container_name: lms-analytics-service
     restart: unless-stopped
-    ports:
-      - "8088:8088"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SERVER_PORT=8088
@@ -214,7 +200,7 @@ services:
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-lms_password}
       - SPRING_FLYWAY_ENABLED=false
       - SPRING_DATA_REDIS_HOST=redis
-      - JWT_SECRET=${JWT_SECRET:-dev-secret-key-change-in-production-must-be-at-least-256-bits-long-for-hs256}
+      - JWT_SECRET=${JWT_SECRET:-CHANGE-ME-set-a-secure-jwt-secret-in-env-vars}
       - EUREKA_URI=http://eureka-server:8761/eureka
       - JAVA_OPTS=-Xmx512m -Xms256m
     depends_on:

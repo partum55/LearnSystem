@@ -1,3 +1,4 @@
+# Supabase profile for ai-service
 server:
   port: 8085
   servlet:
@@ -9,9 +10,9 @@ spring:
 
   # Database Configuration
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/lms_db}
-    username: ${DB_USERNAME:lms_user}
-    password: ${DB_PASSWORD:lms_password}
+    url: ${DB_URL:jdbc:postgresql://aws-0-us-east-1.pooler.supabase.com:6543/postgres}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:your-supabase-password}
     driver-class-name: org.postgresql.Driver
 
   # JPA Configuration
@@ -80,7 +81,7 @@ management:
         include: health,info,prometheus,metrics,circuitbreakers
   endpoint:
     health:
-      show-details: when-authorized
+      show-details: always
   metrics:
     tags:
       application: ${spring.application.name}
@@ -144,15 +145,6 @@ kafka:
     ai-content-generated: lms.ai.content.generated
     ai-generation-failed: lms.ai.generation.failed
 
-# OpenAI Fallback Provider - DISABLED (only Groq is used)
-# To enable OpenAI as fallback:
-# 1. Uncomment @Component in OpenAIProvider.java
-# 2. Set OPENAI_API_KEY environment variable
-# openai:
-#   api:
-#     key: ${OPENAI_API_KEY:}
-#   model: ${OPENAI_MODEL:gpt-4o-mini}
-
 # AI Cache Configuration
 ai:
   cache:
@@ -164,4 +156,3 @@ ai:
     completion-per-million: ${AI_PRICING_COMPLETION:0.10}
   usage:
     monthly-limit-tokens: ${AI_MONTHLY_TOKEN_LIMIT:1000000}
-

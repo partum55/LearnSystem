@@ -10,6 +10,7 @@ import { createAuthoringApi } from '../api/authoringApi';
 import { useAuthoringValidation } from '../hooks/useAuthoringValidation';
 import { useTaskDraft } from '../hooks/useTaskDraft';
 import { TaskDraft, TaskType, ValidationResult } from '../types';
+import DOMPurify from 'dompurify';
 
 interface TaskEditorProps {
   taskType: TaskType;
@@ -206,7 +207,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
         <div
           className="prose max-w-none"
           style={{ color: 'var(--text-secondary)' }}
-          dangerouslySetInnerHTML={{ __html: previewHtml || '<p style="color: var(--text-muted)">Run preview to render content.</p>' }}
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewHtml || '<p style="color: var(--text-muted)">Run preview to render content.</p>') }}
         />
       </section>
     </div>

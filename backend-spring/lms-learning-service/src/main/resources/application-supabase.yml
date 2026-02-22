@@ -1,11 +1,12 @@
+# Supabase profile for learning-service
 spring:
   application:
     name: lms-learning-service
 
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/lms_dev}
+    url: ${DATABASE_URL:jdbc:postgresql://aws-0-us-east-1.pooler.supabase.com:6543/postgres}
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    password: ${DB_PASSWORD:your-supabase-password}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10

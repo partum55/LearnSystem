@@ -36,8 +36,7 @@ public class SecurityConfig {
             "/auth/refresh",
             "/auth/verify-email",
             "/auth/forgot-password",
-            "/auth/reset-password",
-            "/h2-console/**"
+            "/auth/reset-password"
     };
 
     private static final String[] PUBLIC_STATIC_ENDPOINTS = {
@@ -50,17 +49,7 @@ public class SecurityConfig {
             "/*.css",
             "/*.png",
             "/*.jpg",
-            "/*.svg",
-            "/courses",
-            "/courses/**",
-            "/notifications",
-            "/notifications/**",
-            "/assignments/**",
-            "/modules/**",
-            "/quizzes/**",
-            "/dashboard/**",
-            "/profile/**",
-            "/settings/**"
+            "/*.svg"
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;

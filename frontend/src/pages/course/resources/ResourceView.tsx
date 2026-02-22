@@ -9,6 +9,7 @@ import { Loading } from '../../../components';
 import { resourcesApi } from '../../../api/courses';
 import { Resource } from '../../../types';
 import { ArrowLeftIcon, FolderIcon } from '@heroicons/react/24/outline';
+import DOMPurify from 'dompurify';
 
 const ResourceView: React.FC = () => {
     const { courseId, moduleId, resourceId } = useParams<{ courseId: string; moduleId: string; resourceId: string }>();
@@ -58,7 +59,7 @@ const ResourceView: React.FC = () => {
                         className="max-w-none p-8 rounded-lg"
                         style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}
                     >
-                        <div dangerouslySetInnerHTML={{ __html: resource.text_content || '' }} />
+                        <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(resource.text_content || '') }} />
                     </div>
                 );
             case 'LINK':

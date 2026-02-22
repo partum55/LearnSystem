@@ -5,7 +5,7 @@ import { useAuthStore } from '../store/authStore';
 import { Input } from '../components';
 import { Button } from '../components';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
-import { devLogin, type DevLoginRole } from '../utils/devSeed';
+
 
 const REQUIRE_UCU_EMAIL =
   (import.meta.env.VITE_REQUIRE_UCU_EMAIL || import.meta.env.REACT_APP_REQUIRE_UCU_EMAIL) === 'true';
@@ -19,44 +19,13 @@ export const Login: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, error, isLoading, isAuthenticated, setUser } = useAuthStore();
+  const { login, error, isLoading, isAuthenticated } = useAuthStore();
 
   const locationState = location.state as LocationState | null;
   const [email, setEmail] = useState(() => locationState?.email || '');
   const [password, setPassword] = useState('');
   const [localError, setLocalError] = useState('');
   const [successMessage, setSuccessMessage] = useState(() => locationState?.message || '');
-
-  const [devLoading, setDevLoading] = useState<DevLoginRole | null>(null);
-  const [devError, setDevError] = useState('');
-
-  const handleDevLogin = async (role: DevLoginRole) => {
-    setDevLoading(role);
-    setDevError('');
-    try {
-      await devLogin(role);
-      // Re-fetch user from backend to populate auth store properly
-      await useAuthStore.getState().fetchCurrentUser();
-      navigate('/dashboard');
-    } catch (err) {
-      console.error('[dev-login] Failed:', err);
-      setDevError(`Dev login failed. Is the backend running?`);
-      // Fallback: set mock user so frontend still works
-      setUser({
-        id: `dev-${role.toLowerCase()}-id`,
-        email: role === 'TEACHER' ? 'teacher@test.com' : 'student@test.com',
-        display_name: role === 'TEACHER' ? 'Test Teacher' : 'Test Student',
-        role: role as 'TEACHER' | 'STUDENT',
-        locale: 'en',
-        theme: 'light',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      });
-      navigate('/dashboard');
-    } finally {
-      setDevLoading(null);
-    }
-  };
 
   useEffect(() => {
     if (isAuthenticated) navigate('/dashboard', { replace: true });
@@ -199,58 +168,6 @@ export const Login: React.FC = () => {
           </Link>
         </p>
 
-        {/* Dev quick-login */}
-        {import.meta.env.DEV && (
-          <div className="mt-6 pt-4" style={{ borderTop: '1px solid var(--border-default)' }}>
-            <p className="text-xs text-center mb-3" style={{ color: 'var(--text-faint)' }}>
-              Development Quick Login
-            </p>
-            {devError && (
-              <p className="text-xs text-center mb-2" style={{ color: 'var(--fn-warning)' }}>
-                {devError}
-              </p>
-            )}
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => handleDevLogin('TEACHER')}
-                disabled={devLoading !== null}
-                className="flex-1 py-2 px-3 rounded-md text-xs font-medium transition-colors"
-                style={{
-                  background: 'var(--bg-elevated)',
-                  color: 'var(--text-secondary)',
-                  border: '1px solid var(--border-default)',
-                  opacity: devLoading !== null ? 0.6 : 1,
-                  cursor: devLoading !== null ? 'wait' : 'pointer',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-elevated)'; }}
-              >
-                {devLoading === 'TEACHER' ? 'Logging in...' : 'Login as Teacher'}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDevLogin('STUDENT')}
-                disabled={devLoading !== null}
-                className="flex-1 py-2 px-3 rounded-md text-xs font-medium transition-colors"
-                style={{
-                  background: 'var(--bg-elevated)',
-                  color: 'var(--text-secondary)',
-                  border: '1px solid var(--border-default)',
-                  opacity: devLoading !== null ? 0.6 : 1,
-                  cursor: devLoading !== null ? 'wait' : 'pointer',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-elevated)'; }}
-              >
-                {devLoading === 'STUDENT' ? 'Logging in...' : 'Login as Student'}
-              </button>
-            </div>
-            <p className="text-xs text-center mt-2" style={{ color: 'var(--text-faint)' }}>
-              Teacher login seeds test course, assignments & quiz
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );
