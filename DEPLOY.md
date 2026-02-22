@@ -9,18 +9,21 @@
 
 ## Choose Your Deployment Option
 
-| | Option A: All-in-One | Option B: Split (recommended) |
-|---|---|---|
-| **Frontend** | Docker/Nginx container on the Droplet | Vercel (free, global CDN) |
-| **Backend** | DigitalOcean Droplet | DigitalOcean Droplet |
-| **Database** | Supabase | Supabase |
-| **HTTPS** | Not included (add separately) | Required — free via DuckDNS + Let's Encrypt |
-| **Cost** | $24/mo minimum | $24/mo minimum |
-| **CI/CD for frontend** | Manual (`git pull` + rebuild) | Automatic (push to GitHub → Vercel redeploys) |
-| **Best for** | Quick demo, single-server simplicity | Production, faster frontend, auto-deploy |
+| | Option A: All-in-One | Option B: Split + Domain | Option C: Split + Vercel Proxy (recommended) |
+|---|---|---|---|
+| **Frontend** | Docker/Nginx on Droplet | Vercel (free CDN) | Vercel (free CDN) |
+| **Backend** | DigitalOcean Droplet | DigitalOcean Droplet | DigitalOcean Droplet |
+| **Database** | Supabase | Supabase | Supabase |
+| **HTTPS** | Not included | DuckDNS + Let's Encrypt | Handled by Vercel (no setup) |
+| **Domain needed** | No | Yes (free or paid) | No |
+| **CORS config** | Not needed | Required | Not needed |
+| **Cost** | $24/mo | $24/mo | $24/mo |
+| **CI/CD for frontend** | Manual rebuild | Auto (push → Vercel) | Auto (push → Vercel) |
+| **Best for** | Quick demo | Custom domain, full control | Simplest split, no domain |
 
-**Option A** deploys everything on one Droplet (follow Steps 1–13A).
-**Option B** puts the frontend on Vercel with auto-deploy, backend on DigitalOcean, DB on Supabase (follow Steps 1–7, then 8B–15B).
+**Option A** — everything on one Droplet (Steps 1–13A).
+**Option B** — Vercel + DigitalOcean + own domain with HTTPS (Steps 1–7, then 8B–15B).
+**Option C** — Vercel proxies API calls to DigitalOcean, no domain or HTTPS setup needed (Steps 1–7, then 8C–13C).
 
 **Architecture — Option A (All-in-One):**
 ```
@@ -45,7 +48,7 @@ DigitalOcean Droplet (Ubuntu 24.04)
    Supabase (PostgreSQL via Supavisor pooler)
 ```
 
-**Architecture — Option B (Split):**
+**Architecture — Option B (Split + Domain):**
 ```
 User Browser
     │
@@ -69,6 +72,33 @@ User Browser
                      Supabase (PostgreSQL)
 ```
 
+**Architecture — Option C (Split + Vercel Proxy, recommended):**
+```
+User Browser
+    │
+    └── ALL requests ──► Vercel  (your-app.vercel.app)
+                           │
+                    ┌──────┴──────┐
+                    │             │
+              Static files    /api/* rewrites
+              (React build)       │
+                           Vercel proxies to
+                           http://DROPLET_IP:8080
+                                  │
+                     DigitalOcean Droplet
+                     ┌─────────────────────────────┐
+                     │  API Gateway (:8080)         │
+                     │  User Service (:8081)        │
+                     │  Learning Service (:8089)    │
+                     │  AI Service (:8085)          │
+                     │  Analytics Service (:8088)   │
+                     │  Eureka (:8761) + Redis      │
+                     └─────────────────────────────┘
+                               │
+                     Supabase (PostgreSQL)
+```
+> **Why Option C is simplest:** The browser only ever talks to Vercel (HTTPS by default). Vercel's edge network proxies `/api/*` requests to your Droplet over HTTP server-side. No CORS issues (same origin), no SSL certificates to manage, no domain to configure.
+
 ---
 
 ## Shared Setup (both options)
@@ -79,8 +109,9 @@ User Browser
 - A Groq API key (free tier works)
 - An SSH client (Terminal on Mac/Linux, or PuTTY / Windows Terminal on Windows)
 - **(Option B only)** A Vercel account (free) and a domain name (free via [DuckDNS](https://www.duckdns.org/))
+- **(Option C only)** A Vercel account (free) — no domain needed
 
-**Estimated time:** ~30 minutes (Option A) · ~45 minutes (Option B)
+**Estimated time:** ~30 minutes (Option A) · ~45 minutes (Option B) · ~35 minutes (Option C)
 
 ---
 
@@ -879,6 +910,196 @@ docker compose --env-file .env.production restart user-service
 
 ---
 
+# Option C: Split Deployment — Vercel Proxy (no domain needed)
+
+> Simplest split deployment. Vercel serves the frontend **and** proxies `/api/*` requests to your Droplet. The browser only talks to Vercel (HTTPS), so there's no CORS, no SSL certs, and no domain to set up on the Droplet.
+
+> This section assumes you've completed **Steps 1–7** above.
+
+---
+
+## Step 8C: Create the Production Environment File
+
+```bash
+cd /opt/lms
+cp .env.production.example .env.production
+nano .env.production
+```
+
+Fill in the same values as Option A. You do **not** need `GATEWAY_CORS_ALLOWED_ORIGINS` — Vercel's proxy makes all API requests come from `localhost` on the Droplet:
+
+```env
+# ==========================================
+# SUPABASE DATABASE
+# ==========================================
+SUPABASE_DB_HOST=aws-0-us-east-1.pooler.supabase.com    # ← from Step 1
+SUPABASE_DB_PORT=6543
+SUPABASE_DB_NAME=postgres
+SUPABASE_DB_USER=postgres.abcdefghijklmnop               # ← from Step 1
+SUPABASE_DB_PASSWORD=YourSupabasePasswordHere             # ← from Step 1
+
+# ==========================================
+# SECURITY
+# ==========================================
+JWT_SECRET=paste-your-openssl-output-here                 # ← from Step 4
+JWT_EXPIRATION=86400000
+
+# ==========================================
+# AI SERVICE (Groq)
+# ==========================================
+LLAMA_API_URL=https://api.groq.com/openai/v1
+LLAMA_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxx                    # ← from Step 3
+LLAMA_MODEL=llama-3.3-70b-versatile
+
+# ==========================================
+# BOOTSTRAP ADMIN
+# ==========================================
+BOOTSTRAP_ADMIN_ENABLED=true                              # ← true for FIRST deploy only
+BOOTSTRAP_ADMIN_EMAIL=admin@ucu.edu.ua
+BOOTSTRAP_ADMIN_PASSWORD=YourStrongAdminPassword123!      # ← CHANGE THIS
+```
+
+Save and exit: `Ctrl+O`, `Enter`, `Ctrl+X`.
+
+---
+
+## Step 9C: Disable the Frontend Container
+
+Same as Step 10B — comment out the `frontend:` service block in `docker-compose.yml`:
+
+```bash
+nano /opt/lms/docker-compose.yml
+```
+
+Comment out the entire `frontend:` block with `#`. The frontend is on Vercel.
+
+---
+
+## Step 10C: Build and Start the Backend
+
+```bash
+cd /opt/lms
+docker compose --env-file .env.production up -d --build
+```
+
+First build takes 10-20 minutes. Wait until all services show **healthy**:
+
+```bash
+docker compose --env-file .env.production ps
+```
+
+Quick sanity check:
+
+```bash
+curl http://localhost:8080/actuator/health
+# Expected: {"status":"UP"}
+```
+
+---
+
+## Step 11C: Firewall — Expose Port 8080
+
+Vercel's edge servers need to reach your Droplet on port 8080. In the **DigitalOcean dashboard → Networking → Firewalls**:
+
+| Type | Port | Source |
+|------|------|--------|
+| SSH | 22 | Your IP |
+| Custom | 8080 | All IPv4, All IPv6 |
+
+> Port 8080 serves plain HTTP. This is fine — Vercel's proxy connects server-side, and users never see this URL. Their browser only talks to `https://your-app.vercel.app`.
+
+---
+
+## Step 12C: Deploy Frontend on Vercel
+
+### 12C-a. Push latest code to GitHub
+
+On your **local machine**:
+
+```bash
+git push origin main
+```
+
+### 12C-b. Import project on Vercel
+
+1. Go to [vercel.com/new](https://vercel.com/new)
+2. **Import Git Repository** → connect GitHub → select `LearnSystemUCU`
+3. Configure:
+
+| Setting | Value |
+|---------|-------|
+| **Root Directory** | `frontend` |
+| **Framework Preset** | Vite |
+| **Build Command** | `npm run build` |
+| **Output Directory** | `dist` |
+
+4. **Add Environment Variables** (expand the section before clicking Deploy):
+
+| Name | Value |
+|------|-------|
+| `BACKEND_URL` | `YOUR_DROPLET_IP:8080` (e.g. `164.92.105.42:8080`) |
+
+> **Do NOT set `VITE_API_URL`** — leave it unset. The frontend defaults to `/api` (same-origin), and `vercel.json` rewrites `/api/*` to your Droplet. This is the key: the browser calls `https://your-app.vercel.app/api/auth/login`, Vercel proxies it to `http://164.92.105.42:8080/api/auth/login` server-side.
+
+5. Click **Deploy**
+6. Wait 1-2 minutes. Copy your Vercel URL: `https://your-app.vercel.app`
+
+### How the rewrite works
+
+The `frontend/vercel.json` file contains:
+```json
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "http://${BACKEND_URL}/api/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
+```
+
+- `/api/auth/login` → proxied to `http://DROPLET_IP:8080/api/auth/login`
+- `/dashboard` → served as `index.html` (SPA routing)
+- No CORS needed — the browser sees everything as same-origin (`your-app.vercel.app`)
+- No HTTPS on the Droplet — Vercel handles HTTPS for the user, then talks HTTP to your backend
+
+---
+
+## Step 13C: Verify and Finalize
+
+### 13C-a. Test in browser
+
+1. Open `https://your-app.vercel.app`
+2. Log in with `admin@ucu.edu.ua` / your bootstrap password
+3. Navigate around — create a course, test AI features
+
+### 13C-b. If something fails
+
+| Symptom | Check |
+|---------|-------|
+| API calls return 500/502 | Vercel can't reach the Droplet. Check: is port 8080 open in the firewall? Is the API gateway healthy? (`docker logs lms-api-gateway --tail=50`) |
+| API calls return 404 | The `BACKEND_URL` env var in Vercel might be wrong. Check Vercel dashboard → Settings → Environment Variables. It should be `YOUR_IP:8080` (no `http://`, no trailing slash) |
+| Login works but other pages fail | Check that all backend services are healthy: `docker compose --env-file .env.production ps` |
+| "FUNCTION_INVOCATION_TIMEOUT" | Vercel Hobby has a 10s timeout for rewrites. If a backend request takes longer (e.g., AI generation), it will time out. Consider upgrading to Vercel Pro ($20/mo, 60s timeout) or using Option B with a direct HTTPS connection |
+
+### 13C-c. Disable bootstrap admin
+
+After confirming login works:
+
+```bash
+nano /opt/lms/.env.production
+# Change: BOOTSTRAP_ADMIN_ENABLED=false
+docker compose --env-file .env.production restart user-service
+```
+
+---
+
+### Updating with Option C
+
+- **Frontend:** Push to `main` → Vercel auto-deploys. No action on the Droplet.
+- **Backend:** SSH into Droplet → `cd /opt/lms && git pull && docker compose --env-file .env.production up -d --build`
+- **Changed Droplet IP?** Update `BACKEND_URL` in Vercel dashboard → Settings → Environment Variables → Redeploy.
+
+---
+
 # Everyday Operations
 
 All commands assume you're SSH'd into the Droplet at `/opt/lms`.
@@ -1110,6 +1331,18 @@ docker compose --env-file .env.production up -d --build
 | Groq Free | $0/mo | Rate-limited, sufficient for light use |
 | **Total** | **$24/mo** | Everything on free tiers except the Droplet |
 
+### Option C: Split + Vercel Proxy (no domain)
+
+| Service | Cost | Notes |
+|---------|------|-------|
+| DigitalOcean Droplet (4 GB / 2 vCPU) | $24/mo | Backend only |
+| Supabase Free | $0/mo | 500 MB database |
+| Vercel Hobby | $0/mo | Static deploys + API proxy, global CDN |
+| Groq Free | $0/mo | Rate-limited, sufficient for light use |
+| **Total** | **$24/mo** | No domain, no SSL — Vercel handles everything |
+
+> **Option C caveat:** Vercel Hobby plan has a **10-second timeout** on rewrite/proxy requests. If your AI service takes longer than 10s to respond, those requests will fail. Upgrade to Vercel Pro ($20/mo, 60s timeout) or use Option B for long-running requests.
+
 ---
 
 # Security Checklist
@@ -1119,6 +1352,7 @@ docker compose --env-file .env.production up -d --build
 - [ ] **Firewall configured** — only necessary ports exposed
   - Option A: 22, 3000, 8080
   - Option B: 22, 80, 443 (8080 stays internal — nginx proxies to it)
+  - Option C: 22, 8080
 - [ ] **JWT_SECRET** is a long random string (not the dev default)
 - [ ] **`.env.production` is not committed to git** — it's in `.gitignore`
 - [ ] **No internal ports exposed** (8081, 8085, 8088, 8089, 8761 are Docker-internal only)
