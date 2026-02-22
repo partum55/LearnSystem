@@ -40,33 +40,67 @@ DigitalOcean Droplet (Ubuntu 24.04)
 
 ## Step 1: Create a Supabase Project
 
-1. Go to [supabase.com](https://supabase.com) and sign in (or create an account)
-2. Click **New Project**
-3. Fill in:
-   - **Name:** `learnsystem-lms` (or any name)
-   - **Database Password:** generate a strong one and **save it somewhere safe** — you'll need it later
-   - **Region:** choose one close to where your Droplet will be (e.g., **US East (N. Virginia)** if your Droplet is in NYC)
-4. Click **Create new project** and wait for it to provision (~2 minutes)
+### 1a. Sign up / Sign in
 
-### Get your database connection details
+1. Go to [supabase.com](https://supabase.com)
+2. Click **Start your project** (or **Sign In** if you already have an account)
+3. You can sign up with GitHub, or with email + password
 
-5. Once the project is ready, go to **Settings** (gear icon in the left sidebar)
-6. Click **Database** in the left menu
-7. Scroll to **Connection string** section and select **URI** tab
-8. Switch to **Transaction pooler** mode (port 6543) — this is critical
-9. You need these values:
+### 1b. Create a new project
 
-| What | Where to find it | Example |
-|------|-------------------|---------|
-| **Host** | In the connection string, after `@` | `aws-0-us-east-1.pooler.supabase.com` |
-| **Port** | **6543** (Transaction pooler / Supavisor) | `6543` |
-| **Database** | Always | `postgres` |
-| **User** | In the connection string, before `:` | `postgres.abcdefghijklmnop` |
-| **Password** | The one you set in step 3 | (your password) |
+4. Once signed in, you'll land on the **Dashboard** at `supabase.com/dashboard`
+5. Click the **New Project** button
+6. If prompted, select your **Organization** (Supabase creates a default "Personal" org)
+7. Fill in the form:
 
-> **Why Transaction pooler (port 6543)?** Supabase uses **Supavisor** as its connection pooler. Port `6543` runs in transaction mode, which multiplexes connections efficiently. This is important because we run 4 backend services, each with a HikariCP pool of 5-10 connections. Without the pooler, you'd quickly hit Supabase's direct connection limits (especially on the free tier). Port `5432` is for direct connections or session-mode pooling — don't use it here.
+| Field | What to enter |
+|-------|---------------|
+| **Project name** | `learnsystem-lms` (or anything you like) |
+| **Database Password** | Click **Generate a password** or type a strong one. **Copy and save this password now** — you'll need it later and it won't be shown again |
+| **Region** | Pick the one closest to your DigitalOcean Droplet. E.g., if your Droplet is in New York, pick **US East (N. Virginia)** |
+| **Pricing Plan** | **Free** is fine to start |
 
-> **Free tier note:** Supabase free tier gives you **500 MB** of database storage and **up to 60** direct connections. The transaction pooler effectively removes this connection limit. Free projects **auto-pause after 7 days of inactivity** — see the troubleshooting section for how to handle this.
+8. Click **Create new project**
+9. Wait ~2 minutes for provisioning. You'll see a progress screen — once it finishes, you'll be on the project home page
+
+### 1c. Get database connection details
+
+10. At the top of your project page, find and click the **Connect** button (top-right area, next to the project name)
+11. A panel opens showing connection options. You'll see tabs or sections for different connection types
+12. Select **Transaction pooler** — this is the mode we need (it uses Supavisor and port `6543`)
+13. You should see a connection string that looks like:
+    ```
+    postgresql://postgres.abcdefghijklmnop:[YOUR-PASSWORD]@aws-0-us-east-1.pooler.supabase.com:6543/postgres
+    ```
+14. Extract these values from the connection string and write them down:
+
+```
+postgresql://USER:PASSWORD@HOST:PORT/DATABASE
+               │     │       │    │      │
+               │     │       │    │      └── SUPABASE_DB_NAME   = postgres
+               │     │       │    └───────── SUPABASE_DB_PORT   = 6543
+               │     │       └────────────── SUPABASE_DB_HOST   = aws-0-us-east-1.pooler.supabase.com
+               │     └───────────────────── SUPABASE_DB_PASSWORD = (your password from step 7)
+               └─────────────────────────── SUPABASE_DB_USER    = postgres.abcdefghijklmnop
+```
+
+> **Tip:** You can also copy the full URI string and extract the parts. The `Connect` panel often has a "Copy" button.
+
+### 1d. Quick summary — what you should have now
+
+Write these 5 values somewhere (a text file, a note, etc.):
+
+```
+SUPABASE_DB_HOST=aws-0-us-east-1.pooler.supabase.com   ← your actual host
+SUPABASE_DB_PORT=6543
+SUPABASE_DB_NAME=postgres
+SUPABASE_DB_USER=postgres.abcdefghijklmnop              ← your actual user
+SUPABASE_DB_PASSWORD=YourPasswordHere                   ← your actual password
+```
+
+> **Why Transaction pooler (port 6543)?** Supabase uses **Supavisor** as its connection pooler. Transaction mode multiplexes connections efficiently. We run 4 backend services, each with a HikariCP pool of 5-10 connections — without the pooler, you'd hit Supabase's direct connection limits (especially on the free tier, which allows ~60 direct connections). Don't use port `5432` (direct/session mode) for this deployment.
+
+> **Free tier limits:** 500 MB database storage, auto-pauses after 7 days of inactivity (your data is preserved — see troubleshooting section).
 
 ---
 
