@@ -1,13 +1,28 @@
-# Deploying LearnSystemUCU to DigitalOcean + Supabase
+# Deploying LearnSystemUCU
 
 > **Last updated:** February 2026
-> **Tested with:** Docker 27.x, Ubuntu 24.04 LTS, Supabase (Supavisor pooler), Groq API (llama-3.3-70b-versatile)
+> **Tested with:** Docker 27.x, Ubuntu 24.04 LTS, Supabase (Supavisor pooler), Groq API (llama-3.3-70b-versatile), Vercel (Vite framework preset)
 
-Full step-by-step guide to deploy the LMS on a single DigitalOcean Droplet with Supabase as the external PostgreSQL database.
+> **Branch note:** Deploy from the **`main`** branch. Its `docker-compose.yml` is production-ready (Supabase, tight memory limits, `restart: always`). The `dev` branch uses a local postgres container for local development.
 
-> **Branch note:** These instructions assume you are deploying from the **`main`** branch. The `main` branch's `docker-compose.yml` is production-ready (Supabase, tight memory limits, `restart: always`). The `dev` branch uses a local postgres container for local development.
+---
 
-**Architecture:**
+## Choose Your Deployment Option
+
+| | Option A: All-in-One | Option B: Split (recommended) |
+|---|---|---|
+| **Frontend** | Docker/Nginx container on the Droplet | Vercel (free, global CDN) |
+| **Backend** | DigitalOcean Droplet | DigitalOcean Droplet |
+| **Database** | Supabase | Supabase |
+| **HTTPS** | Not included (add separately) | Required — free via DuckDNS + Let's Encrypt |
+| **Cost** | $24/mo minimum | $24/mo minimum |
+| **CI/CD for frontend** | Manual (`git pull` + rebuild) | Automatic (push to GitHub → Vercel redeploys) |
+| **Best for** | Quick demo, single-server simplicity | Production, faster frontend, auto-deploy |
+
+**Option A** deploys everything on one Droplet (follow Steps 1–13A).
+**Option B** puts the frontend on Vercel with auto-deploy, backend on DigitalOcean, DB on Supabase (follow Steps 1–7, then 8B–15B).
+
+**Architecture — Option A (All-in-One):**
 ```
 User Browser
     │
@@ -30,13 +45,42 @@ DigitalOcean Droplet (Ubuntu 24.04)
    Supabase (PostgreSQL via Supavisor pooler)
 ```
 
+**Architecture — Option B (Split):**
+```
+User Browser
+    │
+    ├── Static files ──► Vercel CDN  (your-app.vercel.app)
+    │                     React build served globally
+    │
+    └── API calls ──────► https://api.yourdomain.com
+                               │
+                     nginx (HTTPS termination)
+                               │
+                     DigitalOcean Droplet
+                     ┌─────────────────────────────┐
+                     │  API Gateway (:8080)         │
+                     │  User Service (:8081)        │
+                     │  Learning Service (:8089)    │
+                     │  AI Service (:8085)          │
+                     │  Analytics Service (:8088)   │
+                     │  Eureka (:8761) + Redis      │
+                     └─────────────────────────────┘
+                               │
+                     Supabase (PostgreSQL)
+```
+
+---
+
+## Shared Setup (both options)
+
 **What you'll need:**
 - A DigitalOcean account
 - A Supabase account (free tier works)
 - A Groq API key (free tier works)
 - An SSH client (Terminal on Mac/Linux, or PuTTY / Windows Terminal on Windows)
+- **(Option B only)** A Vercel account (free) and a domain name (free via [DuckDNS](https://www.duckdns.org/))
 
-**Estimated time:** ~30 minutes
+**Estimated time:** ~30 minutes (Option A) · ~45 minutes (Option B)
 
 ---
 
@@ -124,7 +168,7 @@ SUPABASE_DB_PASSWORD=YourPasswordHere                   ← your actual password
 5. Wait for it to be created (~1 minute)
 6. **Copy the Droplet's IP address** from the dashboard
 
-> **Why 4GB minimum?** The app runs 8 containers (5 Java services + Eureka + Redis + Nginx). Each Spring Boot service needs 384-768 MB of RAM. Memory limits in `docker-compose.yml` total ~3.3 GB. With 4 GB you're tight but it works. 8 GB gives comfortable headroom for build-time Docker layer caching and JVM overhead.
+> **Why 4GB minimum?** The app runs 7–8 containers (5 Java services + Eureka + Redis + optionally Nginx). Each Spring Boot service needs 384-768 MB of RAM. Memory limits in `docker-compose.yml` total ~3.3 GB. With 4 GB you're tight but it works. 8 GB gives comfortable headroom for build-time Docker layer caching and JVM overhead.
 
 > **Disk note:** First build downloads ~2 GB of Maven dependencies and Docker base images. The 80 GB disk on the $24 plan is more than sufficient.
 
@@ -138,7 +182,7 @@ SUPABASE_DB_PASSWORD=YourPasswordHere                   ← your actual password
 4. Give it a name (e.g., `learnsystem-lms`)
 5. **Copy the API key** — you can only see it once
 
-The default model is `llama-3.3-70b-versatile` (131K context, ~280 tokens/sec on Groq). This is a production model on Groq. Other available models:
+The default model is `llama-3.3-70b-versatile` (131K context, ~280 tokens/sec on Groq). Other available models:
 - `llama-3.1-8b-instant` — faster, lower quality
 - `meta-llama/llama-4-scout-17b-16e-instruct` — newer, currently in preview
 
@@ -249,7 +293,11 @@ Replace the URL with your actual GitHub repository URL.
 
 ---
 
-## Step 8: Create the Production Environment File
+# Option A: All-in-One Deployment
+
+> Everything runs on the single DigitalOcean Droplet — backend services **and** the frontend (served by an Nginx container on port 3000). Skip to [Option B](#option-b-split-deployment--vercel-frontend--digitalocean-backend) if you want the frontend on Vercel.
+
+## Step 8A: Create the Production Environment File
 
 ```bash
 cp .env.production.example .env.production
@@ -287,6 +335,11 @@ LLAMA_MODEL=llama-3.3-70b-versatile
 BOOTSTRAP_ADMIN_ENABLED=true                              # ← true for FIRST deploy
 BOOTSTRAP_ADMIN_EMAIL=admin@ucu.edu.ua                    # ← change if desired
 BOOTSTRAP_ADMIN_PASSWORD=YourStrongAdminPassword123!      # ← CHANGE THIS
+
+# ==========================================
+# CORS (leave default for all-in-one)
+# ==========================================
+GATEWAY_CORS_ALLOWED_ORIGINS=http://localhost:3000
 ```
 
 Save and exit: press `Ctrl+O`, `Enter`, `Ctrl+X`.
@@ -295,7 +348,7 @@ Save and exit: press `Ctrl+O`, `Enter`, `Ctrl+X`.
 
 ---
 
-## Step 9: Build and Start the Application
+## Step 9A: Build and Start the Application
 
 ```bash
 cd /opt/lms
@@ -319,7 +372,7 @@ Press `Ctrl+C` to stop watching logs (the containers keep running).
 
 ---
 
-## Step 10: Wait for Services to Start
+## Step 10A: Wait for Services to Start
 
 After the build finishes, the Java services need 2-4 minutes to start up (Eureka registration, Flyway migrations, Spring context initialization). Check their status:
 
@@ -343,31 +396,9 @@ lms-frontend           Up (healthy)
 
 If a service shows `(health: starting)`, wait and re-run the `ps` command in a minute. The start order is: Redis → Eureka → all backend services → Gateway → Frontend.
 
-### Startup troubleshooting
-
-If a service keeps restarting, check its logs:
-
-```bash
-# Check a specific service
-docker logs lms-user-service --tail=100
-
-# Or watch live
-docker compose --env-file .env.production logs -f user-service
-```
-
-Common first-deploy issues:
-
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `Connection refused` to database | Wrong Supabase host/port/password | Double-check all `SUPABASE_DB_*` values in `.env.production` |
-| `FATAL: password authentication failed` | Wrong user or password | Verify `SUPABASE_DB_USER` includes the project ref (e.g., `postgres.abcdef`) |
-| `relation "xxx" does not exist` | Flyway hasn't run yet | Wait — user-service and learning-service run migrations on first start. If analytics-service fails first, restart it after the others are healthy |
-| `java.lang.OutOfMemoryError` | Not enough RAM | Upgrade Droplet to 8 GB |
-| `connect timed out` to Supabase | Firewall or wrong region | Ensure Supabase project isn't paused; try `curl -v telnet://YOUR_HOST:6543` to test connectivity |
-
 ---
 
-## Step 11: Verify the Deployment
+## Step 11A: Verify the Deployment
 
 ### Test from the Droplet
 
@@ -398,7 +429,7 @@ Open these URLs (replace `YOUR_DROPLET_IP` with your actual IP):
 ### Log in
 
 1. Go to `http://YOUR_DROPLET_IP:3000`
-2. Log in with the admin credentials you set in Step 8:
+2. Log in with the admin credentials you set in Step 8A:
    - **Email:** `admin@ucu.edu.ua` (or what you configured for `BOOTSTRAP_ADMIN_EMAIL`)
    - **Password:** what you set for `BOOTSTRAP_ADMIN_PASSWORD`
 
@@ -406,7 +437,7 @@ Open these URLs (replace `YOUR_DROPLET_IP` with your actual IP):
 
 ---
 
-## Step 12: Disable Bootstrap Admin
+## Step 12A: Disable Bootstrap Admin
 
 After your first successful login, disable the bootstrap admin so it doesn't try to recreate the account on every restart:
 
@@ -428,11 +459,11 @@ docker compose --env-file .env.production restart user-service
 
 ---
 
-## Step 13: Configure Firewall
+## Step 13A: Configure Firewall
 
 DigitalOcean Droplets have all ports open by default. You should restrict access.
 
-### Option A: DigitalOcean Cloud Firewall (recommended)
+### DigitalOcean Cloud Firewall (recommended)
 
 1. Go to **Networking** → **Firewalls** in the DigitalOcean dashboard
 2. Create a firewall with these **inbound rules**:
@@ -445,7 +476,7 @@ DigitalOcean Droplets have all ports open by default. You should restrict access
 
 3. Apply it to your Droplet
 
-### Option B: UFW (on the Droplet)
+### Alternative: UFW (on the Droplet)
 
 ```bash
 ufw allow 22/tcp     # SSH
@@ -456,24 +487,410 @@ ufw --force enable
 
 > **Do NOT expose** ports 8081, 8085, 8088, 8089, or 8761 publicly — they are only used internally between Docker containers on the bridge network. If you need the Eureka dashboard for debugging, temporarily allow `8761` and remove it afterward.
 
+**You're done with Option A!** Skip to [Everyday Operations](#everyday-operations).
+
 ---
 
-## Everyday Operations
+# Option B: Split Deployment — Vercel Frontend + DigitalOcean Backend
 
-All commands assume you're in `/opt/lms` on the Droplet. For convenience, you can create a shell alias:
+> Frontend on Vercel (free CDN, auto-deploy on push), backend on DigitalOcean, database on Supabase. This section assumes you've completed **Steps 1–7** above.
+
+### Why HTTPS is required
+
+Vercel serves your frontend over `https://`. Modern browsers block API calls from HTTPS pages to plain HTTP endpoints (mixed content policy). You **must** serve the API over HTTPS too. We'll use a free domain (DuckDNS) + free SSL certificate (Let's Encrypt).
+
+---
+
+## Step 8B: Get a Free Domain (DuckDNS)
+
+1. Go to [duckdns.org](https://www.duckdns.org/)
+2. Sign in with GitHub (or another provider)
+3. In the **sub domain** field, type a name for your API, e.g. `learnsystem-api`
+4. Click **add domain** — this gives you `learnsystem-api.duckdns.org`
+5. In the **current ip** field, enter your **Droplet IP** from Step 2
+6. Click **update ip**
+
+Write down your domain: `API_DOMAIN=learnsystem-api.duckdns.org`
+
+> DuckDNS is free forever, no credit card required, no expiration. Alternatively, you can buy a domain from Namecheap (~$10/year) and point its A record to the Droplet IP.
+
+---
+
+## Step 9B: Create the Production Environment File
+
+```bash
+cd /opt/lms
+cp .env.production.example .env.production
+nano .env.production
+```
+
+Fill in **every value**. Note the extra `GATEWAY_CORS_ALLOWED_ORIGINS` line at the bottom — you'll update this with your Vercel URL in Step 14B:
+
+```env
+# ==========================================
+# SUPABASE DATABASE
+# ==========================================
+SUPABASE_DB_HOST=aws-0-us-east-1.pooler.supabase.com    # ← from Step 1
+SUPABASE_DB_PORT=6543
+SUPABASE_DB_NAME=postgres
+SUPABASE_DB_USER=postgres.abcdefghijklmnop               # ← from Step 1
+SUPABASE_DB_PASSWORD=YourSupabasePasswordHere             # ← from Step 1
+
+# ==========================================
+# SECURITY
+# ==========================================
+JWT_SECRET=paste-your-openssl-output-here                 # ← from Step 4
+JWT_EXPIRATION=86400000
+
+# ==========================================
+# AI SERVICE (Groq)
+# ==========================================
+LLAMA_API_URL=https://api.groq.com/openai/v1
+LLAMA_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxx                    # ← from Step 3
+LLAMA_MODEL=llama-3.3-70b-versatile
+
+# ==========================================
+# BOOTSTRAP ADMIN
+# ==========================================
+BOOTSTRAP_ADMIN_ENABLED=true                              # ← true for FIRST deploy only
+BOOTSTRAP_ADMIN_EMAIL=admin@ucu.edu.ua
+BOOTSTRAP_ADMIN_PASSWORD=YourStrongAdminPassword123!      # ← CHANGE THIS
+
+# ==========================================
+# CORS — Vercel frontend URL
+# ==========================================
+# Leave as placeholder for now. Update with your actual Vercel URL in Step 14B.
+GATEWAY_CORS_ALLOWED_ORIGINS=https://placeholder.vercel.app
+```
+
+Save and exit: `Ctrl+O`, `Enter`, `Ctrl+X`.
+
+---
+
+## Step 10B: Disable the Frontend Container
+
+Since the frontend will be on Vercel, you don't need the Nginx frontend container on the Droplet. Comment it out to save ~128 MB of RAM:
+
+```bash
+nano /opt/lms/docker-compose.yml
+```
+
+Find the `frontend:` service block (near the bottom) and comment out every line of it with `#`:
+
+```yaml
+  # ==========================================
+  # FRONTEND (disabled — hosted on Vercel)
+  # ==========================================
+
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: lms-frontend
+  #   restart: always
+  #   ports:
+  #     - "3000:80"
+  #   depends_on:
+  #     - api-gateway
+  #   networks:
+  #     - lms-network
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost/health"]
+  #     interval: 30s
+  #     timeout: 3s
+  #     retries: 3
+  #     start_period: 10s
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 128M
+```
+
+Save and exit.
+
+> **Don't commit this change** — it's a local-only override for your Droplet. The repo keeps the frontend service for Option A users.
+
+---
+
+## Step 11B: Build and Start the Backend
+
+```bash
+cd /opt/lms
+docker compose --env-file .env.production up -d --build
+```
+
+First build takes 10-20 minutes. Watch progress:
+
+```bash
+docker compose --env-file .env.production logs -f --tail=50
+```
+
+Wait until all services show **healthy** (no `lms-frontend` this time):
+
+```bash
+docker compose --env-file .env.production ps
+```
+
+```
+NAME                   STATUS
+lms-redis              Up (healthy)
+lms-eureka-server      Up (healthy)
+lms-user-service       Up (healthy)
+lms-learning-service   Up (healthy)
+lms-ai-service         Up (healthy)
+lms-analytics-service  Up (healthy)
+lms-api-gateway        Up (healthy)
+```
+
+Quick sanity check:
+
+```bash
+curl http://localhost:8080/actuator/health
+# Expected: {"status":"UP"}
+```
+
+---
+
+## Step 12B: Set Up HTTPS with nginx + Let's Encrypt
+
+### 12B-a. Install nginx and certbot
+
+```bash
+apt-get install -y nginx certbot python3-certbot-nginx
+```
+
+### 12B-b. Create nginx config for your API domain
+
+```bash
+nano /etc/nginx/sites-available/lms-api
+```
+
+Paste this (replace `learnsystem-api.duckdns.org` with your domain from Step 8B):
+
+```nginx
+server {
+    listen 80;
+    server_name learnsystem-api.duckdns.org;
+
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 75s;
+    }
+}
+```
+
+Enable the site and reload:
+
+```bash
+ln -s /etc/nginx/sites-available/lms-api /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default    # remove the default "Welcome to nginx" page
+nginx -t && systemctl reload nginx
+```
+
+### 12B-c. Open ports 80 and 443 in the firewall
+
+Before certbot can verify your domain, ports 80 and 443 must be open.
+
+**DigitalOcean Cloud Firewall:**
+
+| Type | Port | Source |
+|------|------|--------|
+| SSH | 22 | Your IP |
+| HTTP | 80 | All IPv4, All IPv6 |
+| HTTPS | 443 | All IPv4, All IPv6 |
+
+**Or UFW:**
+
+```bash
+ufw allow 22/tcp
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw --force enable
+```
+
+> **Do NOT expose** ports 3000, 8080, 8081, 8085, 8088, 8089, or 8761. The API is served through nginx on 443, not directly on 8080.
+
+### 12B-d. Get a free SSL certificate
+
+```bash
+certbot --nginx -d learnsystem-api.duckdns.org
+```
+
+Follow the prompts:
+- Enter your email (for renewal notices)
+- Agree to the ToS
+- Certbot automatically configures HTTPS in nginx and sets up auto-renewal
+
+### 12B-e. Verify HTTPS works
+
+```bash
+curl https://learnsystem-api.duckdns.org/actuator/health
+# Expected: {"status":"UP"}
+```
+
+Open in your browser too: `https://learnsystem-api.duckdns.org/actuator/health` — should show `{"status":"UP"}`.
+
+> **SSL auto-renewal:** Certbot installs a systemd timer that auto-renews certificates before they expire (every 90 days). No action needed. You can verify with: `certbot renew --dry-run`
+
+---
+
+## Step 13B: Deploy Frontend on Vercel
+
+### 13B-a. Push latest code to GitHub
+
+On your **local machine** (not the Droplet):
+
+```bash
+cd /path/to/LearnSystemUCU
+git push origin main
+```
+
+### 13B-b. Import project on Vercel
+
+1. Go to [vercel.com/new](https://vercel.com/new)
+2. Click **Import Git Repository** → connect your GitHub account → select `LearnSystemUCU`
+3. Vercel will detect it as a monorepo. Configure the project:
+
+| Setting | Value |
+|---------|-------|
+| **Root Directory** | `frontend` (click "Edit" and type `frontend`) |
+| **Framework Preset** | Vite (auto-detected) |
+| **Build Command** | `npm run build` |
+| **Output Directory** | `dist` |
+
+4. **Add Environment Variables** (expand the "Environment Variables" section before clicking Deploy):
+
+| Name | Value |
+|------|-------|
+| `VITE_API_URL` | `https://learnsystem-api.duckdns.org/api` |
+| `VITE_AI_SERVICE_URL` | `https://learnsystem-api.duckdns.org/api/ai` |
+
+> **Critical:** `VITE_API_URL` must end with `/api` because the frontend's API client appends paths like `/auth/login`, `/users`, etc. The full request URL will be `https://learnsystem-api.duckdns.org/api/auth/login`.
+
+5. Click **Deploy**
+
+6. Wait 1-2 minutes for the build. Vercel will show you a deployment URL like:
+   ```
+   https://learn-system-ucu.vercel.app
+   ```
+
+7. **Copy this URL** — you need it for the next step.
+
+> **Auto-deploy:** From now on, every push to `main` on GitHub automatically triggers a new Vercel deployment. No manual rebuild needed for frontend changes.
+
+---
+
+## Step 14B: Wire Together — Update CORS
+
+Now that you have the Vercel URL, go back to the Droplet and update the CORS config.
+
+### 14B-a. Update `.env.production`
+
+```bash
+ssh root@YOUR_DROPLET_IP
+nano /opt/lms/.env.production
+```
+
+Replace the placeholder CORS line with your actual Vercel URL (no trailing slash):
+
+```env
+GATEWAY_CORS_ALLOWED_ORIGINS=https://learn-system-ucu.vercel.app
+```
+
+If you later add a custom domain on Vercel, add it too (comma-separated):
+
+```env
+GATEWAY_CORS_ALLOWED_ORIGINS=https://learn-system-ucu.vercel.app,https://lms.yourdomain.com
+```
+
+Save and exit.
+
+### 14B-b. Restart the API gateway
+
+```bash
+cd /opt/lms
+docker compose --env-file .env.production restart api-gateway
+```
+
+Wait ~30 seconds, then verify CORS works:
+
+```bash
+curl -H "Origin: https://learn-system-ucu.vercel.app" \
+     -H "Access-Control-Request-Method: GET" \
+     -X OPTIONS \
+     https://learnsystem-api.duckdns.org/api/auth/login \
+     -v 2>&1 | grep -i "access-control"
+```
+
+You should see headers like:
+```
+< Access-Control-Allow-Origin: https://learn-system-ucu.vercel.app
+< Access-Control-Allow-Methods: GET,POST,PUT,DELETE,PATCH,OPTIONS,HEAD
+```
+
+---
+
+## Step 15B: Verify and Finalize
+
+### 15B-a. Test in browser
+
+1. Open your Vercel URL: `https://learn-system-ucu.vercel.app`
+2. You should see the LMS login page
+3. Log in with:
+   - **Email:** `admin@ucu.edu.ua`
+   - **Password:** what you set for `BOOTSTRAP_ADMIN_PASSWORD`
+4. Navigate around — create a course, check analytics, test AI features
+
+### 15B-b. If login fails — debug checklist
+
+| Symptom | Check |
+|---------|-------|
+| Network error / request failed | Open DevTools → Network tab. Are requests going to your API domain? Check `VITE_API_URL` in Vercel dashboard |
+| CORS error | Check `GATEWAY_CORS_ALLOWED_ORIGINS` matches your Vercel URL exactly (including `https://`, no trailing slash) |
+| 502 Bad Gateway | nginx can't reach the API gateway. Check: `docker compose --env-file .env.production ps` — is `lms-api-gateway` healthy? |
+| SSL error | Run `certbot renew --dry-run` to verify. Check: `curl https://YOUR_DOMAIN/actuator/health` from your local machine |
+| Mixed content blocked | Your `VITE_API_URL` must start with `https://`, not `http://` |
+
+### 15B-c. Disable bootstrap admin
+
+After confirming login works:
+
+```bash
+nano /opt/lms/.env.production
+```
+
+Change:
+```
+BOOTSTRAP_ADMIN_ENABLED=false
+```
+
+Restart:
+```bash
+docker compose --env-file .env.production restart user-service
+```
+
+---
+
+# Everyday Operations
+
+All commands assume you're SSH'd into the Droplet at `/opt/lms`.
+
+### Shell alias (optional convenience)
 
 ```bash
 echo 'alias lms="cd /opt/lms && docker compose --env-file .env.production"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-Then use `lms ps`, `lms logs -f`, `lms down`, etc.
-
-### Without the alias
-
-```bash
-cd /opt/lms
-```
+Then use: `lms ps`, `lms logs -f`, `lms down`, etc.
 
 ### View status
 ```bash
@@ -499,14 +916,19 @@ docker compose --env-file .env.production down
 docker compose --env-file .env.production restart learning-service
 ```
 
-### Update to latest code
+### Update backend (DigitalOcean)
 ```bash
 cd /opt/lms
 git pull
 docker compose --env-file .env.production up -d --build
 ```
 
-> Subsequent builds are fast (~2-3 min) because Docker layer caching reuses unchanged layers. Only changed source code triggers a recompile.
+> Subsequent builds are fast (~2-3 min) because Docker layer caching reuses unchanged layers.
+
+### Update frontend
+
+- **Option A:** Same as backend — `git pull` + rebuild on the Droplet.
+- **Option B:** Just push to `main` on GitHub — Vercel auto-deploys. No action needed on the Droplet.
 
 ### View resource usage
 ```bash
@@ -522,7 +944,7 @@ docker system prune -f
 
 ---
 
-## Troubleshooting
+# Troubleshooting
 
 ### Service won't start — "Connection refused" to database
 
@@ -535,6 +957,26 @@ docker system prune -f
    If this connects and shows a `postgres=>` prompt, the credentials are correct. Type `\q` to exit.
 3. **Check you're using port `6543`** (Supavisor transaction pooler), not `5432`.
 4. **Check for IP restrictions** — by default, Supabase allows all IPs. If you've configured IP allowlisting in Supabase (Settings → Database → Network restrictions), add your Droplet's IP.
+
+### Startup troubleshooting
+
+```bash
+# Check a specific service
+docker logs lms-user-service --tail=100
+
+# Or watch live
+docker compose --env-file .env.production logs -f user-service
+```
+
+Common first-deploy issues:
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `Connection refused` to database | Wrong Supabase host/port/password | Double-check all `SUPABASE_DB_*` values in `.env.production` |
+| `FATAL: password authentication failed` | Wrong user or password | Verify `SUPABASE_DB_USER` includes the project ref (e.g., `postgres.abcdef`) |
+| `relation "xxx" does not exist` | Flyway hasn't run yet | Wait — user-service and learning-service run migrations on first start. If analytics-service fails first, restart it after the others are healthy |
+| `java.lang.OutOfMemoryError` | Not enough RAM | Upgrade Droplet to 8 GB |
+| `connect timed out` to Supabase | Firewall or wrong region | Ensure Supabase project isn't paused; try `curl -v telnet://YOUR_HOST:6543` to test connectivity |
 
 ### Supabase project paused
 
@@ -580,13 +1022,22 @@ If you're on a 4 GB Droplet and running out of memory:
 
 ### Frontend loads but API calls fail
 
+**Option A (all-in-one):**
 1. Open browser **Developer Tools → Network tab** and look at failed requests
 2. The frontend Nginx container proxies `/api/` requests to the gateway internally via Docker networking — this should work automatically
-3. If you see CORS errors when accessing the API directly (not through the frontend), add your Droplet IP to the gateway's CORS config. Edit `docker-compose.yml` and add to the `api-gateway` environment:
-   ```yaml
-   - GATEWAY_CORS_ALLOWED_ORIGINS=http://YOUR_IP:3000,http://YOUR_IP:8080
+3. If you see CORS errors, add your Droplet IP to the CORS config:
+   ```bash
+   nano /opt/lms/.env.production
+   # Set: GATEWAY_CORS_ALLOWED_ORIGINS=http://YOUR_IP:3000,http://YOUR_IP:8080
+   docker compose --env-file .env.production restart api-gateway
    ```
-   Then restart: `docker compose --env-file .env.production restart api-gateway`
+
+**Option B (Vercel + DigitalOcean):**
+1. Open browser **Developer Tools → Network tab**
+2. Check that requests go to your HTTPS API domain (`https://learnsystem-api.duckdns.org/api/...`)
+3. If you see **CORS errors**: verify `GATEWAY_CORS_ALLOWED_ORIGINS` in `.env.production` matches your Vercel URL exactly
+4. If you see **mixed content blocked**: your `VITE_API_URL` in Vercel must start with `https://`
+5. If you see **502 Bad Gateway**: check nginx → `nginx -t && systemctl status nginx`, then check the API gateway → `docker logs lms-api-gateway --tail=50`
 
 ### AI features not working
 
@@ -633,7 +1084,9 @@ docker compose --env-file .env.production up -d --build
 
 ---
 
-## Cost Summary
+# Cost Summary
+
+### Option A: All-in-One
 
 | Service | Cost | Notes |
 |---------|------|-------|
@@ -645,18 +1098,33 @@ docker compose --env-file .env.production up -d --build
 | **Total (minimum)** | **$24/mo** | 4 GB Droplet + Supabase Free + Groq Free |
 | **Total (recommended)** | **$73/mo** | 8 GB Droplet + Supabase Pro + Groq Free |
 
+### Option B: Split (Vercel + DigitalOcean + Supabase)
+
+| Service | Cost | Notes |
+|---------|------|-------|
+| DigitalOcean Droplet (4 GB / 2 vCPU) | $24/mo | Backend only (no frontend container, saves ~128 MB RAM) |
+| Supabase Free | $0/mo | 500 MB database |
+| Vercel Hobby | $0/mo | Unlimited static deploys, global CDN, auto-deploy on push |
+| DuckDNS | $0/mo | Free subdomain for API HTTPS |
+| Let's Encrypt | $0/mo | Free SSL certificate, auto-renews |
+| Groq Free | $0/mo | Rate-limited, sufficient for light use |
+| **Total** | **$24/mo** | Everything on free tiers except the Droplet |
+
 ---
 
-## Security Checklist
+# Security Checklist
 
 - [ ] **Changed the default admin password** after first login
-- [ ] **Set `BOOTSTRAP_ADMIN_ENABLED=false`** after the first deploy (Step 12)
-- [ ] **Firewall configured** — only ports 22, 3000, 8080 exposed (Step 13)
+- [ ] **Set `BOOTSTRAP_ADMIN_ENABLED=false`** after the first deploy
+- [ ] **Firewall configured** — only necessary ports exposed
+  - Option A: 22, 3000, 8080
+  - Option B: 22, 80, 443 (8080 stays internal — nginx proxies to it)
 - [ ] **JWT_SECRET** is a long random string (not the dev default)
 - [ ] **`.env.production` is not committed to git** — it's in `.gitignore`
 - [ ] **No internal ports exposed** (8081, 8085, 8088, 8089, 8761 are Docker-internal only)
 - [ ] **Supabase database password** is strong and unique
 - [ ] **SSH key authentication** is used (not password auth)
+- [ ] **(Option B)** `GATEWAY_CORS_ALLOWED_ORIGINS` only lists your actual frontend domains
 
 ### Optional hardening
 
@@ -671,6 +1139,6 @@ docker compose --env-file .env.production up -d --build
   # Edit /etc/ssh/sshd_config: set PermitRootLogin no
   systemctl restart sshd
   ```
-- **Enable DigitalOcean Cloud Firewall** for network-level protection (see Step 13)
+- **Enable DigitalOcean Cloud Firewall** for network-level protection
 - **Set up DigitalOcean monitoring** — free built-in alerts for CPU, RAM, disk
 - **Enable Supabase database backups** — included in Pro plan, or use `pg_dump` manually
