@@ -19,7 +19,7 @@ public class EmailService {
     @Value("${app.mail.from:noreply@lms.ucu.edu.ua}")
     private String fromEmail;
 
-    @Value("${app.mail.base-url:http://localhost:3000}")
+    @Value("${app.mail.base-url:https://localhost:3000}")
     private String baseUrl;
 
     @Value("${spring.mail.enabled:true}")

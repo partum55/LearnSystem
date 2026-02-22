@@ -22,7 +22,7 @@ public class CorsConfig {
 
     config.setAllowCredentials(true);
     config.setAllowedOrigins(
-        Arrays.asList("http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"));
+        Arrays.asList("http://localhost:3000", "https://localhost:3000", "http://localhost:3001", "https://localhost:3001", "http://127.0.0.1:3000", "https://127.0.0.1:3000"));
     config.setAllowedHeaders(Arrays.asList("*"));
     config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
     config.setMaxAge(3600L);

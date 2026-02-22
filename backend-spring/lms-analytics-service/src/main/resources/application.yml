@@ -75,7 +75,7 @@ feign:
 # Security Configuration
 security:
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,https://localhost:3000,http://localhost:5173,https://localhost:5173}
 
 server:
   port: ${SERVER_PORT:8088}

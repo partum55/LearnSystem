@@ -12,7 +12,7 @@
 set -e
 
 # Configuration
-API_GATEWAY_URL="${API_GATEWAY_URL:-http://localhost:8080}"
+API_GATEWAY_URL="${API_GATEWAY_URL:-https://localhost:8080}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.scale.yml}"
 RECOVERY_WAIT=30
 TEST_DURATION=60
