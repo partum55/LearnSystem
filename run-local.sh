@@ -47,13 +47,13 @@ print_banner() {
 
 check_env() {
     if [ ! -f ".env" ]; then
-        echo -e "${YELLOW}⚠ No .env file found. Creating from .env.local...${NC}"
-        if [ -f ".env.local" ]; then
-            cp .env.local .env
+        echo -e "${YELLOW}⚠ No .env file found. Creating from .env.example...${NC}"
+        if [ -f ".env.example" ]; then
+            cp .env.example .env
             echo -e "${GREEN}✓ Created .env file${NC}"
             echo -e "${YELLOW}⚠ Please edit .env and add your LLAMA_API_KEY${NC}"
         else
-            echo -e "${RED}✗ No .env.local template found!${NC}"
+            echo -e "${RED}✗ No .env.example template found!${NC}"
             exit 1
         fi
     fi
