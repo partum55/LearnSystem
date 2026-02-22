@@ -5,6 +5,8 @@
 
 Full step-by-step guide to deploy the LMS on a single DigitalOcean Droplet with Supabase as the external PostgreSQL database.
 
+> **Branch note:** These instructions assume you are deploying from the **`main`** branch. The `main` branch's `docker-compose.yml` is production-ready (Supabase, tight memory limits, `restart: always`). The `dev` branch uses a local postgres container for local development.
+
 **Architecture:**
 ```
 User Browser
@@ -122,7 +124,7 @@ SUPABASE_DB_PASSWORD=YourPasswordHere                   ← your actual password
 5. Wait for it to be created (~1 minute)
 6. **Copy the Droplet's IP address** from the dashboard
 
-> **Why 4GB minimum?** The app runs 8 containers (5 Java services + Eureka + Redis + Nginx). Each Spring Boot service needs 384-768 MB of RAM. Memory limits in `docker-compose.prod.yml` total ~3.3 GB. With 4 GB you're tight but it works. 8 GB gives comfortable headroom for build-time Docker layer caching and JVM overhead.
+> **Why 4GB minimum?** The app runs 8 containers (5 Java services + Eureka + Redis + Nginx). Each Spring Boot service needs 384-768 MB of RAM. Memory limits in `docker-compose.yml` total ~3.3 GB. With 4 GB you're tight but it works. 8 GB gives comfortable headroom for build-time Docker layer caching and JVM overhead.
 
 > **Disk note:** First build downloads ~2 GB of Maven dependencies and Docker base images. The 80 GB disk on the $24 plan is more than sufficient.
 
@@ -297,7 +299,7 @@ Save and exit: press `Ctrl+O`, `Enter`, `Ctrl+X`.
 
 ```bash
 cd /opt/lms
-docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+docker compose --env-file .env.production up -d --build
 ```
 
 This will:
@@ -308,7 +310,7 @@ This will:
 You can watch the build progress with:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.production logs -f --tail=50
+docker compose --env-file .env.production logs -f --tail=50
 ```
 
 Press `Ctrl+C` to stop watching logs (the containers keep running).
@@ -322,7 +324,7 @@ Press `Ctrl+C` to stop watching logs (the containers keep running).
 After the build finishes, the Java services need 2-4 minutes to start up (Eureka registration, Flyway migrations, Spring context initialization). Check their status:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.production ps
+docker compose --env-file .env.production ps
 ```
 
 Wait until all services show **"healthy"** in the STATUS column:
@@ -350,7 +352,7 @@ If a service keeps restarting, check its logs:
 docker logs lms-user-service --tail=100
 
 # Or watch live
-docker compose -f docker-compose.prod.yml --env-file .env.production logs -f user-service
+docker compose --env-file .env.production logs -f user-service
 ```
 
 Common first-deploy issues:
@@ -421,7 +423,7 @@ BOOTSTRAP_ADMIN_ENABLED=false
 Then restart the user service to pick up the change:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.production restart user-service
+docker compose --env-file .env.production restart user-service
 ```
 
 ---
@@ -461,7 +463,7 @@ ufw --force enable
 All commands assume you're in `/opt/lms` on the Droplet. For convenience, you can create a shell alias:
 
 ```bash
-echo 'alias lms="cd /opt/lms && docker compose -f docker-compose.prod.yml --env-file .env.production"' >> ~/.bashrc
+echo 'alias lms="cd /opt/lms && docker compose --env-file .env.production"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -475,33 +477,33 @@ cd /opt/lms
 
 ### View status
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.production ps
+docker compose --env-file .env.production ps
 ```
 
 ### View logs
 ```bash
 # All services
-docker compose -f docker-compose.prod.yml --env-file .env.production logs -f --tail=100
+docker compose --env-file .env.production logs -f --tail=100
 
 # Single service
-docker compose -f docker-compose.prod.yml --env-file .env.production logs -f user-service
+docker compose --env-file .env.production logs -f user-service
 ```
 
 ### Stop everything
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.production down
+docker compose --env-file .env.production down
 ```
 
 ### Restart a single service
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.production restart learning-service
+docker compose --env-file .env.production restart learning-service
 ```
 
 ### Update to latest code
 ```bash
 cd /opt/lms
 git pull
-docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+docker compose --env-file .env.production up -d --build
 ```
 
 > Subsequent builds are fast (~2-3 min) because Docker layer caching reuses unchanged layers. Only changed source code triggers a recompile.
@@ -544,7 +546,7 @@ To fix:
 1. Go to the Supabase dashboard
 2. Select your project
 3. Click **Restore** — takes ~1 minute
-4. Restart affected services: `docker compose -f docker-compose.prod.yml --env-file .env.production restart`
+4. Restart affected services: `docker compose --env-file .env.production restart`
 
 To prevent auto-pause:
 - **Upgrade to Supabase Pro** ($25/mo) — no auto-pause
@@ -580,17 +582,17 @@ If you're on a 4 GB Droplet and running out of memory:
 
 1. Open browser **Developer Tools → Network tab** and look at failed requests
 2. The frontend Nginx container proxies `/api/` requests to the gateway internally via Docker networking — this should work automatically
-3. If you see CORS errors when accessing the API directly (not through the frontend), add your Droplet IP to the gateway's CORS config. Edit `docker-compose.prod.yml` and add to the `api-gateway` environment:
+3. If you see CORS errors when accessing the API directly (not through the frontend), add your Droplet IP to the gateway's CORS config. Edit `docker-compose.yml` and add to the `api-gateway` environment:
    ```yaml
    - GATEWAY_CORS_ALLOWED_ORIGINS=http://YOUR_IP:3000,http://YOUR_IP:8080
    ```
-   Then restart: `docker compose -f docker-compose.prod.yml --env-file .env.production restart api-gateway`
+   Then restart: `docker compose --env-file .env.production restart api-gateway`
 
 ### AI features not working
 
 1. Check the AI service logs:
    ```bash
-   docker compose -f docker-compose.prod.yml --env-file .env.production logs ai-service --tail=50
+   docker compose --env-file .env.production logs ai-service --tail=50
    ```
 2. Look for `401 Unauthorized` (invalid API key) or `429 Too Many Requests` (rate limit hit)
 3. Verify your Groq API key is valid and has remaining quota at [console.groq.com](https://console.groq.com)
@@ -621,10 +623,10 @@ SELECT count(*) FROM users;            -- user count
 
 ```bash
 cd /opt/lms
-docker compose -f docker-compose.prod.yml --env-file .env.production down -v
+docker compose --env-file .env.production down -v
 docker system prune -af
 git pull
-docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+docker compose --env-file .env.production up -d --build
 ```
 
 > **Warning:** `down -v` removes the Redis cache and the submissions volume. Database data is safe in Supabase. If you also want to wipe the database, go to Supabase dashboard → SQL Editor and run `DROP SCHEMA public CASCADE; CREATE SCHEMA public;` (this deletes everything).
