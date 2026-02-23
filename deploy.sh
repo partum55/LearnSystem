@@ -20,7 +20,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 REPO_DIR="/opt/lms"
-COMPOSE_FILE="docker-compose.prod.yml"
+COMPOSE_FILE="docker-compose.yml"
 ENV_FILE=".env.production"
 
 log()  { echo -e "${BLUE}[INFO]${NC}  $*"; }

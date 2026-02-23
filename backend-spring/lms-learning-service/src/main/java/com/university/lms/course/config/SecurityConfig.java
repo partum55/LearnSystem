@@ -35,7 +35,7 @@ public class SecurityConfig {
   private final SecurityHeadersFilter securityHeadersFilter;
   private final RateLimitingFilter rateLimitingFilter;
 
-  @Value("${security.cors.allowed-origins:http://localhost:3000,http://localhost:8080}")
+  @Value("${security.cors.allowed-origins:http://localhost:3000,https://localhost:3000,http://localhost:8080,https://localhost:8080}")
   private String allowedOriginsStr;
 
   @Value("${security.cors.enabled:false}")

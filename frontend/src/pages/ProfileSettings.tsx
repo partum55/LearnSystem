@@ -2,16 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Layout, Card, CardHeader, CardBody, Button } from '../components';
 import { useAuthStore } from '../store/authStore';
-import { useUIStore } from '../store/uiStore';
+import { useUIStore, type ThemeMode } from '../store/uiStore';
 import apiClient, { extractErrorMessage } from '../api/client';
 import {
   UserCircleIcon,
   EnvelopeIcon,
   LanguageIcon,
-  MoonIcon,
-  SunIcon,
   KeyIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  SwatchIcon,
 } from '@heroicons/react/24/outline';
 
 export const ProfileSettings: React.FC = () => {
@@ -94,7 +93,7 @@ export const ProfileSettings: React.FC = () => {
     }
   };
 
-  const handleThemeChange = async (newTheme: 'light' | 'dark') => {
+  const handleThemeChange = async (newTheme: ThemeMode) => {
     setTheme(newTheme);
     await updateUserPreferences(undefined, newTheme);
   };
@@ -233,7 +232,7 @@ export const ProfileSettings: React.FC = () => {
           <Card className="mb-6">
             <CardHeader>
               <div className="flex items-center gap-2">
-                <MoonIcon className="h-6 w-6" style={{ color: 'var(--text-secondary)' }} />
+                <SwatchIcon className="h-6 w-6" style={{ color: 'var(--text-secondary)' }} />
                 <h2
                   className="text-xl font-semibold"
                   style={{ color: 'var(--text-primary)' }}
@@ -250,40 +249,64 @@ export const ProfileSettings: React.FC = () => {
                     {t('settings.theme', 'Theme')}
                   </label>
                   <div className="grid grid-cols-2 gap-4">
+                    {/* Obsidian card */}
                     <button
-                      onClick={() => handleThemeChange('light')}
-                      className="flex items-center gap-3 p-4 rounded-lg border-2 transition-all"
-                      style={theme === 'light'
+                      onClick={() => handleThemeChange('obsidian')}
+                      className="rounded-lg border-2 transition-all overflow-hidden text-left"
+                      style={theme === 'obsidian'
                         ? { borderColor: 'var(--text-primary)', background: 'var(--bg-active)' }
                         : { borderColor: 'var(--border-default)', background: 'transparent' }
                       }
                     >
-                      <SunIcon className="h-6 w-6" style={{ color: 'var(--fn-warning)' }} />
-                      <div className="text-left">
-                        <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                          {t('settings.light', 'Light')}
+                      {/* Mini preview */}
+                      <div className="p-3 rounded-t" style={{ background: '#09090b' }}>
+                        <div className="flex gap-1.5 mb-2">
+                          <div className="w-2 h-2 rounded-full" style={{ background: '#52525b' }} />
+                          <div className="w-2 h-2 rounded-full" style={{ background: '#52525b' }} />
+                          <div className="w-2 h-2 rounded-full" style={{ background: '#52525b' }} />
                         </div>
-                        <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          {t('settings.lightDesc', 'Light mode')}
+                        <div className="rounded" style={{ background: '#18181b', border: '1px solid rgba(255,255,255,0.08)', padding: '6px 8px' }}>
+                          <div className="h-1.5 rounded" style={{ background: '#27272a', width: '60%', marginBottom: '4px' }} />
+                          <div className="h-1.5 rounded" style={{ background: '#27272a', width: '40%' }} />
+                        </div>
+                      </div>
+                      <div className="p-3">
+                        <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                          {t('settings.obsidian', 'Obsidian')}
+                        </div>
+                        <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                          {t('settings.obsidianDesc', 'Dark, focused, sharp')}
                         </div>
                       </div>
                     </button>
 
+                    {/* Parchment card */}
                     <button
-                      onClick={() => handleThemeChange('dark')}
-                      className="flex items-center gap-3 p-4 rounded-lg border-2 transition-all"
-                      style={theme === 'dark'
+                      onClick={() => handleThemeChange('parchment')}
+                      className="rounded-lg border-2 transition-all overflow-hidden text-left"
+                      style={theme === 'parchment'
                         ? { borderColor: 'var(--text-primary)', background: 'var(--bg-active)' }
                         : { borderColor: 'var(--border-default)', background: 'transparent' }
                       }
                     >
-                      <MoonIcon className="h-6 w-6" style={{ color: 'var(--text-secondary)' }} />
-                      <div className="text-left">
-                        <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                          {t('settings.dark', 'Dark')}
+                      {/* Mini preview */}
+                      <div className="p-3 rounded-t" style={{ background: '#FDFAF5' }}>
+                        <div className="flex gap-1.5 mb-2">
+                          <div className="w-2 h-2 rounded-full" style={{ background: '#A89C8C' }} />
+                          <div className="w-2 h-2 rounded-full" style={{ background: '#A89C8C' }} />
+                          <div className="w-2 h-2 rounded-full" style={{ background: '#A89C8C' }} />
                         </div>
-                        <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          {t('settings.darkDesc', 'Dark mode')}
+                        <div className="rounded" style={{ background: '#F7F3EC', border: '1px solid rgba(120,100,70,0.15)', padding: '6px 8px' }}>
+                          <div className="h-1.5 rounded" style={{ background: '#EDE8DF', width: '60%', marginBottom: '4px' }} />
+                          <div className="h-1.5 rounded" style={{ background: '#EDE8DF', width: '40%' }} />
+                        </div>
+                      </div>
+                      <div className="p-3">
+                        <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                          {t('settings.parchment', 'Parchment')}
+                        </div>
+                        <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                          {t('settings.parchmentDesc', 'Warm, literary, comfortable')}
                         </div>
                       </div>
                     </button>

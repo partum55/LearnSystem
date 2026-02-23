@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import { User, UserRole } from '../types';
 import apiClient from '../api/client';
 import { clearStoredTokens, getAccessToken, setAccessToken, setRefreshToken } from '../api/token';
-import { useUIStore } from './uiStore';
+import { useUIStore, type ThemeMode } from './uiStore';
 
 interface AuthState {
   user: User | null;
@@ -13,7 +13,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   fetchCurrentUser: () => Promise<void>;
-  updateUserPreferences: (locale?: 'uk' | 'en', theme?: 'light' | 'dark') => Promise<void>;
+  updateUserPreferences: (locale?: 'uk' | 'en', theme?: ThemeMode) => Promise<void>;
   /** Dev-only: set a mock user without hitting the backend */
   setUser: (user: User) => void;
 }
@@ -54,7 +54,7 @@ function mapApiUserToFrontend(u: ApiUser | null | undefined): User | null {
     role: u.role as UserRole,
     // Backend returns 'UK'|'EN'; normalize to 'uk'|'en'
     locale: (typeof u.locale === 'string' ? u.locale.toLowerCase() : u.locale) as 'uk' | 'en',
-    theme: u.theme === 'dark' ? 'dark' : 'light',
+    theme: u.theme === 'dark' || u.theme === 'obsidian' ? 'dark' : 'light',
     avatar: u.avatarUrl ?? u.avatar,
     bio: u.bio,
     created_at: u.createdAt ?? u.created_at ?? '',
@@ -108,7 +108,7 @@ export const useAuthStore = create<AuthState>()(
             ui.setLanguage(mappedUser.locale as 'uk' | 'en');
           }
           if (mappedUser?.theme) {
-            ui.setTheme(mappedUser.theme as 'light' | 'dark');
+            ui.setTheme(mappedUser.theme === 'dark' ? 'obsidian' : 'parchment');
           }
         } catch (err: unknown) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -193,19 +193,20 @@ export const useAuthStore = create<AuthState>()(
             ui.setLanguage(mappedUser.locale as 'uk' | 'en');
           }
           if (mappedUser?.theme) {
-            ui.setTheme(mappedUser.theme as 'light' | 'dark');
+            ui.setTheme(mappedUser.theme === 'dark' ? 'obsidian' : 'parchment');
           }
         } catch {
           set({ user: null, isAuthenticated: false, isLoading: false });
         }
       },
 
-      updateUserPreferences: async (locale?: 'uk' | 'en', theme?: 'light' | 'dark') => {
+      updateUserPreferences: async (locale?: 'uk' | 'en', theme?: ThemeMode) => {
         try {
           // Spring expects UpdateUserRequest with camelCase and locale enum in upper-case
           const payload: Record<string, unknown> = {};
           if (locale) payload.locale = (locale === 'uk' ? 'UK' : 'EN');
-          if (theme) payload.theme = theme;
+          // Backend stores 'dark'/'light'; map named themes
+          if (theme) payload.theme = theme === 'obsidian' ? 'dark' : 'light';
           const response = await apiClient.put<ApiUser>('/users/me', payload);
           const mappedUser = mapApiUserToFrontend(response.data);
           set({ user: mappedUser });

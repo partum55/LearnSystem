@@ -7,14 +7,15 @@ let API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.REACT_APP_API
 if (!API_BASE_URL) {
   if (typeof window !== 'undefined' && window.location && window.location.hostname) {
     const host = window.location.hostname;
-    // Local dev default
+    const protocol = window.location.protocol; // 'https:' or 'http:'
+    // Local dev default — matches whatever protocol the page was loaded with
     if (host === 'localhost' || host === '127.0.0.1') {
-      API_BASE_URL = 'http://localhost:8080/api';
+      API_BASE_URL = `${protocol}//localhost:8080/api`;
     }
   }
 }
 
-// Final fallback: same-origin relative path
+// Final fallback: same-origin relative path (inherits page protocol)
 if (!API_BASE_URL) API_BASE_URL = '/api';
 
 // Helper to delay in ms

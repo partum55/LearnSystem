@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import i18n from '../i18n/config';
 
-export type ThemeMode = 'light' | 'dark';
+export type ThemeMode = 'obsidian' | 'parchment';
 export type UILang = 'en' | 'uk';
 export type UISize = 'sm' | 'md' | 'lg';
 
@@ -16,12 +16,23 @@ interface UIState {
   setSize: (size: UISize) => void;
 }
 
+/** Migrate legacy 'light'/'dark' values to named themes */
+function migrateTheme(value: string): ThemeMode {
+  if (value === 'dark') return 'obsidian';
+  if (value === 'light') return 'parchment';
+  if (value === 'obsidian' || value === 'parchment') return value;
+  return 'obsidian';
+}
+
 const applyTheme = (theme: ThemeMode) => {
   const root = document.documentElement;
-  if (theme === 'dark') {
-    root.classList.add('dark');
-  } else {
+  // Set data-theme attribute for CSS variable overrides
+  if (theme === 'parchment') {
+    root.setAttribute('data-theme', 'parchment');
     root.classList.remove('dark');
+  } else {
+    root.removeAttribute('data-theme');
+    root.classList.add('dark');
   }
   localStorage.setItem('theme', theme);
 };
@@ -44,7 +55,7 @@ const applySize = (size: UISize) => {
 export const useUIStore = create<UIState>()(
   persist(
     (set, get) => ({
-      theme: (localStorage.getItem('theme') as ThemeMode) || 'light',
+      theme: migrateTheme(localStorage.getItem('theme') || 'obsidian'),
       language: (localStorage.getItem('language') as UILang) || 'uk',
       size: (localStorage.getItem('uiSize') as UISize) || 'md',
 
@@ -53,7 +64,7 @@ export const useUIStore = create<UIState>()(
         set({ theme });
       },
       toggleTheme: () => {
-        const next = get().theme === 'dark' ? 'light' : 'dark';
+        const next = get().theme === 'obsidian' ? 'parchment' : 'obsidian';
         applyTheme(next);
         set({ theme: next });
       },
@@ -73,7 +84,11 @@ export const useUIStore = create<UIState>()(
       partialize: (s) => ({ theme: s.theme, language: s.language, size: s.size }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
-        // Re-apply on load
+        // Migrate legacy values on rehydration
+        const migrated = migrateTheme(state.theme);
+        if (migrated !== state.theme) {
+          state.theme = migrated;
+        }
         try {
           applyTheme(state.theme);
           applyLanguage(state.language);

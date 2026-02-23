@@ -11,7 +11,7 @@ import './i18n/config';
 // Loading component for lazy-loaded routes
 const PageLoader: React.FC = () => (
   <div className="flex items-center justify-center min-h-screen">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" aria-label="Loading page"></div>
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: 'var(--text-muted)' }} aria-label="Loading page"></div>
   </div>
 );
 
@@ -42,7 +42,8 @@ const ProfileSettings = lazy(() => import('./pages/ProfileSettings'));
 const CalendarPage = lazy(() => import('./pages/CalendarPage'));
 const VirtualLab = lazy(() => import('./pages/VirtualLab'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
-const DesignSystemDemo = lazy(() => import('./pages/DesignSystemDemo')); // New import
+const DesignSystemDemo = lazy(() => import('./pages/DesignSystemDemo'));
+const Landing = lazy(() => import('./pages/Landing'));
 
 // Private route wrapper with auth check
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -91,13 +92,17 @@ const AppOptimized: React.FC = () => {
 
   // Apply theme from localStorage on mount
   React.useEffect(() => {
-    const theme = (localStorage.getItem('theme') || 'light') as 'light' | 'dark';
+    const raw = localStorage.getItem('theme') || 'obsidian';
+    // Migrate legacy values
+    const theme = raw === 'dark' ? 'obsidian' : raw === 'light' ? 'parchment' : raw;
     const lang = (localStorage.getItem('language') || 'uk') as 'en' | 'uk';
 
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
+    if (theme === 'parchment') {
+      document.documentElement.setAttribute('data-theme', 'parchment');
       document.documentElement.classList.remove('dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      document.documentElement.classList.add('dark');
     }
 
     document.documentElement.lang = lang;
@@ -115,7 +120,7 @@ const AppOptimized: React.FC = () => {
         <a href="#main-content" className="skip-link">Skip to content</a>
         <main id="main-content" tabIndex={-1} className="focus:outline-none">
           <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" />} />
+            <Route path="/" element={<LazyRoute><Landing /></LazyRoute>} />
             <Route path="/login" element={<LazyRoute><Login /></LazyRoute>} />
             <Route path="/register" element={<LazyRoute><Register /></LazyRoute>} />
 
