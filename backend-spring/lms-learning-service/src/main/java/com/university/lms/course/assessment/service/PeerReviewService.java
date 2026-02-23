@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -167,7 +168,7 @@ public class PeerReviewService {
                 .orElseThrow(() -> new ResourceNotFoundException("PeerReview", "id", request.getPeerReviewId()));
 
         // Update peer review
-        peerReview.setOverallScore(request.getOverallScore());
+        peerReview.setOverallScore(request.getOverallScore() != null ? BigDecimal.valueOf(request.getOverallScore()) : null);
         peerReview.setOverallFeedback(request.getOverallFeedback());
         peerReview.setStatus(PeerReview.PeerReviewStatus.COMPLETED);
         peerReview.setSubmittedAt(LocalDateTime.now());
@@ -183,7 +184,7 @@ public class PeerReviewService {
                     .map(rating -> PeerReviewRating.builder()
                             .peerReviewId(peerReviewId)
                             .rubricId(rating.getRubricId())
-                            .score(rating.getScore())
+                            .score(rating.getScore() != null ? BigDecimal.valueOf(rating.getScore()) : null)
                             .feedback(rating.getFeedback())
                             .build())
                     .collect(Collectors.toList());
@@ -215,7 +216,7 @@ public class PeerReviewService {
 
         List<Double> scores = reviews.stream()
                 .filter(r -> r.getOverallScore() != null)
-                .map(PeerReview::getOverallScore)
+                .map(r -> r.getOverallScore().doubleValue())
                 .collect(Collectors.toList());
 
         if (scores.isEmpty()) {
@@ -237,7 +238,7 @@ public class PeerReviewService {
         dto.setSubmissionId(peerReview.getSubmissionId());
         dto.setIsAnonymous(peerReview.getIsAnonymous());
         dto.setStatus(peerReview.getStatus().name());
-        dto.setOverallScore(peerReview.getOverallScore());
+        dto.setOverallScore(peerReview.getOverallScore() != null ? peerReview.getOverallScore().doubleValue() : null);
         dto.setOverallFeedback(peerReview.getOverallFeedback());
         dto.setSubmittedAt(peerReview.getSubmittedAt());
         dto.setCreatedAt(peerReview.getCreatedAt());
@@ -267,7 +268,7 @@ public class PeerReviewService {
         dto.setId(rating.getId());
         dto.setPeerReviewId(rating.getPeerReviewId());
         dto.setRubricId(rating.getRubricId());
-        dto.setScore(rating.getScore());
+        dto.setScore(rating.getScore() != null ? rating.getScore().doubleValue() : null);
         dto.setFeedback(rating.getFeedback());
 
         // Load rubric name
