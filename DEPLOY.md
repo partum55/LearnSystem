@@ -1,7 +1,7 @@
 # Deploying LearnSystemUCU
 
 > **Last updated:** February 2026
-> **Tested with:** Docker 27.x, Ubuntu 24.04 LTS, Supabase (Supavisor pooler), Groq API (llama-3.3-70b-versatile), Vercel (Vite framework preset)
+> **Tested with:** Docker 27.x, Ubuntu 24.04 LTS, Supabase (Supavisor pooler), Groq API (llama-3.3-70b-versatile), Vercel (Vite framework preset), DigitalOcean App Platform
 
 > **Branch note:** Deploy from the **`main`** branch. Its `docker-compose.yml` is production-ready (Supabase, tight memory limits, `restart: always`). The `dev` branch uses a local postgres container for local development.
 
@@ -9,21 +9,24 @@
 
 ## Choose Your Deployment Option
 
-| | Option A: All-in-One | Option B: Split + Domain | Option C: Split + Vercel Proxy (recommended) |
-|---|---|---|---|
-| **Frontend** | Docker/Nginx on Droplet | Vercel (free CDN) | Vercel (free CDN) |
-| **Backend** | DigitalOcean Droplet | DigitalOcean Droplet | DigitalOcean Droplet |
-| **Database** | Supabase | Supabase | Supabase |
-| **HTTPS** | Not included | DuckDNS + Let's Encrypt | Handled by Vercel (no setup) |
-| **Domain needed** | No | Yes (free or paid) | No |
-| **CORS config** | Not needed | Required | Not needed |
-| **Cost** | $24/mo | $24/mo | $24/mo |
-| **CI/CD for frontend** | Manual rebuild | Auto (push → Vercel) | Auto (push → Vercel) |
-| **Best for** | Quick demo | Custom domain, full control | Simplest split, no domain |
+| | Option A: All-in-One | Option B: Split + Domain | Option C: Split + Vercel Proxy | Option D: App Platform (recommended) |
+|---|---|---|---|---|
+| **Frontend** | Docker/Nginx on Droplet | Vercel (free CDN) | Vercel (free CDN) | Vercel (free CDN) |
+| **Backend** | DigitalOcean Droplet | DigitalOcean Droplet | DigitalOcean Droplet | DigitalOcean App Platform |
+| **Database** | Supabase | Supabase | Supabase | Supabase |
+| **HTTPS** | Not included | DuckDNS + Let's Encrypt | Handled by Vercel (no setup) | Automatic (managed SSL) |
+| **Domain needed** | No | Yes (free or paid) | No | No (`.ondigitalocean.app` free) |
+| **CORS config** | Not needed | Required | Not needed | Required (Vercel → App URL) |
+| **Cost** | $24/mo | $24/mo | $24/mo | ~$72–84/mo |
+| **CI/CD for frontend** | Manual rebuild | Auto (push → Vercel) | Auto (push → Vercel) | Auto (push → Vercel) |
+| **CI/CD for backend** | Manual rebuild | Manual rebuild | Manual rebuild | Auto (push → App Platform) |
+| **Server management** | You manage everything | You manage Droplet | You manage Droplet | Fully managed (zero ops) |
+| **Best for** | Quick demo | Custom domain, full control | Cheapest split, no domain | Production, no server management |
 
 **Option A** — everything on one Droplet (Steps 1–13A).
 **Option B** — Vercel + DigitalOcean + own domain with HTTPS (Steps 1–7, then 8B–15B).
 **Option C** — Vercel proxies API calls to DigitalOcean, no domain or HTTPS setup needed (Steps 1–7, then 8C–13C).
+**Option D** — DigitalOcean App Platform (managed PaaS) + Vercel + Supabase. Auto HTTPS, auto-deploy, no servers ([jump to Option D](#option-d-digitalocean-app-platform--vercel--supabase)).
 
 **Architecture — Option A (All-in-One):**
 ```
@@ -97,6 +100,32 @@ User Browser
                                │
                      Supabase (PostgreSQL)
 ```
+**Architecture — Option D (App Platform + Vercel, recommended):**
+```
+User Browser
+    │
+    ├── Static files ──► Vercel CDN  (your-app.vercel.app)
+    │                     React build served globally
+    │
+    └── API calls ──────► https://your-app.ondigitalocean.app
+                               │  (automatic HTTPS, managed SSL)
+                    DigitalOcean App Platform
+                    ┌─────────────────────────────────────┐
+                    │  api-gateway (public, :8080)         │
+                    │       │                              │
+                    │  ┌────┴──────────────────────┐       │
+                    │  ▼         ▼          ▼      ▼       │
+                    │ user    learning    ai    analytics   │
+                    │ (:8081) (:8089)   (:8085) (:8088)    │
+                    │  └────┬──────────────────────┘       │
+                    │       ▼                              │
+                    │  eureka-server (:8761) + Redis (managed) │
+                    └─────────────────────────────────────┘
+                               │
+                    Supabase (PostgreSQL via Supavisor pooler)
+```
+> **Why Option D:** All API calls are HTTPS automatically — App Platform provides managed SSL certificates with zero config. Auto-deploy on `git push`. No SSH, no Docker, no server management. Trade-off: ~3x more expensive than a Droplet ($72–84/mo vs $24/mo).
+
 > **Why Option C is simplest:** The browser only ever talks to Vercel (HTTPS by default). Vercel's edge network proxies `/api/*` requests to your Droplet over HTTP server-side. No CORS issues (same origin), no SSL certificates to manage, no domain to configure.
 
 ---
@@ -110,8 +139,11 @@ User Browser
 - An SSH client (Terminal on Mac/Linux, or PuTTY / Windows Terminal on Windows)
 - **(Option B only)** A Vercel account (free) and a domain name (free via [DuckDNS](https://www.duckdns.org/))
 - **(Option C only)** A Vercel account (free) — no domain needed
+- **(Option D only)** A Vercel account (free) — App Platform provides HTTPS automatically
 
-**Estimated time:** ~30 minutes (Option A) · ~45 minutes (Option B) · ~35 minutes (Option C)
+**Estimated time:** ~30 minutes (Option A) · ~45 minutes (Option B) · ~35 minutes (Option C) · ~20 minutes (Option D)
+
+> **Option D users:** You only need Steps 1, 3, and 4 from the shared setup below (Supabase, Groq key, JWT secret). Skip Steps 2, 5, 6, 7 (those are Droplet-specific). Then jump to [Option D](#option-d-digitalocean-app-platform--vercel--supabase).
 
 ---
 
@@ -1100,6 +1132,219 @@ docker compose --env-file .env.production restart user-service
 
 ---
 
+# Option D: DigitalOcean App Platform + Vercel + Supabase
+
+> Fully managed backend on App Platform (automatic HTTPS, auto-deploy on push), frontend on Vercel, database on Supabase. **No servers to manage, no SSH, no Docker commands.** This section assumes you've completed **Steps 1, 3, and 4** above (Supabase project, Groq key, JWT secret).
+
+> **Cost:** ~$72–84/mo for the backend. Each Spring Boot service runs as a separate App Platform component ($12/mo each for 1 GB RAM). This is ~3x more than a Droplet but you get zero ops.
+
+---
+
+## Step 8D: Create the App on DigitalOcean App Platform
+
+### 8D-a. Push code to GitHub
+
+Make sure your latest code (with `.do/app.yaml`) is pushed:
+
+```bash
+git push origin main
+```
+
+### 8D-b. Create the app
+
+1. Go to [cloud.digitalocean.com/apps](https://cloud.digitalocean.com/apps)
+2. Click **Create App**
+3. Select **GitHub** as the source → authorize DigitalOcean if prompted → select your `learn_system` (or `LearnSystemUCU`) repo
+4. Select the **`main`** branch
+5. App Platform will auto-detect the `.do/app.yaml` app spec and show 6 service components + 1 Redis database
+6. Click **Next** to proceed
+
+### 8D-c. Configure environment variables
+
+App Platform will show each component with its environment variables. Replace all `{PLACEHOLDER}` values:
+
+| Variable | Value | Components |
+|----------|-------|------------|
+| `{SUPABASE_JDBC_URL}` | `jdbc:postgresql://YOUR_HOST:6543/postgres` (from Step 1) | user-service, learning-service, ai-service, analytics-service |
+| `{SUPABASE_DB_USER}` | `postgres.abcdefghijklmnop` (from Step 1) | user-service, learning-service, ai-service, analytics-service |
+| `{SUPABASE_DB_PASSWORD}` | Your Supabase password (from Step 1) | user-service, learning-service, ai-service, analytics-service |
+| `{JWT_SECRET}` | Your generated JWT secret (from Step 4) | user-service, learning-service, ai-service, analytics-service |
+| `{LLAMA_API_KEY}` | Your Groq API key (from Step 3) | ai-service |
+| `{ADMIN_EMAIL}` | `admin@ucu.edu.ua` (or your preferred email) | user-service |
+| `{ADMIN_PASSWORD}` | A strong admin password | user-service |
+| `{YOUR_VERCEL_URL}` | Leave as placeholder for now — update in Step 10D | api-gateway |
+
+> **Tip:** Variables marked `type: SECRET` are encrypted and never shown in logs.
+
+7. Review the plan — you should see:
+   - 1 public service (api-gateway) — `professional-xs` ($12/mo)
+   - 5 internal services — `professional-xs` or `professional-s`
+   - 1 dev Redis database ($0/mo) or managed Redis ($15/mo)
+
+8. Click **Create Resources**
+
+---
+
+## Step 9D: Wait for Build and Deploy
+
+App Platform will now:
+1. Clone your repo
+2. Build 6 Docker images (each service separately) — **first build takes 15-25 minutes**
+3. Deploy all components
+4. Provision the Redis database
+
+Watch the build progress in the App Platform dashboard under **Activity** tab.
+
+### Check deployment status
+
+Once all components show **Active** with a green checkmark:
+
+1. Click on the **api-gateway** component
+2. Find the **Live App URL** — it looks like:
+   ```
+   https://learnsystem-ucu-xxxxx.ondigitalocean.app
+   ```
+3. **Copy this URL** — this is your HTTPS API endpoint
+
+### Verify the gateway
+
+Open in your browser:
+```
+https://learnsystem-ucu-xxxxx.ondigitalocean.app/actuator/health
+```
+Should show: `{"status":"UP"}`
+
+> **If a service fails to start**, click on it in the dashboard → **Runtime Logs** to see Spring Boot logs. Common issues: wrong Supabase credentials, Eureka not ready yet (services may need 1-2 restart cycles to discover each other).
+
+---
+
+## Step 10D: Deploy Frontend on Vercel
+
+### 10D-a. Import project on Vercel
+
+1. Go to [vercel.com/new](https://vercel.com/new)
+2. **Import Git Repository** → connect GitHub → select your repo
+3. Configure:
+
+| Setting | Value |
+|---------|-------|
+| **Root Directory** | `frontend` |
+| **Framework Preset** | Vite |
+| **Build Command** | `npm run build` |
+| **Output Directory** | `dist` |
+
+4. **Add Environment Variables:**
+
+| Name | Value |
+|------|-------|
+| `VITE_API_URL` | `https://learnsystem-ucu-xxxxx.ondigitalocean.app/api` |
+
+> **Important:** Use the App Platform URL from Step 9D. It must start with `https://` and end with `/api`.
+
+5. Click **Deploy**
+6. Wait 1-2 minutes. Copy your Vercel URL: `https://your-app.vercel.app`
+
+---
+
+## Step 11D: Wire Together — Update CORS
+
+### 11D-a. Update the api-gateway CORS setting
+
+1. Go to your app in [DigitalOcean App Platform dashboard](https://cloud.digitalocean.com/apps)
+2. Click **Settings** → select the **api-gateway** component
+3. Scroll to **Environment Variables**
+4. Find `GATEWAY_CORS_ALLOWED_ORIGINS` and change it from `{YOUR_VERCEL_URL}` to your actual Vercel URL:
+   ```
+   https://your-app.vercel.app
+   ```
+   (No trailing slash)
+5. Click **Save** — App Platform will auto-redeploy the api-gateway component
+
+### 11D-b. Verify CORS
+
+After the gateway redeploys (~2 minutes), test from your terminal:
+
+```bash
+curl -H "Origin: https://your-app.vercel.app" \
+     -H "Access-Control-Request-Method: GET" \
+     -X OPTIONS \
+     https://learnsystem-ucu-xxxxx.ondigitalocean.app/api/auth/login \
+     -v 2>&1 | grep -i "access-control"
+```
+
+You should see:
+```
+< Access-Control-Allow-Origin: https://your-app.vercel.app
+```
+
+---
+
+## Step 12D: Verify and Finalize
+
+### 12D-a. Test in browser
+
+1. Open your Vercel URL: `https://your-app.vercel.app`
+2. Log in with:
+   - **Email:** `admin@ucu.edu.ua` (or what you set for `{ADMIN_EMAIL}`)
+   - **Password:** what you set for `{ADMIN_PASSWORD}`
+3. Navigate around — create a course, test AI features
+
+### 12D-b. If something fails
+
+| Symptom | Check |
+|---------|-------|
+| CORS error | `GATEWAY_CORS_ALLOWED_ORIGINS` must match your Vercel URL exactly (`https://`, no trailing slash) |
+| Network error / 502 | Check App Platform dashboard — are all components Active? Check Runtime Logs for errors |
+| Login returns 500 | Check user-service Runtime Logs for database connection errors. Verify Supabase credentials |
+| Mixed content blocked | `VITE_API_URL` in Vercel must start with `https://` |
+| Services can't find each other | Eureka may need time. Check eureka-server Runtime Logs. Services auto-retry registration |
+
+### 12D-c. Disable bootstrap admin
+
+1. Go to App Platform dashboard → **Settings** → **user-service** component
+2. Change `BOOTSTRAP_ADMIN_ENABLED` from `true` to `false`
+3. Save — auto-redeploys
+
+---
+
+## Updating with Option D
+
+- **Frontend:** Push to `main` → Vercel auto-deploys
+- **Backend:** Push to `main` → App Platform auto-builds and deploys all components
+- **Environment variables:** Change in App Platform dashboard → auto-redeploys affected component
+- **No SSH, no Docker commands, no server management** — everything is in the dashboard or `git push`
+
+### Scale up/down
+
+In the App Platform dashboard, you can:
+- Change instance size (more RAM/CPU) per component
+- Change instance count (horizontal scaling) per component
+- Switch Redis from dev ($0) to managed ($15/mo) for persistence
+
+### Using the CLI
+
+```bash
+# Install doctl (DigitalOcean CLI)
+# See: https://docs.digitalocean.com/reference/doctl/how-to/install/
+
+# List apps
+doctl apps list
+
+# View app details
+doctl apps get YOUR_APP_ID
+
+# View runtime logs
+doctl apps logs YOUR_APP_ID --component api-gateway --follow
+
+# Update app spec from file
+doctl apps update YOUR_APP_ID --spec .do/app.yaml
+
+# Force redeploy
+doctl apps create-deployment YOUR_APP_ID --force-build
+```
+
+---
+
 # Everyday Operations
 
 All commands assume you're SSH'd into the Droplet at `/opt/lms`.
@@ -1149,7 +1394,11 @@ docker compose --env-file .env.production up -d --build
 ### Update frontend
 
 - **Option A:** Same as backend — `git pull` + rebuild on the Droplet.
-- **Option B:** Just push to `main` on GitHub — Vercel auto-deploys. No action needed on the Droplet.
+- **Options B, C, D:** Just push to `main` on GitHub — Vercel auto-deploys. No action needed.
+
+### Update backend (Option D — App Platform)
+
+Just push to `main` — App Platform auto-builds and deploys. No SSH or Docker commands needed.
 
 ### View resource usage
 ```bash
@@ -1343,6 +1592,25 @@ docker compose --env-file .env.production up -d --build
 
 > **Option C caveat:** Vercel Hobby plan has a **10-second timeout** on rewrite/proxy requests. If your AI service takes longer than 10s to respond, those requests will fail. Upgrade to Vercel Pro ($20/mo, 60s timeout) or use Option B for long-running requests.
 
+### Option D: App Platform + Vercel + Supabase
+
+| Service | Cost | Notes |
+|---------|------|-------|
+| DO App Platform — api-gateway (professional-xs) | $12/mo | Public HTTPS service, 1 GB RAM |
+| DO App Platform — eureka-server (professional-xs) | $12/mo | Internal service, 1 GB RAM |
+| DO App Platform — user-service (professional-xs) | $12/mo | Internal service, 1 GB RAM |
+| DO App Platform — learning-service (professional-s) | $12/mo | Internal service, 2 GB RAM |
+| DO App Platform — ai-service (professional-s) | $12/mo | Internal service, 2 GB RAM |
+| DO App Platform — analytics-service (professional-xs) | $12/mo | Internal service, 1 GB RAM |
+| DO App Platform — Redis (dev) | $0/mo | 256 MB, no persistence. Upgrade to managed ($15/mo) for production |
+| Supabase Free | $0/mo | 500 MB database |
+| Vercel Hobby | $0/mo | Static deploys, global CDN |
+| Groq Free | $0/mo | Rate-limited, sufficient for light use |
+| **Total (minimum)** | **$72/mo** | Dev Redis + Supabase Free |
+| **Total (recommended)** | **$112/mo** | Managed Redis + Supabase Pro |
+
+> **Why it costs more:** Each Spring Boot service is a separate managed component. You're paying for zero-ops: no SSH, no Docker, no server updates, automatic HTTPS, auto-deploy, built-in monitoring, and horizontal scaling.
+
 ---
 
 # Security Checklist
@@ -1353,12 +1621,13 @@ docker compose --env-file .env.production up -d --build
   - Option A: 22, 3000, 8080
   - Option B: 22, 80, 443 (8080 stays internal — nginx proxies to it)
   - Option C: 22, 8080
+  - Option D: N/A — App Platform manages networking, no ports to configure
 - [ ] **JWT_SECRET** is a long random string (not the dev default)
 - [ ] **`.env.production` is not committed to git** — it's in `.gitignore`
 - [ ] **No internal ports exposed** (8081, 8085, 8088, 8089, 8761 are Docker-internal only)
 - [ ] **Supabase database password** is strong and unique
 - [ ] **SSH key authentication** is used (not password auth)
-- [ ] **(Option B)** `GATEWAY_CORS_ALLOWED_ORIGINS` only lists your actual frontend domains
+- [ ] **(Options B & D)** `GATEWAY_CORS_ALLOWED_ORIGINS` only lists your actual frontend domains
 
 ### Optional hardening
 

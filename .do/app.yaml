@@ -1,0 +1,310 @@
+# ==========================================
+# LearnSystemUCU — DigitalOcean App Platform Spec
+# ==========================================
+#
+# Deploy via:
+#   1. Push to GitHub
+#   2. In DO Console → Apps → Create App → pick this repo
+#   3. DO auto-detects .do/app.yaml
+#   4. Fill in environment variables marked {PLACEHOLDER}
+#
+# Or via CLI:
+#   doctl apps create --spec .do/app.yaml
+#   doctl apps update <APP_ID> --spec .do/app.yaml
+#
+# Cost estimate: ~$72–84/mo (6 services × $12 + Redis $12)
+# ==========================================
+
+name: learnsystem-ucu
+region: fra
+
+# ==========================================
+# PUBLIC SERVICE — API Gateway (only public component)
+# ==========================================
+services:
+  - name: api-gateway
+    github:
+      repo: partum55/learn_system
+      branch: main
+      deploy_on_push: true
+    source_dir: backend-spring
+    dockerfile_path: Dockerfile
+    build_args:
+      - name: SERVICE_NAME
+        value: lms-api-gateway
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: professional-xs
+    health_check:
+      http_path: /actuator/health
+      initial_delay_seconds: 60
+      period_seconds: 30
+      timeout_seconds: 10
+      failure_threshold: 5
+    envs:
+      - key: SPRING_PROFILES_ACTIVE
+        value: docker
+      - key: EUREKA_URI
+        value: http://${eureka-server.PRIVATE_URL}:8761/eureka
+      - key: JAVA_OPTS
+        value: "-Xmx384m -Xms192m"
+      - key: GATEWAY_CORS_ALLOWED_ORIGINS
+        value: "{YOUR_VERCEL_URL}"
+        # e.g. https://your-app.vercel.app
+
+# ==========================================
+# INTERNAL SERVICES (not publicly accessible)
+# ==========================================
+
+  - name: eureka-server
+    github:
+      repo: partum55/learn_system
+      branch: main
+      deploy_on_push: true
+    source_dir: backend-spring
+    dockerfile_path: Dockerfile
+    build_args:
+      - name: SERVICE_NAME
+        value: lms-eureka-server
+    internal_ports:
+      - 8761
+    instance_count: 1
+    instance_size_slug: professional-xs
+    health_check:
+      http_path: /actuator/health
+      port: 8761
+      initial_delay_seconds: 60
+      period_seconds: 30
+      timeout_seconds: 10
+      failure_threshold: 5
+    envs:
+      - key: SPRING_PROFILES_ACTIVE
+        value: docker
+      - key: JAVA_OPTS
+        value: "-Xmx256m -Xms128m"
+
+  - name: user-service
+    github:
+      repo: partum55/learn_system
+      branch: main
+      deploy_on_push: true
+    source_dir: backend-spring
+    dockerfile_path: Dockerfile
+    build_args:
+      - name: SERVICE_NAME
+        value: lms-user-service
+    internal_ports:
+      - 8081
+    instance_count: 1
+    instance_size_slug: professional-xs
+    health_check:
+      http_path: /api/actuator/health
+      port: 8081
+      initial_delay_seconds: 90
+      period_seconds: 30
+      timeout_seconds: 10
+      failure_threshold: 5
+    envs:
+      - key: SPRING_PROFILES_ACTIVE
+        value: docker,supabase
+      - key: SERVER_PORT
+        value: "8081"
+      - key: SPRING_DATASOURCE_URL
+        value: "{SUPABASE_JDBC_URL}"
+        type: SECRET
+      - key: SPRING_DATASOURCE_USERNAME
+        value: "{SUPABASE_DB_USER}"
+        type: SECRET
+      - key: SPRING_DATASOURCE_PASSWORD
+        value: "{SUPABASE_DB_PASSWORD}"
+        type: SECRET
+      - key: SPRING_DATA_REDIS_HOST
+        value: ${redis.HOSTNAME}
+      - key: SPRING_DATA_REDIS_PORT
+        value: ${redis.PORT}
+      - key: SPRING_DATA_REDIS_PASSWORD
+        value: ${redis.PASSWORD}
+      - key: JWT_SECRET
+        value: "{JWT_SECRET}"
+        type: SECRET
+      - key: JWT_EXPIRATION
+        value: "86400000"
+      - key: EUREKA_URI
+        value: http://${eureka-server.PRIVATE_URL}:8761/eureka
+      - key: JAVA_OPTS
+        value: "-Xmx384m -Xms192m"
+      - key: BOOTSTRAP_ADMIN_ENABLED
+        value: "true"
+      - key: BOOTSTRAP_ADMIN_EMAIL
+        value: "{ADMIN_EMAIL}"
+      - key: BOOTSTRAP_ADMIN_PASSWORD
+        value: "{ADMIN_PASSWORD}"
+        type: SECRET
+
+  - name: learning-service
+    github:
+      repo: partum55/learn_system
+      branch: main
+      deploy_on_push: true
+    source_dir: backend-spring
+    dockerfile_path: Dockerfile
+    build_args:
+      - name: SERVICE_NAME
+        value: lms-learning-service
+    internal_ports:
+      - 8089
+    instance_count: 1
+    instance_size_slug: professional-s
+    health_check:
+      http_path: /api/actuator/health
+      port: 8089
+      initial_delay_seconds: 90
+      period_seconds: 30
+      timeout_seconds: 10
+      failure_threshold: 5
+    envs:
+      - key: SPRING_PROFILES_ACTIVE
+        value: docker,supabase
+      - key: SERVER_PORT
+        value: "8089"
+      - key: DATABASE_URL
+        value: "{SUPABASE_JDBC_URL}"
+        type: SECRET
+      - key: DB_USERNAME
+        value: "{SUPABASE_DB_USER}"
+        type: SECRET
+      - key: DB_PASSWORD
+        value: "{SUPABASE_DB_PASSWORD}"
+        type: SECRET
+      - key: SPRING_DATA_REDIS_HOST
+        value: ${redis.HOSTNAME}
+      - key: SPRING_DATA_REDIS_PORT
+        value: ${redis.PORT}
+      - key: SPRING_DATA_REDIS_PASSWORD
+        value: ${redis.PASSWORD}
+      - key: JWT_SECRET
+        value: "{JWT_SECRET}"
+        type: SECRET
+      - key: EUREKA_URI
+        value: http://${eureka-server.PRIVATE_URL}:8761/eureka
+      - key: SUBMISSION_STORAGE_PATH
+        value: /data/submissions
+      - key: JAVA_OPTS
+        value: "-Xmx512m -Xms256m"
+
+  - name: ai-service
+    github:
+      repo: partum55/learn_system
+      branch: main
+      deploy_on_push: true
+    source_dir: backend-spring
+    dockerfile_path: Dockerfile
+    build_args:
+      - name: SERVICE_NAME
+        value: lms-ai-service
+    internal_ports:
+      - 8085
+    instance_count: 1
+    instance_size_slug: professional-s
+    health_check:
+      http_path: /api/actuator/health
+      port: 8085
+      initial_delay_seconds: 120
+      period_seconds: 30
+      timeout_seconds: 10
+      failure_threshold: 5
+    envs:
+      - key: SPRING_PROFILES_ACTIVE
+        value: docker,supabase
+      - key: SERVER_PORT
+        value: "8085"
+      - key: DB_URL
+        value: "{SUPABASE_JDBC_URL}"
+        type: SECRET
+      - key: DB_USERNAME
+        value: "{SUPABASE_DB_USER}"
+        type: SECRET
+      - key: DB_PASSWORD
+        value: "{SUPABASE_DB_PASSWORD}"
+        type: SECRET
+      - key: REDIS_HOST
+        value: ${redis.HOSTNAME}
+      - key: REDIS_PORT
+        value: ${redis.PORT}
+      - key: REDIS_PASSWORD
+        value: ${redis.PASSWORD}
+      - key: LLAMA_API_URL
+        value: "https://api.groq.com/openai/v1"
+      - key: LLAMA_API_KEY
+        value: "{LLAMA_API_KEY}"
+        type: SECRET
+      - key: LLAMA_MODEL
+        value: "llama-3.3-70b-versatile"
+      - key: EUREKA_URI
+        value: http://${eureka-server.PRIVATE_URL}:8761/eureka
+      - key: JWT_SECRET
+        value: "{JWT_SECRET}"
+        type: SECRET
+      - key: JAVA_OPTS
+        value: "-Xmx768m -Xms384m -XX:+UseG1GC"
+
+  - name: analytics-service
+    github:
+      repo: partum55/learn_system
+      branch: main
+      deploy_on_push: true
+    source_dir: backend-spring
+    dockerfile_path: Dockerfile
+    build_args:
+      - name: SERVICE_NAME
+        value: lms-analytics-service
+    internal_ports:
+      - 8088
+    instance_count: 1
+    instance_size_slug: professional-xs
+    health_check:
+      http_path: /api/actuator/health
+      port: 8088
+      initial_delay_seconds: 90
+      period_seconds: 30
+      timeout_seconds: 10
+      failure_threshold: 5
+    envs:
+      - key: SPRING_PROFILES_ACTIVE
+        value: docker,supabase
+      - key: SERVER_PORT
+        value: "8088"
+      - key: SPRING_DATASOURCE_URL
+        value: "{SUPABASE_JDBC_URL}"
+        type: SECRET
+      - key: SPRING_DATASOURCE_USERNAME
+        value: "{SUPABASE_DB_USER}"
+        type: SECRET
+      - key: SPRING_DATASOURCE_PASSWORD
+        value: "{SUPABASE_DB_PASSWORD}"
+        type: SECRET
+      - key: SPRING_FLYWAY_ENABLED
+        value: "false"
+      - key: SPRING_DATA_REDIS_HOST
+        value: ${redis.HOSTNAME}
+      - key: SPRING_DATA_REDIS_PORT
+        value: ${redis.PORT}
+      - key: SPRING_DATA_REDIS_PASSWORD
+        value: ${redis.PASSWORD}
+      - key: JWT_SECRET
+        value: "{JWT_SECRET}"
+        type: SECRET
+      - key: EUREKA_URI
+        value: http://${eureka-server.PRIVATE_URL}:8761/eureka
+      - key: JAVA_OPTS
+        value: "-Xmx384m -Xms192m"
+
+# ==========================================
+# MANAGED REDIS
+# ==========================================
+databases:
+  - name: redis
+    engine: REDIS
+    production: false
+    # production: false = Dev Database ($0/mo, 256MB, no persistence)
+    # production: true  = Managed Database ($15/mo, 1GB, persistence)

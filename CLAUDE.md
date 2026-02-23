@@ -4,12 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Full-stack Learning Management System: Spring Boot microservices backend, React + TypeScript frontend, Docker-based infrastructure.
+Full-stack Learning Management System: Spring Boot microservices backend, React + TypeScript frontend, Docker-based infrastructure with split deployment support (Vercel + DigitalOcean + Supabase).
+
+## Branch Strategy
+
+- **`main`** — Production-ready. `docker-compose.yml` uses external Supabase PostgreSQL, no local DB container. Requires `.env.production`.
+- **`dev`** — Local development. Includes local PostgreSQL container. Uses `.env`.
 
 ## Architecture
 
 ```
-Frontend (React+TS, Vite :5173 / Nginx :3000)
+Frontend (React+TS, Vite :5173 / Nginx :3000 / Vercel)
     │
 API Gateway (Spring Cloud Gateway :8080, Eureka, Resilience4j, Bucket4j rate limiting)
     │
@@ -19,21 +24,28 @@ API Gateway (Spring Cloud Gateway :8080, Eureka, Resilience4j, Bucket4j rate lim
     ├── Analytics Service (:8088) — Teacher analytics, Feign clients to other services
     └── Eureka Server (:8761) — Service discovery
          │
-    PostgreSQL (:5432) + Redis (:6380)
+    PostgreSQL (Supabase on main / local :5432 on dev) + Redis (:6380)
 ```
 
 The Learning Service is a **modular monolith** — one Spring Boot app with distinct domain packages (courses, assessments, gradebook, submissions, deadlines) rather than separate microservices.
 
 ## Development Commands
 
-### Docker (full stack)
+### Docker — Production (main branch)
 ```bash
+cp .env.production.example .env.production  # Fill in Supabase, JWT, Groq keys
 ./run-local.sh build    # First time: build + start all containers
 ./run-local.sh          # Start (after first build)
 ./run-local.sh stop     # Stop all
 ./run-local.sh clean    # Stop + remove data volumes
 ./run-local.sh status   # Health check all services
 ./run-local.sh logs     # Stream logs
+```
+
+### Docker — Development (dev branch)
+```bash
+cp .env.example .env    # Configure local DB passwords, JWT_SECRET, LLAMA_API_KEY
+./run-local.sh build    # Includes local PostgreSQL container
 ```
 
 ### Frontend
@@ -72,7 +84,7 @@ cd lms-learning-service && mvn spring-boot:run  # Run one service locally
 Tech: Java 21, Spring Boot 3.2.2, Spring Cloud 2023.0.0, PostgreSQL, Redis, Flyway, Lombok, MapStruct.
 
 ### Frontend (`frontend/src/`)
-- **api/** — Axios clients (`client.ts` base instance with token refresh), per-domain endpoints
+- **api/** — Axios clients (`client.ts` base instance with token refresh, protocol-aware URL detection), per-domain endpoints
 - **queries/** + **mutations/** — React Query hooks for data fetching/mutations
 - **store/** — Zustand stores (auth, UI state)
 - **pages/** — Route-level components
@@ -91,6 +103,18 @@ Dark monochrome design using CSS custom properties in `design-system.css`:
 - Borders: `rgba(255,255,255,0.08)` default
 - Component classes: `.btn`, `.btn-primary`, `.card`, `.input`, `.badge`, `.table-container`
 
+## Deployment
+
+Four deployment options documented in `DEPLOY.md`:
+- **Option A** — All-in-one on a single DigitalOcean Droplet
+- **Option B** — Split: Vercel (frontend) + DigitalOcean Droplet (backend) + Supabase (DB), with custom domain + Let's Encrypt SSL
+- **Option C** — Split with Vercel proxy (no domain needed): Vercel rewrites `/api/*` to Droplet, eliminating CORS/HTTPS issues
+- **Option D** — DigitalOcean App Platform (managed PaaS, auto HTTPS) + Vercel + Supabase. Zero server management, auto-deploy on push. App spec: `.do/app.yaml`
+
+Vercel config: `frontend/vercel.json` — SPA routing + API proxy rewrite via `BACKEND_URL` env var.
+
+CORS is controlled per-service via `GATEWAY_CORS_ALLOWED_ORIGINS` env var. All external-facing URLs default to HTTPS. Internal Docker networking (Eureka, service-to-service) uses HTTP.
+
 ## Contract Testing
 
 Frontend and backend contracts ensure API consistency:
@@ -102,11 +126,7 @@ Frontend and backend contracts ensure API consistency:
 
 Prerequisites: Docker + Docker Compose, Node.js 18+, Java 21, Maven 3.9+.
 
-```bash
-cp .env.example .env   # Configure LLAMA_API_KEY, DB passwords, JWT_SECRET
-```
-
-Key env vars: `LLAMA_API_KEY` (Groq), `JWT_SECRET`, `POSTGRES_PASSWORD`, `VITE_API_URL` (default `/api`), `VITE_API_TARGET` (Vite proxy target, default `http://localhost:8080`).
+Key env vars: `LLAMA_API_KEY` (Groq), `JWT_SECRET`, `SUPABASE_DB_URL` (production), `POSTGRES_PASSWORD` (dev), `VITE_API_URL` (default `/api`), `GATEWAY_CORS_ALLOWED_ORIGINS`.
 
 ## Local URLs
 
