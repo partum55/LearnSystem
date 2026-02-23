@@ -16,6 +16,24 @@
 # Requires: .env.production (copy from .env.production.example and fill in values)
 
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: lms-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: lms_db
+      POSTGRES_USER: lms_user
+      POSTGRES_PASSWORD: lms_password_local
+    ports:
+      - "5432:5432"
+    networks:
+      - lms-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lms_user -d lms_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
   # ==========================================
   # CACHE (Redis — needed for rate limiting, caching)
   # ==========================================

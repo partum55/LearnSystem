@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Menu, Transition } from '@headlessui/react';
-import { BellIcon, SunIcon, MoonIcon, LanguageIcon, Bars3Icon } from '@heroicons/react/24/outline';
+import { BellIcon, LanguageIcon, Bars3Icon } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../store/authStore';
 import { useNotificationStore } from '../store/notificationStore';
 
@@ -14,17 +14,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { t, i18n } = useTranslation();
   const { user, logout, updateUserPreferences } = useAuthStore();
   const { unreadCount } = useNotificationStore();
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    return (localStorage.getItem('theme') as 'light' | 'dark') || 'dark';
-  });
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
-    updateUserPreferences(undefined, newTheme);
-  };
 
   const changeLanguage = (lang: 'uk' | 'en') => {
     i18n.changeLanguage(lang);
@@ -77,18 +66,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
         {/* Right: actions */}
         <div className="flex items-center gap-0.5">
-          {/* Theme */}
-          <button
-            onClick={toggleTheme}
-            className="hidden sm:flex items-center justify-center w-8 h-8 rounded-md transition-colors"
-            style={{ color: 'var(--text-muted)' }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
-            aria-label="Toggle theme"
-          >
-            {theme === 'light' ? <MoonIcon className="h-4 w-4" /> : <SunIcon className="h-4 w-4" />}
-          </button>
-
           {/* Language */}
           <Menu as="div" className="relative hidden sm:block">
             <Menu.Button

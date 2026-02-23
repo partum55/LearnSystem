@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
 @import './design-system.css';
 
 @tailwind base;
@@ -7,7 +7,8 @@
 
 @layer base {
   body {
-    @apply bg-[#09090b] text-[#fafafa];
+    background: var(--bg-base);
+    color: var(--text-primary);
   }
 
   /* Root UI size scaling using rem */
@@ -15,11 +16,7 @@
   html.ui-md { font-size: 16px; }
   html.ui-lg { font-size: 18px; }
 
-  /* Focus visibility improvements */
-  :focus-visible {
-    outline: 1px solid rgba(255, 255, 255, 0.3);
-    outline-offset: 2px;
-  }
+  /* Focus visibility improvements — uses design-system.css :focus-visible */
 
   /* Respect reduced motion */
   @media (prefers-reduced-motion: reduce) {
@@ -37,8 +34,8 @@
     position: absolute;
     left: 0.5rem;
     top: -100%;
-    background: #fafafa;
-    color: #09090b;
+    background: var(--text-primary);
+    color: var(--bg-base);
     padding: 0.5rem 0.75rem;
     border-radius: 6px;
     z-index: 50;

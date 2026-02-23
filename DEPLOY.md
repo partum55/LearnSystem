@@ -1164,19 +1164,21 @@ This creates the entire app with all 6 services + Redis from the spec file. Skip
 
 ### 8D-c. Create the app — Method B (Dashboard UI)
 
-The dashboard **does not auto-detect** the `.do/app.yaml` file. You need to add each component manually:
+The dashboard **does not auto-detect** the `.do/app.yaml` file. You create **1 app** with **7 resources** inside it (6 services + Redis). Here's how:
 
 1. Go to [cloud.digitalocean.com/apps](https://cloud.digitalocean.com/apps)
 2. Click **Create App**
 3. Select **GitHub** as the source → authorize DigitalOcean if prompted → select your repo
 4. Select the **`main`** branch
-5. You'll see **"No components detected"** — this is expected. Click **Add Resource**
+5. You'll see **"No components detected"** — this is expected
 
-Now add each of the 6 services. For each one:
+> **Key concept:** One App Platform "app" contains multiple "resources" (components). You'll add all 6 services + Redis as resources inside this single app. **Do NOT create 6 separate apps** — that breaks internal networking.
+
+Now add all 7 resources one-by-one using the **"+ Add Resource"** button. **Don't click the final "Create" button until all 7 are added.**
 
 #### Component 1: eureka-server (add this FIRST — other services depend on it)
 
-1. Click **Add Resource** → **Create a Resource From Source Code**
+1. Click **+ Add Resource** → **Create a Resource From Source Code**
 2. Select same repo + `main` branch
 3. Configure:
 
@@ -1198,11 +1200,11 @@ Now add each of the 6 services. For each one:
 | `SPRING_PROFILES_ACTIVE` | `docker` | Run-time |
 | `JAVA_OPTS` | `-Xmx256m -Xms128m` | Run-time |
 
-5. Click **Add Resource**
+5. Click **Save** — you're back on the resource list. You should see `eureka-server` listed.
 
 #### Component 2: api-gateway (the only PUBLIC service)
 
-1. **Add Resource** → **Create a Resource From Source Code**
+1. Click **+ Add Resource** again → **Create a Resource From Source Code**
 2. Same repo + `main` branch
 3. Configure:
 
@@ -1229,6 +1231,8 @@ Now add each of the 6 services. For each one:
 > **Note:** `${eureka-server.PRIVATE_URL}` is an App Platform variable reference — it resolves to the internal hostname of the eureka-server component. Type it exactly as shown.
 
 #### Component 3: user-service
+
+Click **+ Add Resource** → **Create a Resource From Source Code** → same repo + `main` branch.
 
 | Setting | Value |
 |---------|-------|
@@ -1262,6 +1266,8 @@ Now add each of the 6 services. For each one:
 
 #### Component 4: learning-service
 
+Click **+ Add Resource** → **Create a Resource From Source Code** → same repo + `main` branch.
+
 | Setting | Value |
 |---------|-------|
 | **Source Directory** | `backend-spring` |
@@ -1290,6 +1296,8 @@ Now add each of the 6 services. For each one:
 | `JAVA_OPTS` | `-Xmx512m -Xms256m` | Run-time |
 
 #### Component 5: ai-service
+
+Click **+ Add Resource** → **Create a Resource From Source Code** → same repo + `main` branch.
 
 | Setting | Value |
 |---------|-------|
@@ -1322,6 +1330,8 @@ Now add each of the 6 services. For each one:
 
 #### Component 6: analytics-service
 
+Click **+ Add Resource** → **Create a Resource From Source Code** → same repo + `main` branch.
+
 | Setting | Value |
 |---------|-------|
 | **Source Directory** | `backend-spring` |
@@ -1349,14 +1359,30 @@ Now add each of the 6 services. For each one:
 | `EUREKA_URI` | `http://${eureka-server.PRIVATE_URL}:8761/eureka` | Run-time |
 | `JAVA_OPTS` | `-Xmx384m -Xms192m` | Run-time |
 
-#### Add Redis Database
+#### Component 7: Redis Database
 
-1. Click **Add Resource** → **Add Database**
+1. Click **+ Add Resource** → **Add Database** (not "From Source Code" this time)
 2. Select **Redis**
 3. Choose **Dev Database** ($0/mo, 256 MB) for testing, or **Managed** ($15/mo) for production
 4. Name it `redis`
 
 > **Important:** The name must be exactly `redis` so the `${redis.HOSTNAME}`, `${redis.PORT}`, and `${redis.PASSWORD}` references in the service env vars resolve correctly.
+
+#### Final check before creating
+
+You should now see **7 resources** listed in the app creation screen:
+
+```
+✓ eureka-server     (Internal Service)
+✓ api-gateway       (Web Service — public)
+✓ user-service      (Internal Service)
+✓ learning-service  (Internal Service)
+✓ ai-service        (Internal Service)
+✓ analytics-service (Internal Service)
+✓ redis             (Dev Database)
+```
+
+**Now click "Create Resources"** to deploy the entire app. All 7 resources will be created inside one app with shared internal networking.
 
 ### 8D-d. Configure environment variables
 

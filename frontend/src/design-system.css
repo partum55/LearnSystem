@@ -73,6 +73,104 @@
   --z-modal: 400;
 }
 
+/* ═══════════════════════════════════════════════
+   PARCHMENT — Warm literary light theme
+   Cream/ivory/sepia tones, serif body font
+   ═══════════════════════════════════════════════ */
+
+[data-theme="parchment"] {
+  /* ── Surfaces ── */
+  --bg-base: #FDFAF5;
+  --bg-surface: #F7F3EC;
+  --bg-elevated: #EDE8DF;
+  --bg-overlay: #E5DFD3;
+  --bg-hover: rgba(120, 100, 70, 0.06);
+  --bg-active: rgba(120, 100, 70, 0.10);
+
+  /* ── Borders ── */
+  --border-default: rgba(120, 100, 70, 0.15);
+  --border-subtle: rgba(120, 100, 70, 0.08);
+  --border-strong: rgba(120, 100, 70, 0.25);
+
+  /* ── Text ── */
+  --text-primary: #2C2418;
+  --text-secondary: #5C5040;
+  --text-muted: #8C8070;
+  --text-faint: #A89C8C;
+
+  /* ── Functional ── */
+  --fn-success: #4A7C59;
+  --fn-warning: #B8860B;
+  --fn-error: #C0392B;
+  --fn-info: #5C5040;
+
+  /* ── Typography ── */
+  --font-body: 'Lora', 'Georgia', serif;
+
+  /* ── Shadows (warm-tinted) ── */
+  --shadow-sm: 0 1px 2px rgba(120, 100, 70, 0.1);
+  --shadow-md: 0 2px 8px rgba(120, 100, 70, 0.12);
+  --shadow-lg: 0 8px 24px rgba(120, 100, 70, 0.15);
+  --shadow-glow: 0 0 0 1px rgba(120, 100, 70, 0.08);
+}
+
+[data-theme="parchment"] ::selection {
+  background: rgba(120, 100, 70, 0.2);
+  color: #2C2418;
+}
+
+[data-theme="parchment"] :focus-visible {
+  outline: 1px solid rgba(120, 100, 70, 0.4);
+  outline-offset: 2px;
+}
+
+[data-theme="parchment"] ::-webkit-scrollbar-thumb {
+  background: rgba(120, 100, 70, 0.15);
+}
+
+[data-theme="parchment"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 100, 70, 0.25);
+}
+
+[data-theme="parchment"] .btn-primary {
+  background: #2C2418;
+  color: #FDFAF5;
+  border-color: #2C2418;
+}
+
+[data-theme="parchment"] .btn-primary:hover:not(:disabled) {
+  background: #3D3425;
+  border-color: #3D3425;
+}
+
+[data-theme="parchment"] .btn-danger {
+  border-color: rgba(192, 57, 43, 0.2);
+}
+
+[data-theme="parchment"] .btn-danger:hover:not(:disabled) {
+  background: rgba(192, 57, 43, 0.1);
+  border-color: rgba(192, 57, 43, 0.3);
+}
+
+[data-theme="parchment"] .badge-success {
+  color: #4A7C59;
+  border-color: rgba(74, 124, 89, 0.2);
+  background: rgba(74, 124, 89, 0.08);
+}
+
+[data-theme="parchment"] .badge-error {
+  color: #C0392B;
+  border-color: rgba(192, 57, 43, 0.2);
+  background: rgba(192, 57, 43, 0.08);
+}
+
+[data-theme="parchment"] .badge-warning {
+  color: #B8860B;
+  border-color: rgba(184, 134, 11, 0.2);
+  background: rgba(184, 134, 11, 0.08);
+}
+
+
 /* ── Base ── */
 * { box-sizing: border-box; }
 

@@ -5,6 +5,7 @@ export * from './CreateAssignmentModal';
 export * from './CreateModuleModal';
 export * from './Header';
 export * from './Input';
+export * from './PasswordInput';
 export * from './Layout';
 export * from './Loading';
 export * from './Modal';

@@ -3,6 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
 import { Input } from '../components';
+import { PasswordInput } from '../components/PasswordInput';
 import { Button } from '../components';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
@@ -62,112 +63,156 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4"
-      style={{ background: 'var(--bg-base)', fontFamily: 'var(--font-body)' }}
-    >
-      <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex items-center gap-2 mb-10">
+    <div className="min-h-screen flex" style={{ background: 'var(--bg-base)', fontFamily: 'var(--font-body)' }}>
+      {/* Left decorative panel — hidden on mobile */}
+      <div
+        className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center"
+        style={{ background: 'var(--bg-surface)' }}
+      >
+        {/* Geometric CSS pattern */}
+        <div className="absolute inset-0 opacity-[0.04]" style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, var(--text-primary) 1px, transparent 0)`,
+          backgroundSize: '32px 32px',
+        }} />
+        <div className="relative z-10 text-center px-12 max-w-md">
+          {/* Logo */}
           <div
-            className="w-7 h-7 rounded flex items-center justify-center text-[11px] font-bold"
-            style={{ background: 'var(--text-primary)', color: 'var(--bg-base)' }}
+            className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl font-bold mx-auto mb-6 animate-fade-in"
+            style={{
+              background: 'var(--text-primary)',
+              color: 'var(--bg-base)',
+              boxShadow: '0 0 40px rgba(255,255,255,0.06)',
+            }}
           >
             LS
           </div>
-          <span
-            className="text-sm font-semibold"
-            style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+          <h2
+            className="text-3xl font-bold mb-3 animate-fade-in-up"
+            style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)', animationDelay: '100ms', animationFillMode: 'both' }}
           >
             LearnSystem
-          </span>
-          <div className="ml-auto">
-            <LanguageSwitcher />
-          </div>
-        </div>
-
-        {/* Heading */}
-        <div className="mb-8">
-          <h1
-            className="text-2xl font-semibold mb-1.5"
-            style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+          </h2>
+          <p
+            className="text-base animate-fade-in-up"
+            style={{ color: 'var(--text-muted)', animationDelay: '200ms', animationFillMode: 'both' }}
           >
-            {t('auth.welcome')}
-          </h1>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Sign in to continue
+            {t('landing.tagline', 'Your academic journey starts here')}
           </p>
         </div>
+      </div>
 
-        {/* Messages */}
-        {successMessage && (
-          <div
-            className="mb-4 px-3 py-2 rounded-md text-sm"
-            style={{ background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.15)', color: 'var(--fn-success)' }}
-          >
-            {successMessage}
+      {/* Right form panel */}
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-8">
+        <div className="w-full max-w-sm">
+          {/* Mobile logo + language */}
+          <div className="flex items-center gap-2 mb-10">
+            <div className="lg:hidden flex items-center gap-2">
+              <div
+                className="w-7 h-7 rounded flex items-center justify-center text-[11px] font-bold"
+                style={{ background: 'var(--text-primary)', color: 'var(--bg-base)' }}
+              >
+                LS
+              </div>
+              <span
+                className="text-sm font-semibold"
+                style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+              >
+                LearnSystem
+              </span>
+            </div>
+            <div className="ml-auto">
+              <LanguageSwitcher />
+            </div>
           </div>
-        )}
 
-        {(localError || error) && (
-          <div
-            className="mb-4 px-3 py-2 rounded-md text-sm"
-            style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', color: 'var(--fn-error)' }}
-          >
-            {localError || error}
-          </div>
-        )}
-
-        {/* Form */}
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <Input
-            label={t('auth.email')}
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@ucu.edu.ua"
-            required
-          />
-          <Input
-            label={t('auth.password')}
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            required
-          />
-
-          <div className="flex items-center justify-between">
-            <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-              <input
-                type="checkbox"
-                name="remember-me"
-                className="rounded"
-                style={{ accentColor: 'var(--text-primary)' }}
-              />
-              {t('auth.rememberMe')}
-            </label>
-            <button
-              type="button"
-              className="text-sm transition-colors"
-              style={{ color: 'var(--text-muted)' }}
+          {/* Heading */}
+          <div className="mb-8" style={{ animationDelay: '0ms' }}>
+            <h1
+              className="text-2xl font-semibold mb-1.5 animate-fade-in-up"
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
             >
-              {t('auth.forgotPassword')}
-            </button>
+              {t('auth.welcome')}
+            </h1>
+            <p className="text-sm animate-fade-in-up" style={{ color: 'var(--text-muted)', animationDelay: '50ms', animationFillMode: 'both' }}>
+              {t('auth.loginSubtitle', 'Sign in to continue')}
+            </p>
           </div>
 
-          <Button type="submit" fullWidth size="md" isLoading={isLoading}>
-            {t('auth.login')}
-          </Button>
-        </form>
+          {/* Messages */}
+          {successMessage && (
+            <div
+              className="mb-4 px-3 py-2 rounded-md text-sm"
+              style={{ background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.15)', color: 'var(--fn-success)' }}
+            >
+              {successMessage}
+            </div>
+          )}
 
-        <p className="text-center mt-6 text-sm" style={{ color: 'var(--text-muted)' }}>
-          {t('auth.register.noAccount')}{' '}
-          <Link to="/register" className="font-medium" style={{ color: 'var(--text-primary)' }}>
-            {t('auth.register.createAccount')}
-          </Link>
-        </p>
+          {(localError || error) && (
+            <div
+              className="mb-4 px-3 py-2 rounded-md text-sm"
+              style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', color: 'var(--fn-error)' }}
+            >
+              {localError || error}
+            </div>
+          )}
 
+          {/* Form */}
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <div className="animate-fade-in-up" style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
+              <Input
+                label={t('auth.email')}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@ucu.edu.ua"
+                required
+              />
+            </div>
+            <div className="animate-fade-in-up" style={{ animationDelay: '150ms', animationFillMode: 'both' }}>
+              <PasswordInput
+                label={t('auth.password')}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                required
+              />
+            </div>
+
+            <div className="flex items-center justify-between animate-fade-in-up" style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
+              <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+                <input
+                  type="checkbox"
+                  name="remember-me"
+                  className="rounded"
+                  style={{ accentColor: 'var(--text-primary)' }}
+                />
+                {t('auth.rememberMe')}
+              </label>
+              <button
+                type="button"
+                className="text-sm transition-colors"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                {t('auth.forgotPassword')}
+              </button>
+            </div>
+
+            <div className="animate-fade-in-up" style={{ animationDelay: '250ms', animationFillMode: 'both' }}>
+              <Button type="submit" fullWidth size="md" isLoading={isLoading}>
+                {t('auth.login')}
+              </Button>
+            </div>
+          </form>
+
+          <p className="text-center mt-6 text-sm animate-fade-in-up" style={{ color: 'var(--text-muted)', animationDelay: '300ms', animationFillMode: 'both' }}>
+            {t('auth.register.noAccount')}{' '}
+            <Link to="/register" className="font-medium" style={{ color: 'var(--text-primary)' }}>
+              {t('auth.register.createAccount')}
+            </Link>
+          </p>
+
+        </div>
       </div>
     </div>
   );

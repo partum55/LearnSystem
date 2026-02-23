@@ -5,21 +5,13 @@ import { useAuthStore } from '../store/authStore';
 
 const SettingsBar: React.FC = () => {
   const { t } = useTranslation();
-  const { theme, language, size, toggleTheme, setLanguage, setSize } = useUIStore();
+  const { language, size, setLanguage, setSize } = useUIStore();
   const { isAuthenticated, updateUserPreferences } = useAuthStore();
 
   const onLangChange = (lang: 'en' | 'uk') => {
     setLanguage(lang);
     if (isAuthenticated) {
       try { updateUserPreferences(lang, undefined); } catch { /* no-op */ }
-    }
-  };
-
-  const onToggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    toggleTheme();
-    if (isAuthenticated) {
-      try { updateUserPreferences(undefined, next); } catch { /* no-op */ }
     }
   };
 
@@ -63,18 +55,6 @@ const SettingsBar: React.FC = () => {
               <option value="lg">{t('settings.size_lg', 'Large')}</option>
             </select>
           </label>
-
-          <button
-            type="button"
-            onClick={onToggleTheme}
-            className="btn btn-ghost btn-sm"
-            aria-pressed={theme === 'dark'}
-            aria-label={theme === 'dark' ? t('settings.switchToLight', 'Switch to light mode') : t('settings.switchToDark', 'Switch to dark mode')}
-            title={theme === 'dark' ? t('settings.switchToLight', 'Switch to light mode') : t('settings.switchToDark', 'Switch to dark mode')}
-          >
-            <span aria-hidden>{theme === 'dark' ? '🌙' : '☀️'}</span>
-            <span className="hidden sm:inline">{theme === 'dark' ? t('settings.dark', 'Dark') : t('settings.light', 'Light')}</span>
-          </button>
         </div>
       </div>
     </header>

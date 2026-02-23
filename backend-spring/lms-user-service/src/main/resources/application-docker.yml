@@ -37,7 +37,9 @@ management:
 
 app:
   bootstrap-admin:
-    enabled: false
+    enabled: ${BOOTSTRAP_ADMIN_ENABLED:false}
+    email: ${BOOTSTRAP_ADMIN_EMAIL:admin@ucu.edu.ua}
+    password: ${BOOTSTRAP_ADMIN_PASSWORD:admin123}
 
 eureka:
   client:
