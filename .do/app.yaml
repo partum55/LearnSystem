@@ -2,17 +2,16 @@
 # LearnSystemUCU — DigitalOcean App Platform Spec
 # ==========================================
 #
-# Deploy via:
-#   1. Push to GitHub
-#   2. In DO Console → Apps → Create App → pick this repo
-#   3. DO auto-detects .do/app.yaml
-#   4. Fill in environment variables marked {PLACEHOLDER}
-#
-# Or via CLI:
+# Deploy via CLI:
 #   doctl apps create --spec .do/app.yaml
 #   doctl apps update <APP_ID> --spec .do/app.yaml
 #
-# Cost estimate: ~$72–84/mo (6 services × $12 + Redis $12)
+# Or paste this YAML into the App Platform dashboard:
+#   Apps → Create App → click "Edit" (pencil icon) on the app spec editor
+#
+# After creation, replace all {PLACEHOLDER} values in Settings → Environment Variables
+#
+# Cost estimate: ~$72–84/mo (6 services × $12 + Redis $0–15)
 # ==========================================
 
 name: learnsystem-ucu
@@ -29,9 +28,6 @@ services:
       deploy_on_push: true
     source_dir: backend-spring
     dockerfile_path: Dockerfile
-    build_args:
-      - name: SERVICE_NAME
-        value: lms-api-gateway
     http_port: 8080
     instance_count: 1
     instance_size_slug: professional-xs
@@ -42,6 +38,9 @@ services:
       timeout_seconds: 10
       failure_threshold: 5
     envs:
+      - key: SERVICE_NAME
+        value: lms-api-gateway
+        scope: BUILD_TIME
       - key: SPRING_PROFILES_ACTIVE
         value: docker
       - key: EUREKA_URI
@@ -50,7 +49,6 @@ services:
         value: "-Xmx384m -Xms192m"
       - key: GATEWAY_CORS_ALLOWED_ORIGINS
         value: "{YOUR_VERCEL_URL}"
-        # e.g. https://your-app.vercel.app
 
 # ==========================================
 # INTERNAL SERVICES (not publicly accessible)
@@ -63,9 +61,6 @@ services:
       deploy_on_push: true
     source_dir: backend-spring
     dockerfile_path: Dockerfile
-    build_args:
-      - name: SERVICE_NAME
-        value: lms-eureka-server
     internal_ports:
       - 8761
     instance_count: 1
@@ -78,6 +73,9 @@ services:
       timeout_seconds: 10
       failure_threshold: 5
     envs:
+      - key: SERVICE_NAME
+        value: lms-eureka-server
+        scope: BUILD_TIME
       - key: SPRING_PROFILES_ACTIVE
         value: docker
       - key: JAVA_OPTS
@@ -90,9 +88,6 @@ services:
       deploy_on_push: true
     source_dir: backend-spring
     dockerfile_path: Dockerfile
-    build_args:
-      - name: SERVICE_NAME
-        value: lms-user-service
     internal_ports:
       - 8081
     instance_count: 1
@@ -105,6 +100,9 @@ services:
       timeout_seconds: 10
       failure_threshold: 5
     envs:
+      - key: SERVICE_NAME
+        value: lms-user-service
+        scope: BUILD_TIME
       - key: SPRING_PROFILES_ACTIVE
         value: docker,supabase
       - key: SERVER_PORT
@@ -148,9 +146,6 @@ services:
       deploy_on_push: true
     source_dir: backend-spring
     dockerfile_path: Dockerfile
-    build_args:
-      - name: SERVICE_NAME
-        value: lms-learning-service
     internal_ports:
       - 8089
     instance_count: 1
@@ -163,6 +158,9 @@ services:
       timeout_seconds: 10
       failure_threshold: 5
     envs:
+      - key: SERVICE_NAME
+        value: lms-learning-service
+        scope: BUILD_TIME
       - key: SPRING_PROFILES_ACTIVE
         value: docker,supabase
       - key: SERVER_PORT
@@ -199,9 +197,6 @@ services:
       deploy_on_push: true
     source_dir: backend-spring
     dockerfile_path: Dockerfile
-    build_args:
-      - name: SERVICE_NAME
-        value: lms-ai-service
     internal_ports:
       - 8085
     instance_count: 1
@@ -214,6 +209,9 @@ services:
       timeout_seconds: 10
       failure_threshold: 5
     envs:
+      - key: SERVICE_NAME
+        value: lms-ai-service
+        scope: BUILD_TIME
       - key: SPRING_PROFILES_ACTIVE
         value: docker,supabase
       - key: SERVER_PORT
@@ -255,9 +253,6 @@ services:
       deploy_on_push: true
     source_dir: backend-spring
     dockerfile_path: Dockerfile
-    build_args:
-      - name: SERVICE_NAME
-        value: lms-analytics-service
     internal_ports:
       - 8088
     instance_count: 1
@@ -270,6 +265,9 @@ services:
       timeout_seconds: 10
       failure_threshold: 5
     envs:
+      - key: SERVICE_NAME
+        value: lms-analytics-service
+        scope: BUILD_TIME
       - key: SPRING_PROFILES_ACTIVE
         value: docker,supabase
       - key: SERVER_PORT

@@ -1144,44 +1144,240 @@ docker compose --env-file .env.production restart user-service
 
 ### 8D-a. Push code to GitHub
 
-Make sure your latest code (with `.do/app.yaml`) is pushed:
+Make sure your latest code is pushed:
 
 ```bash
 git push origin main
 ```
 
-### 8D-b. Create the app
+### 8D-b. Create the app — Method A (CLI, recommended)
+
+If you have `doctl` installed:
+
+```bash
+# Install: https://docs.digitalocean.com/reference/doctl/how-to/install/
+doctl auth init                           # authenticate
+doctl apps create --spec .do/app.yaml     # create app from spec
+```
+
+This creates the entire app with all 6 services + Redis from the spec file. Skip to [Step 8D-d](#8d-d-configure-environment-variables).
+
+### 8D-c. Create the app — Method B (Dashboard UI)
+
+The dashboard **does not auto-detect** the `.do/app.yaml` file. You need to add each component manually:
 
 1. Go to [cloud.digitalocean.com/apps](https://cloud.digitalocean.com/apps)
 2. Click **Create App**
-3. Select **GitHub** as the source → authorize DigitalOcean if prompted → select your `learn_system` (or `LearnSystemUCU`) repo
+3. Select **GitHub** as the source → authorize DigitalOcean if prompted → select your repo
 4. Select the **`main`** branch
-5. App Platform will auto-detect the `.do/app.yaml` app spec and show 6 service components + 1 Redis database
-6. Click **Next** to proceed
+5. You'll see **"No components detected"** — this is expected. Click **Add Resource**
 
-### 8D-c. Configure environment variables
+Now add each of the 6 services. For each one:
 
-App Platform will show each component with its environment variables. Replace all `{PLACEHOLDER}` values:
+#### Component 1: eureka-server (add this FIRST — other services depend on it)
 
-| Variable | Value | Components |
-|----------|-------|------------|
-| `{SUPABASE_JDBC_URL}` | `jdbc:postgresql://YOUR_HOST:6543/postgres` (from Step 1) | user-service, learning-service, ai-service, analytics-service |
-| `{SUPABASE_DB_USER}` | `postgres.abcdefghijklmnop` (from Step 1) | user-service, learning-service, ai-service, analytics-service |
-| `{SUPABASE_DB_PASSWORD}` | Your Supabase password (from Step 1) | user-service, learning-service, ai-service, analytics-service |
-| `{JWT_SECRET}` | Your generated JWT secret (from Step 4) | user-service, learning-service, ai-service, analytics-service |
+1. Click **Add Resource** → **Create a Resource From Source Code**
+2. Select same repo + `main` branch
+3. Configure:
+
+| Setting | Value |
+|---------|-------|
+| **Resource Type** | Service |
+| **Source Directory** | `backend-spring` |
+| **Type** | Dockerfile |
+| **Name** | `eureka-server` |
+| **HTTP Port** | `8761` |
+| **Visibility** | Internal |
+| **Plan** | Professional (1 vCPU, 1 GB RAM) — $12/mo |
+
+4. Add these **Environment Variables**:
+
+| Key | Value | Scope |
+|-----|-------|-------|
+| `SERVICE_NAME` | `lms-eureka-server` | Build-time |
+| `SPRING_PROFILES_ACTIVE` | `docker` | Run-time |
+| `JAVA_OPTS` | `-Xmx256m -Xms128m` | Run-time |
+
+5. Click **Add Resource**
+
+#### Component 2: api-gateway (the only PUBLIC service)
+
+1. **Add Resource** → **Create a Resource From Source Code**
+2. Same repo + `main` branch
+3. Configure:
+
+| Setting | Value |
+|---------|-------|
+| **Resource Type** | Service |
+| **Source Directory** | `backend-spring` |
+| **Type** | Dockerfile |
+| **Name** | `api-gateway` |
+| **HTTP Port** | `8080` |
+| **Visibility** | External (public) |
+| **Plan** | Professional (1 vCPU, 1 GB RAM) — $12/mo |
+
+4. **Environment Variables:**
+
+| Key | Value | Scope |
+|-----|-------|-------|
+| `SERVICE_NAME` | `lms-api-gateway` | Build-time |
+| `SPRING_PROFILES_ACTIVE` | `docker` | Run-time |
+| `EUREKA_URI` | `http://${eureka-server.PRIVATE_URL}:8761/eureka` | Run-time |
+| `JAVA_OPTS` | `-Xmx384m -Xms192m` | Run-time |
+| `GATEWAY_CORS_ALLOWED_ORIGINS` | `https://placeholder.vercel.app` | Run-time |
+
+> **Note:** `${eureka-server.PRIVATE_URL}` is an App Platform variable reference — it resolves to the internal hostname of the eureka-server component. Type it exactly as shown.
+
+#### Component 3: user-service
+
+| Setting | Value |
+|---------|-------|
+| **Source Directory** | `backend-spring` |
+| **Type** | Dockerfile |
+| **Name** | `user-service` |
+| **HTTP Port** | `8081` |
+| **Visibility** | Internal |
+| **Plan** | Professional — $12/mo |
+
+**Environment Variables:**
+
+| Key | Value | Scope |
+|-----|-------|-------|
+| `SERVICE_NAME` | `lms-user-service` | Build-time |
+| `SPRING_PROFILES_ACTIVE` | `docker,supabase` | Run-time |
+| `SERVER_PORT` | `8081` | Run-time |
+| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://YOUR_HOST:6543/postgres` | Run-time, Encrypt |
+| `SPRING_DATASOURCE_USERNAME` | `postgres.YOUR_REF` | Run-time, Encrypt |
+| `SPRING_DATASOURCE_PASSWORD` | (your Supabase password) | Run-time, Encrypt |
+| `SPRING_DATA_REDIS_HOST` | `${redis.HOSTNAME}` | Run-time |
+| `SPRING_DATA_REDIS_PORT` | `${redis.PORT}` | Run-time |
+| `SPRING_DATA_REDIS_PASSWORD` | `${redis.PASSWORD}` | Run-time |
+| `JWT_SECRET` | (your JWT secret) | Run-time, Encrypt |
+| `JWT_EXPIRATION` | `86400000` | Run-time |
+| `EUREKA_URI` | `http://${eureka-server.PRIVATE_URL}:8761/eureka` | Run-time |
+| `JAVA_OPTS` | `-Xmx384m -Xms192m` | Run-time |
+| `BOOTSTRAP_ADMIN_ENABLED` | `true` | Run-time |
+| `BOOTSTRAP_ADMIN_EMAIL` | `admin@ucu.edu.ua` | Run-time |
+| `BOOTSTRAP_ADMIN_PASSWORD` | (strong password) | Run-time, Encrypt |
+
+#### Component 4: learning-service
+
+| Setting | Value |
+|---------|-------|
+| **Source Directory** | `backend-spring` |
+| **Type** | Dockerfile |
+| **Name** | `learning-service` |
+| **HTTP Port** | `8089` |
+| **Visibility** | Internal |
+| **Plan** | Professional — $12/mo |
+
+**Environment Variables:**
+
+| Key | Value | Scope |
+|-----|-------|-------|
+| `SERVICE_NAME` | `lms-learning-service` | Build-time |
+| `SPRING_PROFILES_ACTIVE` | `docker,supabase` | Run-time |
+| `SERVER_PORT` | `8089` | Run-time |
+| `DATABASE_URL` | `jdbc:postgresql://YOUR_HOST:6543/postgres` | Run-time, Encrypt |
+| `DB_USERNAME` | `postgres.YOUR_REF` | Run-time, Encrypt |
+| `DB_PASSWORD` | (your Supabase password) | Run-time, Encrypt |
+| `SPRING_DATA_REDIS_HOST` | `${redis.HOSTNAME}` | Run-time |
+| `SPRING_DATA_REDIS_PORT` | `${redis.PORT}` | Run-time |
+| `SPRING_DATA_REDIS_PASSWORD` | `${redis.PASSWORD}` | Run-time |
+| `JWT_SECRET` | (your JWT secret) | Run-time, Encrypt |
+| `EUREKA_URI` | `http://${eureka-server.PRIVATE_URL}:8761/eureka` | Run-time |
+| `SUBMISSION_STORAGE_PATH` | `/data/submissions` | Run-time |
+| `JAVA_OPTS` | `-Xmx512m -Xms256m` | Run-time |
+
+#### Component 5: ai-service
+
+| Setting | Value |
+|---------|-------|
+| **Source Directory** | `backend-spring` |
+| **Type** | Dockerfile |
+| **Name** | `ai-service` |
+| **HTTP Port** | `8085` |
+| **Visibility** | Internal |
+| **Plan** | Professional — $12/mo |
+
+**Environment Variables:**
+
+| Key | Value | Scope |
+|-----|-------|-------|
+| `SERVICE_NAME` | `lms-ai-service` | Build-time |
+| `SPRING_PROFILES_ACTIVE` | `docker,supabase` | Run-time |
+| `SERVER_PORT` | `8085` | Run-time |
+| `DB_URL` | `jdbc:postgresql://YOUR_HOST:6543/postgres` | Run-time, Encrypt |
+| `DB_USERNAME` | `postgres.YOUR_REF` | Run-time, Encrypt |
+| `DB_PASSWORD` | (your Supabase password) | Run-time, Encrypt |
+| `REDIS_HOST` | `${redis.HOSTNAME}` | Run-time |
+| `REDIS_PORT` | `${redis.PORT}` | Run-time |
+| `REDIS_PASSWORD` | `${redis.PASSWORD}` | Run-time |
+| `LLAMA_API_URL` | `https://api.groq.com/openai/v1` | Run-time |
+| `LLAMA_API_KEY` | (your Groq API key) | Run-time, Encrypt |
+| `LLAMA_MODEL` | `llama-3.3-70b-versatile` | Run-time |
+| `EUREKA_URI` | `http://${eureka-server.PRIVATE_URL}:8761/eureka` | Run-time |
+| `JWT_SECRET` | (your JWT secret) | Run-time, Encrypt |
+| `JAVA_OPTS` | `-Xmx768m -Xms384m -XX:+UseG1GC` | Run-time |
+
+#### Component 6: analytics-service
+
+| Setting | Value |
+|---------|-------|
+| **Source Directory** | `backend-spring` |
+| **Type** | Dockerfile |
+| **Name** | `analytics-service` |
+| **HTTP Port** | `8088` |
+| **Visibility** | Internal |
+| **Plan** | Professional — $12/mo |
+
+**Environment Variables:**
+
+| Key | Value | Scope |
+|-----|-------|-------|
+| `SERVICE_NAME` | `lms-analytics-service` | Build-time |
+| `SPRING_PROFILES_ACTIVE` | `docker,supabase` | Run-time |
+| `SERVER_PORT` | `8088` | Run-time |
+| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://YOUR_HOST:6543/postgres` | Run-time, Encrypt |
+| `SPRING_DATASOURCE_USERNAME` | `postgres.YOUR_REF` | Run-time, Encrypt |
+| `SPRING_DATASOURCE_PASSWORD` | (your Supabase password) | Run-time, Encrypt |
+| `SPRING_FLYWAY_ENABLED` | `false` | Run-time |
+| `SPRING_DATA_REDIS_HOST` | `${redis.HOSTNAME}` | Run-time |
+| `SPRING_DATA_REDIS_PORT` | `${redis.PORT}` | Run-time |
+| `SPRING_DATA_REDIS_PASSWORD` | `${redis.PASSWORD}` | Run-time |
+| `JWT_SECRET` | (your JWT secret) | Run-time, Encrypt |
+| `EUREKA_URI` | `http://${eureka-server.PRIVATE_URL}:8761/eureka` | Run-time |
+| `JAVA_OPTS` | `-Xmx384m -Xms192m` | Run-time |
+
+#### Add Redis Database
+
+1. Click **Add Resource** → **Add Database**
+2. Select **Redis**
+3. Choose **Dev Database** ($0/mo, 256 MB) for testing, or **Managed** ($15/mo) for production
+4. Name it `redis`
+
+> **Important:** The name must be exactly `redis` so the `${redis.HOSTNAME}`, `${redis.PORT}`, and `${redis.PASSWORD}` references in the service env vars resolve correctly.
+
+### 8D-d. Configure environment variables
+
+If you used **Method A (CLI)**, the app was created with placeholder values. Update them now:
+
+1. Go to [cloud.digitalocean.com/apps](https://cloud.digitalocean.com/apps) → click your app
+2. Go to **Settings** → click each component → **Environment Variables**
+3. Replace all `{PLACEHOLDER}` values with real credentials from Steps 1, 3, and 4:
+
+| Placeholder | Replace with | Found in |
+|-------------|-------------|----------|
+| `{SUPABASE_JDBC_URL}` | `jdbc:postgresql://YOUR_HOST:6543/postgres` | user-service, learning-service, ai-service, analytics-service |
+| `{SUPABASE_DB_USER}` | `postgres.YOUR_REF` | user-service, learning-service, ai-service, analytics-service |
+| `{SUPABASE_DB_PASSWORD}` | Your Supabase password | user-service, learning-service, ai-service, analytics-service |
+| `{JWT_SECRET}` | Your JWT secret (from Step 4) | user-service, learning-service, ai-service, analytics-service |
 | `{LLAMA_API_KEY}` | Your Groq API key (from Step 3) | ai-service |
-| `{ADMIN_EMAIL}` | `admin@ucu.edu.ua` (or your preferred email) | user-service |
-| `{ADMIN_PASSWORD}` | A strong admin password | user-service |
-| `{YOUR_VERCEL_URL}` | Leave as placeholder for now — update in Step 10D | api-gateway |
+| `{ADMIN_EMAIL}` | `admin@ucu.edu.ua` | user-service |
+| `{ADMIN_PASSWORD}` | Strong admin password | user-service |
+| `{YOUR_VERCEL_URL}` | Leave for now — update in Step 11D | api-gateway |
 
-> **Tip:** Variables marked `type: SECRET` are encrypted and never shown in logs.
-
-7. Review the plan — you should see:
-   - 1 public service (api-gateway) — `professional-xs` ($12/mo)
-   - 5 internal services — `professional-xs` or `professional-s`
-   - 1 dev Redis database ($0/mo) or managed Redis ($15/mo)
-
-8. Click **Create Resources**
+4. Click **Save** after each component — this triggers a redeploy
 
 ---
 
@@ -1193,7 +1389,20 @@ App Platform will now:
 3. Deploy all components
 4. Provision the Redis database
 
-Watch the build progress in the App Platform dashboard under **Activity** tab.
+Watch the build progress in the App Platform dashboard under the **Activity** tab.
+
+### How the builds work
+
+Each component builds from the same `backend-spring/Dockerfile`. The `SERVICE_NAME` build-time env var tells the Dockerfile which Maven module to compile:
+
+```
+SERVICE_NAME=lms-api-gateway      → builds lms-api-gateway
+SERVICE_NAME=lms-eureka-server    → builds lms-eureka-server
+SERVICE_NAME=lms-user-service     → builds lms-user-service
+... etc
+```
+
+> **If a build fails** with "SERVICE_NAME not set" or "No such module", verify the `SERVICE_NAME` env var is set with **Build-time** scope (not Run-time) for that component.
 
 ### Check deployment status
 
@@ -1214,7 +1423,19 @@ https://learnsystem-ucu-xxxxx.ondigitalocean.app/actuator/health
 ```
 Should show: `{"status":"UP"}`
 
-> **If a service fails to start**, click on it in the dashboard → **Runtime Logs** to see Spring Boot logs. Common issues: wrong Supabase credentials, Eureka not ready yet (services may need 1-2 restart cycles to discover each other).
+### If services fail to start
+
+| Symptom | Check |
+|---------|-------|
+| Build fails: "SERVICE_NAME not set" | Verify `SERVICE_NAME` env var has **Build-time** scope |
+| Build fails: "Could not find artifact" | The `source_dir` must be `backend-spring` |
+| Service crashes on start | Click component → **Runtime Logs** → look for Spring Boot errors |
+| "Connection refused" to database | Wrong Supabase credentials — verify `SPRING_DATASOURCE_URL` / `DATABASE_URL` |
+| "Connection refused" to Eureka | Eureka may not be ready yet. Services auto-retry every 30s. Wait 2-3 minutes |
+| Components can't find each other | Verify `EUREKA_URI` uses `${eureka-server.PRIVATE_URL}` (not a hardcoded IP) |
+| Redis connection fails | Verify the database is named exactly `redis` so `${redis.HOSTNAME}` resolves |
+
+> **Services may need 1-2 restart cycles** on first deploy. Eureka takes ~60s to start, then other services register over the next 30-60s. If a service started before Eureka was ready, it will retry automatically.
 
 ---
 
@@ -1253,7 +1474,7 @@ Should show: `{"status":"UP"}`
 1. Go to your app in [DigitalOcean App Platform dashboard](https://cloud.digitalocean.com/apps)
 2. Click **Settings** → select the **api-gateway** component
 3. Scroll to **Environment Variables**
-4. Find `GATEWAY_CORS_ALLOWED_ORIGINS` and change it from `{YOUR_VERCEL_URL}` to your actual Vercel URL:
+4. Find `GATEWAY_CORS_ALLOWED_ORIGINS` and change it to your actual Vercel URL:
    ```
    https://your-app.vercel.app
    ```
@@ -1285,8 +1506,8 @@ You should see:
 
 1. Open your Vercel URL: `https://your-app.vercel.app`
 2. Log in with:
-   - **Email:** `admin@ucu.edu.ua` (or what you set for `{ADMIN_EMAIL}`)
-   - **Password:** what you set for `{ADMIN_PASSWORD}`
+   - **Email:** `admin@ucu.edu.ua` (or what you set for `BOOTSTRAP_ADMIN_EMAIL`)
+   - **Password:** what you set for `BOOTSTRAP_ADMIN_PASSWORD`
 3. Navigate around — create a course, test AI features
 
 ### 12D-b. If something fails
