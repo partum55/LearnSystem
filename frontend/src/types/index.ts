@@ -134,6 +134,7 @@ export type AssignmentType =
 export interface Assignment {
   id: string;
   course_id: string;
+  module_id?: string;
   assignment_type: AssignmentType;
   title: string;
   description: string;
@@ -216,6 +217,7 @@ export interface Question {
 export interface Quiz {
   id: string;
   course_id: string;
+  module_id?: string;
   title: string;
   description?: string;
   time_limit?: number;

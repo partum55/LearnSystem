@@ -2,6 +2,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '../api/client';
+import { CourseLayout } from '../components/CourseLayout';
+import { Layout } from '../components';
 import { UnsavedChangesPrompt } from '../components/common/UnsavedChangesPrompt';
 import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning';
 
@@ -42,12 +44,20 @@ interface Submission {
 }
 
 const SubmitAssignment: React.FC = () => {
-  const { id: assignmentId } = useParams<{ id: string }>();
+  const params = useParams<{ id?: string; assignmentId?: string; courseId?: string; moduleId?: string }>();
+  const assignmentId = params.assignmentId || params.id;
+  const courseId = params.courseId;
+  const moduleId = params.moduleId;
   const { t } = useTranslation();
   const navigate = useNavigate();
 
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [submission, setSubmission] = useState<Submission | null>(null);
+
+  // Build base path for assignment navigation
+  const assignmentBasePath = courseId && moduleId
+    ? `/courses/${courseId}/modules/${moduleId}/assignments/${assignmentId}`
+    : `/assignments/${assignmentId}`;
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -280,7 +290,7 @@ const SubmitAssignment: React.FC = () => {
       }
 
       // Success - redirect to assignment page
-      navigate(`/assignments/${assignmentId}`, {
+      navigate(assignmentBasePath, {
         state: { message: t('submission.submitted_successfully') }
       });
     } catch (err: unknown) {
@@ -445,8 +455,12 @@ const SubmitAssignment: React.FC = () => {
   // Check if already submitted
   const isSubmitted = submission?.status === 'SUBMITTED' || submission?.status === 'GRADED';
 
+  const Wrapper = courseId
+    ? ({ children }: { children: React.ReactNode }) => <CourseLayout courseId={courseId}>{children}</CourseLayout>
+    : Layout;
+
   return (
-    <>
+    <Wrapper>
       {/* Unsaved Changes Warning Modal */}
       <UnsavedChangesPrompt
         isOpen={isPromptOpen}
@@ -461,7 +475,7 @@ const SubmitAssignment: React.FC = () => {
         {/* Header */}
         <div className="mb-6">
           <button
-            onClick={() => navigate(`/assignments/${assignmentId}`)}
+            onClick={() => navigate(assignmentBasePath)}
             className="mb-4 flex items-center gap-2"
             style={{ color: 'var(--text-secondary)' }}
           >
@@ -595,7 +609,7 @@ const SubmitAssignment: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => navigate(`/assignments/${assignmentId}`)}
+                onClick={() => navigate(assignmentBasePath)}
                 className="btn px-6 py-3"
                 style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}
               >
@@ -605,7 +619,7 @@ const SubmitAssignment: React.FC = () => {
           </form>
         )}
       </div>
-    </>
+    </Wrapper>
   );
 };
 

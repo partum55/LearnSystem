@@ -15,18 +15,26 @@ import {
   createInitialQuiz,
   createQuestion,
 } from './quiz-builder/quizBuilderModel';
-import { QuizBuilderTabContent, getQuizBuilderTabs } from './quiz-builder/QuizBuilderTabContent';
+import { QuizBuilderTabContent } from './quiz-builder/QuizBuilderTabContent';
+import { getQuizBuilderTabs } from './quiz-builder/quizBuilderTabs';
+import { TabTransition } from '../components/animation';
 
 interface QuizApiResponse {
   id: string;
   title: string;
   description?: string;
   courseId: string;
+  moduleId?: string;
   timeLimit?: number | null;
   attemptsAllowed?: number;
   shuffleQuestions?: boolean;
   shuffleAnswers?: boolean;
   passPercentage?: number;
+}
+
+interface ModuleSummary {
+  id: string;
+  title: string;
 }
 
 export const QuizBuilder: React.FC = () => {
@@ -39,6 +47,8 @@ export const QuizBuilder: React.FC = () => {
   const [activeTab, setActiveTab] = useState<QuizBuilderTab>('basic');
   const [quiz, setQuiz] = useState<Quiz>(createInitialQuiz);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [modules, setModules] = useState<ModuleSummary[]>([]);
+  const [selectedModuleId, setSelectedModuleId] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const initialQuizRef = useRef<string>(JSON.stringify(createInitialQuiz()));
@@ -106,6 +116,7 @@ export const QuizBuilder: React.FC = () => {
       };
 
       setQuiz(loadedQuiz);
+      setSelectedModuleId(response.data.moduleId ? String(response.data.moduleId) : '');
       initialQuizRef.current = JSON.stringify(loadedQuiz);
     } catch (error) {
       console.error('Failed to fetch quiz:', error);
@@ -114,6 +125,26 @@ export const QuizBuilder: React.FC = () => {
     }
   }, [quizId]);
 
+  const fetchModules = useCallback(async (selectedCourseId: string) => {
+    if (!selectedCourseId) {
+      setModules([]);
+      setSelectedModuleId('');
+      return;
+    }
+    try {
+      const response = await apiClient.get<ModuleSummary[]>(`/courses/${selectedCourseId}/modules`);
+      const loadedModules = Array.isArray(response.data) ? response.data : [];
+      setModules(loadedModules);
+      const selectedExists = loadedModules.some((module) => String(module.id) === selectedModuleId);
+      if (!selectedExists) {
+        setSelectedModuleId(loadedModules.length > 0 ? String(loadedModules[0].id) : '');
+      }
+    } catch (error) {
+      console.error('Failed to fetch modules:', error);
+      setModules([]);
+    }
+  }, [selectedModuleId]);
+
   useEffect(() => {
     void fetchCourses();
     if (quizId) {
@@ -121,9 +152,22 @@ export const QuizBuilder: React.FC = () => {
     }
   }, [quizId, fetchCourses, fetchQuiz]);
 
+  useEffect(() => {
+    if (quiz.course) {
+      void fetchModules(String(quiz.course));
+    } else {
+      setModules([]);
+      setSelectedModuleId('');
+    }
+  }, [quiz.course, fetchModules]);
+
   const handleSave = async () => {
     if (!quiz.title || !quiz.course) {
       alert(t('quiz.fillRequired', 'Please fill in all required fields'));
+      return;
+    }
+    if (!quizId && !selectedModuleId) {
+      alert(t('modules.selectModule', 'Please select a module'));
       return;
     }
 
@@ -148,11 +192,23 @@ export const QuizBuilder: React.FC = () => {
           passPercentage: payload.passing_score,
         });
       } else {
-        await apiClient.post('/assessments/quizzes', null, {
-          params: {
-            courseId: payload.course,
+        await apiClient.post('/assessments/assignments', {
+          courseId: payload.course,
+          moduleId: selectedModuleId,
+          assignmentType: 'QUIZ',
+          title: payload.title,
+          description: payload.description || '',
+          maxPoints: 100,
+          isPublished: false,
+          quiz: {
             title: payload.title,
-            ...(payload.description ? { description: payload.description } : {}),
+            description: payload.description || undefined,
+            timeLimit: payload.time_limit,
+            attemptsAllowed: payload.attempts_allowed,
+            shuffleQuestions: payload.settings.shuffle_questions,
+            shuffleAnswers: payload.settings.shuffle_answers,
+            showCorrectAnswers: payload.settings.show_correct_answers,
+            passPercentage: payload.passing_score,
           },
         });
       }
@@ -378,23 +434,29 @@ export const QuizBuilder: React.FC = () => {
             </nav>
           </div>
 
-          <QuizBuilderTabContent
-            activeTab={activeTab}
-            quiz={quiz}
-            courses={courses}
-            totalPoints={totalPoints}
-            setQuiz={setQuiz}
-            addQuestion={addQuestion}
-            moveQuestion={moveQuestion}
-            duplicateQuestion={duplicateQuestion}
-            removeQuestion={removeQuestion}
-            updateQuestion={updateQuestion}
-            addChoice={addChoice}
-            updateChoice={updateChoice}
-            removeChoice={removeChoice}
-            toggleCorrectAnswer={toggleCorrectAnswer}
-            t={t}
-          />
+          <TabTransition tabKey={activeTab}>
+            <QuizBuilderTabContent
+              activeTab={activeTab}
+              quiz={quiz}
+              courses={courses}
+              modules={modules}
+              selectedModuleId={selectedModuleId}
+              setSelectedModuleId={setSelectedModuleId}
+              isEditing={!!quizId}
+              totalPoints={totalPoints}
+              setQuiz={setQuiz}
+              addQuestion={addQuestion}
+              moveQuestion={moveQuestion}
+              duplicateQuestion={duplicateQuestion}
+              removeQuestion={removeQuestion}
+              updateQuestion={updateQuestion}
+              addChoice={addChoice}
+              updateChoice={updateChoice}
+              removeChoice={removeChoice}
+              toggleCorrectAnswer={toggleCorrectAnswer}
+              t={t}
+            />
+          </TabTransition>
         </div>
       </div>
     </Layout>

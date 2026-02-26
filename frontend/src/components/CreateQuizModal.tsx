@@ -17,6 +17,11 @@ interface ApiQuestion {
   points: number;
 }
 
+interface ApiModule {
+  id: string;
+  title: string;
+}
+
 interface PageResponse<T> {
   content: T[];
 }
@@ -42,6 +47,8 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [modules, setModules] = useState<ApiModule[]>([]);
+  const [selectedModuleId, setSelectedModuleId] = useState('');
 
   const [formData, setFormData] = useState({
     title: '',
@@ -72,11 +79,30 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({
     }
   }, [courseId]);
 
+  const fetchModules = useCallback(async () => {
+    try {
+      const response = await apiClient.get<ApiModule[]>(`/courses/${courseId}/modules`);
+      setModules(Array.isArray(response.data) ? response.data : []);
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        setSelectedModuleId((previous) => previous || String(response.data[0].id));
+      }
+    } catch (err) {
+      console.error('Failed to fetch modules:', err);
+      setModules([]);
+    }
+  }, [courseId]);
+
   useEffect(() => {
     if (isOpen && step === 'questions') {
       fetchQuestions();
     }
   }, [isOpen, step, fetchQuestions]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchModules();
+    }
+  }, [isOpen, fetchModules]);
 
   const handleBasicSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,19 +118,39 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({
       setError(t('quiz.errors.noQuestions'));
       return;
     }
+    if (!selectedModuleId) {
+      setError(t('modules.selectModule', 'Select a module first'));
+      return;
+    }
 
     setError('');
     setLoading(true);
 
     try {
-      const quizResponse = await apiClient.post('/assessments/quizzes', null, {
-        params: {
-          courseId,
+      const assignmentResponse = await apiClient.post('/assessments/assignments', {
+        courseId,
+        moduleId: selectedModuleId,
+        assignmentType: 'QUIZ',
+        title: formData.title,
+        description: formData.description || '',
+        maxPoints: 100,
+        isPublished: false,
+        quiz: {
           title: formData.title,
-          ...(formData.description ? { description: formData.description } : {}),
+          description: formData.description || undefined,
+          timeLimit: formData.time_limit ? Number(formData.time_limit) : undefined,
+          attemptsAllowed: Number(formData.attempts_allowed || '1'),
+          shuffleQuestions: formData.shuffle_questions,
+          shuffleAnswers: formData.shuffle_answers,
+          showCorrectAnswers: formData.show_correct_answers,
+          passPercentage: Number(formData.pass_percentage || '60'),
         },
       });
-      const quizId = (quizResponse.data as { id: string }).id;
+      const assignmentData = assignmentResponse.data as { quizId?: string; quiz_id?: string };
+      const quizId = assignmentData.quizId || assignmentData.quiz_id;
+      if (!quizId) {
+        throw new Error('Quiz was not created');
+      }
 
       await Promise.all(
         selectedQuestions.map((questionId) =>
@@ -123,6 +169,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({
         pass_percentage: '60',
       });
       setSelectedQuestions([]);
+      setSelectedModuleId('');
       setStep('basic');
 
       onQuizCreated();
@@ -170,6 +217,21 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({
             required
             placeholder={t('quiz.titlePlaceholder')}
           />
+
+          <div>
+            <label className="label block mb-1">{t('modules.module', 'Module')}</label>
+            <select
+              value={selectedModuleId}
+              onChange={(e) => setSelectedModuleId(e.target.value)}
+              className="input w-full"
+              required
+            >
+              <option value="">{t('modules.selectModule', 'Select module')}</option>
+              {modules.map((module) => (
+                <option key={module.id} value={module.id}>{module.title}</option>
+              ))}
+            </select>
+          </div>
 
           <div>
             <label className="label block mb-1">

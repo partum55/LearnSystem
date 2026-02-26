@@ -4,6 +4,7 @@ import { User, UserRole } from '../types';
 import apiClient from '../api/client';
 import { clearStoredTokens, getAccessToken, setAccessToken, setRefreshToken } from '../api/token';
 import { useUIStore, type ThemeMode } from './uiStore';
+import { AxiosError } from 'axios';
 
 interface AuthState {
   user: User | null;
@@ -195,8 +196,27 @@ export const useAuthStore = create<AuthState>()(
           if (mappedUser?.theme) {
             ui.setTheme(mappedUser.theme === 'dark' ? 'obsidian' : 'parchment');
           }
-        } catch {
-          set({ user: null, isAuthenticated: false, isLoading: false });
+        } catch (err: unknown) {
+          const axiosError = err as AxiosError;
+          const status = axiosError?.response?.status;
+
+          if (status === 401 || status === 403) {
+            // Genuine auth failure — clear everything
+            set({ user: null, isAuthenticated: false, isLoading: false });
+          } else {
+            // Transient error (network, 500, 400, etc.) — preserve persisted auth
+            // if we have valid tokens. The user may still be authenticated; don't
+            // kick them out for temporary server issues.
+            const hasToken = !!getAccessToken();
+            const currentState = useAuthStore.getState();
+            if (hasToken && currentState.user) {
+              // Keep existing auth state, just stop loading
+              set({ isLoading: false });
+            } else {
+              // No token or no persisted user — genuinely not authenticated
+              set({ user: null, isAuthenticated: false, isLoading: false });
+            }
+          }
         }
       },
 

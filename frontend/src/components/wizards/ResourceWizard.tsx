@@ -7,6 +7,9 @@ import { Input } from '../Input';
 import { ResourceType, ResourceCreateData } from '../../types';
 import { extractErrorMessage } from '../../api/client';
 import { resourcesApi } from '../../api/courses';
+import ResourceUploadZone from '../resource-library/ResourceUploadZone';
+import ObsidianMDXEditor from '../editors/ObsidianMDXEditor';
+import EmbedPicker from '../embeds/EmbedPicker';
 import {
     DocumentTextIcon,
     VideoCameraIcon,
@@ -14,8 +17,7 @@ import {
     LinkIcon,
     CodeBracketIcon,
     FolderIcon,
-    ArrowUpTrayIcon
-} from '@heroicons/react/24/outline'; // Adjust import path if needed
+} from '@heroicons/react/24/outline';
 
 interface ResourceWizardProps {
     isOpen: boolean;
@@ -46,6 +48,7 @@ export const ResourceWizard: React.FC<ResourceWizardProps> = ({
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [showEmbedPicker, setShowEmbedPicker] = useState(false);
 
     const [formData, setFormData] = useState<Partial<ResourceCreateData>>({
         courseId,
@@ -56,8 +59,6 @@ export const ResourceWizard: React.FC<ResourceWizardProps> = ({
         is_downloadable: true,
     });
 
-    const [file, setFile] = useState<File | null>(null);
-
     const handleNext = () => setStep(prev => prev + 1);
     const handleBack = () => setStep(prev => prev - 1);
 
@@ -67,7 +68,6 @@ export const ResourceWizard: React.FC<ResourceWizardProps> = ({
         try {
             const data = {
                 ...formData,
-                file: file || undefined,
             } as ResourceCreateData;
 
             await resourcesApi.create(data);
@@ -149,50 +149,63 @@ export const ResourceWizard: React.FC<ResourceWizardProps> = ({
                 </div>
 
                 {requiresFile && (
-                    <div
-                        className="border-2 border-dashed rounded-lg p-6 text-center"
-                        style={{ borderColor: 'var(--border-default)' }}
-                    >
-                        <input
-                            type="file"
-                            id="file-upload"
-                            className="hidden"
-                            onChange={(e) => {
-                                if (e.target.files?.[0]) {
-                                    setFile(e.target.files[0]);
-                                    if (!formData.title) setFormData(prev => ({ ...prev, title: e.target.files![0].name }));
+                    <ResourceUploadZone
+                        courseId={courseId}
+                        moduleId={moduleId}
+                        onFilesUploaded={(files) => {
+                            if (files.length > 0) {
+                                const uploaded = files[0];
+                                if (!formData.title) {
+                                    setFormData(prev => ({ ...prev, title: uploaded.name }));
                                 }
-                            }}
-                        />
-                        <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center">
-                            <ArrowUpTrayIcon className="w-10 h-10 mb-2" style={{ color: 'var(--text-faint)' }} />
-                            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                                {file ? file.name : t('resources.wizard.clickToUpload')}
-                            </span>
-                        </label>
-                    </div>
+                                setFormData(prev => ({ ...prev, external_url: uploaded.url }));
+                            }
+                        }}
+                    />
                 )}
 
                 {requiresUrl && (
-                    <Input
-                        label={t('resources.externalUrl')}
-                        value={formData.external_url || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, external_url: e.target.value }))}
-                        required
-                        type="url"
-                    />
+                    <div className="space-y-3">
+                        <Input
+                            label={t('resources.externalUrl')}
+                            value={formData.external_url || ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, external_url: e.target.value }))}
+                            required
+                            type="url"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowEmbedPicker(true)}
+                            className="btn btn-secondary text-sm py-1.5 px-3"
+                        >
+                            <LinkIcon className="w-4 h-4 mr-1.5 inline-block" />
+                            {t('resources.embedFromService', 'Or embed from YouTube, Docs...')}
+                        </button>
+                        {showEmbedPicker && (
+                            <EmbedPicker
+                                onSelect={(embed) => {
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        external_url: embed.embedUrl,
+                                        title: prev.title || embed.title,
+                                    }));
+                                    setShowEmbedPicker(false);
+                                }}
+                                onClose={() => setShowEmbedPicker(false)}
+                            />
+                        )}
+                    </div>
                 )}
 
                 {requiresText && (
                     <div>
                         <label className="label block mb-1">
-                            {t('resources.textContent')} (LaTeX supported)
+                            {t('resources.textContent')}
                         </label>
-                        <textarea
+                        <ObsidianMDXEditor
                             value={formData.text_content || ''}
-                            onChange={(e) => setFormData(prev => ({ ...prev, text_content: e.target.value }))}
-                            rows={8}
-                            className="input w-full font-mono text-sm"
+                            onChange={(value) => setFormData(prev => ({ ...prev, text_content: value }))}
+                            placeholder={t('resources.textContentPlaceholder', 'Write your content here...')}
                         />
                     </div>
                 )}
@@ -209,17 +222,12 @@ export const ResourceWizard: React.FC<ResourceWizardProps> = ({
                 <h4 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>{formData.title}</h4>
                 <p className="mb-4" style={{ color: 'var(--text-muted)' }}>{formData.description}</p>
 
-                {/* Simple preview logic */}
-                {formData.resource_type === 'TEXT' && (
-                    <div className="prose max-w-none p-4 rounded" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}>
-                        {formData.text_content}
-                    </div>
-                )}
-                {file && (
-                    <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-                        <DocumentTextIcon className="w-5 h-5" />
-                        {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                    </div>
+                {formData.resource_type === 'TEXT' && formData.text_content && (
+                    <ObsidianMDXEditor
+                        value={formData.text_content}
+                        onChange={() => {}}
+                        readOnly
+                    />
                 )}
                 {formData.resource_type === 'LINK' && (
                     <a href={formData.external_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-primary)', textDecoration: 'underline' }}>

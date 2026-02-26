@@ -22,6 +22,13 @@ spring:
               maxBackoff: 500ms
               factor: 2
       routes:
+        - id: admin-course-management
+          uri: lb://lms-learning-service
+          predicates:
+            - Path=/api/course-management/**
+          filters:
+            - RewritePath=/api/course-management(?<segment>/?.*), /api/admin/course-management${segment}
+
         - id: user-service
           uri: lb://lms-user-service
           predicates:

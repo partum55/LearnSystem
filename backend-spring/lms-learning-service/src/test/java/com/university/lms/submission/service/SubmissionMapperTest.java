@@ -7,7 +7,8 @@ import com.university.lms.submission.dto.SubmissionResponse;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,8 +61,8 @@ class SubmissionMapperTest {
                 .build();
         earliestComment.setCreatedAt(LocalDateTime.of(2026, 2, 8, 9, 0));
 
-        submission.setFiles(List.of(newestFile, oldestFile));
-        submission.setComments(List.of(latestComment, earliestComment));
+        submission.setFiles(new LinkedHashSet<>(Set.of(newestFile, oldestFile)));
+        submission.setComments(new LinkedHashSet<>(Set.of(latestComment, earliestComment)));
 
         SubmissionResponse response = mapper.toResponse(submission);
 

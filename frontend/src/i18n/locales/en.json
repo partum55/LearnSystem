@@ -165,6 +165,10 @@
     "moveUp": "Move up",
     "visible": "Visible"
   },
+  "courseSidebar": {
+    "title": "Course Structure",
+    "noModules": "No modules yet"
+  },
   "courses": {
     "all": "All",
     "assignments": "Assignments",
@@ -413,7 +417,7 @@
     "step_join_desc": "Enroll in courses and access all materials",
     "step_learn_title": "Start learning",
     "step_learn_desc": "Submit assignments, take quizzes, and track your progress",
-    "footer": "\u00a9 2024 Ukrainian Catholic University. All rights reserved."
+    "footer": "© 2024 Ukrainian Catholic University. All rights reserved."
   },
   "Input:": "Input:",
   "italic": "italic",
@@ -456,7 +460,9 @@
     "settings": "Settings",
     "questionBank": "Question bank",
     "quizBuilder": "Quiz builder",
-    "designSystem": "Design System"
+    "designSystem": "Design System",
+    "calendar": "Calendar",
+    "admin": "Admin Panel"
   },
   "No data available": "No data available",
   "notifications": {
@@ -826,5 +832,198 @@
     "fix_errors": "Fix errors before saving",
     "must_be_positive": "Must be a positive number",
     "required": "Required field"
+  },
+  "wizard": {
+    "subtitle": "Follow the steps to configure your assignment",
+    "steps": {
+      "type": "Type",
+      "content": "Content",
+      "resources": "Resources",
+      "settings": "Settings",
+      "grading": "Grading",
+      "review": "Review"
+    },
+    "typeTitle": "Choose assignment type",
+    "typeSubtitle": "Select the type of assignment you want to create",
+    "typeDesc": {
+      "file_upload": "Students upload files as their submission",
+      "text": "Students write a text response directly",
+      "code": "Students write and submit program code",
+      "quiz": "Create a quiz with multiple question types",
+      "url": "Students submit a URL to their work",
+      "virtual_lab": "Interactive programming lab environment"
+    },
+    "contentTitle": "Assignment content",
+    "resourcesTitle": "Attach resources",
+    "resourcesSubtitle": "Add files, links, or browse the course resource library",
+    "browseLibrary": "Browse Library",
+    "addLink": "Add Link",
+    "attachedResources": "Attached resources",
+    "settingsTitle": "Assignment settings",
+    "gradingTitle": "Grading configuration",
+    "quizQuestions": "Quiz Questions",
+    "rubric": "Rubric",
+    "reviewTitle": "Review & publish",
+    "summary": "Summary",
+    "preview": "Student preview",
+    "untitled": "Untitled Assignment",
+    "publishHint": "Students will be able to see this assignment right away",
+    "templateHint": "Reuse this assignment as a template for future assignments",
+    "saveDraft": "Save Draft",
+    "publish": "Save & Publish"
+  },
+  "resourceLibrary": {
+    "title": "Resource Library",
+    "noResources": "No resources found",
+    "attach": "Attach",
+    "dragOrClick": "Drag files here or click to browse",
+    "dropHere": "Drop files here",
+    "supportedFormats": "PDF, images, videos, documents, code files"
+  },
+  "embed": {
+    "title": "Embed External Content",
+    "desc": "Paste a URL from YouTube, Google Docs, CodeSandbox, CodePen, or Vimeo",
+    "url": "URL",
+    "customTitle": "Title (optional)",
+    "titlePlaceholder": "Enter a title for this embed",
+    "unsupported": "This URL type is not supported for embedding",
+    "add": "Add Embed"
+  },
+  "ai": {
+    "generateCourse": "Generate Course with AI",
+    "generateCourseDesc": "Create a full course structure using Artificial Intelligence",
+    "previewCourse": "Preview Generated Course",
+    "improveWithAI": "Improve with AI",
+    "improveContent": "Improve Content",
+    "quickSuggestions": "Quick Suggestions",
+    "customPrompt": "Custom Prompt",
+    "customPromptPlaceholder": "E.g. Make it more formal...",
+    "processing": "Processing...",
+    "apply": "Apply",
+    "applyChanges": "Apply Changes",
+    "editedContent": "Edited Content",
+    "generating": "Generating...",
+    "generate": "Generate",
+    "assistant": "AI Assistant",
+    "assistantHint": "How can I help you?",
+    "generateModules": "Generate Modules",
+    "modulePrompt": "Module Topic",
+    "modulePromptPlaceholder": "E.g. Variables and Data Types",
+    "moduleCount": "Number of Modules",
+    "generateModulesHint": "Create new modules for this course",
+    "generateAssignments": "Generate Assignments",
+    "assignmentTopic": "Assignment Topic",
+    "assignmentTopicPlaceholder": "What should the assignment be about?",
+    "assignmentCount": "Number of Assignments",
+    "generateQuiz": "Generate Quiz",
+    "quizTopic": "Quiz Topic",
+    "quizTopicPlaceholder": "Topic for the quiz",
+    "questionCount": "Number of Questions",
+    "timeLimit": "Time Limit",
+    "toolbar": {
+      "title": "AI Assistant",
+      "promptPlaceholder": "Describe what to generate...",
+      "generate": "Generate from prompt",
+      "enhance": "Enhance text",
+      "grammar": "Fix grammar"
+    },
+    "suggestions": {
+      "makeMoreStructured": "Make it more structured",
+      "simplify": "Simplify text",
+      "expand": "Expand details",
+      "addExamples": "Add examples",
+      "improveClarity": "Improve clarity"
+    },
+    "errors": {
+      "promptRequired": "Prompt is required"
+    },
+    "generator": {
+      "createCourse": "Create Course with AI",
+      "createCourseDesc": "Describe the course you want to create and let AI generate the structure for you.",
+      "basicInfo": "Basic Information",
+      "topic": "Course Topic",
+      "topicPlaceholder": "E.g. Introduction to Machine Learning with Python",
+      "courseTopic": "Course Topic",
+      "courseTopicPlaceholder": "E.g. Introduction to Machine Learning",
+      "language": "Course Language",
+      "languageEn": "English",
+      "languageUk": "Ukrainian",
+      "targetAudience": "Target Audience & Level",
+      "targetAudiencePlaceholder": "E.g. Beginners with no prior programming experience",
+      "courseDuration": "Expected Duration",
+      "courseDurationPlaceholder": "E.g. 8 weeks, 4 hours per week",
+      "difficulty": "Difficulty",
+      "weekDuration": "Duration (weeks)",
+      "questionCount": "Number of Questions",
+      "generateModules": "Generate Modules",
+      "includeAssignments": "Include Assignments in Modules",
+      "includeQuizzes": "Include Quizzes in Modules",
+      "generating": "Generating Course Content",
+      "generatingDesc": "Please wait while our AI creates your course curriculum. This might take a minute...",
+      "preview": "Preview Course Structure",
+      "previewDesc": "Review the generated course structure below. You can save it to your database or go back to modify your request.",
+      "previewTitle": "Review AI output before saving",
+      "backToEdit": "Back to Edit Request",
+      "saveToDatabase": "Save to Database",
+      "reject": "Reject",
+      "confirm": "Confirm & Use",
+      "topicRequired": "Please enter a topic",
+      "successTitle": "Course Created Successfully!",
+      "successDesc": "The AI-generated course has been saved to the database. You can now view and edit it in the course management interface.",
+      "viewCourseButton": "View Course Details",
+      "closeButton": "Close"
+    },
+    "generationOptions": "Generation Options",
+    "coursePrompt": "Course Topic / Description",
+    "coursePromptHint": "Describe what you want the course to cover...",
+    "includeModules": "Include Modules",
+    "includeAssignments": "Include Assignments",
+    "includeQuizzes": "Include Quizzes",
+    "regenerate": "Regenerate",
+    "saveToDatabase": "Save to Database"
+  },
+  "templates": {
+    "picker": {
+      "title": "Choose a Template",
+      "empty": "No templates available. Save an assignment as a template first."
+    },
+    "save": {
+      "title": "Save as Template",
+      "desc": "This assignment will be saved as a reusable template.",
+      "confirm": "Save Template"
+    },
+    "useAsTemplate": "Use as Template"
+  },
+  "course": {
+    "code": "Course Code",
+    "title": "Course Title",
+    "description": "Description",
+    "modules": "Modules",
+    "assignments": "Assignments",
+    "quizzes": "Quizzes"
+  },
+  "testLab": {
+    "title": "Test Lab",
+    "aiTesting": "AI Testing",
+    "quickCrud": "Quick CRUD",
+    "workflows": "Workflow Testing",
+    "resultsLog": "Results Log",
+    "healthCheck": "Health Check",
+    "generateCourse": "Generate Course",
+    "generateModules": "Generate Modules",
+    "generateAssignments": "Generate Assignments",
+    "generateQuiz": "Generate Quiz",
+    "createUser": "Create User",
+    "createCourse": "Create Course",
+    "createModule": "Create Module",
+    "createResource": "Create Resource",
+    "createAssignment": "Create Assignment",
+    "createQuiz": "Create Quiz",
+    "createQuestion": "Create Question",
+    "fullCourseSetup": "Full Course Setup",
+    "enrollStudent": "Enroll Student",
+    "clearLog": "Clear Log",
+    "running": "Running...",
+    "runAll": "Run Full Setup"
   }
 }

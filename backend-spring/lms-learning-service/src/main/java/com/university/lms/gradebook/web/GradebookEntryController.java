@@ -13,11 +13,11 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -34,6 +34,7 @@ public class GradebookEntryController {
     private final GradebookSummaryService summaryService;
     private final GradebookEntryMapper entryMapper;
     private final GradeHistoryMapper historyMapper;
+    private final JdbcTemplate jdbcTemplate;
 
     @GetMapping("/course/{courseId}")
     @PreAuthorize("hasAnyRole('TEACHER', 'SUPERADMIN', 'TA')")
@@ -43,6 +44,7 @@ public class GradebookEntryController {
                 .stream()
                 .map(entryMapper::toDto)
                 .collect(Collectors.toList());
+        enrichEntries(entries);
         return ResponseEntity.ok(entries);
     }
 
@@ -65,6 +67,7 @@ public class GradebookEntryController {
                 .stream()
                 .map(entryMapper::toDto)
                 .collect(Collectors.toList());
+        enrichEntries(entries);
         return ResponseEntity.ok(entries);
     }
 
@@ -95,5 +98,65 @@ public class GradebookEntryController {
                 .map(historyMapper::toDto)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(history);
+    }
+
+    /**
+     * Enrich gradebook entry DTOs with student names/emails and assignment titles
+     * from the shared database.
+     */
+    private void enrichEntries(List<GradebookEntryDto> entries) {
+        if (entries == null || entries.isEmpty()) return;
+
+        // Collect unique student IDs and assignment IDs
+        Set<UUID> studentIds = entries.stream().map(GradebookEntryDto::getStudentId).collect(Collectors.toSet());
+        Set<UUID> assignmentIds = entries.stream().map(GradebookEntryDto::getAssignmentId)
+                .filter(Objects::nonNull).collect(Collectors.toSet());
+
+        // Batch fetch user info
+        Map<UUID, String[]> userMap = new HashMap<>();
+        if (!studentIds.isEmpty()) {
+            try {
+                String placeholders = studentIds.stream().map(id -> "?").collect(Collectors.joining(","));
+                String sql = "SELECT id, COALESCE(display_name, CONCAT(first_name, ' ', last_name), email) as name, email "
+                        + "FROM users WHERE id IN (" + placeholders + ")";
+                jdbcTemplate.query(sql, rs -> {
+                    UUID id = UUID.fromString(rs.getString("id"));
+                    userMap.put(id, new String[]{rs.getString("name"), rs.getString("email")});
+                }, studentIds.toArray());
+            } catch (Exception e) {
+                log.warn("Failed to fetch user info for gradebook: {}", e.getMessage());
+            }
+        }
+
+        // Batch fetch assignment titles
+        Map<UUID, String> assignmentTitleMap = new HashMap<>();
+        if (!assignmentIds.isEmpty()) {
+            try {
+                String placeholders = assignmentIds.stream().map(id -> "?").collect(Collectors.joining(","));
+                String sql = "SELECT id, title FROM assignments WHERE id IN (" + placeholders + ")";
+                jdbcTemplate.query(sql, rs -> {
+                    UUID id = UUID.fromString(rs.getString("id"));
+                    assignmentTitleMap.put(id, rs.getString("title"));
+                }, assignmentIds.toArray());
+            } catch (Exception e) {
+                log.warn("Failed to fetch assignment titles for gradebook: {}", e.getMessage());
+            }
+        }
+
+        // Apply enrichment
+        for (GradebookEntryDto entry : entries) {
+            String[] userInfo = userMap.get(entry.getStudentId());
+            if (userInfo != null) {
+                entry.setStudentName(userInfo[0]);
+                entry.setStudentEmail(userInfo[1]);
+            } else {
+                entry.setStudentName("Unknown");
+                entry.setStudentEmail("");
+            }
+
+            if (entry.getAssignmentId() != null) {
+                entry.setAssignmentTitle(assignmentTitleMap.getOrDefault(entry.getAssignmentId(), "Untitled"));
+            }
+        }
     }
 }

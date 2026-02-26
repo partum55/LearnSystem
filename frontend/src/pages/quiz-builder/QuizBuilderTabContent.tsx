@@ -1,6 +1,6 @@
 import React from 'react';
 import { TFunction } from 'i18next';
-import { AcademicCapIcon, CheckCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon } from '@heroicons/react/24/outline';
 import { Card, CardBody, CardHeader } from '../../components';
 import { Course } from '../../types';
 import {
@@ -12,10 +12,19 @@ import {
 } from './quizBuilderModel';
 import { QuizQuestionEditor } from './QuizQuestionEditor';
 
+interface ModuleSummary {
+  id: string;
+  title: string;
+}
+
 interface QuizBuilderTabContentProps {
   activeTab: QuizBuilderTab;
   quiz: Quiz;
   courses: Course[];
+  modules: ModuleSummary[];
+  selectedModuleId: string;
+  setSelectedModuleId: (id: string) => void;
+  isEditing: boolean;
   totalPoints: number;
   setQuiz: React.Dispatch<React.SetStateAction<Quiz>>;
   addQuestion: (type?: Question['question_type']) => void;
@@ -30,28 +39,14 @@ interface QuizBuilderTabContentProps {
   t: TFunction;
 }
 
-export const getQuizBuilderTabs = (t: TFunction, questionsCount: number) => [
-  {
-    id: 'basic' as const,
-    icon: <AcademicCapIcon className="mr-2 inline-block h-5 w-5" />,
-    label: t('quiz.basicInfo', 'Basic Information'),
-  },
-  {
-    id: 'questions' as const,
-    icon: <CheckCircleIcon className="mr-2 inline-block h-5 w-5" />,
-    label: `${t('quiz.questions', 'Questions')} (${questionsCount})`,
-  },
-  {
-    id: 'settings' as const,
-    icon: <ClockIcon className="mr-2 inline-block h-5 w-5" />,
-    label: t('quiz.settings', 'Settings'),
-  },
-];
-
 export const QuizBuilderTabContent: React.FC<QuizBuilderTabContentProps> = ({
   activeTab,
   quiz,
   courses,
+  modules,
+  selectedModuleId,
+  setSelectedModuleId,
+  isEditing,
   totalPoints,
   setQuiz,
   addQuestion,
@@ -133,6 +128,31 @@ export const QuizBuilderTabContent: React.FC<QuizBuilderTabContentProps> = ({
                 ))}
               </select>
             </div>
+
+            {!isEditing && (
+              <div>
+                <label className="label">
+                  {t('modules.module', 'Module')} *
+                </label>
+                <select
+                  value={selectedModuleId}
+                  onChange={(event) => setSelectedModuleId(event.target.value)}
+                  className="input w-full"
+                  required
+                  disabled={!quiz.course}
+                >
+                  <option value="">{t('modules.selectModule', 'Select module')}</option>
+                  {modules.map((module) => (
+                    <option key={module.id} value={module.id}>{module.title}</option>
+                  ))}
+                </select>
+                {!quiz.course && (
+                  <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    {t('quiz.selectCourseFirst', 'Select a course first to see available modules')}
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>

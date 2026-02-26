@@ -29,7 +29,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U lms_user -d lms_db"]
+      test: [ "CMD-SHELL", "pg_isready -U lms_user -d lms_db" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -48,7 +48,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -76,7 +76,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8761/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -106,13 +106,13 @@ services:
       - SPRING_DATASOURCE_PASSWORD=${SUPABASE_DB_PASSWORD:-lms_password_local}
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:-local-dev-secret-key-for-jwt-must-be-at-least-256-bits-long-for-hs256-algorithm}
       - JWT_EXPIRATION=${JWT_EXPIRATION:-86400000}
       - EUREKA_URI=http://eureka-server:8761/eureka
       - JAVA_OPTS=-Xmx384m -Xms192m
-      - BOOTSTRAP_ADMIN_ENABLED=${BOOTSTRAP_ADMIN_ENABLED:-false}
+      - BOOTSTRAP_ADMIN_ENABLED=${BOOTSTRAP_ADMIN_ENABLED:-true}
       - BOOTSTRAP_ADMIN_EMAIL=${BOOTSTRAP_ADMIN_EMAIL:-admin@ucu.edu.ua}
-      - BOOTSTRAP_ADMIN_PASSWORD=${BOOTSTRAP_ADMIN_PASSWORD}
+      - BOOTSTRAP_ADMIN_PASSWORD=${BOOTSTRAP_ADMIN_PASSWORD:-Admin123!}
     depends_on:
       postgres:
         condition: service_healthy
@@ -123,7 +123,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/api/actuator/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8081/api/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -150,7 +150,7 @@ services:
       - DB_PASSWORD=${SUPABASE_DB_PASSWORD:-lms_password_local}
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:-local-dev-secret-key-for-jwt-must-be-at-least-256-bits-long-for-hs256-algorithm}
       - EUREKA_URI=http://eureka-server:8761/eureka
       - SUBMISSION_STORAGE_PATH=/data/submissions
       - JAVA_OPTS=-Xmx512m -Xms256m
@@ -166,7 +166,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8089/api/actuator/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8089/api/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -197,7 +197,8 @@ services:
       - LLAMA_API_KEY=${LLAMA_API_KEY}
       - LLAMA_MODEL=${LLAMA_MODEL:-llama-3.3-70b-versatile}
       - EUREKA_URI=http://eureka-server:8761/eureka
-      - JWT_SECRET=${JWT_SECRET}
+      - LEARNING_SERVICE_URL=http://lms-learning-service:8089
+      - JWT_SECRET=${JWT_SECRET:-local-dev-secret-key-for-jwt-must-be-at-least-256-bits-long-for-hs256-algorithm}
       - JAVA_OPTS=-Xmx768m -Xms384m -XX:+UseG1GC
     depends_on:
       postgres:
@@ -209,7 +210,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8085/api/actuator/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8085/api/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -235,7 +236,7 @@ services:
       - SPRING_DATASOURCE_PASSWORD=${SUPABASE_DB_PASSWORD:-lms_password_local}
       - SPRING_FLYWAY_ENABLED=false
       - SPRING_DATA_REDIS_HOST=redis
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:-local-dev-secret-key-for-jwt-must-be-at-least-256-bits-long-for-hs256-algorithm}
       - EUREKA_URI=http://eureka-server:8761/eureka
       - JAVA_OPTS=-Xmx384m -Xms192m
     depends_on:
@@ -248,7 +249,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8088/api/actuator/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8088/api/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -285,7 +286,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -312,7 +313,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost/health" ]
       interval: 30s
       timeout: 3s
       retries: 3

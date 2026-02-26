@@ -21,14 +21,6 @@ interface AssignmentEditorTabContentProps {
   t: TFunction;
 }
 
-export const getAssignmentEditorTabs = (t: TFunction): Array<{ id: AssignmentEditorTab; label: string; icon: string }> => [
-  { id: 'basic', label: t('assignment.tabs.basic'), icon: '📝' },
-  { id: 'content', label: t('assignment.tabs.content'), icon: '📄' },
-  { id: 'settings', label: t('assignment.tabs.settings'), icon: '⚙️' },
-  { id: 'grading', label: t('assignment.tabs.grading'), icon: '✓' },
-  { id: 'advanced', label: t('assignment.tabs.advanced'), icon: '🔧' },
-];
-
 export const AssignmentEditorTabContent: React.FC<AssignmentEditorTabContentProps> = ({
   activeTab,
   formData,

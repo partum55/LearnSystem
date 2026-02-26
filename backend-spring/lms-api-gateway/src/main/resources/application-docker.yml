@@ -10,6 +10,13 @@ spring:
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials Access-Control-Allow-Methods Access-Control-Allow-Headers, RETAIN_UNIQUE
       routes:
+        - id: admin-course-management
+          uri: lb://lms-learning-service
+          predicates:
+            - Path=/api/course-management/**
+          filters:
+            - RewritePath=/api/course-management(?<segment>/?.*), /api/admin/course-management${segment}
+
         - id: user-service
           uri: lb://lms-user-service
           predicates:

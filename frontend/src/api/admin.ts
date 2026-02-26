@@ -162,7 +162,7 @@ export const getAdminUsers = async (params?: {
 };
 
 export const createAdminUser = async (payload: CreateAdminUserRequest): Promise<AdminUser> => {
-  const response = await apiClient.post<AdminUser>('/auth/register', payload);
+  const response = await apiClient.post<AdminUser>('/users', payload);
   return response.data;
 };
 

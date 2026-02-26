@@ -1,5 +1,6 @@
 package com.university.lms.ai.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -7,19 +8,22 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import java.time.LocalDate;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/** Response DTO for generated course with modules, assignments, and quizzes */
+/** Response DTO for AI-generated course matching CourseExport JSON import format. */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class GeneratedCourseResponse {
+
+  @JsonProperty("version")
+  private String version;
 
   @JsonProperty("course")
   @Valid
@@ -32,10 +36,19 @@ public class GeneratedCourseResponse {
   @Size(max = 24)
   private List<ModuleData> modules;
 
+  @JsonProperty("quizzes")
+  @Valid
+  private List<QuizData> quizzes;
+
+  @JsonProperty("questionBank")
+  @Valid
+  private List<QuestionData> questionBank;
+
   @Data
   @Builder
   @NoArgsConstructor
   @AllArgsConstructor
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CourseData {
     @NotBlank
     @Size(max = 50)
@@ -60,11 +73,10 @@ public class GeneratedCourseResponse {
     @Size(max = 8000)
     private String syllabus;
 
-    private LocalDate startDate;
-    private LocalDate endDate;
-
     @Size(max = 20)
-    private String academicYear;
+    private String visibility;
+
+    private Boolean isPublished;
 
     @Min(1)
     @Max(1000)
@@ -75,6 +87,7 @@ public class GeneratedCourseResponse {
   @Builder
   @NoArgsConstructor
   @AllArgsConstructor
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class ModuleData {
     @NotBlank
     @Size(max = 255)
@@ -89,19 +102,52 @@ public class GeneratedCourseResponse {
     @Max(100)
     private Integer position;
 
+    private Boolean isPublished;
+
     @Valid
     @Size(max = 50)
     private List<AssignmentData> assignments;
 
     @Valid
-    @Size(max = 50)
-    private List<QuizData> quizzes;
+    @Size(max = 20)
+    private List<ResourceData> resources;
   }
 
   @Data
   @Builder
   @NoArgsConstructor
   @AllArgsConstructor
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class ResourceData {
+    @NotBlank
+    @Size(max = 255)
+    private String title;
+
+    @Size(max = 2000)
+    private String description;
+
+    @NotBlank
+    @Size(max = 30)
+    private String resourceType;
+
+    @Size(max = 2000)
+    private String externalUrl;
+
+    @Size(max = 8000)
+    private String textContent;
+
+    @Min(0)
+    @Max(100)
+    private Integer position;
+
+    private Boolean isDownloadable;
+  }
+
+  @Data
+  @Builder
+  @NoArgsConstructor
+  @AllArgsConstructor
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class AssignmentData {
     @NotBlank
     @Size(max = 255)
@@ -113,30 +159,39 @@ public class GeneratedCourseResponse {
 
     @NotBlank
     @Size(max = 30)
-    private String assignmentType; // QUIZ, FILE_UPLOAD, TEXT, etc.
+    private String assignmentType;
 
     @NotBlank
     @Size(max = 8000)
     private String instructions;
 
-    @NotNull
-    @Min(0)
-    @Max(100)
-    private Integer position;
-
     @Min(1)
     @Max(1000)
     private Integer maxPoints;
 
-    @Min(5)
-    @Max(600)
-    private Integer timeLimit;
+    private List<String> submissionTypes;
+
+    private List<String> allowedFileTypes;
+
+    @Size(max = 30)
+    private String programmingLanguage;
+
+    @Size(max = 8000)
+    private String starterCode;
+
+    private List<String> tags;
+
+    @Size(max = 30)
+    private String estimatedDuration;
+
+    private Boolean isPublished;
   }
 
   @Data
   @Builder
   @NoArgsConstructor
   @AllArgsConstructor
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class QuizData {
     @NotBlank
     @Size(max = 255)
@@ -145,6 +200,9 @@ public class GeneratedCourseResponse {
     @NotBlank
     @Size(max = 4000)
     private String description;
+
+    @Size(max = 255)
+    private String moduleTitle;
 
     @Min(5)
     @Max(180)
@@ -156,46 +214,44 @@ public class GeneratedCourseResponse {
 
     private Boolean shuffleQuestions;
 
-    @Valid
-    @Size(max = 50)
-    private List<QuestionData> questions;
+    private Boolean shuffleAnswers;
+
+    @Min(0)
+    @Max(100)
+    private Integer passPercentage;
+
+    private Boolean showCorrectAnswers;
+
+    private List<String> questionRefs;
   }
 
   @Data
   @Builder
   @NoArgsConstructor
   @AllArgsConstructor
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class QuestionData {
+    @Size(max = 100)
+    private String id;
+
     @NotBlank
     @Size(max = 2000)
-    private String questionText;
+    private String stem;
 
     @NotBlank
     @Size(max = 50)
-    private String questionType; // MULTIPLE_CHOICE, TRUE_FALSE, SHORT_ANSWER, ESSAY
+    private String questionType;
 
     @NotNull
     @Min(1)
     @Max(100)
     private Integer points;
 
-    @Valid
-    @Size(max = 10)
-    private List<AnswerOptionData> answerOptions;
-  }
+    private Object options;
 
-  @Data
-  @Builder
-  @NoArgsConstructor
-  @AllArgsConstructor
-  public static class AnswerOptionData {
-    @NotBlank
-    @Size(max = 500)
-    private String text;
+    private Object correctAnswer;
 
-    @NotNull private Boolean isCorrect;
-
-    @Size(max = 1000)
-    private String feedback;
+    @Size(max = 2000)
+    private String explanation;
   }
 }

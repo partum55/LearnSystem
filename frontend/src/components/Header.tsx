@@ -2,15 +2,16 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Menu, Transition } from '@headlessui/react';
-import { BellIcon, LanguageIcon, Bars3Icon } from '@heroicons/react/24/outline';
+import { BellIcon, LanguageIcon, Bars3Icon, BookOpenIcon } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../store/authStore';
 import { useNotificationStore } from '../store/notificationStore';
 
 interface HeaderProps {
   onMenuClick?: () => void;
+  onCourseMenuClick?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
+export const Header: React.FC<HeaderProps> = ({ onMenuClick, onCourseMenuClick }) => {
   const { t, i18n } = useTranslation();
   const { user, logout, updateUserPreferences } = useAuthStore();
   const { unreadCount } = useNotificationStore();
@@ -45,6 +46,16 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           >
             <Bars3Icon className="h-5 w-5" />
           </button>
+          {onCourseMenuClick && (
+            <button
+              onClick={onCourseMenuClick}
+              className="lg:hidden p-1.5 rounded-md"
+              style={{ color: 'var(--text-muted)' }}
+              aria-label="Toggle course sidebar"
+            >
+              <BookOpenIcon className="h-5 w-5" />
+            </button>
+          )}
           <Link to="/dashboard" className="flex items-center gap-2">
             <div
               className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold"
@@ -174,7 +185,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                 <div className="py-0.5">
                   {[
                     { to: '/profile', label: t('nav.profile') },
-                    { to: '/settings', label: t('nav.settings') },
+                    { to: '/profile/settings', label: t('nav.settings') },
                   ].map((item) => (
                     <Menu.Item key={item.to}>
                       {({ active }: { active: boolean }) => (

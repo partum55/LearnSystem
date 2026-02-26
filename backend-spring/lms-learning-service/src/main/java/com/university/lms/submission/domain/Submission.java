@@ -11,10 +11,10 @@ import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -94,13 +94,14 @@ public class Submission {
         private UUID graderId;
 
         @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL, orphanRemoval = true)
+        @Fetch(FetchMode.SUBSELECT)
         @Builder.Default
-        private List<SubmissionFile> files = new ArrayList<>();
+        private Set<SubmissionFile> files = new LinkedHashSet<>();
 
         @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL, orphanRemoval = true)
         @Fetch(FetchMode.SUBSELECT)
         @Builder.Default
-        private List<SubmissionComment> comments = new ArrayList<>();
+        private Set<SubmissionComment> comments = new LinkedHashSet<>();
 
         @CreationTimestamp
         @Column(name = "created_at", nullable = false, updatable = false)

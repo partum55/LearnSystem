@@ -3,7 +3,9 @@ package com.university.lms.course.assessment.service;
 import com.university.lms.course.assessment.domain.Quiz;
 import com.university.lms.course.assessment.domain.QuizQuestion;
 import com.university.lms.course.assessment.domain.QuestionBank;
+import com.university.lms.course.assessment.dto.InlineQuizRequest;
 import com.university.lms.course.assessment.dto.QuizDto;
+import com.university.lms.course.assessment.repository.AssignmentRepository;
 import com.university.lms.course.assessment.repository.QuizRepository;
 import com.university.lms.course.assessment.repository.QuestionBankRepository;
 import com.university.lms.common.dto.PageResponse;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -33,6 +36,7 @@ import java.util.stream.Collectors;
 public class QuizService {
 
     private final QuizRepository quizRepository;
+    private final AssignmentRepository assignmentRepository;
     private final QuestionBankRepository questionBankRepository;
     private final AssessmentMapper mapper;
 
@@ -43,7 +47,7 @@ public class QuizService {
     public QuizDto getQuizById(UUID id) {
         log.debug("Fetching quiz by ID: {}", id);
         Quiz quiz = findQuizById(id);
-        return mapper.toDto(quiz);
+        return mapAndEnrich(quiz);
     }
 
     /**
@@ -62,7 +66,7 @@ public class QuizService {
         log.debug("Fetching quizzes list for course: {}", courseId);
         List<Quiz> quizzes = quizRepository.findByCourseIdOrderByCreatedAtDesc(courseId);
         return quizzes.stream()
-                .map(mapper::toDto)
+                .map(this::mapAndEnrich)
                 .collect(Collectors.toList());
     }
 
@@ -90,7 +94,71 @@ public class QuizService {
         Quiz savedQuiz = quizRepository.save(quiz);
         log.info("Quiz created successfully with ID: {}", savedQuiz.getId());
 
-        return mapper.toDto(savedQuiz);
+        return mapAndEnrich(savedQuiz);
+    }
+
+    /**
+     * Create a quiz in assignment context so it is module-bound.
+     */
+    @Transactional
+    @CacheEvict(value = "quizzes", allEntries = true)
+    public QuizDto createQuizForAssignment(
+            UUID courseId,
+            UUID moduleId,
+            InlineQuizRequest request,
+            String fallbackTitle,
+            UUID createdBy
+    ) {
+        String resolvedTitle = request.getTitle() != null && !request.getTitle().isBlank()
+                ? request.getTitle()
+                : fallbackTitle;
+        if (resolvedTitle == null || resolvedTitle.isBlank()) {
+            throw new ValidationException("Quiz title is required");
+        }
+
+        Quiz quiz = Quiz.builder()
+                .courseId(courseId)
+                .title(resolvedTitle)
+                .description(request.getDescription())
+                .timeLimit(request.getTimeLimit())
+                .attemptsAllowed(request.getAttemptsAllowed() != null ? request.getAttemptsAllowed() : 1)
+                .shuffleQuestions(request.getShuffleQuestions() != null ? request.getShuffleQuestions() : false)
+                .shuffleAnswers(request.getShuffleAnswers() != null ? request.getShuffleAnswers() : false)
+                .showCorrectAnswers(request.getShowCorrectAnswers() != null ? request.getShowCorrectAnswers() : true)
+                .showCorrectAnswersAt(request.getShowCorrectAnswersAt())
+                .passPercentage(request.getPassPercentage() != null ? request.getPassPercentage() : BigDecimal.valueOf(60.00))
+                .createdBy(createdBy)
+                .build();
+
+        Quiz savedQuiz = quizRepository.save(quiz);
+        QuizDto dto = mapAndEnrich(savedQuiz);
+        dto.setModuleId(moduleId);
+        return dto;
+    }
+
+    /**
+     * Update quiz fields from assignment context.
+     */
+    @Transactional
+    @CacheEvict(value = "quizzes", key = "#quizId")
+    public QuizDto updateQuizFromAssignment(UUID quizId, InlineQuizRequest updates, UUID userId) {
+        Quiz quiz = findQuizById(quizId);
+        if (!hasQuizAccess(quiz, userId)) {
+            throw new ValidationException("You don't have permission to update this quiz");
+        }
+
+        if (updates.getTitle() != null && !updates.getTitle().isBlank()) quiz.setTitle(updates.getTitle());
+        if (updates.getDescription() != null) quiz.setDescription(updates.getDescription());
+        if (updates.getTimeLimit() != null) quiz.setTimeLimit(updates.getTimeLimit());
+        if (updates.getAttemptsAllowed() != null) quiz.setAttemptsAllowed(updates.getAttemptsAllowed());
+        if (updates.getShuffleQuestions() != null) quiz.setShuffleQuestions(updates.getShuffleQuestions());
+        if (updates.getShuffleAnswers() != null) quiz.setShuffleAnswers(updates.getShuffleAnswers());
+        if (updates.getShowCorrectAnswers() != null) quiz.setShowCorrectAnswers(updates.getShowCorrectAnswers());
+        if (updates.getShowCorrectAnswersAt() != null) quiz.setShowCorrectAnswersAt(updates.getShowCorrectAnswersAt());
+        if (updates.getPassPercentage() != null) quiz.setPassPercentage(updates.getPassPercentage());
+
+        Quiz updatedQuiz = quizRepository.save(quiz);
+        return mapAndEnrich(updatedQuiz);
     }
 
     /**
@@ -104,7 +172,7 @@ public class QuizService {
         Quiz quiz = findQuizById(id);
 
         // Check permission
-        if (!quiz.getCreatedBy().equals(userId)) {
+        if (!hasQuizAccess(quiz, userId)) {
             throw new ValidationException("You don't have permission to update this quiz");
         }
 
@@ -121,7 +189,7 @@ public class QuizService {
         Quiz updatedQuiz = quizRepository.save(quiz);
         log.info("Quiz updated successfully: {}", id);
 
-        return mapper.toDto(updatedQuiz);
+        return mapAndEnrich(updatedQuiz);
     }
 
     /**
@@ -135,7 +203,7 @@ public class QuizService {
         Quiz quiz = findQuizById(id);
 
         // Check permission
-        if (!quiz.getCreatedBy().equals(userId)) {
+        if (!hasQuizAccess(quiz, userId)) {
             throw new ValidationException("You don't have permission to delete this quiz");
         }
 
@@ -155,7 +223,7 @@ public class QuizService {
         QuestionBank question = findQuestionById(questionId);
 
         // Check permission
-        if (!quiz.getCreatedBy().equals(userId)) {
+        if (!hasQuizAccess(quiz, userId)) {
             throw new ValidationException("You don't have permission to modify this quiz");
         }
 
@@ -194,7 +262,7 @@ public class QuizService {
         Quiz quiz = findQuizById(quizId);
 
         // Check permission
-        if (!quiz.getCreatedBy().equals(userId)) {
+        if (!hasQuizAccess(quiz, userId)) {
             throw new ValidationException("You don't have permission to modify this quiz");
         }
 
@@ -215,7 +283,7 @@ public class QuizService {
         Quiz quiz = findQuizById(quizId);
 
         // Check permission
-        if (!quiz.getCreatedBy().equals(userId)) {
+        if (!hasQuizAccess(quiz, userId)) {
             throw new ValidationException("You don't have permission to modify this quiz");
         }
 
@@ -246,9 +314,28 @@ public class QuizService {
                 .orElseThrow(() -> new ResourceNotFoundException("Question", "id", id));
     }
 
+    private QuizDto mapAndEnrich(Quiz quiz) {
+        QuizDto dto = mapper.toDto(quiz);
+        resolveModuleId(quiz.getId()).ifPresent(dto::setModuleId);
+        return dto;
+    }
+
+    private Optional<UUID> resolveModuleId(UUID quizId) {
+        return assignmentRepository.findFirstByQuizId(quizId).map(assignment -> assignment.getModuleId());
+    }
+
+    private boolean hasQuizAccess(Quiz quiz, UUID userId) {
+        if (quiz.getCreatedBy().equals(userId)) {
+            return true;
+        }
+        return assignmentRepository.findFirstByQuizId(quiz.getId())
+                .map(assignment -> assignment.getCreatedBy().equals(userId))
+                .orElse(false);
+    }
+
     private PageResponse<QuizDto> mapToPageResponse(Page<Quiz> page) {
         return PageResponse.<QuizDto>builder()
-                .content(page.getContent().stream().map(mapper::toDto).toList())
+                .content(page.getContent().stream().map(this::mapAndEnrich).toList())
                 .pageNumber(page.getNumber())
                 .pageSize(page.getSize())
                 .totalElements(page.getTotalElements())
@@ -257,4 +344,3 @@ public class QuizService {
                 .build();
     }
 }
-

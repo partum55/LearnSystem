@@ -1,5 +1,7 @@
 package com.university.lms.gradebook.event;
 
+import com.university.lms.course.assessment.domain.Assignment;
+import com.university.lms.course.assessment.repository.AssignmentRepository;
 import com.university.lms.gradebook.domain.GradeStatus;
 import com.university.lms.gradebook.domain.GradebookEntry;
 import com.university.lms.gradebook.repository.GradebookEntryRepository;
@@ -11,6 +13,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -25,12 +28,18 @@ public class GradebookEventListener {
 
     private final GradebookEntryRepository entryRepository;
     private final GradebookSummaryService summaryService;
+    private final AssignmentRepository assignmentRepository;
 
     @EventListener
     @Async
     @Transactional
     public void handleSubmissionGraded(SubmissionGradedEvent event) {
         log.info("Processing SubmissionGradedEvent for submission: {}", event.getSubmissionId());
+
+        // Look up assignment max score
+        BigDecimal maxScore = assignmentRepository.findById(event.getAssignmentId())
+                .map(Assignment::getMaxPoints)
+                .orElse(BigDecimal.valueOf(100));
 
         Optional<GradebookEntry> existingEntry = entryRepository
                 .findByCourseIdAndStudentId(event.getCourseId(), event.getStudentId())
@@ -48,15 +57,18 @@ public class GradebookEventListener {
                     .studentId(event.getStudentId())
                     .assignmentId(event.getAssignmentId())
                     .submissionId(event.getSubmissionId())
+                    .maxScore(maxScore)
                     .build();
             log.debug("Creating new gradebook entry for student: {}", event.getStudentId());
         }
 
         entry.setScore(event.getGrade());
+        entry.setMaxScore(maxScore);
         entry.setStatus(GradeStatus.GRADED);
         entry.setLate(event.isLate());
         entry.setGradedAt(LocalDateTime.now());
         entry.setSubmissionId(event.getSubmissionId());
+        entry.calculatePercentage();
 
         entryRepository.save(entry);
 

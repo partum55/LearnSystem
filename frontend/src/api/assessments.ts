@@ -28,6 +28,7 @@ const mapAssignmentFromApi = (raw: UnknownRecord): Assignment => ({
   ...raw,
   id: String(raw.id ?? ''),
   course_id: String(raw.courseId ?? raw.course_id ?? raw.course ?? ''),
+  module_id: (raw.moduleId ?? raw.module_id) ? String(raw.moduleId ?? raw.module_id) : undefined,
   assignment_type: String(raw.assignmentType ?? raw.assignment_type ?? 'FILE_UPLOAD') as Assignment['assignment_type'],
   title: String(raw.title ?? ''),
   description: String(raw.description ?? ''),
@@ -63,6 +64,12 @@ const mapAssignmentFromApi = (raw: UnknownRecord): Assignment => ({
 });
 
 const mapAssignmentToApi = (raw: Partial<Assignment> & UnknownRecord): UnknownRecord => {
+  const quizRef = raw.quizId ?? raw.quiz_id ?? raw.quiz;
+  const quizId = typeof quizRef === 'string' ? quizRef : undefined;
+  const inlineQuiz = (raw.quiz && typeof raw.quiz === 'object' && !Array.isArray(raw.quiz))
+    ? raw.quiz
+    : undefined;
+
   return compact({
     courseId: raw.courseId ?? raw.course_id ?? raw.course,
     moduleId: raw.moduleId ?? raw.module_id ?? raw.module,
@@ -90,7 +97,8 @@ const mapAssignmentToApi = (raw: Partial<Assignment> & UnknownRecord): UnknownRe
     allowedFileTypes: raw.allowedFileTypes ?? raw.allowed_file_types,
     maxFileSize: raw.maxFileSize ?? raw.max_file_size,
     maxFiles: raw.maxFiles ?? raw.max_files,
-    quizId: raw.quizId ?? raw.quiz_id ?? raw.quiz,
+    quizId,
+    quiz: inlineQuiz,
     externalToolUrl: raw.externalToolUrl ?? raw.external_tool_url,
     gradeAnonymously: raw.gradeAnonymously ?? raw.grade_anonymously,
     peerReviewEnabled: raw.peerReviewEnabled ?? raw.peer_review_enabled,
@@ -107,6 +115,7 @@ const mapQuizFromApi = (raw: UnknownRecord): Quiz => ({
   ...raw,
   id: String(raw.id ?? ''),
   course_id: String(raw.courseId ?? raw.course_id ?? raw.course ?? ''),
+  module_id: (raw.moduleId ?? raw.module_id) ? String(raw.moduleId ?? raw.module_id) : undefined,
   title: String(raw.title ?? ''),
   description: (raw.description as string | undefined) || '',
   time_limit: (raw.timeLimit as number | undefined) ?? (raw.time_limit as number | undefined),
@@ -168,26 +177,31 @@ export const assignmentsApi = {
     return Promise.reject(new Error('Assignment statistics endpoint is not available in current backend.'));
   },
 
-  duplicate: (id: string, courseId?: string) => {
-    void id;
-    void courseId;
-    return Promise.reject(new Error('Assignment duplicate endpoint is not available in current backend.'));
-  },
+  duplicate: (id: string, courseId?: string) =>
+    apiClient.post<UnknownRecord>(`/assessments/assignments/${id}/duplicate`, null, {
+      params: courseId ? { courseId } : undefined,
+    }).then((response) => ({
+      ...response,
+      data: mapAssignmentFromApi(response.data),
+    })),
 
-  archive: (id: string) => {
-    void id;
-    return Promise.reject(new Error('Assignment archive endpoint is not available in current backend.'));
-  },
+  archive: (id: string) =>
+    apiClient.post<UnknownRecord>(`/assessments/assignments/${id}/archive`).then((response) => ({
+      ...response,
+      data: mapAssignmentFromApi(response.data),
+    })),
 
-  publish: (id: string) => {
-    void id;
-    return Promise.reject(new Error('Assignment publish endpoint is not available in current backend.'));
-  },
+  publish: (id: string) =>
+    apiClient.post<UnknownRecord>(`/assessments/assignments/${id}/publish`).then((response) => ({
+      ...response,
+      data: mapAssignmentFromApi(response.data),
+    })),
 
-  unpublish: (id: string) => {
-    void id;
-    return Promise.reject(new Error('Assignment unpublish endpoint is not available in current backend.'));
-  },
+  unpublish: (id: string) =>
+    apiClient.post<UnknownRecord>(`/assessments/assignments/${id}/unpublish`).then((response) => ({
+      ...response,
+      data: mapAssignmentFromApi(response.data),
+    })),
 
   getPublished: (courseId: string) =>
     apiClient.get<UnknownRecord[]>(`/assessments/assignments/course/${courseId}/published`).then((response) => ({
@@ -210,11 +224,35 @@ export const assignmentsApi = {
 
 // Quiz API - Spring backend URLs
 export const quizzesApi = {
-  getAll: (courseId: string) => {
-    return apiClient.get<PageResponse<UnknownRecord>>(`/assessments/quizzes/course/${courseId}`).then((response) => ({
-      ...response,
-      data: (response.data.content || []).map(mapQuizFromApi),
-    }));
+  getAll: async (courseId: string) => {
+    const assignmentsResponse = await apiClient.get<PageResponse<UnknownRecord>>(
+      `/assessments/assignments/course/${courseId}?size=200`
+    );
+    const quizIds = Array.from(
+      new Set(
+        (assignmentsResponse.data.content || [])
+          .filter((item) => String(item.assignmentType ?? item.assignment_type ?? '') === 'QUIZ')
+          .map((item) => item.quizId ?? item.quiz_id)
+          .filter((quizId): quizId is string => Boolean(quizId))
+          .map((quizId) => String(quizId))
+      )
+    );
+
+    const quizzes = await Promise.all(
+      quizIds.map(async (quizId) => {
+        try {
+          const quizResponse = await apiClient.get<UnknownRecord>(`/assessments/quizzes/${quizId}`);
+          return mapQuizFromApi(quizResponse.data);
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    return {
+      ...assignmentsResponse,
+      data: quizzes.filter((quiz): quiz is Quiz => Boolean(quiz)),
+    };
   },
 
   getById: (id: string) =>
@@ -223,22 +261,44 @@ export const quizzesApi = {
       data: mapQuizFromApi(response.data),
     })),
 
-  create: (data: Partial<Quiz> & UnknownRecord) => {
+  create: async (data: Partial<Quiz> & UnknownRecord) => {
     const courseId = String(data.course_id ?? data.courseId ?? data.course ?? '');
+    const moduleId = String(data.module_id ?? data.moduleId ?? data.module ?? '');
     const title = String(data.title ?? '');
     const description = (data.description as string | undefined) || undefined;
-    return apiClient
-      .post<UnknownRecord>('/assessments/quizzes', null, {
-        params: compact({
-          courseId,
-          title,
-          description,
-        }),
-      })
-      .then((response) => ({
-        ...response,
-        data: mapQuizFromApi(response.data),
-      }));
+    if (!moduleId) {
+      throw new Error('moduleId is required to create a quiz');
+    }
+
+    const assignmentResponse = await apiClient.post<UnknownRecord>('/assessments/assignments', compact({
+      courseId,
+      moduleId,
+      assignmentType: 'QUIZ',
+      title,
+      description: description ?? '',
+      maxPoints: 100,
+      isPublished: false,
+      quiz: {
+        title,
+        description,
+        timeLimit: data.time_limit ?? data.timeLimit,
+        attemptsAllowed: data.attempts_allowed ?? data.attemptsAllowed,
+        shuffleQuestions: data.randomize_questions ?? data.shuffleQuestions ?? data.shuffle_questions,
+        shuffleAnswers: data.randomize_answers ?? data.shuffleAnswers ?? data.shuffle_answers,
+        showCorrectAnswers: (data as UnknownRecord).show_correct_answers ?? (data as UnknownRecord).showCorrectAnswers,
+        passPercentage: data.pass_percentage ?? data.passPercentage,
+      },
+    }));
+
+    const createdQuizId = assignmentResponse.data.quizId ?? assignmentResponse.data.quiz_id;
+    if (!createdQuizId) {
+      throw new Error('Quiz was not created for the assignment');
+    }
+    const quizResponse = await apiClient.get<UnknownRecord>(`/assessments/quizzes/${String(createdQuizId)}`);
+    return {
+      ...assignmentResponse,
+      data: mapQuizFromApi(quizResponse.data),
+    };
   },
 
   update: (id: string, data: Partial<Quiz>) =>

@@ -1,20 +1,20 @@
 import React, { forwardRef } from 'react';
 
-const Input = forwardRef(({
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label?: string;
+  error?: string;
+  helpText?: string;
+  success?: boolean;
+}
+
+const Input = forwardRef<HTMLInputElement, InputProps>(({
   label,
   error,
   helpText,
   success,
   className = '',
   ...props
-}: {
-  label?: string;
-  error?: string;
-  helpText?: string;
-  success?: boolean;
-  className?: string;
-  [key: string]: any;
-}, ref: React.Ref<HTMLInputElement>) => {
+}, ref) => {
   const inputClasses = [
     'input',
     error && 'input-error',

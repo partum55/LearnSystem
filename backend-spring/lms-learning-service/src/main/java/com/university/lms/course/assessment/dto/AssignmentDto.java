@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,7 +21,10 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AssignmentDto {
+public class AssignmentDto implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     private UUID id;
     private UUID courseId;

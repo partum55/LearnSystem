@@ -98,14 +98,14 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
   };
 
   const handleGenerateQuiz = async () => {
-    if (!courseId || !quizTopic.trim()) return;
+    if (!moduleId || !quizTopic.trim()) return;
 
     setLoading(true);
     setError('');
 
     try {
       const result = await aiApi.generateQuiz({
-        courseId,
+        moduleId,
         topic: quizTopic,
         language: 'uk',
         questionCount,

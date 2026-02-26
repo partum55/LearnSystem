@@ -99,10 +99,31 @@ export const CourseGradesTab: React.FC<CourseGradesTabProps> = ({ courseId }) =>
     setLoading(true);
     setError(null);
     try {
-      const [entriesResponse, courseResponse] = await Promise.all([
+      const [entriesResponse, courseResponse, modulesResponse, assignmentsResponse] = await Promise.all([
         apiClient.get<ApiGradebookEntry[]>(`/gradebook/entries/course/${courseId}/student/${user.id}`),
         apiClient.get<{ code?: string; title?: string; titleUk?: string; titleEn?: string }>(`/courses/${courseId}`),
+        apiClient.get<{ id: string; title: string; position?: number }[]>(`/courses/${courseId}/modules`),
+        apiClient.get<{ content?: { id: string; moduleId?: string; module_id?: string }[]; id?: string; moduleId?: string; module_id?: string }>(
+          `/assessments/assignments/course/${courseId}`
+        ),
       ]);
+
+      // Build assignment → module mapping
+      const rawAssignments: { id: string; moduleId?: string }[] = Array.isArray(assignmentsResponse.data)
+        ? assignmentsResponse.data
+        : (assignmentsResponse.data as { content?: { id: string; moduleId?: string; module_id?: string }[] })?.content || [];
+      const assignmentModuleMap = new Map<string, string>();
+      rawAssignments.forEach((a: { id: string; moduleId?: string; module_id?: string }) => {
+        const modId = a.moduleId || a.module_id;
+        if (modId) assignmentModuleMap.set(a.id, modId);
+      });
+
+      // Build module info map
+      const rawModules = Array.isArray(modulesResponse.data) ? modulesResponse.data : [];
+      const moduleInfoMap = new Map<string, { title: string; position: number }>();
+      rawModules.forEach((m: { id: string; title: string; position?: number }, idx: number) => {
+        moduleInfoMap.set(m.id, { title: m.title, position: m.position ?? idx });
+      });
 
       const grades: GradeEntry[] = (entriesResponse.data || []).map((entry) => {
         const resolvedScore = entry.finalScore ?? entry.overrideScore ?? entry.score;
@@ -123,6 +144,29 @@ export const CourseGradesTab: React.FC<CourseGradesTabProps> = ({ courseId }) =>
       const totalPointsEarned = gradedEntries.reduce((sum, grade) => sum + (grade.score || 0), 0);
       const totalPointsPossible = gradedEntries.reduce((sum, grade) => sum + grade.max_points, 0);
       const currentGrade = totalPointsPossible > 0 ? (totalPointsEarned / totalPointsPossible) * 100 : undefined;
+
+      // Group grades by module
+      const moduleGradesMap = new Map<string, GradeEntry[]>();
+      grades.forEach((grade) => {
+        const moduleId = assignmentModuleMap.get(grade.assignment_id) || 'unassigned';
+        if (!moduleGradesMap.has(moduleId)) {
+          moduleGradesMap.set(moduleId, []);
+        }
+        moduleGradesMap.get(moduleId)!.push(grade);
+      });
+
+      // Build module groups sorted by position
+      const modules: ModuleGrades[] = [];
+      moduleGradesMap.forEach((moduleGrades, moduleId) => {
+        const info = moduleInfoMap.get(moduleId);
+        modules.push({
+          module_id: moduleId,
+          module_title: info?.title || t('gradebook.unassigned_module'),
+          module_position: info?.position ?? 999,
+          grades: moduleGrades,
+        });
+      });
+      modules.sort((a, b) => a.module_position - b.module_position);
 
       const mapped: GradebookData = {
         course_id: courseId,
@@ -145,18 +189,11 @@ export const CourseGradesTab: React.FC<CourseGradesTabProps> = ({ courseId }) =>
           assignments_completed: gradedEntries.length,
           assignments_total: grades.length,
         },
-        modules: [
-          {
-            module_id: 'all',
-            module_title: t('gradebook.assignment_grades'),
-            module_position: 0,
-            grades,
-          },
-        ],
+        modules,
       };
 
       setGradebook(mapped);
-      setExpandedModules(new Set(['all']));
+      setExpandedModules(new Set(modules.map(m => m.module_id).filter((id): id is string => id !== null)));
     } catch (err: unknown) {
       console.error('Failed to fetch gradebook:', err);
       setError(extractErrorMessage(err));
@@ -398,7 +435,7 @@ export const CourseGradesTab: React.FC<CourseGradesTabProps> = ({ courseId }) =>
                               {t('gradebook.due_date')}
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                              {t('gradebook.status')}
+                              {t('gradebook.status.__value')}
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                               {t('gradebook.score')}

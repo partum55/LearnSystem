@@ -10,13 +10,18 @@ import com.university.lms.course.dto.EnrollUserRequest;
 import com.university.lms.course.repository.CourseMemberRepository;
 import com.university.lms.course.repository.CourseRepository;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +41,7 @@ public class EnrollmentService {
   private final CourseRepository courseRepository;
   private final CourseMemberRepository courseMemberRepository;
   private final CourseMapper courseMapper;
+  private final JdbcTemplate jdbcTemplate;
 
   /** Enroll a user in a course. */
   @Transactional
@@ -81,7 +87,9 @@ public class EnrollmentService {
     CourseMember savedMember = courseMemberRepository.save(member);
     log.info("User {} enrolled successfully in course {}", request.getUserId(), courseId);
 
-    return courseMapper.toDto(savedMember);
+    CourseMemberDto dto = courseMapper.toDto(savedMember);
+    enrichWithUserInfo(List.of(dto));
+    return dto;
   }
 
   /** Unenroll a user from a course. */
@@ -221,7 +229,9 @@ public class EnrollmentService {
             .findByCourseIdAndUserId(courseId, userId)
             .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found"));
 
-    return courseMapper.toDto(member);
+    CourseMemberDto dto = courseMapper.toDto(member);
+    enrichWithUserInfo(List.of(dto));
+    return dto;
   }
 
   public List<UUID> getStudentIdsByCourseId(UUID courseId, UUID requesterId, String requesterRole) {
@@ -276,13 +286,72 @@ public class EnrollmentService {
   }
 
   private PageResponse<CourseMemberDto> mapToPageResponse(Page<CourseMember> page) {
+    List<CourseMemberDto> dtos = page.getContent().stream().map(courseMapper::toDto).toList();
+    enrichWithUserInfo(dtos);
     return PageResponse.<CourseMemberDto>builder()
-        .content(page.getContent().stream().map(courseMapper::toDto).toList())
+        .content(dtos)
         .pageNumber(page.getNumber())
         .pageSize(page.getSize())
         .totalElements(page.getTotalElements())
         .totalPages(page.getTotalPages())
         .last(page.isLast())
         .build();
+  }
+
+  /**
+   * Batch-fetches user display names and emails from the users table
+   * and enriches the member DTOs.
+   */
+  private void enrichWithUserInfo(List<CourseMemberDto> dtos) {
+    if (dtos == null || dtos.isEmpty()) {
+      return;
+    }
+
+    Set<UUID> userIds = dtos.stream()
+        .map(CourseMemberDto::getUserId)
+        .collect(Collectors.toSet());
+
+    Map<UUID, String[]> userInfoMap = fetchUserInfo(userIds);
+
+    for (CourseMemberDto dto : dtos) {
+      String[] info = userInfoMap.get(dto.getUserId());
+      if (info != null) {
+        dto.setUserName(info[0]);
+        dto.setUserEmail(info[1]);
+      } else {
+        dto.setUserName("Unknown User");
+        dto.setUserEmail("");
+      }
+    }
+  }
+
+  /**
+   * Queries the shared users table to get display names and emails for a set of user IDs.
+   */
+  private Map<UUID, String[]> fetchUserInfo(Set<UUID> userIds) {
+    if (userIds.isEmpty()) {
+      return Map.of();
+    }
+
+    try {
+      String placeholders = userIds.stream().map(id -> "?").collect(Collectors.joining(","));
+      String sql = "SELECT id, COALESCE(display_name, CONCAT(first_name, ' ', last_name), email) as name, email "
+          + "FROM users WHERE id IN (" + placeholders + ")";
+
+      Object[] params = userIds.toArray();
+
+      Map<UUID, String[]> result = new HashMap<>();
+      jdbcTemplate.query(sql, rs -> {
+        UUID id = UUID.fromString(rs.getString("id"));
+        String name = rs.getString("name");
+        String email = rs.getString("email");
+        result.put(id, new String[]{name, email});
+      }, params);
+
+      return result;
+    } catch (Exception e) {
+      log.warn("Failed to fetch user info from users table: {}", e.getMessage());
+      return Map.of();
+    }
   }
 }

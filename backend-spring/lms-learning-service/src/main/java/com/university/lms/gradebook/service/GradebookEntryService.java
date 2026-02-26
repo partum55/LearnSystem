@@ -1,5 +1,8 @@
 package com.university.lms.gradebook.service;
 
+import com.university.lms.course.assessment.domain.Assignment;
+import com.university.lms.course.assessment.repository.AssignmentRepository;
+import com.university.lms.course.repository.CourseMemberRepository;
 import com.university.lms.gradebook.domain.GradeStatus;
 import com.university.lms.gradebook.domain.GradebookEntry;
 import com.university.lms.gradebook.repository.GradebookEntryRepository;
@@ -10,8 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -21,9 +24,55 @@ public class GradebookEntryService {
     private final GradebookEntryRepository entryRepository;
     private final GradebookSummaryService summaryService;
     private final GradeHistoryService historyService;
+    private final AssignmentRepository assignmentRepository;
+    private final CourseMemberRepository courseMemberRepository;
 
+    /**
+     * Get all gradebook entries for a course.
+     * Auto-initializes missing entries for all (student × assignment) pairs.
+     */
+    @Transactional
     public List<GradebookEntry> getEntriesForCourse(UUID courseId) {
-        return entryRepository.findAllByCourseId(courseId);
+        List<GradebookEntry> existing = entryRepository.findAllByCourseId(courseId);
+
+        // Get all assignments and students for this course
+        List<Assignment> assignments = assignmentRepository.findByCourseIdOrderByDueDateAsc(courseId);
+        List<UUID> studentIds = courseMemberRepository.findStudentIdsByCourseId(courseId);
+
+        if (assignments.isEmpty() || studentIds.isEmpty()) {
+            return existing;
+        }
+
+        // Build set of existing (student, assignment) pairs
+        Set<String> existingKeys = existing.stream()
+                .map(e -> e.getStudentId() + ":" + e.getAssignmentId())
+                .collect(Collectors.toSet());
+
+        // Create missing entries
+        List<GradebookEntry> newEntries = new ArrayList<>();
+        for (UUID studentId : studentIds) {
+            for (Assignment assignment : assignments) {
+                String key = studentId + ":" + assignment.getId();
+                if (!existingKeys.contains(key)) {
+                    GradebookEntry entry = GradebookEntry.builder()
+                            .courseId(courseId)
+                            .studentId(studentId)
+                            .assignmentId(assignment.getId())
+                            .maxScore(assignment.getMaxPoints())
+                            .status(GradeStatus.NOT_SUBMITTED)
+                            .build();
+                    newEntries.add(entry);
+                }
+            }
+        }
+
+        if (!newEntries.isEmpty()) {
+            log.info("Auto-initializing {} gradebook entries for course {}", newEntries.size(), courseId);
+            List<GradebookEntry> saved = entryRepository.saveAll(newEntries);
+            existing.addAll(saved);
+        }
+
+        return existing;
     }
 
     public List<GradebookEntry> getEntriesForStudent(UUID courseId, UUID studentId) {

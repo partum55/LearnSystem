@@ -9,6 +9,7 @@ import {
   Loading,
   CreateQuestionModal,
 } from '../components';
+import { StaggeredList, StaggeredItem } from '../components/animation';
 import { ConfirmModal } from '../components/common/ConfirmModal';
 import apiClient from '../api/client';
 import { PlusIcon, PencilIcon, TrashIcon, FunnelIcon } from '@heroicons/react/24/outline';
@@ -138,7 +139,8 @@ export const QuestionBank: React.FC = () => {
     return labels[type] || type;
   };
 
-  const getQuestionTypeBadgeColor = (_type: string) => {
+  const getQuestionTypeBadgeColor = (type: string) => {
+    void type;
     return 'badge';
   };
 
@@ -186,8 +188,8 @@ export const QuestionBank: React.FC = () => {
           </div>
 
           {/* Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card>
+          <StaggeredList className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <StaggeredItem><Card>
               <CardBody>
                 <div className="text-center">
                   <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
@@ -198,9 +200,9 @@ export const QuestionBank: React.FC = () => {
                   </p>
                 </div>
               </CardBody>
-            </Card>
+            </Card></StaggeredItem>
 
-            <Card>
+            <StaggeredItem><Card>
               <CardBody>
                 <div className="text-center">
                   <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
@@ -211,9 +213,9 @@ export const QuestionBank: React.FC = () => {
                   </p>
                 </div>
               </CardBody>
-            </Card>
+            </Card></StaggeredItem>
 
-            <Card>
+            <StaggeredItem><Card>
               <CardBody>
                 <div className="text-center">
                   <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
@@ -224,9 +226,9 @@ export const QuestionBank: React.FC = () => {
                   </p>
                 </div>
               </CardBody>
-            </Card>
+            </Card></StaggeredItem>
 
-            <Card>
+            <StaggeredItem><Card>
               <CardBody>
                 <div className="text-center">
                   <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
@@ -237,8 +239,8 @@ export const QuestionBank: React.FC = () => {
                   </p>
                 </div>
               </CardBody>
-            </Card>
-          </div>
+            </Card></StaggeredItem>
+          </StaggeredList>
 
           {/* Filters and Search */}
           <Card className="mb-6">
@@ -291,9 +293,10 @@ export const QuestionBank: React.FC = () => {
               </CardBody>
             </Card>
           ) : (
-            <div className="space-y-4">
+            <StaggeredList className="space-y-4">
               {filteredQuestions.map((question) => (
-                <Card key={question.id}>
+                <StaggeredItem key={question.id}>
+                <Card>
                   <CardBody>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -373,8 +376,9 @@ export const QuestionBank: React.FC = () => {
                     </div>
                   </CardBody>
                 </Card>
+                </StaggeredItem>
               ))}
-            </div>
+            </StaggeredList>
           )}
 
           {/* Pagination Info */}

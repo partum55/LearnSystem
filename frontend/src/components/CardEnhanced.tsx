@@ -1,76 +1,62 @@
 import React from 'react';
 
+type CardProps = React.HTMLAttributes<HTMLDivElement> & {
+  hoverable?: boolean;
+};
+
+type CardSectionProps = React.HTMLAttributes<HTMLDivElement>;
+
 const Card = ({
-  children,
   className = '',
   hoverable = true,
   ...props
-}: {
-  children: React.ReactNode;
-  className?: string;
-  hoverable?: boolean;
-  [key: string]: any;
-}) => {
+}: CardProps) => {
   return (
     <div
       className={`card ${hoverable ? 'hover:shadow-lg' : ''} ${className}`}
       {...props}
     >
-      {children}
+      {props.children}
     </div>
   );
 };
 
 const CardHeader = ({
-  children,
   className = '',
   ...props
-}: {
-  children: React.ReactNode;
-  className?: string;
-  [key: string]: any;
-}) => {
+}: CardSectionProps) => {
   return (
     <div className={`card-header ${className}`} {...props}>
-      {children}
+      {props.children}
     </div>
   );
 };
 
 const CardBody = ({
-  children,
   className = '',
   ...props
-}: {
-  children: React.ReactNode;
-  className?: string;
-  [key: string]: any;
-}) => {
+}: CardSectionProps) => {
   return (
     <div className={`card-body ${className}`} {...props}>
-      {children}
+      {props.children}
     </div>
   );
 };
 
 const CardFooter = ({
-  children,
   className = '',
   ...props
-}: {
-  children: React.ReactNode;
-  className?: string;
-  [key: string]: any;
-}) => {
+}: CardSectionProps) => {
   return (
     <div className={`card-footer ${className}`} {...props}>
-      {children}
+      {props.children}
     </div>
   );
 };
+const CardWithSections = Object.assign(Card, {
+  Header: CardHeader,
+  Body: CardBody,
+  Footer: CardFooter,
+});
 
-Card.Header = CardHeader;
-Card.Body = CardBody;
-Card.Footer = CardFooter;
-
-export default Card;
+export default CardWithSections;

@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { queryClient } from './api/queryClient';
 import { useAuthStore } from './store/authStore';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { PageTransition } from './components/animation';
 import { UserRole } from './types';
 import './i18n/config';
 
@@ -26,7 +27,10 @@ const CourseCreate = lazy(() => import('./pages/CourseCreate'));
 const CourseEdit = lazy(() => import('./pages/CourseEdit'));
 const Assignments = lazy(() => import('./pages/Assignments'));
 const AssignmentDetail = lazy(() => import('./pages/AssignmentDetail'));
-const AssignmentEditor = lazy(() => import('./pages/AssignmentEditor'));
+// Legacy editor kept for backward compatibility, wizard is the primary editor
+const _AssignmentEditor = lazy(() => import('./pages/AssignmentEditor'));
+void _AssignmentEditor;
+const AssignmentWizard = lazy(() => import('./pages/assignment-wizard/AssignmentWizard'));
 const SubmitAssignment = lazy(() => import('./pages/SubmitAssignment'));
 const StudentGradebook = lazy(() => import('./pages/StudentGradebook'));
 const SpeedGrader = lazy(() => import('./pages/SpeedGrader'));
@@ -70,7 +74,9 @@ const LazyRoute: React.FC<{ children: React.ReactNode; isPrivate?: boolean }> = 
   const content = (
     <Suspense fallback={<PageLoader />}>
       <ErrorBoundary>
-        {children}
+        <PageTransition>
+          {children}
+        </PageTransition>
       </ErrorBoundary>
     </Suspense>
   );
@@ -84,6 +90,17 @@ const AppOptimized: React.FC = () => {
 
   React.useEffect(() => {
     const initializeAuth = async () => {
+      // Wait for Zustand persist hydration to complete before fetching.
+      // This ensures persisted user/isAuthenticated state is available
+      // as fallback if the API call fails (e.g., transient network error).
+      if (!useAuthStore.persist.hasHydrated()) {
+        await new Promise<void>((resolve) => {
+          const unsub = useAuthStore.persist.onFinishHydration(() => {
+            unsub();
+            resolve();
+          });
+        });
+      }
       await fetchCurrentUser();
       setIsInitialized(true);
     };
@@ -144,6 +161,22 @@ const AppOptimized: React.FC = () => {
             } />
             <Route path="/courses/:id" element={<LazyRoute isPrivate><CourseDetail /></LazyRoute>} />
             <Route path="/courses/:courseId/modules/:moduleId/resources/:resourceId" element={<LazyRoute isPrivate><ResourceView /></LazyRoute>} />
+            <Route path="/courses/:courseId/modules/:moduleId/assignments/:assignmentId" element={<LazyRoute isPrivate><AssignmentDetail /></LazyRoute>} />
+            <Route path="/courses/:courseId/modules/:moduleId/assignments/:assignmentId/edit" element={
+              <LazyRoute isPrivate>
+                <RoleRoute allowedRoles={['TEACHER', 'TA', 'SUPERADMIN']}>
+                  <AssignmentWizard />
+                </RoleRoute>
+              </LazyRoute>
+            } />
+            <Route path="/courses/:courseId/modules/:moduleId/assignments/new" element={
+              <LazyRoute isPrivate>
+                <RoleRoute allowedRoles={['TEACHER', 'TA', 'SUPERADMIN']}>
+                  <AssignmentWizard />
+                </RoleRoute>
+              </LazyRoute>
+            } />
+            <Route path="/courses/:courseId/modules/:moduleId/assignments/:assignmentId/submit" element={<LazyRoute isPrivate><SubmitAssignment /></LazyRoute>} />
 
             <Route path="/calendar" element={<LazyRoute isPrivate><CalendarPage /></LazyRoute>} />
 
@@ -152,7 +185,7 @@ const AppOptimized: React.FC = () => {
             <Route path="/assignments/:id/edit" element={
               <LazyRoute isPrivate>
                 <RoleRoute allowedRoles={['TEACHER', 'TA', 'SUPERADMIN']}>
-                  <AssignmentEditor />
+                  <AssignmentWizard />
                 </RoleRoute>
               </LazyRoute>
             } />

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Layout } from '../components';
 import { Card, CardHeader, CardBody } from '../components/Card';
 import { Loading } from '../components/Loading';
+import { StaggeredList, StaggeredItem } from '../components/animation';
 import { useCourseStore } from '../store/courseStore';
 
 export const Assignments: React.FC = () => {
@@ -33,8 +34,8 @@ export const Assignments: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
-              <Card>
+          <StaggeredList className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+              <StaggeredItem><Card>
                 <CardBody>
                   <div className="text-center">
                     <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>0</p>
@@ -43,8 +44,8 @@ export const Assignments: React.FC = () => {
                     </p>
                   </div>
                 </CardBody>
-              </Card>
-              <Card>
+              </Card></StaggeredItem>
+              <StaggeredItem><Card>
                 <CardBody>
                   <div className="text-center">
                     <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>0</p>
@@ -53,8 +54,8 @@ export const Assignments: React.FC = () => {
                     </p>
                   </div>
                 </CardBody>
-              </Card>
-              <Card>
+              </Card></StaggeredItem>
+              <StaggeredItem><Card>
                 <CardBody>
                   <div className="text-center">
                     <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>0</p>
@@ -63,8 +64,8 @@ export const Assignments: React.FC = () => {
                     </p>
                   </div>
                 </CardBody>
-              </Card>
-            </div>
+              </Card></StaggeredItem>
+            </StaggeredList>
 
             <Card>
               <CardHeader>

@@ -52,7 +52,7 @@ public class CoursePersistenceService {
 
       log.info("Created course with ID: {}", courseId);
 
-      // 2. Create modules with assignments and quizzes
+      // 2. Create modules with assignments
       if (validated.getModules() != null) {
         for (GeneratedCourseResponse.ModuleData moduleData : validated.getModules()) {
           Map<String, Object> savedModule = createModule(courseId, moduleData, authToken);
@@ -72,14 +72,16 @@ public class CoursePersistenceService {
                   new PersistedAssignment(assignmentId, moduleId, assignmentData, savedAssignment));
             }
           }
+        }
+      }
 
-          // 4. Create quizzes for this module
-          if (moduleData.getQuizzes() != null) {
-            for (GeneratedCourseResponse.QuizData quizData : moduleData.getQuizzes()) {
-              PersistedQuiz persistedQuiz = createQuiz(courseId, quizData, ownerId, authToken);
-              context.quizzes.add(persistedQuiz);
-            }
-          }
+      // 4. Create module-scoped quizzes with questions from questionBank
+      if (validated.getQuizzes() != null) {
+        for (GeneratedCourseResponse.QuizData quizData : validated.getQuizzes()) {
+          UUID targetModuleId = resolveModuleIdForQuiz(quizData, context.modules);
+          PersistedQuiz persistedQuiz =
+              createQuiz(courseId, targetModuleId, quizData, validated.getQuestionBank(), authToken);
+          context.quizzes.add(persistedQuiz);
         }
       }
 
@@ -162,43 +164,124 @@ public class CoursePersistenceService {
   }
 
   private PersistedQuiz createQuiz(
-      UUID courseId, GeneratedCourseResponse.QuizData quizData, UUID createdBy, String authToken) {
+      UUID courseId,
+      UUID moduleId,
+      GeneratedCourseResponse.QuizData quizData,
+      List<GeneratedCourseResponse.QuestionData> questionBank,
+      String authToken) {
     WebClient webClient = webClientBuilder.baseUrl(learningServiceUrl + "/api").build();
 
-    Map<String, Object> savedQuiz =
+    Map<String, Object> inlineQuiz = new HashMap<>();
+    inlineQuiz.put("title", quizData.getTitle());
+    inlineQuiz.put("description", quizData.getDescription());
+    if (quizData.getTimeLimit() != null) {
+      inlineQuiz.put("timeLimit", quizData.getTimeLimit());
+    }
+    if (quizData.getAttemptsAllowed() != null) {
+      inlineQuiz.put("attemptsAllowed", quizData.getAttemptsAllowed());
+    }
+    if (quizData.getShuffleQuestions() != null) {
+      inlineQuiz.put("shuffleQuestions", quizData.getShuffleQuestions());
+    }
+    if (quizData.getShuffleAnswers() != null) {
+      inlineQuiz.put("shuffleAnswers", quizData.getShuffleAnswers());
+    }
+    if (quizData.getPassPercentage() != null) {
+      inlineQuiz.put("passPercentage", quizData.getPassPercentage());
+    }
+    if (quizData.getShowCorrectAnswers() != null) {
+      inlineQuiz.put("showCorrectAnswers", quizData.getShowCorrectAnswers());
+    }
+
+    Map<String, Object> assignmentPayload = new HashMap<>();
+    assignmentPayload.put("courseId", courseId.toString());
+    assignmentPayload.put("moduleId", moduleId.toString());
+    assignmentPayload.put("assignmentType", "QUIZ");
+    assignmentPayload.put("title", quizData.getTitle());
+    assignmentPayload.put("description", Optional.ofNullable(quizData.getDescription()).orElse(""));
+    assignmentPayload.put("maxPoints", 100);
+    assignmentPayload.put("isPublished", false);
+    assignmentPayload.put("quiz", inlineQuiz);
+
+    Map<String, Object> savedAssignment =
         webClient
             .post()
-            .uri(
-                uriBuilder ->
-                    uriBuilder
-                        .path("/quizzes")
-                        .queryParam("courseId", courseId)
-                        .queryParam("title", quizData.getTitle())
-                        .queryParam("description", quizData.getDescription())
-                        .build())
+            .uri("/assignments")
             .header("Authorization", authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(assignmentPayload)
             .retrieve()
             .bodyToMono(MAP_RESPONSE_TYPE)
             .block();
 
-    UUID quizId = UUID.fromString(savedQuiz.get("id").toString());
+    Object rawQuizId = savedAssignment.get("quizId");
+    if (rawQuizId == null) {
+      rawQuizId = savedAssignment.get("quiz_id");
+    }
+    if (rawQuizId == null) {
+      throw new RuntimeException("QUIZ assignment created without quizId in response");
+    }
+
+    UUID quizId = UUID.fromString(rawQuizId.toString());
+    UUID assignmentId = UUID.fromString(savedAssignment.get("id").toString());
+    Map<String, Object> savedQuiz = fetchQuiz(quizId, authToken);
+
     log.info("Created quiz with ID: {}", quizId);
 
     updateQuizSettings(quizId, quizData, authToken);
 
-    PersistedQuiz persistedQuiz = new PersistedQuiz(quizId, quizData, savedQuiz);
+    PersistedQuiz persistedQuiz =
+        new PersistedQuiz(quizId, assignmentId, moduleId, quizData, savedQuiz);
 
-    // Create questions for the quiz
-    if (quizData.getQuestions() != null) {
+    // Resolve questions from questionBank via questionRefs
+    if (quizData.getQuestionRefs() != null && questionBank != null) {
       int position = 0;
-      for (GeneratedCourseResponse.QuestionData questionData : quizData.getQuestions()) {
-        PersistedQuestion persistedQuestion =
-            createQuizQuestion(courseId, quizId, questionData, position, authToken);
-        persistedQuiz.questions.add(persistedQuestion);
-        position++;
+      for (String ref : quizData.getQuestionRefs()) {
+        GeneratedCourseResponse.QuestionData questionData =
+            questionBank.stream()
+                .filter(q -> ref.equals(q.getId()))
+                .findFirst()
+                .orElse(null);
+        if (questionData != null) {
+          PersistedQuestion persistedQuestion =
+              createQuizQuestion(courseId, quizId, questionData, position, authToken);
+          persistedQuiz.questions.add(persistedQuestion);
+          position++;
+        } else {
+          log.warn("Quiz '{}' references unknown question id '{}'", quizData.getTitle(), ref);
+        }
       }
     }
     return persistedQuiz;
+  }
+
+  private UUID resolveModuleIdForQuiz(
+      GeneratedCourseResponse.QuizData quizData, List<PersistedModule> persistedModules) {
+    if (persistedModules == null || persistedModules.isEmpty()) {
+      throw new RuntimeException("Cannot create quiz without at least one module");
+    }
+
+    String requestedModuleTitle = quizData.getModuleTitle();
+    if (requestedModuleTitle == null || requestedModuleTitle.isBlank()) {
+      return persistedModules.get(0).moduleId();
+    }
+
+    String normalizedRequested = requestedModuleTitle.trim();
+    return persistedModules.stream()
+        .filter(module -> {
+          String moduleTitle = module.source().getTitle();
+          return moduleTitle != null && moduleTitle.trim().equalsIgnoreCase(normalizedRequested);
+        })
+        .map(PersistedModule::moduleId)
+        .findFirst()
+        .orElseGet(
+            () -> {
+              log.warn(
+                  "Quiz '{}' references unknown moduleTitle '{}'; falling back to first module",
+                  quizData.getTitle(),
+                  requestedModuleTitle);
+              return persistedModules.get(0).moduleId();
+            });
   }
 
   private void updateQuizSettings(
@@ -207,6 +290,9 @@ public class CoursePersistenceService {
     updates.put("timeLimit", quizData.getTimeLimit());
     updates.put("attemptsAllowed", quizData.getAttemptsAllowed());
     updates.put("shuffleQuestions", quizData.getShuffleQuestions());
+    updates.put("shuffleAnswers", quizData.getShuffleAnswers());
+    updates.put("passPercentage", quizData.getPassPercentage());
+    updates.put("showCorrectAnswers", quizData.getShowCorrectAnswers());
     updates.values().removeIf(Objects::isNull);
     if (updates.isEmpty()) {
       return;
@@ -261,7 +347,7 @@ public class CoursePersistenceService {
         .bodyToMono(Void.class)
         .block();
 
-    log.debug("Created quiz question: {}", questionData.getQuestionText());
+    log.debug("Created quiz question: {}", questionData.getStem());
     return new PersistedQuestion(questionId, questionData, savedQuestion);
   }
 
@@ -356,13 +442,18 @@ public class CoursePersistenceService {
           "quizzes[" + quiz.quizId + "].shuffleQuestions",
           quiz.source.getShuffleQuestions(),
           persistedQuiz.get("shuffleQuestions"));
+      compareField(
+          result,
+          "quizzes[" + quiz.quizId + "].moduleId",
+          quiz.moduleId,
+          persistedQuiz.get("moduleId"));
 
       for (PersistedQuestion question : quiz.questions) {
         Map<String, Object> persistedQuestion = fetchQuestion(question.questionId, authToken);
         compareField(
             result,
             "questions[" + question.questionId + "].stem",
-            question.source.getQuestionText(),
+            question.source.getStem(),
             persistedQuestion.get("stem"));
         compareField(
             result,
@@ -443,6 +534,9 @@ public class CoursePersistenceService {
     WebClient assessmentClient = webClientBuilder.baseUrl(learningServiceUrl + "/api").build();
 
     for (PersistedQuiz quiz : context.quizzes) {
+      if (quiz.assignmentId != null) {
+        deleteSafely(assessmentClient, "/assignments/{id}", quiz.assignmentId, authToken);
+      }
       for (PersistedQuestion question : quiz.questions) {
         deleteSafely(assessmentClient, "/questions/{id}", question.questionId, authToken);
       }
@@ -526,13 +620,21 @@ public class CoursePersistenceService {
 
   private static class PersistedQuiz {
     private final UUID quizId;
+    private final UUID assignmentId;
+    private final UUID moduleId;
     private final GeneratedCourseResponse.QuizData source;
     private final Map<String, Object> savedQuiz;
     private final List<PersistedQuestion> questions = new ArrayList<>();
 
     private PersistedQuiz(
-        UUID quizId, GeneratedCourseResponse.QuizData source, Map<String, Object> savedQuiz) {
+        UUID quizId,
+        UUID assignmentId,
+        UUID moduleId,
+        GeneratedCourseResponse.QuizData source,
+        Map<String, Object> savedQuiz) {
       this.quizId = quizId;
+      this.assignmentId = assignmentId;
+      this.moduleId = moduleId;
       this.source = source;
       this.savedQuiz = savedQuiz;
     }

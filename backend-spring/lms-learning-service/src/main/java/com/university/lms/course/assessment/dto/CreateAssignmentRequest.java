@@ -87,6 +87,7 @@ public class CreateAssignmentRequest {
     private Integer maxFiles;
 
     private UUID quizId;
+    private InlineQuizRequest quiz;
     private String externalToolUrl;
 
     private Boolean gradeAnonymously;
@@ -101,4 +102,3 @@ public class CreateAssignmentRequest {
     private Boolean isTemplate;
     private Boolean isPublished;
 }
-

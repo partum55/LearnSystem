@@ -3,11 +3,15 @@ package com.university.lms.course.assessment.service;
 import com.university.lms.course.assessment.domain.Assignment;
 import com.university.lms.course.assessment.dto.AssignmentDto;
 import com.university.lms.course.assessment.dto.CreateAssignmentRequest;
+import com.university.lms.course.assessment.dto.InlineQuizRequest;
+import com.university.lms.course.assessment.dto.QuizDto;
 import com.university.lms.course.assessment.dto.UpdateAssignmentRequest;
 import com.university.lms.course.assessment.repository.AssignmentRepository;
 import com.university.lms.common.dto.PageResponse;
 import com.university.lms.common.exception.ResourceNotFoundException;
 import com.university.lms.common.exception.ValidationException;
+import com.university.lms.course.domain.Module;
+import com.university.lms.course.repository.ModuleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -32,6 +36,8 @@ import java.util.stream.Collectors;
 public class AssignmentService {
 
     private final AssignmentRepository assignmentRepository;
+    private final ModuleRepository moduleRepository;
+    private final QuizService quizService;
     private final AssessmentMapper mapper;
 
     /**
@@ -141,8 +147,13 @@ public class AssignmentService {
         log.info("Creating assignment: {} in course: {}", request.getTitle(), request.getCourseId());
 
         validateAssignmentRequest(request);
+        validateModuleForCourse(request.getCourseId(), request.getModuleId());
+        UUID resolvedQuizId = resolveQuizForCreate(request, createdBy);
 
         Assignment assignment = mapper.toEntity(request, createdBy);
+        if (resolvedQuizId != null) {
+            assignment.setQuizId(resolvedQuizId);
+        }
         Assignment savedAssignment = assignmentRepository.save(assignment);
 
         log.info("Assignment created successfully with ID: {}", savedAssignment.getId());
@@ -164,6 +175,11 @@ public class AssignmentService {
             throw new ValidationException("You don't have permission to update this assignment");
         }
 
+        if (request.getModuleId() != null) {
+            validateModuleForCourse(assignment.getCourseId(), request.getModuleId());
+        }
+
+        validateQuizUpdateRequest(assignment, request, userId);
         mapper.updateEntity(assignment, request);
         Assignment updatedAssignment = assignmentRepository.save(assignment);
 
@@ -332,12 +348,134 @@ public class AssignmentService {
             throw new ValidationException("Programming language is required for CODE assignments");
         }
 
-        if ("QUIZ".equals(request.getAssignmentType()) && request.getQuizId() == null) {
-            throw new ValidationException("Quiz ID is required for QUIZ assignments");
+        if ("QUIZ".equals(request.getAssignmentType())) {
+            if (request.getModuleId() == null) {
+                throw new ValidationException("Module ID is required for QUIZ assignments");
+            }
+            if (request.getQuizId() != null && request.getQuiz() != null) {
+                throw new ValidationException("Provide either quizId or inline quiz payload, not both");
+            }
+        } else if (request.getQuizId() != null || request.getQuiz() != null) {
+            throw new ValidationException("quizId/quiz payload is supported only for QUIZ assignments");
         }
 
         if ("EXTERNAL".equals(request.getAssignmentType()) && request.getExternalToolUrl() == null) {
             throw new ValidationException("External tool URL is required for EXTERNAL assignments");
+        }
+    }
+
+    private UUID resolveQuizForCreate(CreateAssignmentRequest request, UUID createdBy) {
+        if (!"QUIZ".equals(request.getAssignmentType())) {
+            return request.getQuizId();
+        }
+
+        UUID moduleId = request.getModuleId();
+        if (moduleId == null) {
+            throw new ValidationException("Module ID is required for QUIZ assignments");
+        }
+
+        if (request.getQuizId() != null) {
+            validateQuizForCourseAndModule(request.getQuizId(), request.getCourseId(), moduleId);
+            return request.getQuizId();
+        }
+
+        InlineQuizRequest inlineQuiz = request.getQuiz();
+        if (inlineQuiz == null) {
+            inlineQuiz = InlineQuizRequest.builder()
+                    .title(request.getTitle())
+                    .description(request.getDescription())
+                    .build();
+        }
+
+        QuizDto createdQuiz = createInlineQuizForAssignment(
+                request.getCourseId(),
+                moduleId,
+                inlineQuiz,
+                request.getTitle(),
+                createdBy
+        );
+        return createdQuiz.getId();
+    }
+
+    private void validateQuizUpdateRequest(Assignment assignment, UpdateAssignmentRequest request, UUID userId) {
+        boolean isQuizAssignment = "QUIZ".equals(assignment.getAssignmentType());
+        UUID effectiveModuleId = request.getModuleId() != null ? request.getModuleId() : assignment.getModuleId();
+
+        if (request.getQuizId() != null && request.getQuiz() != null) {
+            throw new ValidationException("Provide either quizId or inline quiz payload, not both");
+        }
+
+        if (!isQuizAssignment && request.getQuiz() != null) {
+            throw new ValidationException("Inline quiz payload is supported only for QUIZ assignments");
+        }
+        if (!isQuizAssignment && request.getQuizId() != null) {
+            throw new ValidationException("quizId is supported only for QUIZ assignments");
+        }
+
+        if (!isQuizAssignment) {
+            return;
+        }
+
+        if (effectiveModuleId == null) {
+            throw new ValidationException("Module ID is required for QUIZ assignments");
+        }
+
+        UUID currentQuizId = assignment.getQuizId();
+        if (request.getQuizId() != null) {
+            validateQuizForCourseAndModule(request.getQuizId(), assignment.getCourseId(), effectiveModuleId);
+            currentQuizId = request.getQuizId();
+        }
+
+        if (request.getQuiz() != null) {
+            if (currentQuizId == null) {
+                QuizDto createdQuiz = createInlineQuizForAssignment(
+                        assignment.getCourseId(),
+                        effectiveModuleId,
+                        request.getQuiz(),
+                        assignment.getTitle(),
+                        userId
+                );
+                request.setQuizId(createdQuiz.getId());
+            } else {
+                quizService.updateQuizFromAssignment(currentQuizId, request.getQuiz(), userId);
+                request.setQuizId(currentQuizId);
+            }
+        }
+
+    }
+
+    private QuizDto createInlineQuizForAssignment(
+            UUID courseId,
+            UUID moduleId,
+            InlineQuizRequest request,
+            String assignmentTitle,
+            UUID createdBy
+    ) {
+        String fallbackTitle = assignmentTitle != null && !assignmentTitle.isBlank()
+                ? assignmentTitle
+                : "Module Quiz";
+        return quizService.createQuizForAssignment(courseId, moduleId, request, fallbackTitle, createdBy);
+    }
+
+    private void validateModuleForCourse(UUID courseId, UUID moduleId) {
+        if (moduleId == null) {
+            return;
+        }
+
+        Module module = moduleRepository.findById(moduleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Module", "id", moduleId));
+        if (!module.getCourse().getId().equals(courseId)) {
+            throw new ValidationException("Module does not belong to the selected course");
+        }
+    }
+
+    private void validateQuizForCourseAndModule(UUID quizId, UUID courseId, UUID moduleId) {
+        QuizDto quiz = quizService.getQuizById(quizId);
+        if (!courseId.equals(quiz.getCourseId())) {
+            throw new ValidationException("Quiz does not belong to the selected course");
+        }
+        if (quiz.getModuleId() != null && !moduleId.equals(quiz.getModuleId())) {
+            throw new ValidationException("Quiz is linked to a different module");
         }
     }
 

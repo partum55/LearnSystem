@@ -6,7 +6,7 @@ import {
   AdminUserRole,
 } from '../../api/admin';
 
-export type AdminTab = 'services' | 'users' | 'courses';
+export type AdminTab = 'services' | 'users' | 'courses' | 'course-manager' | 'import-export' | 'test-lab';
 
 export type Feedback = {
   type: 'success' | 'error';
