@@ -3,10 +3,11 @@ import {
   AcademicCapIcon,
   DocumentTextIcon,
   FolderIcon,
+  MegaphoneIcon,
   UserGroupIcon,
 } from '@heroicons/react/24/outline';
 
-export type CourseDetailTabId = 'modules' | 'assignments' | 'members' | 'grades';
+export type CourseDetailTabId = 'modules' | 'announcements' | 'assignments' | 'members' | 'grades';
 
 export interface CourseDetailTab {
   id: CourseDetailTabId;
@@ -21,7 +22,7 @@ export interface DeleteConfirmationState {
   title: string;
 }
 
-const COURSE_DETAIL_TABS: CourseDetailTabId[] = ['modules', 'assignments', 'members', 'grades'];
+const COURSE_DETAIL_TABS: CourseDetailTabId[] = ['modules', 'announcements', 'assignments', 'members', 'grades'];
 
 export const isCourseDetailTabId = (tab: string | null): tab is CourseDetailTabId =>
   Boolean(tab && COURSE_DETAIL_TABS.includes(tab as CourseDetailTabId));
@@ -62,6 +63,7 @@ export const getInitialExpandedModules = (courseId: string | undefined): Set<str
 
 export const getCourseDetailTabs = (t: TFunction): CourseDetailTab[] => [
   { id: 'modules', name: t('courses.modules'), icon: FolderIcon },
+  { id: 'announcements', name: t('announcements.title', 'Announcements'), icon: MegaphoneIcon },
   { id: 'assignments', name: t('assignments.title'), icon: DocumentTextIcon },
   { id: 'members', name: t('courses.students'), icon: UserGroupIcon },
   { id: 'grades', name: t('gradebook.title'), icon: AcademicCapIcon },

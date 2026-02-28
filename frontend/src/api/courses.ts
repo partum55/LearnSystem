@@ -1,9 +1,31 @@
 import apiClient from './client';
 import { AxiosProgressEvent } from 'axios';
-import { Course, Module, Resource, ResourceCreateData, CourseCreateData, Assignment } from '../types';
+import {
+  Assignment,
+  Announcement,
+  Course,
+  CourseCreateData,
+  Module,
+  Resource,
+  ResourceCreateData,
+} from '../types';
 
 interface PageResponse<T> {
   content: T[];
+}
+
+export interface CoursePublishChecklistItem {
+  key: string;
+  label: string;
+  required: boolean;
+  passed: boolean;
+  details?: string;
+}
+
+export interface CoursePublishChecklist {
+  courseId: string;
+  readyToPublish: boolean;
+  items: CoursePublishChecklistItem[];
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -47,6 +69,18 @@ const normalizeResource = (raw: any): Resource => ({
   updated_at: raw.updatedAt ?? raw.updated_at ?? '',
   uploaded_by: raw.uploadedBy ?? raw.uploaded_by ?? undefined,
   uploaded_by_name: raw.uploadedByName ?? raw.uploaded_by_name ?? undefined,
+});
+
+const normalizeAnnouncement = (raw: any): Announcement => ({
+  id: String(raw.id ?? ''),
+  course_id: String(raw.courseId ?? raw.course_id ?? raw.course ?? ''),
+  title: String(raw.title ?? ''),
+  content: String(raw.content ?? ''),
+  is_pinned: Boolean(raw.isPinned ?? raw.is_pinned ?? false),
+  created_by: String(raw.createdBy ?? raw.created_by ?? ''),
+  updated_by: raw.updatedBy ?? raw.updated_by ?? undefined,
+  created_at: raw.createdAt ?? raw.created_at ?? '',
+  updated_at: raw.updatedAt ?? raw.updated_at ?? '',
 });
 
 /**
@@ -118,6 +152,17 @@ export const coursesApi = {
     const params = role ? `?role=${role}` : '';
     return apiClient.get(`/courses/${courseId}/members${params}`);
   },
+
+  getPublishChecklist: async (courseId: string) => {
+    const response = await apiClient.get<CoursePublishChecklist>(`/courses/${courseId}/publish-checklist`);
+    return response.data;
+  },
+
+  publish: (courseId: string, payload?: { forcePublish?: boolean; overrideReason?: string }) =>
+    apiClient.post<Course>(`/courses/${courseId}/publish`, payload || {}),
+
+  unpublish: (courseId: string) =>
+    apiClient.post<Course>(`/courses/${courseId}/unpublish`),
 };
 
 // Module API - Spring REST hierarchical URLs: /courses/{courseId}/modules
@@ -215,6 +260,9 @@ export const resourcesApi = {
   delete: (courseId: string, moduleId: string, resourceId: string) =>
     apiClient.delete(`/courses/${courseId}/modules/${moduleId}/resources/${resourceId}`),
 
+  reorder: (courseId: string, moduleId: string, resourceIds: string[]) =>
+    apiClient.put(`/courses/${courseId}/modules/${moduleId}/resources/reorder`, resourceIds),
+
   uploadFile: (courseId: string, moduleId: string, formData: FormData, onProgress?: (progress: number) => void) =>
     apiClient.upload<Resource>(`/courses/${courseId}/modules/${moduleId}/resources`, formData,
       onProgress ? (e: AxiosProgressEvent) => {
@@ -228,25 +276,37 @@ export const resourcesApi = {
 
 // Announcement API
 export const announcementsApi = {
-  getAll: (courseId?: string) => {
-    void courseId;
-    return Promise.reject(new Error('Announcements module is not implemented in current backend.'));
+  getAll: async (courseId: string) => {
+    const response = await apiClient.get<Announcement[]>(`/courses/${courseId}/announcements`);
+    const data = response.data as unknown;
+    const announcements = Array.isArray(data) ? data.map(normalizeAnnouncement) : [];
+    return { ...response, data: announcements };
   },
-  getById: (id: string) => {
-    void id;
-    return Promise.reject(new Error('Announcements module is not implemented in current backend.'));
+  getById: async (courseId: string, id: string) => {
+    const response = await apiClient.get<Announcement>(`/courses/${courseId}/announcements/${id}`);
+    return { ...response, data: normalizeAnnouncement(response.data) };
   },
-  create: (data: { course: string; title: string; content: string; is_pinned?: boolean }) => {
-    void data;
-    return Promise.reject(new Error('Announcements module is not implemented in current backend.'));
+  create: async (courseId: string, data: { title: string; content: string; is_pinned?: boolean }) => {
+    const response = await apiClient.post<Announcement>(`/courses/${courseId}/announcements`, {
+      title: data.title,
+      content: data.content,
+      isPinned: data.is_pinned,
+    });
+    return { ...response, data: normalizeAnnouncement(response.data) };
   },
-  update: (id: string, data: Partial<{ title: string; content: string; is_pinned?: boolean }>) => {
-    void id;
-    void data;
-    return Promise.reject(new Error('Announcements module is not implemented in current backend.'));
+  update: async (
+    courseId: string,
+    id: string,
+    data: Partial<{ title: string; content: string; is_pinned?: boolean }>
+  ) => {
+    const response = await apiClient.put<Announcement>(`/courses/${courseId}/announcements/${id}`, {
+      title: data.title,
+      content: data.content,
+      isPinned: data.is_pinned,
+    });
+    return { ...response, data: normalizeAnnouncement(response.data) };
   },
-  delete: (id: string) => {
-    void id;
-    return Promise.reject(new Error('Announcements module is not implemented in current backend.'));
+  delete: (courseId: string, id: string) => {
+    return apiClient.delete(`/courses/${courseId}/announcements/${id}`);
   },
 };

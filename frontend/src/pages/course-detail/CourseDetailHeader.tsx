@@ -9,7 +9,9 @@ interface CourseDetailHeaderProps {
   courseId: string;
   course: Course;
   isInstructor: boolean;
+  isPublishActionLoading: boolean;
   onOpenEnrollModal: () => void;
+  onTogglePublish: () => void;
   t: TFunction;
 }
 
@@ -17,7 +19,9 @@ export const CourseDetailHeader: React.FC<CourseDetailHeaderProps> = ({
   courseId,
   course,
   isInstructor,
+  isPublishActionLoading,
   onOpenEnrollModal,
+  onTogglePublish,
   t,
 }) => (
   <div className="mb-8">
@@ -45,11 +49,32 @@ export const CourseDetailHeader: React.FC<CourseDetailHeaderProps> = ({
               >
                 {course.title}
               </h1>
+              <span
+                className="rounded px-2 py-0.5 text-xs font-semibold uppercase tracking-wide"
+                style={{
+                  background: course.isPublished ? 'rgba(34,197,94,0.16)' : 'rgba(245,158,11,0.16)',
+                  color: course.isPublished ? 'var(--fn-success)' : 'var(--fn-warning)',
+                }}
+              >
+                {course.isPublished
+                  ? t('common.published', 'Published')
+                  : t('common.draft', 'Draft')}
+              </span>
             </div>
             <h2 className="text-sm" style={{ color: 'var(--text-muted)' }}>{course.code}</h2>
           </div>
           {isInstructor && (
             <div className="flex gap-2">
+              <Button
+                variant={course.isPublished ? 'secondary' : 'primary'}
+                size="sm"
+                onClick={onTogglePublish}
+                isLoading={isPublishActionLoading}
+              >
+                {course.isPublished
+                  ? t('common.unpublish', 'Unpublish')
+                  : t('common.publish', 'Publish')}
+              </Button>
               <Link to={`/courses/${courseId}/edit`}>
                 <Button variant="secondary" size="sm">
                   {t('common.edit')}

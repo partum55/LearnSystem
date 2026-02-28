@@ -171,6 +171,18 @@ export interface ResourceCreateData {
   is_downloadable?: boolean;
 }
 
+export interface Announcement {
+  id: string;
+  course_id: string;
+  title: string;
+  content: string;
+  is_pinned: boolean;
+  created_by: string;
+  updated_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // Assignment types
 export type AssignmentType =
   | 'QUIZ'
