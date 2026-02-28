@@ -182,7 +182,43 @@ public class AssessmentMapper {
                 .collect(Collectors.toList()));
         }
 
+        if (quiz.getSections() != null && !quiz.getSections().isEmpty()) {
+            dto.setSections(quiz.getSections().stream()
+                .map(this::toDto)
+                .collect(Collectors.toList()));
+        }
+
         return dto;
+    }
+
+    public QuizSectionDto toDto(QuizSection section) {
+        if (section == null) {
+            return null;
+        }
+
+        return QuizSectionDto.builder()
+            .id(section.getId())
+            .quizId(section.getQuiz().getId())
+            .title(section.getTitle())
+            .position(section.getPosition())
+            .questionCount(section.getQuestionCount())
+            .rules(section.getRules() == null ? java.util.List.of()
+                : section.getRules().stream().map(this::toDto).collect(Collectors.toList()))
+            .build();
+    }
+
+    public QuizSectionRuleDto toDto(QuizSectionRule rule) {
+        if (rule == null) {
+            return null;
+        }
+
+        return QuizSectionRuleDto.builder()
+            .id(rule.getId())
+            .questionType(rule.getQuestionType())
+            .difficulty(rule.getDifficulty())
+            .tag(rule.getTag())
+            .quota(rule.getQuota())
+            .build();
     }
 
     public QuizQuestionDto toDto(QuizQuestion quizQuestion) {
@@ -210,16 +246,47 @@ public class AssessmentMapper {
             .id(question.getId())
             .courseId(question.getCourseId())
             .questionType(question.getQuestionType())
+            .topic(question.getTopic())
+            .difficulty(question.getDifficulty())
             .stem(question.getStem())
             .options(question.getOptions())
             .correctAnswer(question.getCorrectAnswer())
             .explanation(question.getExplanation())
             .points(question.getPoints())
             .metadata(question.getMetadata())
+            .tags(question.getTags())
             .createdBy(question.getCreatedBy())
             .createdAt(question.getCreatedAt())
             .updatedAt(question.getUpdatedAt())
             .build();
     }
-}
 
+    public QuizAttemptDto toDto(QuizAttempt quizAttempt) {
+        if (quizAttempt == null) {
+            return null;
+        }
+
+        return QuizAttemptDto.builder()
+            .id(quizAttempt.getId())
+            .quizId(quizAttempt.getQuiz() != null ? quizAttempt.getQuiz().getId() : null)
+            .userId(quizAttempt.getUserId())
+            .attemptNumber(quizAttempt.getAttemptNumber())
+            .startedAt(quizAttempt.getStartedAt())
+            .submittedAt(quizAttempt.getSubmittedAt())
+            .answers(quizAttempt.getAnswers())
+            .autoScore(quizAttempt.getAutoScore())
+            .manualScore(quizAttempt.getManualScore())
+            .finalScore(quizAttempt.getFinalScore())
+            .gradedBy(quizAttempt.getGradedBy())
+            .gradedAt(quizAttempt.getGradedAt())
+            .feedback(quizAttempt.getFeedback())
+            .ipAddress(quizAttempt.getIpAddress())
+            .browserFingerprint(quizAttempt.getBrowserFingerprint())
+            .proctoringData(quizAttempt.getProctoringData())
+            .submitted(quizAttempt.isSubmitted())
+            .graded(quizAttempt.isGraded())
+            .inProgress(quizAttempt.isInProgress())
+            .durationInMinutes(quizAttempt.getDurationInMinutes())
+            .build();
+    }
+}

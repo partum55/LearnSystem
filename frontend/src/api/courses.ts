@@ -1,10 +1,72 @@
 import apiClient from './client';
 import { AxiosProgressEvent } from 'axios';
-import { Course, Module, Resource, ResourceCreateData, CourseCreateData } from '../types';
+import { Course, Module, Resource, ResourceCreateData, CourseCreateData, Assignment } from '../types';
 
 interface PageResponse<T> {
   content: T[];
 }
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * Normalizes a raw module object from the backend (camelCase) to the frontend Module type (snake_case).
+ */
+const normalizeModule = (raw: any): Module => ({
+  id: String(raw.id ?? ''),
+  course: String(raw.courseId ?? raw.course ?? ''),
+  title: String(raw.title ?? ''),
+  description: raw.description ?? undefined,
+  position: Number(raw.position ?? 0),
+  is_published: Boolean(raw.isPublished ?? raw.is_published ?? false),
+  publish_date: raw.publishDate ?? raw.publish_date ?? undefined,
+  created_at: raw.createdAt ?? raw.created_at ?? '',
+  updated_at: raw.updatedAt ?? raw.updated_at ?? '',
+  resources_count: raw.resourceCount ?? raw.resources_count ?? undefined,
+  content_meta: raw.contentMeta ?? raw.content_meta ?? undefined,
+  resources: Array.isArray(raw.resources) ? raw.resources.map(normalizeResource) : undefined,
+  assignments: Array.isArray(raw.assignments) ? raw.assignments.map(normalizeAssignment) : undefined,
+});
+
+/**
+ * Normalizes a raw resource object from the backend (camelCase) to the frontend Resource type (snake_case).
+ */
+const normalizeResource = (raw: any): Resource => ({
+  id: String(raw.id ?? ''),
+  module: String(raw.moduleId ?? raw.module ?? ''),
+  title: String(raw.title ?? ''),
+  description: raw.description ?? undefined,
+  resource_type: String(raw.resourceType ?? raw.resource_type ?? 'OTHER') as Resource['resource_type'],
+  file_url: raw.fileUrl ?? raw.file_url ?? undefined,
+  file_size: raw.fileSize ?? raw.file_size ?? undefined,
+  external_url: raw.externalUrl ?? raw.external_url ?? undefined,
+  text_content: raw.textContent ?? raw.text_content ?? undefined,
+  storage_path: raw.storagePath ?? raw.storage_path ?? undefined,
+  metadata: raw.metadata ?? undefined,
+  position: Number(raw.position ?? 0),
+  is_downloadable: Boolean(raw.isDownloadable ?? raw.is_downloadable ?? true),
+  created_at: raw.createdAt ?? raw.created_at ?? '',
+  updated_at: raw.updatedAt ?? raw.updated_at ?? '',
+  uploaded_by: raw.uploadedBy ?? raw.uploaded_by ?? undefined,
+  uploaded_by_name: raw.uploadedByName ?? raw.uploaded_by_name ?? undefined,
+});
+
+/**
+ * Minimal assignment normalizer for assignments embedded in module responses.
+ * Full normalization happens in assessments.ts for standalone assignment fetches.
+ */
+const normalizeAssignment = (raw: any): Assignment => ({
+  ...raw,
+  id: String(raw.id ?? ''),
+  course_id: String(raw.courseId ?? raw.course_id ?? ''),
+  assignment_type: String(raw.assignmentType ?? raw.assignment_type ?? 'FILE_UPLOAD') as Assignment['assignment_type'],
+  title: String(raw.title ?? ''),
+  description: String(raw.description ?? ''),
+  due_date: raw.dueDate ?? raw.due_date ?? undefined,
+  max_points: Number(raw.maxPoints ?? raw.max_points ?? 100),
+  is_published: Boolean(raw.isPublished ?? raw.is_published ?? false),
+  created_at: raw.createdAt ?? raw.created_at ?? '',
+  updated_at: raw.updatedAt ?? raw.updated_at ?? '',
+});
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 // Course API - Spring backend uses /courses/** endpoints
 export const coursesApi = {
@@ -60,22 +122,31 @@ export const coursesApi = {
 
 // Module API - Spring REST hierarchical URLs: /courses/{courseId}/modules
 export const modulesApi = {
-  getAll: (courseId: string) => {
-    return apiClient.get<Module[]>(`/courses/${courseId}/modules`);
+  getAll: async (courseId: string) => {
+    const response = await apiClient.get<Module[]>(`/courses/${courseId}/modules`);
+    const data = response.data as unknown;
+    const modules = Array.isArray(data) ? data.map(normalizeModule) : [];
+    return { ...response, data: modules };
   },
 
-  getById: (courseId: string, moduleId: string) =>
-    apiClient.get<Module>(`/courses/${courseId}/modules/${moduleId}`),
+  getById: async (courseId: string, moduleId: string) => {
+    const response = await apiClient.get(`/courses/${courseId}/modules/${moduleId}`);
+    return { ...response, data: normalizeModule(response.data) };
+  },
 
-  create: (data: { course: string; title: string; description?: string; is_published?: boolean }) =>
-    apiClient.post<Module>(`/courses/${data.course}/modules`, {
+  create: async (data: { course: string; title: string; description?: string; is_published?: boolean }) => {
+    const response = await apiClient.post(`/courses/${data.course}/modules`, {
       title: data.title,
       description: data.description,
       isPublished: data.is_published,
-    }),
+    });
+    return { ...response, data: normalizeModule(response.data) };
+  },
 
-  update: (courseId: string, moduleId: string, data: Partial<Module>) =>
-    apiClient.put<Module>(`/courses/${courseId}/modules/${moduleId}`, data),
+  update: async (courseId: string, moduleId: string, data: Partial<Module>) => {
+    const response = await apiClient.put(`/courses/${courseId}/modules/${moduleId}`, data);
+    return { ...response, data: normalizeModule(response.data) };
+  },
 
   delete: (courseId: string, moduleId: string) =>
     apiClient.delete(`/courses/${courseId}/modules/${moduleId}`),
@@ -83,11 +154,15 @@ export const modulesApi = {
   getAssignments: (courseId: string, moduleId: string) =>
     apiClient.get(`/courses/${courseId}/modules/${moduleId}/assignments`),
 
-  publish: (courseId: string, moduleId: string) =>
-    apiClient.post<Module>(`/courses/${courseId}/modules/${moduleId}/publish`),
+  publish: async (courseId: string, moduleId: string) => {
+    const response = await apiClient.post(`/courses/${courseId}/modules/${moduleId}/publish`);
+    return { ...response, data: normalizeModule(response.data) };
+  },
 
-  unpublish: (courseId: string, moduleId: string) =>
-    apiClient.post<Module>(`/courses/${courseId}/modules/${moduleId}/unpublish`),
+  unpublish: async (courseId: string, moduleId: string) => {
+    const response = await apiClient.post(`/courses/${courseId}/modules/${moduleId}/unpublish`);
+    return { ...response, data: normalizeModule(response.data) };
+  },
 
   reorder: (courseId: string, moduleIds: string[]) =>
     apiClient.put(`/courses/${courseId}/modules/reorder`, moduleIds),
@@ -95,14 +170,20 @@ export const modulesApi = {
 
 // Resource API - Spring REST hierarchical URLs: /courses/{courseId}/modules/{moduleId}/resources
 export const resourcesApi = {
-  getAll: (courseId: string, moduleId: string) => {
-    return apiClient.get<Resource[]>(`/courses/${courseId}/modules/${moduleId}/resources`);
+  getAll: async (courseId: string, moduleId: string) => {
+    const response = await apiClient.get<Resource[]>(`/courses/${courseId}/modules/${moduleId}/resources`);
+    const data = response.data as unknown;
+    const resources = Array.isArray(data) ? data.map(normalizeResource) : [];
+    return { ...response, data: resources };
   },
 
-  getById: (courseId: string, moduleId: string, resourceId: string) =>
-    apiClient.get<Resource>(`/courses/${courseId}/modules/${moduleId}/resources/${resourceId}`),
+  getById: async (courseId: string, moduleId: string, resourceId: string) => {
+    const response = await apiClient.get(`/courses/${courseId}/modules/${moduleId}/resources/${resourceId}`);
+    return { ...response, data: normalizeResource(response.data) };
+  },
 
-  create: (data: ResourceCreateData) => {
+  create: async (data: ResourceCreateData) => {
+    let response;
     if (data.file) {
       const formData = new FormData();
       formData.append('title', data.title);
@@ -112,9 +193,9 @@ export const resourcesApi = {
       if (data.is_downloadable !== undefined) {
         formData.append('isDownloadable', String(data.is_downloadable));
       }
-      return apiClient.upload<Resource>(`/courses/${data.courseId}/modules/${data.module}/resources`, formData);
+      response = await apiClient.upload<Resource>(`/courses/${data.courseId}/modules/${data.module}/resources`, formData);
     } else {
-      return apiClient.post<Resource>(`/courses/${data.courseId}/modules/${data.module}/resources`, {
+      response = await apiClient.post<Resource>(`/courses/${data.courseId}/modules/${data.module}/resources`, {
         title: data.title,
         description: data.description,
         resourceType: data.resource_type,
@@ -123,10 +204,13 @@ export const resourcesApi = {
         isDownloadable: data.is_downloadable,
       });
     }
+    return { ...response, data: normalizeResource(response.data) };
   },
 
-  update: (courseId: string, moduleId: string, resourceId: string, data: Partial<Resource>) =>
-    apiClient.put<Resource>(`/courses/${courseId}/modules/${moduleId}/resources/${resourceId}`, data),
+  update: async (courseId: string, moduleId: string, resourceId: string, data: Partial<Resource>) => {
+    const response = await apiClient.put(`/courses/${courseId}/modules/${moduleId}/resources/${resourceId}`, data);
+    return { ...response, data: normalizeResource(response.data) };
+  },
 
   delete: (courseId: string, moduleId: string, resourceId: string) =>
     apiClient.delete(`/courses/${courseId}/modules/${moduleId}/resources/${resourceId}`),

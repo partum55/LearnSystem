@@ -173,13 +173,14 @@ def test_course_data() -> dict:
 
 @pytest.fixture
 def test_quiz_data() -> dict:
-    """Generate test quiz data"""
+    """Generate module-scoped test quiz data"""
     from faker import Faker
     fake = Faker()
 
     return {
         "title": f"Quiz: {fake.sentence(nb_words=4)}",
         "description": fake.paragraph(nb_sentences=2),
+        "module_title": f"Module {fake.random_int(min=1, max=4)}",
         "time_limit": 30,
         "questions": [
             {
@@ -212,4 +213,3 @@ def test_assignment_data() -> dict:
         "points": 100,
         "type": "TEXT",
     }
-

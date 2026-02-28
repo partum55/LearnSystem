@@ -122,7 +122,7 @@ export const Dashboard: React.FC = () => {
 
         {/* Widgets */}
         {widgets.filter(w => w.visible).length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-fade-in-up">
             {widgets
               .filter(w => w.visible)
               .sort((a, b) => a.order - b.order)

@@ -1,14 +1,21 @@
 import React from 'react';
 import { TFunction } from 'i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
+  ArrowTopRightOnSquareIcon,
   CheckCircleIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   ClockIcon,
+  CodeBracketIcon,
+  DocumentIcon,
   DocumentTextIcon,
+  FilmIcon,
   FolderIcon,
+  LinkIcon,
+  PencilIcon,
   PlusIcon,
+  PresentationChartBarIcon,
   SparklesIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
@@ -25,7 +32,6 @@ interface CourseModulesTabProps {
   onOpenAIAssignmentGenerator: (moduleId: string, moduleContext: string) => void;
   onOpenModuleModal: () => void;
   onAddResource: (moduleId: string) => void;
-  onAddAssignment: (moduleId: string) => void;
   onDeleteModule: (module: Module) => void;
   onDeleteResource: (moduleId: string, resource: Resource) => void;
   onDeleteAssignment: (assignment: Assignment) => void;
@@ -42,12 +48,12 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
   onOpenAIAssignmentGenerator,
   onOpenModuleModal,
   onAddResource,
-  onAddAssignment,
   onDeleteModule,
   onDeleteResource,
   onDeleteAssignment,
   t,
 }) => {
+  const navigate = useNavigate();
   if (!modules || modules.length === 0) {
     return (
       <div className="space-y-4">
@@ -149,7 +155,18 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
                     size="sm"
                     onClick={(event) => {
                       event.stopPropagation();
-                      onAddAssignment(module.id);
+                      navigate(`/courses/${courseId}/modules/${module.id}/pages`);
+                    }}
+                  >
+                    <DocumentTextIcon className="mr-1 h-4 w-4" />
+                    Pages
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      navigate(`/courses/${courseId}/modules/${module.id}/assignments/new`);
                     }}
                   >
                     <PlusIcon className="mr-1 h-4 w-4" />
@@ -180,7 +197,18 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
                     </h4>
                   </div>
                   <div className="space-y-2 pl-2">
-                    {module.resources.map((resource) => (
+                    {module.resources.map((resource) => {
+                      const isLink = resource.resource_type === 'LINK';
+                      const ResIcon = {
+                        TEXT: DocumentTextIcon,
+                        PDF: DocumentIcon,
+                        VIDEO: FilmIcon,
+                        SLIDE: PresentationChartBarIcon,
+                        CODE: CodeBracketIcon,
+                        LINK: LinkIcon,
+                        OTHER: DocumentIcon,
+                      }[resource.resource_type] || DocumentIcon;
+                      return (
                       <div
                         key={resource.id}
                         className="group flex items-center gap-3 rounded-lg p-3 transition-colors"
@@ -188,8 +216,21 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
                         onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
                         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                       >
-                        <DocumentTextIcon className="h-5 w-5 flex-shrink-0" style={{ color: 'var(--text-faint)' }} />
+                        <ResIcon className="h-5 w-5 flex-shrink-0" style={{ color: 'var(--text-faint)' }} />
                         <div className="min-w-0 flex-1">
+                          {isLink && resource.external_url ? (
+                            <a
+                              href={resource.external_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 truncate font-medium transition-colors"
+                              style={{ color: 'var(--text-secondary)' }}
+                              onClick={e => e.stopPropagation()}
+                            >
+                              {resource.title}
+                              <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5 flex-shrink-0 opacity-60" />
+                            </a>
+                          ) : (
                           <Link
                             to={`/courses/${courseId}/modules/${module.id}/resources/${resource.id}`}
                             className="block truncate font-medium transition-colors"
@@ -197,6 +238,7 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
                           >
                             {resource.title}
                           </Link>
+                          )}
                           {resource.description && (
                             <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>{resource.description}</p>
                           )}
@@ -220,7 +262,8 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
                           </button>
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -245,7 +288,7 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
                   </div>
                   <div className="space-y-2 pl-2">
                     {module.assignments.map((assignment) => (
-                      <Link key={assignment.id} to={`/assignments/${assignment.id}`} className="block">
+                      <Link key={assignment.id} to={`/courses/${courseId}/modules/${module.id}/assignments/${assignment.id}`} className="block">
                         <div
                           className="group flex items-center gap-3 rounded-lg border p-3 transition-colors"
                           style={{ borderColor: 'transparent' }}
@@ -280,19 +323,34 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
                           </span>
 
                           {isInstructor && (
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.preventDefault();
-                                onDeleteAssignment(assignment);
-                              }}
-                              className="p-1 transition-colors"
-                              style={{ color: 'var(--text-faint)' }}
-                              onMouseEnter={e => (e.currentTarget.style.color = 'var(--fn-error)')}
-                              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-faint)')}
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  navigate(`/courses/${courseId}/modules/${module.id}/assignments/${assignment.id}/edit`);
+                                }}
+                                className="p-1 transition-colors"
+                                style={{ color: 'var(--text-faint)' }}
+                                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-faint)')}
+                              >
+                                <PencilIcon className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  onDeleteAssignment(assignment);
+                                }}
+                                className="p-1 transition-colors"
+                                style={{ color: 'var(--text-faint)' }}
+                                onMouseEnter={e => (e.currentTarget.style.color = 'var(--fn-error)')}
+                                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-faint)')}
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            </div>
                           )}
                         </div>
                       </Link>

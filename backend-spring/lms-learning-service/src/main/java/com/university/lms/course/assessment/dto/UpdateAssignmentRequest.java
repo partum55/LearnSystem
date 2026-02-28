@@ -66,6 +66,7 @@ public class UpdateAssignmentRequest {
     private Integer maxFiles;
 
     private UUID quizId;
+    private InlineQuizRequest quiz;
     private String externalToolUrl;
 
     private Boolean gradeAnonymously;
@@ -79,4 +80,3 @@ public class UpdateAssignmentRequest {
     private Boolean isArchived;
     private Boolean isPublished;
 }
-

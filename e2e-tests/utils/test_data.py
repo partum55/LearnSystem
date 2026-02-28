@@ -137,10 +137,11 @@ class TestDataGenerator:
         }
 
     def quiz_data(self) -> dict:
-        """Generate quiz data"""
+        """Generate module-scoped quiz data"""
         return {
             "title": generate_quiz_title(),
             "description": self.fake.paragraph(nb_sentences=2),
+            "module_title": f"Module {random.randint(1, 4)}",
             "time_limit": random.choice([15, 30, 45, 60]),
             "attempts_allowed": random.choice([1, 2, 3]),
         }
@@ -185,4 +186,3 @@ print(solution(10))
 
 # Singleton instance
 test_data = TestDataGenerator()
-

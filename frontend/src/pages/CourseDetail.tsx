@@ -2,14 +2,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  Card,
-  CardBody,
   CourseGradesTab,
-  Header,
   Loading,
-  Sidebar,
   TeacherGradebook,
 } from '../components';
+import { CourseLayout } from '../components/CourseLayout';
+import { TabTransition } from '../components/animation';
+import { CourseMembersTab } from '../components/CourseMembersTab';
 import { useAuthStore } from '../store/authStore';
 import { useCourseStore } from '../store/courseStore';
 import { Assignment, Module, Resource } from '../types';
@@ -48,7 +47,6 @@ export const CourseDetail: React.FC = () => {
     getInitialTab(id, searchParams.get('tab'))
   );
   const [showModuleModal, setShowModuleModal] = useState(false);
-  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [showResourceModal, setShowResourceModal] = useState(false);
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [showAIModuleGenerator, setShowAIModuleGenerator] = useState(false);
@@ -61,6 +59,15 @@ export const CourseDetail: React.FC = () => {
   const courseId = id || '';
   const isInstructor = user?.role === 'TEACHER' || user?.role === 'SUPERADMIN';
   const tabs = useMemo(() => getCourseDetailTabs(t), [t]);
+
+  // Merge assignments into their respective modules by module_id
+  const enrichedModules = useMemo(() => {
+    if (!modules || modules.length === 0) return modules;
+    return modules.map((mod) => ({
+      ...mod,
+      assignments: (assignments || []).filter((a) => a.module_id === mod.id),
+    }));
+  }, [modules, assignments]);
 
   const handleTabChange = useCallback(
     (tab: CourseDetailTabId) => {
@@ -96,14 +103,6 @@ export const CourseDetail: React.FC = () => {
     void fetchModules(id);
   }, [fetchModules, id]);
 
-  const handleAssignmentCreated = useCallback(() => {
-    if (!id) {
-      return;
-    }
-    void fetchAssignments(id);
-    void fetchModules(id);
-  }, [fetchAssignments, fetchModules, id]);
-
   const handleResourceCreated = useCallback(() => {
     if (!id) {
       return;
@@ -114,11 +113,6 @@ export const CourseDetail: React.FC = () => {
   const handleAddResource = useCallback((moduleId: string) => {
     setSelectedModuleId(moduleId);
     setShowResourceModal(true);
-  }, []);
-
-  const handleAddAssignment = useCallback((moduleId: string) => {
-    setSelectedModuleId(moduleId);
-    setShowAssignmentModal(true);
   }, []);
 
   const handleOpenAIAssignmentGenerator = useCallback((moduleId: string, moduleContext: string) => {
@@ -226,11 +220,7 @@ export const CourseDetail: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-8">
+    <CourseLayout courseId={courseId}>
           <div className="mx-auto max-w-7xl">
             <CourseDetailHeader
               courseId={courseId}
@@ -242,56 +232,52 @@ export const CourseDetail: React.FC = () => {
 
             <CourseDetailTabs tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} />
 
-            {activeTab === 'modules' && (
-              <CourseModulesTab
-                courseId={courseId}
-                modules={modules}
-                expandedModules={expandedModules}
-                isInstructor={isInstructor}
-                onToggleModule={toggleModule}
-                onOpenAIModuleGenerator={() => setShowAIModuleGenerator(true)}
-                onOpenAIAssignmentGenerator={handleOpenAIAssignmentGenerator}
-                onOpenModuleModal={() => setShowModuleModal(true)}
-                onAddResource={handleAddResource}
-                onAddAssignment={handleAddAssignment}
-                onDeleteModule={requestDeleteModule}
-                onDeleteResource={requestDeleteResource}
-                onDeleteAssignment={requestDeleteAssignment}
-                t={t}
-              />
-            )}
+            <TabTransition tabKey={activeTab}>
+              {activeTab === 'modules' && (
+                <CourseModulesTab
+                  courseId={courseId}
+                  modules={enrichedModules}
+                  expandedModules={expandedModules}
+                  isInstructor={isInstructor}
+                  onToggleModule={toggleModule}
+                  onOpenAIModuleGenerator={() => setShowAIModuleGenerator(true)}
+                  onOpenAIAssignmentGenerator={handleOpenAIAssignmentGenerator}
+                  onOpenModuleModal={() => setShowModuleModal(true)}
+                  onAddResource={handleAddResource}
+                  onDeleteModule={requestDeleteModule}
+                  onDeleteResource={requestDeleteResource}
+                  onDeleteAssignment={requestDeleteAssignment}
+                  t={t}
+                />
+              )}
 
-            {activeTab === 'assignments' && (
-              <CourseAssignmentsTab
-                assignments={assignments}
-                isInstructor={isInstructor}
-                onOpenAssignmentModal={() => setShowAssignmentModal(true)}
-                t={t}
-              />
-            )}
+              {activeTab === 'assignments' && (
+                <CourseAssignmentsTab
+                  assignments={assignments}
+                  isInstructor={isInstructor}
+                  courseId={courseId}
+                  modules={enrichedModules}
+                  t={t}
+                />
+              )}
 
-            {activeTab === 'members' && (
-              <Card>
-                <CardBody>
-                  <p className="py-12 text-center" style={{ color: 'var(--text-muted)' }}>
-                    {t('courses.membersComingSoon')}
-                  </p>
-                </CardBody>
-              </Card>
-            )}
+              {activeTab === 'members' && (
+                <CourseMembersTab
+                  courseId={courseId}
+                  canManage={isInstructor}
+                />
+              )}
 
-            {activeTab === 'grades' &&
-              (isInstructor ? <TeacherGradebook courseId={courseId} /> : <CourseGradesTab courseId={courseId} />)}
+              {activeTab === 'grades' &&
+                (isInstructor ? <TeacherGradebook courseId={courseId} /> : <CourseGradesTab courseId={courseId} />)}
+            </TabTransition>
           </div>
-        </main>
-      </div>
 
       <CourseDetailModals
         isInstructor={isInstructor}
         courseId={courseId}
         currentCourse={currentCourse}
         showModuleModal={showModuleModal}
-        showAssignmentModal={showAssignmentModal}
         showResourceModal={showResourceModal}
         showEnrollModal={showEnrollModal}
         showAIModuleGenerator={showAIModuleGenerator}
@@ -300,10 +286,6 @@ export const CourseDetail: React.FC = () => {
         selectedModuleContext={selectedModuleContext}
         deleteConfirmation={deleteConfirmation}
         onCloseModuleModal={() => setShowModuleModal(false)}
-        onCloseAssignmentModal={() => {
-          setShowAssignmentModal(false);
-          setSelectedModuleId(null);
-        }}
         onCloseResourceModal={() => {
           setShowResourceModal(false);
           setSelectedModuleId(null);
@@ -315,7 +297,6 @@ export const CourseDetail: React.FC = () => {
           setSelectedModuleId(null);
         }}
         onModuleCreated={handleModuleCreated}
-        onAssignmentCreated={handleAssignmentCreated}
         onResourceCreated={handleResourceCreated}
         onEnrolled={handleEnrolled}
         onAIModuleGenerated={handleAIModuleGenerated}
@@ -326,7 +307,7 @@ export const CourseDetail: React.FC = () => {
         onCancelDelete={() => setDeleteConfirmation(null)}
         t={t}
       />
-    </div>
+    </CourseLayout>
   );
 };
 

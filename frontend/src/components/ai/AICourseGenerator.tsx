@@ -295,11 +295,7 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
                     📝 {module.assignments.length} {t('course.assignments')}
                   </div>
                 )}
-                {module.quizzes && module.quizzes.length > 0 && (
-                  <div className="mt-1 text-sm " style={{ color: 'var(--text-muted)' }}>
-                    📊 {module.quizzes.length} {t('course.quizzes')}
-                  </div>
-                )}
+
               </div>
             ))}
           </div>

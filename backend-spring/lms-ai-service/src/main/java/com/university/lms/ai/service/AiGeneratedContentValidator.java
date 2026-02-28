@@ -41,6 +41,8 @@ public class AiGeneratedContentValidator {
       Set.of("lecture", "discussion", "lab", "project", "workshop", "quiz");
   private static final Set<String> VALID_RESOURCE_TYPES =
       Set.of("book", "article", "video", "website", "tool");
+  private static final Set<String> VALID_COURSE_RESOURCE_TYPES =
+      Set.of("TEXT", "VIDEO", "PDF", "SLIDE", "LINK", "CODE", "OTHER");
 
   private final Validator validator;
   private final ObjectMapper objectMapper;
@@ -182,13 +184,7 @@ public class AiGeneratedContentValidator {
 
   private void validateCourseRules(GeneratedCourseResponse payload) {
     List<String> errors = new ArrayList<>();
-    if (payload.getCourse() != null) {
-      if (payload.getCourse().getStartDate() != null && payload.getCourse().getEndDate() != null) {
-        if (payload.getCourse().getEndDate().isBefore(payload.getCourse().getStartDate())) {
-          errors.add("course.endDate must be after startDate");
-        }
-      }
-    } else {
+    if (payload.getCourse() == null) {
       errors.add("course must not be null");
     }
 
@@ -198,8 +194,46 @@ public class AiGeneratedContentValidator {
         if (module.getAssignments() == null) {
           errors.add("modules[" + i + "].assignments must not be null");
         }
-        if (module.getQuizzes() == null) {
-          errors.add("modules[" + i + "].quizzes must not be null");
+        if (module.getResources() != null) {
+          for (int j = 0; j < module.getResources().size(); j++) {
+            GeneratedCourseResponse.ResourceData resource = module.getResources().get(j);
+            String resourceType = normalizeEnum(resource.getResourceType());
+            if (!VALID_COURSE_RESOURCE_TYPES.contains(resourceType)) {
+              errors.add(
+                  "modules["
+                      + i
+                      + "].resources["
+                      + j
+                      + "].resourceType must be one of "
+                      + VALID_COURSE_RESOURCE_TYPES);
+            }
+          }
+        }
+        if (module.getAssignments() != null) {
+          for (int j = 0; j < module.getAssignments().size(); j++) {
+            GeneratedCourseResponse.AssignmentData assignment = module.getAssignments().get(j);
+            String assignmentType = normalizeEnum(assignment.getAssignmentType());
+            if (!VALID_ASSIGNMENT_TYPES.contains(assignmentType)) {
+              errors.add(
+                  "modules["
+                      + i
+                      + "].assignments["
+                      + j
+                      + "].assignmentType must be one of "
+                      + VALID_ASSIGNMENT_TYPES);
+            }
+          }
+        }
+      }
+    }
+
+    if (payload.getQuestionBank() != null) {
+      for (int i = 0; i < payload.getQuestionBank().size(); i++) {
+        GeneratedCourseResponse.QuestionData question = payload.getQuestionBank().get(i);
+        String questionType = normalizeEnum(question.getQuestionType());
+        if (!VALID_QUESTION_TYPES.contains(questionType)) {
+          errors.add(
+              "questionBank[" + i + "].questionType must be one of " + VALID_QUESTION_TYPES);
         }
       }
     }
@@ -329,6 +363,9 @@ public class AiGeneratedContentValidator {
     if (payload == null) {
       return null;
     }
+    if (payload.getVersion() == null) {
+      payload.setVersion("1.0");
+    }
     if (payload.getCourse() != null) {
       payload.getCourse().setCode(sanitizeText(payload.getCourse().getCode()));
       payload.getCourse().setTitleUk(sanitizeText(payload.getCourse().getTitleUk()));
@@ -336,7 +373,7 @@ public class AiGeneratedContentValidator {
       payload.getCourse().setDescriptionUk(sanitizeText(payload.getCourse().getDescriptionUk()));
       payload.getCourse().setDescriptionEn(sanitizeText(payload.getCourse().getDescriptionEn()));
       payload.getCourse().setSyllabus(sanitizeText(payload.getCourse().getSyllabus()));
-      payload.getCourse().setAcademicYear(sanitizeText(payload.getCourse().getAcademicYear()));
+      payload.getCourse().setVisibility(sanitizeText(payload.getCourse().getVisibility()));
     }
     payload.setModules(sanitizeList(payload.getModules()));
     if (payload.getModules() != null) {
@@ -347,7 +384,19 @@ public class AiGeneratedContentValidator {
         module.setTitle(sanitizeText(module.getTitle()));
         module.setDescription(sanitizeText(module.getDescription()));
         module.setAssignments(sanitizeList(module.getAssignments()));
-        module.setQuizzes(sanitizeList(module.getQuizzes()));
+        module.setResources(sanitizeList(module.getResources()));
+        if (module.getResources() != null) {
+          for (GeneratedCourseResponse.ResourceData resource : module.getResources()) {
+            if (resource == null) {
+              continue;
+            }
+            resource.setTitle(sanitizeText(resource.getTitle()));
+            resource.setDescription(sanitizeText(resource.getDescription()));
+            resource.setResourceType(normalizeEnum(resource.getResourceType()));
+            resource.setExternalUrl(sanitizeText(resource.getExternalUrl()));
+            resource.setTextContent(sanitizeText(resource.getTextContent()));
+          }
+        }
         if (module.getAssignments() != null) {
           for (GeneratedCourseResponse.AssignmentData assignment : module.getAssignments()) {
             if (assignment == null) {
@@ -357,38 +406,38 @@ public class AiGeneratedContentValidator {
             assignment.setDescription(sanitizeText(assignment.getDescription()));
             assignment.setAssignmentType(normalizeEnum(assignment.getAssignmentType()));
             assignment.setInstructions(sanitizeText(assignment.getInstructions()));
+            assignment.setProgrammingLanguage(sanitizeText(assignment.getProgrammingLanguage()));
+            assignment.setStarterCode(sanitizeText(assignment.getStarterCode()));
+            assignment.setEstimatedDuration(sanitizeText(assignment.getEstimatedDuration()));
+            assignment.setTags(sanitizeStringList(assignment.getTags()));
+            assignment.setSubmissionTypes(sanitizeStringList(assignment.getSubmissionTypes()));
+            assignment.setAllowedFileTypes(sanitizeStringList(assignment.getAllowedFileTypes()));
           }
         }
-        if (module.getQuizzes() != null) {
-          for (GeneratedCourseResponse.QuizData quiz : module.getQuizzes()) {
-            if (quiz == null) {
-              continue;
-            }
-            quiz.setTitle(sanitizeText(quiz.getTitle()));
-            quiz.setDescription(sanitizeText(quiz.getDescription()));
-            quiz.setQuestions(sanitizeList(quiz.getQuestions()));
-            if (quiz.getQuestions() != null) {
-              for (GeneratedCourseResponse.QuestionData question : quiz.getQuestions()) {
-                if (question == null) {
-                  continue;
-                }
-                question.setQuestionText(sanitizeText(question.getQuestionText()));
-                question.setQuestionType(normalizeEnum(question.getQuestionType()));
-                question.setAnswerOptions(sanitizeList(question.getAnswerOptions()));
-                if (question.getAnswerOptions() != null) {
-                  for (GeneratedCourseResponse.AnswerOptionData option :
-                      question.getAnswerOptions()) {
-                    if (option == null) {
-                      continue;
-                    }
-                    option.setText(sanitizeText(option.getText()));
-                    option.setFeedback(sanitizeText(option.getFeedback()));
-                  }
-                }
-              }
-            }
-          }
+      }
+    }
+    payload.setQuizzes(sanitizeList(payload.getQuizzes()));
+    if (payload.getQuizzes() != null) {
+      for (GeneratedCourseResponse.QuizData quiz : payload.getQuizzes()) {
+        if (quiz == null) {
+          continue;
         }
+        quiz.setTitle(sanitizeText(quiz.getTitle()));
+        quiz.setDescription(sanitizeText(quiz.getDescription()));
+        quiz.setModuleTitle(sanitizeText(quiz.getModuleTitle()));
+        quiz.setQuestionRefs(sanitizeStringList(quiz.getQuestionRefs()));
+      }
+    }
+    payload.setQuestionBank(sanitizeList(payload.getQuestionBank()));
+    if (payload.getQuestionBank() != null) {
+      for (GeneratedCourseResponse.QuestionData question : payload.getQuestionBank()) {
+        if (question == null) {
+          continue;
+        }
+        question.setId(sanitizeText(question.getId()));
+        question.setStem(sanitizeText(question.getStem()));
+        question.setQuestionType(normalizeEnum(question.getQuestionType()));
+        question.setExplanation(sanitizeText(question.getExplanation()));
       }
     }
     return payload;

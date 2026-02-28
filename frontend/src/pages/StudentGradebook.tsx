@@ -242,7 +242,7 @@ const StudentGradebook: React.FC = () => {
       {/* Summary Card */}
       {gradebook.summary && (
         <div className="rounded-lg p-6 mb-6" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-fade-in-up">
             <div>
               <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('gradebook.current_grade')}</p>
               <p className="text-4xl font-bold" style={{ color: 'var(--text-primary)' }}>
@@ -326,7 +326,7 @@ const StudentGradebook: React.FC = () => {
                   {t('gradebook.due_date')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                  {t('gradebook.status')}
+                  {t('gradebook.status.__value')}
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                   {t('gradebook.score')}

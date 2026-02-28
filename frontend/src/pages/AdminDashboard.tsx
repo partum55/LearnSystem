@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
+import { TabTransition } from '../components/animation';
 import {
   activateAdminUser,
   AdminCourse,
@@ -18,10 +19,21 @@ import {
   updateAdminCourse,
   updateAdminUser,
 } from '../api/admin';
-import { ArrowPathIcon, BookOpenIcon, ServerIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowPathIcon,
+  ArrowUpTrayIcon,
+  BeakerIcon,
+  BookOpenIcon,
+  ServerIcon,
+  UserGroupIcon,
+  WrenchScrewdriverIcon,
+} from '@heroicons/react/24/outline';
 import { AdminCoursesTab } from './admin-dashboard/AdminCoursesTab';
 import { AdminServicesTab } from './admin-dashboard/AdminServicesTab';
 import { AdminUsersTab } from './admin-dashboard/AdminUsersTab';
+import { AdminCourseManagerTab } from './admin-dashboard/AdminCourseManagerTab';
+import { AdminImportExportTab } from './admin-dashboard/AdminImportExportTab';
+import { AdminTestLabTab } from './admin-dashboard/AdminTestLabTab';
 import {
   AdminTab,
   CreateCourseForm,
@@ -149,7 +161,16 @@ export const AdminDashboard: React.FC = () => {
       setFeedback({ type: 'success', message: 'User created.' });
       await loadUsers();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to create user';
+      const axiosErr = error as import('axios').AxiosError<{ message?: string; details?: Record<string, string> }>;
+      const data = axiosErr?.response?.data;
+      let message = 'Failed to create user';
+      if (data?.details) {
+        message = Object.entries(data.details).map(([k, v]) => `${k}: ${v}`).join('; ');
+      } else if (data?.message) {
+        message = data.message;
+      } else if (error instanceof Error) {
+        message = error.message;
+      }
       setFeedback({ type: 'error', message });
     }
   };
@@ -291,8 +312,41 @@ export const AdminDashboard: React.FC = () => {
       setFeedback({ type: 'success', message: course.isPublished ? 'Course unpublished.' : 'Course published.' });
       await loadCourses();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to change course state';
-      setFeedback({ type: 'error', message });
+      const conflictStatus = (error as { response?: { status?: number; data?: { checklist?: { items?: Array<{ label?: string; details?: string; passed?: boolean }> } } } })?.response?.status;
+      if (!course.isPublished && conflictStatus === 409) {
+        const checklistItems =
+          (error as { response?: { data?: { checklist?: { items?: Array<{ label?: string; details?: string; passed?: boolean }> } } } })
+            ?.response?.data?.checklist?.items || [];
+        const failed = checklistItems.filter((item) => !item.passed);
+        const summary = failed
+          .map((item) => `• ${item.label || 'Requirement'}${item.details ? `: ${item.details}` : ''}`)
+          .join('\n');
+
+        const shouldOverride = window.confirm(
+          `Publish checklist is incomplete:\n\n${summary || 'Unknown checklist issue'}\n\nForce publish anyway?`
+        );
+        if (shouldOverride) {
+          const overrideReason = window.prompt(
+            'Provide override reason (required):',
+            'Published with checklist override by admin'
+          );
+          if (overrideReason && overrideReason.trim()) {
+            await publishAdminCourse(course.id, {
+              forcePublish: true,
+              overrideReason: overrideReason.trim(),
+            });
+            setFeedback({ type: 'success', message: 'Course published with checklist override.' });
+            await loadCourses();
+          } else {
+            setFeedback({ type: 'error', message: 'Publish override canceled: reason is required.' });
+          }
+        } else {
+          setFeedback({ type: 'error', message: 'Course publish canceled by checklist.' });
+        }
+      } else {
+        const message = error instanceof Error ? error.message : 'Failed to change course state';
+        setFeedback({ type: 'error', message });
+      }
     } finally {
       setCourseActionLoadingId(null);
     }
@@ -315,10 +369,17 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  const showFeedback = useCallback((type: 'success' | 'error', message: string) => {
+    setFeedback({ type, message });
+  }, []);
+
   const tabs: { key: AdminTab; label: string; icon: React.ElementType }[] = [
     { key: 'users', label: 'Users', icon: UserGroupIcon },
     { key: 'courses', label: 'Courses', icon: BookOpenIcon },
+    { key: 'course-manager', label: 'Course Manager', icon: WrenchScrewdriverIcon },
+    { key: 'import-export', label: 'Import / Export', icon: ArrowUpTrayIcon },
     { key: 'services', label: 'Services', icon: ServerIcon },
+    { key: 'test-lab', label: 'Test Lab', icon: BeakerIcon },
   ];
 
   return (
@@ -334,7 +395,7 @@ export const AdminDashboard: React.FC = () => {
               Admin
             </h1>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-              Manage services, users, and courses
+              Full system control — courses, users, services, import/export
             </p>
           </div>
           <button
@@ -342,7 +403,7 @@ export const AdminDashboard: React.FC = () => {
             onClick={() => {
               if (activeTab === 'services') void loadSystemHealth();
               else if (activeTab === 'users') void loadUsers();
-              else void loadCourses();
+              else if (activeTab === 'courses') void loadCourses();
             }}
             className="btn btn-secondary btn-sm"
           >
@@ -386,38 +447,52 @@ export const AdminDashboard: React.FC = () => {
           </nav>
         </div>
 
-        {activeTab === 'users' && (
-          <AdminUsersTab
-            createUserForm={createUserForm} setCreateUserForm={setCreateUserForm} submitCreateUser={submitCreateUser}
-            editingUser={editingUser} setEditingUser={setEditingUser}
-            updateUserForm={updateUserForm} setUpdateUserForm={setUpdateUserForm} submitUpdateUser={submitUpdateUser}
-            users={users} usersLoading={usersLoading}
-            usersPage={usersPage} setUsersPage={setUsersPage}
-            usersTotalPages={usersTotalPages} usersTotalElements={usersTotalElements}
-            userSearchInput={userSearchInput} setUserSearchInput={setUserSearchInput}
-            userRoleFilter={userRoleFilter} setUserRoleFilter={setUserRoleFilter} setUserQuery={setUserQuery}
-            userActionLoadingId={userActionLoadingId}
-            onStartEditingUser={startEditingUser} onToggleUserActive={toggleUserActive} onRemoveUser={removeUser}
-          />
-        )}
+        <TabTransition tabKey={activeTab}>
+          {activeTab === 'users' && (
+            <AdminUsersTab
+              createUserForm={createUserForm} setCreateUserForm={setCreateUserForm} submitCreateUser={submitCreateUser}
+              editingUser={editingUser} setEditingUser={setEditingUser}
+              updateUserForm={updateUserForm} setUpdateUserForm={setUpdateUserForm} submitUpdateUser={submitUpdateUser}
+              users={users} usersLoading={usersLoading}
+              usersPage={usersPage} setUsersPage={setUsersPage}
+              usersTotalPages={usersTotalPages} usersTotalElements={usersTotalElements}
+              userSearchInput={userSearchInput} setUserSearchInput={setUserSearchInput}
+              userRoleFilter={userRoleFilter} setUserRoleFilter={setUserRoleFilter} setUserQuery={setUserQuery}
+              userActionLoadingId={userActionLoadingId}
+              onStartEditingUser={startEditingUser} onToggleUserActive={toggleUserActive} onRemoveUser={removeUser}
+            />
+          )}
 
-        {activeTab === 'courses' && (
-          <AdminCoursesTab
-            createCourseForm={createCourseForm} setCreateCourseForm={setCreateCourseForm} submitCreateCourse={submitCreateCourse}
-            editingCourse={editingCourse} setEditingCourse={setEditingCourse}
-            updateCourseForm={updateCourseForm} setUpdateCourseForm={setUpdateCourseForm} submitUpdateCourse={submitUpdateCourse}
-            courses={courses} coursesLoading={coursesLoading}
-            coursesPage={coursesPage} setCoursesPage={setCoursesPage}
-            coursesTotalPages={coursesTotalPages} coursesTotalElements={coursesTotalElements}
-            courseSearchInput={courseSearchInput} setCourseSearchInput={setCourseSearchInput}
-            courseActionLoadingId={courseActionLoadingId}
-            onStartEditingCourse={startEditingCourse} onToggleCoursePublished={toggleCoursePublished} onRemoveCourse={removeCourse}
-          />
-        )}
+          {activeTab === 'courses' && (
+            <AdminCoursesTab
+              createCourseForm={createCourseForm} setCreateCourseForm={setCreateCourseForm} submitCreateCourse={submitCreateCourse}
+              editingCourse={editingCourse} setEditingCourse={setEditingCourse}
+              updateCourseForm={updateCourseForm} setUpdateCourseForm={setUpdateCourseForm} submitUpdateCourse={submitUpdateCourse}
+              courses={courses} coursesLoading={coursesLoading}
+              coursesPage={coursesPage} setCoursesPage={setCoursesPage}
+              coursesTotalPages={coursesTotalPages} coursesTotalElements={coursesTotalElements}
+              courseSearchInput={courseSearchInput} setCourseSearchInput={setCourseSearchInput}
+              courseActionLoadingId={courseActionLoadingId}
+              onStartEditingCourse={startEditingCourse} onToggleCoursePublished={toggleCoursePublished} onRemoveCourse={removeCourse}
+            />
+          )}
 
-        {activeTab === 'services' && (
-          <AdminServicesTab servicesLoading={servicesLoading} systemHealth={systemHealth} />
-        )}
+          {activeTab === 'course-manager' && (
+            <AdminCourseManagerTab onFeedback={showFeedback} />
+          )}
+
+          {activeTab === 'import-export' && (
+            <AdminImportExportTab onFeedback={showFeedback} />
+          )}
+
+          {activeTab === 'services' && (
+            <AdminServicesTab servicesLoading={servicesLoading} systemHealth={systemHealth} />
+          )}
+
+          {activeTab === 'test-lab' && (
+            <AdminTestLabTab onFeedback={showFeedback} />
+          )}
+        </TabTransition>
       </div>
     </Layout>
   );

@@ -2,11 +2,16 @@ import apiClient from './client';
 
 // Use API gateway for AI calls - the gateway routes /api/ai/** to the AI service
 // The gateway rewrites /api/ai/** to /api/v1/ai/** before forwarding to AI service
-const AI_BASE_URL =
+export const AI_ABSOLUTE_URL =
   import.meta.env.VITE_AI_SERVICE_URL ||
   import.meta.env.REACT_APP_AI_SERVICE_URL ||
   '/api/ai';
 
+// When using apiClient, it already prepends its own baseURL (e.g., '/api').
+// We strip the leading '/api' for relative paths so it doesn't become /api/api/ai.
+const AI_CLIENT_URL = AI_ABSOLUTE_URL.startsWith('http')
+  ? AI_ABSOLUTE_URL
+  : AI_ABSOLUTE_URL.replace(/^\/api/, '');
 
 export interface CourseGenerationRequest {
   prompt: string;
@@ -26,6 +31,7 @@ export interface CourseEditRequest {
 }
 
 export interface GeneratedCourse {
+  version?: string;
   course: {
     code: string;
     titleUk: string;
@@ -33,44 +39,81 @@ export interface GeneratedCourse {
     descriptionUk: string;
     descriptionEn: string;
     syllabus: string;
-    startDate: string;
-    endDate: string;
-    academicYear: string;
+    visibility?: string;
+    isPublished?: boolean;
     maxStudents: number;
   };
   modules?: GeneratedModule[];
+  quizzes?: GeneratedQuiz[];
+  questionBank?: GeneratedQuestion[];
 }
 
 export interface GeneratedModule {
   title: string;
   description: string;
   position: number;
+  isPublished?: boolean;
   assignments?: GeneratedAssignment[];
-  quizzes?: GeneratedQuiz[];
+  resources?: GeneratedResource[];
+}
+
+export interface GeneratedResource {
+  title: string;
+  description?: string;
+  resourceType: string;
+  externalUrl?: string;
+  textContent?: string;
+  position?: number;
+  isDownloadable?: boolean;
 }
 
 export interface GeneratedAssignment {
   title: string;
   description: string;
   instructions: string;
-  assignment_type: string;
-  points: number;
-  due_date: string;
+  assignmentType: string;
+  maxPoints: number;
+  submissionTypes?: string[];
+  allowedFileTypes?: string[];
+  programmingLanguage?: string;
+  starterCode?: string;
+  tags?: string[];
+  estimatedDuration?: string;
+  isPublished?: boolean;
 }
 
 export interface GeneratedQuiz {
   title: string;
   description: string;
-  time_limit: number;
-  questions: GeneratedQuestion[];
+  moduleTitle?: string;
+  timeLimit?: number;
+  attemptsAllowed?: number;
+  shuffleQuestions?: boolean;
+  shuffleAnswers?: boolean;
+  passPercentage?: number;
+  showCorrectAnswers?: boolean;
+  questionRefs?: string[];
+  questions?: Array<{
+    stem?: string;
+    questionText?: string;
+    questionType?: string;
+    points?: number;
+    options?: string[];
+    correct_answer?: string | number;
+    correctAnswer?: string | number;
+    answerOptions?: Array<{ text: string; isCorrect: boolean; feedback?: string }>;
+    explanation?: string;
+  }>;
 }
 
 export interface GeneratedQuestion {
-  question_type: string;
+  id?: string;
   stem: string;
+  questionType: string;
   points: number;
   options?: unknown;
-  correct_answer?: unknown;
+  correctAnswer?: unknown;
+  explanation?: string;
 }
 
 export interface AIProgressEvent {
@@ -111,7 +154,7 @@ export const aiApi = {
   ) => {
     const params = new URLSearchParams(request as unknown as Record<string, string>);
     const eventSource = new EventSource(
-      `${AI_BASE_URL}/courses/generate-stream?${params}`
+      `${AI_ABSOLUTE_URL}/courses/generate-stream?${params}`
     );
     // ...
 
@@ -147,7 +190,7 @@ export const aiApi = {
    */
   generateCourse: async (request: CourseGenerationRequest) => {
     const response = await apiClient.post<GeneratedCourse>(
-      `${AI_BASE_URL}/courses/generate`,
+      `${AI_CLIENT_URL}/courses/generate`,
       request
     );
     return response.data;
@@ -163,7 +206,7 @@ export const aiApi = {
       assignmentsCreated: number;
       quizzesCreated: number;
     }>(
-      `${AI_BASE_URL}/courses/generate-and-save`,
+      `${AI_CLIENT_URL}/courses/generate-and-save?confirmed=true`,
       request,
       {
         headers: {
@@ -180,7 +223,7 @@ export const aiApi = {
    */
   editContent: async (request: CourseEditRequest) => {
     const response = await apiClient.post<string>(
-      `${AI_BASE_URL}/content/edit`,
+      `${AI_CLIENT_URL}/content/edit`,
       request
     );
     return response.data;
@@ -199,7 +242,7 @@ export const aiApi = {
       courseId: string;
       modules: GeneratedModule[];
     }>(
-      `${AI_BASE_URL}/modules/generate`,
+      `${AI_CLIENT_URL}/modules/generate`,
       null,
       { params }
     );
@@ -219,7 +262,7 @@ export const aiApi = {
       moduleId: string;
       assignments: GeneratedAssignment[];
     }>(
-      `${AI_BASE_URL}/assignments/generate`,
+      `${AI_CLIENT_URL}/assignments/generate`,
       null,
       { params }
     );
@@ -230,17 +273,17 @@ export const aiApi = {
    * Generate quiz with questions
    */
   generateQuiz: async (params: {
-    courseId: string;
+    moduleId: string;
     topic: string;
     language?: string;
     questionCount?: number;
     timeLimit?: number;
   }) => {
     const response = await apiClient.post<{
-      courseId: string;
+      moduleId: string;
       quizzes: GeneratedQuiz[];
     }>(
-      `${AI_BASE_URL}/quizzes/generate`,
+      `${AI_CLIENT_URL}/quizzes/generate`,
       null,
       { params }
     );
@@ -252,7 +295,7 @@ export const aiApi = {
    */
   health: async () => {
     const response = await apiClient.get<{ status: string; service: string }>(
-      `${AI_BASE_URL}/health`
+      `${AI_CLIENT_URL}/health`
     );
     return response.data;
   },
@@ -263,14 +306,14 @@ export const aiApi = {
   templates: {
     getAll: async () => {
       const response = await apiClient.get<CourseTemplate[]>(
-        `${AI_BASE_URL}/templates`
+        `${AI_CLIENT_URL}/templates`
       );
       return response.data;
     },
 
     getByCategory: async (category: string) => {
       const response = await apiClient.get<CourseTemplate[]>(
-        `${AI_BASE_URL}/templates`,
+        `${AI_CLIENT_URL}/templates`,
         { params: { category } }
       );
       return response.data;
@@ -278,14 +321,14 @@ export const aiApi = {
 
     getPopular: async () => {
       const response = await apiClient.get<CourseTemplate[]>(
-        `${AI_BASE_URL}/templates/popular`
+        `${AI_CLIENT_URL}/templates/popular`
       );
       return response.data;
     },
 
     getById: async (id: string) => {
       const response = await apiClient.get<CourseTemplate>(
-        `${AI_BASE_URL}/templates/${id}`
+        `${AI_CLIENT_URL}/templates/${id}`
       );
       return response.data;
     },
@@ -295,7 +338,7 @@ export const aiApi = {
       variables: Record<string, string>
     ) => {
       const response = await apiClient.post<GeneratedCourse>(
-        `${AI_BASE_URL}/templates/${templateId}/generate`,
+        `${AI_CLIENT_URL}/templates/${templateId}/generate`,
         variables
       );
       return response.data;
@@ -303,7 +346,7 @@ export const aiApi = {
 
     initialize: async () => {
       const response = await apiClient.post(
-        `${AI_BASE_URL}/templates/initialize`
+        `${AI_CLIENT_URL}/templates/initialize`
       );
       return response.data;
     },

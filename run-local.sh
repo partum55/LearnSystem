@@ -50,16 +50,14 @@ print_banner() {
 }
 
 check_env() {
-    if [ ! -f "$ENV_FILE" ]; then
-        echo -e "${YELLOW}⚠ No $ENV_FILE file found. Creating from $ENV_FILE_EXAMPLE...${NC}"
-        if [ -f "$ENV_FILE_EXAMPLE" ]; then
-            cp "$ENV_FILE_EXAMPLE" "$ENV_FILE"
-            echo -e "${GREEN}✓ Created $ENV_FILE${NC}"
-            echo -e "${RED}✗ Fill in ALL required values in $ENV_FILE before continuing.${NC}"
-            echo -e "${YELLOW}  See DEPLOY.md Steps 1-4 for where to get each value.${NC}"
-            exit 1
+    if [ ! -f ".env" ]; then
+        echo -e "${YELLOW}⚠ No .env file found. Creating from .env.example...${NC}"
+        if [ -f ".env.example" ]; then
+            cp .env.example .env
+            echo -e "${GREEN}✓ Created .env file${NC}"
+            echo -e "${YELLOW}⚠ Please edit .env and add your LLAMA_API_KEY${NC}"
         else
-            echo -e "${RED}✗ No $ENV_FILE_EXAMPLE template found!${NC}"
+            echo -e "${RED}✗ No .env.example template found!${NC}"
             exit 1
         fi
     fi

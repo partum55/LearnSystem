@@ -156,7 +156,7 @@ public class LlamaApiService {
   }
 
   /**
-   * Generate text with JSON format constraint.
+   * Generate text with JSON format constraint and higher token limit for richer output.
    *
    * @param prompt The prompt to send
    * @param systemPrompt System prompt with JSON format instructions
@@ -167,6 +167,65 @@ public class LlamaApiService {
     String jsonSystemPrompt =
         basePrompt
             + "\n\nIMPORTANT: You must respond ONLY with valid JSON. No additional text or explanations.";
-    return generate(prompt, jsonSystemPrompt);
+    return doGenerateWithMaxTokens(prompt, jsonSystemPrompt, 8000);
+  }
+
+  /** Internal method that performs the API call with a custom max_tokens limit. */
+  private String doGenerateWithMaxTokens(String prompt, String systemPrompt, int maxTokens) {
+    var messages = new java.util.ArrayList<Map<String, String>>();
+    if (systemPrompt != null && !systemPrompt.isEmpty()) {
+      messages.add(Map.of("role", "system", "content", systemPrompt));
+    }
+    messages.add(Map.of("role", "user", "content", prompt));
+
+    Map<String, Object> requestBody =
+        Map.of(
+            "model",
+            llamaApiProperties.getModel(),
+            "messages",
+            messages,
+            "temperature",
+            0.7,
+            "max_tokens",
+            maxTokens,
+            "top_p",
+            0.9,
+            "stream",
+            false);
+
+    try {
+      String response =
+          llamaWebClient
+              .post()
+              .uri("/chat/completions")
+              .contentType(MediaType.APPLICATION_JSON)
+              .bodyValue(requestBody)
+              .retrieve()
+              .bodyToMono(String.class)
+              .timeout(Duration.ofSeconds(120))
+              .block();
+
+      if (response == null || response.isBlank()) {
+        throw new AIServiceUnavailableException("Llama API returned an empty response");
+      }
+
+      JsonNode jsonNode = objectMapper.readTree(response);
+
+      if (jsonNode.has("usage")) {
+        JsonNode usage = jsonNode.get("usage");
+        int promptTokens = usage.has("prompt_tokens") ? usage.get("prompt_tokens").asInt() : 0;
+        int completionTokens =
+            usage.has("completion_tokens") ? usage.get("completion_tokens").asInt() : 0;
+        metricsCollector.recordTokenUsage(PROVIDER_NAME, promptTokens, completionTokens);
+      }
+
+      String generatedText = jsonNode.get("choices").get(0).get("message").get("content").asText();
+      log.info("Successfully received JSON response from Llama API");
+      return generatedText;
+
+    } catch (Exception e) {
+      log.error("Error calling Llama API for JSON generation", e);
+      throw new RuntimeException("Failed to generate JSON with Llama API: " + e.getMessage(), e);
+    }
   }
 }

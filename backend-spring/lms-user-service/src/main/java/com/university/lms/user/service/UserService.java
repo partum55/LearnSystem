@@ -139,6 +139,38 @@ public class UserService {
         }
     }
 
+    @Transactional
+    public UserDto adminCreateUser(RegisterRequest request) {
+        String email = normalizeEmail(request.getEmail());
+        String studentId = normalizeOptional(request.getStudentId());
+
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            throw new ValidationException("email", "Email already exists");
+        }
+        if (studentId != null && userRepository.existsByStudentId(studentId)) {
+            throw new ValidationException("studentId", "Student ID already exists");
+        }
+
+        UserRole role = request.getRole() != null ? request.getRole() : UserRole.STUDENT;
+
+        User user = User.builder()
+                .email(email)
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .displayName(normalizeOptional(request.getDisplayName()))
+                .firstName(normalizeOptional(request.getFirstName()))
+                .lastName(normalizeOptional(request.getLastName()))
+                .studentId(studentId)
+                .role(role)
+                .locale(request.getLocale() != null ? request.getLocale() : UserLocale.UK)
+                .isActive(true)
+                .emailVerified(false)
+                .build();
+
+        User savedUser = userRepository.save(user);
+        log.info("Admin created user {} with role {}", savedUser.getId(), role);
+        return userMapper.toDto(savedUser);
+    }
+
     @Transactional(readOnly = true)
     @Cacheable(value = USERS_CACHE, key = "#id")
     public UserDto getUserById(UUID id) {

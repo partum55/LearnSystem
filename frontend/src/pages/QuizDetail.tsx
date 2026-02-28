@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '../components';
 import { Card, CardHeader, CardBody } from '../components';
 import { Button } from '../components';
@@ -28,6 +28,7 @@ interface QuizQuestion {
 interface Quiz {
   id: string;
   course: string;
+  module_id?: string;
   title: string;
   description: string;
   time_limit: number | null;
@@ -44,8 +45,10 @@ interface Quiz {
 export const QuizDetail: React.FC = () => {
   const { t } = useTranslation();
   const { id: quizId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isDuplicatingQuiz, setIsDuplicatingQuiz] = useState(false);
   const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
@@ -57,6 +60,7 @@ export const QuizDetail: React.FC = () => {
       const response = await apiClient.get<{
         id: string;
         courseId: string;
+        moduleId?: string;
         title: string;
         description?: string;
         timeLimit?: number | null;
@@ -86,6 +90,7 @@ export const QuizDetail: React.FC = () => {
       const mapped: Quiz = {
         id: response.data.id,
         course: response.data.courseId,
+        module_id: response.data.moduleId,
         title: response.data.title,
         description: response.data.description || '',
         time_limit: response.data.timeLimit ?? null,
@@ -170,13 +175,35 @@ export const QuizDetail: React.FC = () => {
     }
   };
 
+  const handleDuplicateQuiz = async () => {
+    if (!quizId || !quiz) return;
+    setIsDuplicatingQuiz(true);
+    try {
+      const response = await apiClient.post<{ id: string }>(`/assessments/quizzes/${quizId}/duplicate`, {
+        targetCourseId: quiz.course,
+        targetModuleId: quiz.module_id,
+      });
+      const duplicatedQuizId = String(response.data.id);
+      navigate(`/quiz/${duplicatedQuizId}`);
+    } catch (error) {
+      console.error('Failed to duplicate quiz:', error);
+      window.alert(t('quiz.duplicateFailed', 'Failed to duplicate quiz.'));
+    } finally {
+      setIsDuplicatingQuiz(false);
+    }
+  };
+
   const getQuestionTypeLabel = (type: string) => {
     const types: Record<string, string> = {
+      'SINGLE_CHOICE': t('question.types.singleChoice', 'Single Choice'),
       'MULTIPLE_CHOICE': t('question.types.multipleChoice'),
+      'MULTIPLE_RESPONSE': t('question.types.multipleResponse', 'Multiple Response'),
       'TRUE_FALSE': t('question.types.trueFalse'),
       'FILL_BLANK': t('question.types.fillBlank'),
       'MATCHING': t('question.types.matching'),
       'NUMERICAL': t('question.types.numerical'),
+      'NUMERIC': t('question.types.numeric', 'Numeric'),
+      'ORDERING': t('question.types.ordering', 'Ordering'),
       'FORMULA': t('question.types.formula'),
       'SHORT_ANSWER': t('question.types.shortAnswer'),
       'ESSAY': t('question.types.essay'),
@@ -199,12 +226,21 @@ export const QuizDetail: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           {/* Quiz Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
-              {quiz.title}
-            </h1>
-            <p className="mt-2" style={{ color: 'var(--text-muted)' }}>
-              {quiz.description}
-            </p>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
+                  {quiz.title}
+                </h1>
+                <p className="mt-2" style={{ color: 'var(--text-muted)' }}>
+                  {quiz.description}
+                </p>
+              </div>
+              <Button onClick={handleDuplicateQuiz} disabled={isDuplicatingQuiz}>
+                {isDuplicatingQuiz
+                  ? t('common.processing', 'Processing...')
+                  : t('quiz.duplicateQuiz', 'Duplicate Quiz')}
+              </Button>
+            </div>
           </div>
 
           {/* Quiz Statistics */}

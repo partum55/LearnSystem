@@ -64,6 +64,8 @@ Please include:
      'You are an expert assessment designer. Create educational quizzes that effectively test understanding and promote learning. Include clear questions with unambiguous correct answers.',
      'Create a quiz about: {{topic}}
 
+Module context: {{moduleContext}}
+
 Number of questions: {{questionCount}}
 Question types: {{questionTypes}}
 Difficulty: {{difficulty}}
@@ -72,7 +74,9 @@ For each question, provide:
 - Question text
 - Answer options (for multiple choice)
 - Correct answer
-- Brief explanation',
+- Brief explanation
+
+The generated quiz must be suitable for placement inside the provided module context.',
      'assessment', 0.5, 4000),
 
     (gen_random_uuid()::text, 'explanation.generation.default', 'Default explanation generation prompt',
@@ -88,4 +92,3 @@ Please provide:
 3. Common misconceptions to avoid',
      'content', 0.3, 2000)
 ON CONFLICT (name) DO NOTHING;
-

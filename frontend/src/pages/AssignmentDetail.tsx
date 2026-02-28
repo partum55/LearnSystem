@@ -1,18 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
 import api from '../api/client';
 import { Layout } from '../components';
+import { CourseLayout } from '../components/CourseLayout';
 import { Card, CardHeader, CardBody } from '../components';
 import { Button } from '../components';
 import { Loading } from '../components';
+import { ChevronRightIcon } from '@heroicons/react/24/outline';
+import { BlockEditor, parseCanonicalDocument } from '../features/editor-core';
 
 interface Assignment {
   id: string;
   course: string;
   title: string;
   description: string;
+  description_format: string;
+  instructions: string;
+  instructions_format: string;
   due_date: string;
   available_from: string | null;
   max_points: number;
@@ -38,7 +44,10 @@ interface Submission {
 
 export const AssignmentDetail: React.FC = () => {
   const { t } = useTranslation();
-  const { id: assignmentId } = useParams<{ id: string }>();
+  const params = useParams<{ id?: string; assignmentId?: string; courseId?: string; moduleId?: string }>();
+  const assignmentId = params.assignmentId || params.id;
+  const courseId = params.courseId;
+  const moduleId = params.moduleId;
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [assignment, setAssignment] = useState<Assignment | null>(null);
@@ -46,15 +55,42 @@ export const AssignmentDetail: React.FC = () => {
   const [mySubmission, setMySubmission] = useState<Submission | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'details' | 'submissions'>('details');
+  const [courseName, setCourseName] = useState<string>('');
+  const [moduleName, setModuleName] = useState<string>('');
 
   const isStudent = user?.role === 'STUDENT';
   const isTeacher = user?.role === 'TEACHER' || user?.role === 'SUPERADMIN' || user?.role === 'TA';
+
+  // Build base path for assignment navigation
+  const assignmentBasePath = courseId && moduleId
+    ? `/courses/${courseId}/modules/${moduleId}/assignments/${assignmentId}`
+    : `/assignments/${assignmentId}`;
 
   useEffect(() => {
     fetchAssignment();
     fetchSubmissions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignmentId]);
+
+  // Fetch course and module names for breadcrumb context
+  useEffect(() => {
+    if (courseId) {
+      api.get<Record<string, unknown>>(`/courses/${courseId}`)
+        .then(res => {
+          const d = res.data;
+          setCourseName(String(d.titleEn || d.titleUk || d.title || d.code || ''));
+        })
+        .catch(() => { /* ignore */ });
+    }
+    if (courseId && moduleId) {
+      api.get<Record<string, unknown>>(`/courses/${courseId}/modules/${moduleId}`)
+        .then(res => {
+          const d = res.data;
+          setModuleName(String(d.title || ''));
+        })
+        .catch(() => { /* ignore */ });
+    }
+  }, [courseId, moduleId]);
 
   const fetchAssignment = async () => {
     try {
@@ -65,6 +101,9 @@ export const AssignmentDetail: React.FC = () => {
         course: String(data.courseId || data.course || ''),
         title: String(data.title || ''),
         description: String(data.description || ''),
+        description_format: String(data.descriptionFormat || data.description_format || 'MARKDOWN'),
+        instructions: String(data.instructions || ''),
+        instructions_format: String(data.instructionsFormat || data.instructions_format || 'MARKDOWN'),
         due_date: String(data.dueDate || ''),
         available_from: (data.availableFrom as string | null) || null,
         max_points: Number(data.maxPoints || 0),
@@ -102,7 +141,7 @@ export const AssignmentDetail: React.FC = () => {
   };
 
   const handleSubmitAssignment = () => {
-    navigate(`/assignments/${assignmentId}/submit`);
+    navigate(`${assignmentBasePath}/submit`);
   };
 
   const openVirtualLab = () => {
@@ -130,13 +169,83 @@ export const AssignmentDetail: React.FC = () => {
   }
 
   if (!assignment) {
-    return <div>Assignment not found</div>;
+    return (
+      <Layout>
+        <div className="p-4 sm:p-6 lg:p-8">
+          <div className="max-w-7xl mx-auto text-center py-16">
+            <p className="text-lg" style={{ color: 'var(--text-muted)' }}>
+              {t('assignment.not_found', 'Assignment not found')}
+            </p>
+            {courseId && (
+              <Button
+                variant="secondary"
+                className="mt-4"
+                onClick={() => navigate(`/courses/${courseId}`)}
+              >
+                {t('courses.backToCourse', 'Back to Course')}
+              </Button>
+            )}
+          </div>
+        </div>
+      </Layout>
+    );
   }
 
+  const Wrapper = courseId ? ({ children }: { children: React.ReactNode }) => <CourseLayout courseId={courseId}>{children}</CourseLayout> : Layout;
+
+  const renderContent = (content: string, format: string) => {
+    if (format === 'RICH') {
+      return <BlockEditor value={parseCanonicalDocument(content)} onChange={() => undefined} readOnly mode="full" />;
+    }
+    return <p style={{ color: 'var(--text-muted)' }}>{content}</p>;
+  };
+
   return (
-    <Layout>
+    <Wrapper>
       <div className="p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
+          {/* Breadcrumb: Course > Module > Assignment */}
+          {courseId && (
+            <nav className="flex items-center text-sm mb-6 flex-wrap gap-y-1" style={{ color: 'var(--text-muted)' }}>
+              <Link
+                to="/courses"
+                className="transition-colors hover:underline"
+                style={{ color: 'var(--text-muted)' }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+              >
+                {t('nav.courses', 'Courses')}
+              </Link>
+              <ChevronRightIcon className="h-3.5 w-3.5 mx-1.5 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
+              <Link
+                to={`/courses/${courseId}`}
+                className="transition-colors hover:underline"
+                style={{ color: 'var(--text-muted)' }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+              >
+                {courseName || t('courses.course', 'Course')}
+              </Link>
+              {moduleId && moduleName && (
+                <>
+                  <ChevronRightIcon className="h-3.5 w-3.5 mx-1.5 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
+                  <Link
+                    to={`/courses/${courseId}`}
+                    className="transition-colors hover:underline"
+                    style={{ color: 'var(--text-muted)' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+                  >
+                    {moduleName}
+                  </Link>
+                </>
+              )}
+              <ChevronRightIcon className="h-3.5 w-3.5 mx-1.5 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
+              <span style={{ color: 'var(--text-primary)' }}>
+                {assignment.title}
+              </span>
+            </nav>
+          )}
           {/* Assignment Header */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
@@ -284,8 +393,15 @@ export const AssignmentDetail: React.FC = () => {
                 <div className="space-y-4">
                   <div>
                     <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Description</h3>
-                    <p style={{ color: 'var(--text-muted)' }}>{assignment.description}</p>
+                    {renderContent(assignment.description, assignment.description_format)}
                   </div>
+
+                  {assignment.instructions && (
+                    <div>
+                      <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Instructions</h3>
+                      {renderContent(assignment.instructions, assignment.instructions_format)}
+                    </div>
+                  )}
 
                   <div>
                     <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Submission Types</h3>
@@ -412,7 +528,7 @@ export const AssignmentDetail: React.FC = () => {
           )}
         </div>
       </div>
-    </Layout>
+    </Wrapper>
   );
 };
 

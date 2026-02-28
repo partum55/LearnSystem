@@ -12,6 +12,7 @@ import {
   Loading,
   AICourseGenerator,
 } from '../components';
+import { StaggeredList, StaggeredItem } from '../components/animation';
 import { useCourseStore } from '../store/courseStore';
 import { useAuthStore } from '../store/authStore';
 import { getAccessToken } from '../api/token';
@@ -25,6 +26,7 @@ export const CourseList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterVisibility, setFilterVisibility] = useState<string>('all');
   const [showAIGenerator, setShowAIGenerator] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     fetchCourses();
@@ -46,11 +48,11 @@ export const CourseList: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-8">
+    <div className="h-screen flex flex-col overflow-hidden" style={{ background: 'var(--bg-base)' }}>
+      <Header onMenuClick={() => setSidebarOpen(true)} />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="flex justify-between items-center mb-8">
@@ -127,9 +129,10 @@ export const CourseList: React.FC = () => {
                 </CardBody>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <StaggeredList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredCourses.map((course: Course) => (
-                  <Link key={course.id} to={`/courses/${course.id}`}>
+                  <StaggeredItem key={course.id}>
+                  <Link to={`/courses/${course.id}`}>
                     <Card hoverable className="h-full">
                       <CardHeader>
                         <div className="flex justify-between items-start">
@@ -201,8 +204,9 @@ export const CourseList: React.FC = () => {
                       </CardBody>
                     </Card>
                   </Link>
+                  </StaggeredItem>
                 ))}
-              </div>
+              </StaggeredList>
             )}
           </div>
         </main>

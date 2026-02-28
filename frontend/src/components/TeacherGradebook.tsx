@@ -110,10 +110,31 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
     setLoading(true);
     setError(null);
     try {
-      const [entriesResponse, courseResponse] = await Promise.all([
+      const [entriesResponse, courseResponse, modulesResponse, assignmentsResponse] = await Promise.all([
         apiClient.get<ApiGradebookEntry[]>(`/gradebook/entries/course/${courseId}`),
         apiClient.get<{ code?: string; title?: string; titleUk?: string; titleEn?: string }>(`/courses/${courseId}`),
+        apiClient.get<{ id: string; title: string; position?: number }[]>(`/courses/${courseId}/modules`),
+        apiClient.get<{ content?: { id: string; moduleId?: string; module_id?: string }[] }>(
+          `/assessments/assignments/course/${courseId}`
+        ),
       ]);
+
+      // Build assignment → module mapping from assessments API
+      const rawAssignments: { id: string; moduleId?: string; module_id?: string }[] = Array.isArray(assignmentsResponse.data)
+        ? assignmentsResponse.data
+        : (assignmentsResponse.data as { content?: { id: string; moduleId?: string; module_id?: string }[] })?.content || [];
+      const assignmentModuleMap = new Map<string, string>();
+      rawAssignments.forEach((a: { id: string; moduleId?: string; module_id?: string }) => {
+        const modId = a.moduleId || a.module_id;
+        if (modId) assignmentModuleMap.set(a.id, String(modId));
+      });
+
+      // Build module info map
+      const rawModules = Array.isArray(modulesResponse.data) ? modulesResponse.data : [];
+      const moduleInfoMap = new Map<string, { title: string; position: number }>();
+      rawModules.forEach((m: { id: string; title: string; position?: number }, idx: number) => {
+        moduleInfoMap.set(m.id, { title: m.title, position: m.position ?? idx });
+      });
 
       const entries = entriesResponse.data || [];
       const assignmentMap = new Map<string, Assignment>();
@@ -121,10 +142,14 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
 
       entries.forEach((entry) => {
         if (!assignmentMap.has(entry.assignmentId)) {
+          const moduleId = assignmentModuleMap.get(entry.assignmentId);
+          const moduleInfo = moduleId ? moduleInfoMap.get(moduleId) : undefined;
           assignmentMap.set(entry.assignmentId, {
             id: entry.assignmentId,
             title: entry.assignmentTitle || 'Untitled assignment',
             max_points: Number(entry.maxScore || 0),
+            module_id: moduleId,
+            module_title: moduleInfo?.title,
           });
         }
 

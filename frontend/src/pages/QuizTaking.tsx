@@ -10,6 +10,7 @@ import { QuizTakingNavigation } from './quiz-taking/QuizTakingNavigation';
 import { QuizTakingProgress } from './quiz-taking/QuizTakingProgress';
 import { QuizTakingStatusHeader } from './quiz-taking/QuizTakingStatusHeader';
 import {
+  ApiAttemptQuestion,
   ApiQuiz,
   ApiQuizAttempt,
   Quiz,
@@ -17,7 +18,8 @@ import {
   StudentAnswer,
   buildQuizSubmitPayload,
   mapAttemptAnswersFromApi,
-  mapQuiz,
+  mapAttemptQuestions,
+  mapQuizMeta,
 } from './quiz-taking/quizTakingModel';
 
 export const QuizTaking: React.FC = () => {
@@ -125,11 +127,15 @@ export const QuizTaking: React.FC = () => {
     const saveInterval = setInterval(() => {
       setIsSaving(true);
       saveAnswersToStorage(answers);
-      setTimeout(() => setIsSaving(false), 500);
+      void apiClient.post(`/assessments/quiz-attempts/${attempt.id}/save`, buildQuizSubmitPayload(quiz?.questions || [], answers))
+        .catch(() => undefined)
+        .finally(() => {
+          setTimeout(() => setIsSaving(false), 500);
+        });
     }, 30000);
 
     return () => clearInterval(saveInterval);
-  }, [answers, attempt, saveAnswersToStorage]);
+  }, [answers, attempt, quiz?.questions, saveAnswersToStorage]);
 
   useEffect(() => {
     if (!attempt?.id) {
@@ -150,7 +156,7 @@ export const QuizTaking: React.FC = () => {
     setLoading(true);
     try {
       const quizResponse = await apiClient.get<ApiQuiz>(`/assessments/quizzes/${quizId}`);
-      let quizData = mapQuiz(quizResponse.data);
+      const quizData = mapQuizMeta(quizResponse.data);
 
       const inProgressResponse = await apiClient.get<ApiQuizAttempt>(
         `/assessments/quiz-attempts/quiz/${quizId}/user/in-progress`,
@@ -169,14 +175,19 @@ export const QuizTaking: React.FC = () => {
         attemptData = startedAttempt.data;
       }
 
-      if (quizData.shuffle_questions) {
-        quizData = {
-          ...quizData,
-          questions: [...quizData.questions].sort(() => Math.random() - 0.5),
-        };
-      }
+      const attemptQuestionsResponse = await apiClient.get<ApiAttemptQuestion[]>(
+        `/assessments/quiz-attempts/${attemptData.id}/questions`
+      );
+      const mappedAttemptQuestions = mapAttemptQuestions(
+        Array.isArray(attemptQuestionsResponse.data) ? attemptQuestionsResponse.data : []
+      );
 
-      setQuiz(quizData);
+      const completeQuiz: Quiz = {
+        ...quizData,
+        questions: mappedAttemptQuestions,
+      };
+
+      setQuiz(completeQuiz);
       setAttempt({
         id: attemptData.id,
         attempt_number: attemptData.attemptNumber,
@@ -184,11 +195,11 @@ export const QuizTaking: React.FC = () => {
         answers: {},
       });
 
-      if (quizData.time_limit) {
-        setTimeRemaining(quizData.time_limit * 60);
+      if (completeQuiz.time_limit) {
+        setTimeRemaining(completeQuiz.time_limit * 60);
       }
 
-      const restoredAnswers = mapAttemptAnswersFromApi(quizData, attemptData.answers);
+      const restoredAnswers = mapAttemptAnswersFromApi(completeQuiz, attemptData.answers);
       if (Object.keys(restoredAnswers).length > 0) {
         setAnswers(restoredAnswers);
       }
@@ -250,7 +261,7 @@ export const QuizTaking: React.FC = () => {
       hasPlayedWarningRef.current = true;
       try {
         audioRef.current = new Audio(
-          'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JjYuGfnV1e4OKjYyHf3Z0eYKKjYyIgHh2eoOKjYyJgXl3e4OLjYyJgXl4e4OLjYyJgXl4e4OLjIyJgHl4eoKLjIyJgHl4eoKLjIyKgHl4eoKLjIyKgHp5eoKLjIyKgHp5eoKKjIyKgHp5eoKKjIyKgHp5eoKKjIyKgHp5eoKKi4uKf3p5eoKKi4uKf3p5eoKKi4uKf3p5eoGKi4uKf3p5eoGKi4uKf3p5eoGKi4uKf3p5eoGKi4uKf3p5eoGKi4uKf3p5eoGKioqKf3p5eoGKioqKf3p5eoGKioqKf3p5eoGKioqKf3p5eYGKioqKfnp5eYGKioqKfnp5eYGKioqKfnp5eYGKioqKfnp5eYGKioqKfnp5eYCKioqKfnp5eYCJioqJfnp5eYCJioqJfnp5eYCJioqJfnp4eYCJioqJfXp4eYCJioqJfXp4eICJioqJfXp4eICJioqJfXp4eICJioqJfXp4eICJiomJfXp4d4CJiomJfXl4d4CJiomJfXl4d4CJiomIfXl4d4CJiomIfXl3d4CJiomIfXl3d3+JiomIfXl3d3+JiomIfXl3d3+JiYmIfXl3d3+JiYmIfXl3d3+JiYmIfXl3dn+JiYmIfHl3dn+JiYmIfHl2dn+JiYmHfHl2dn+IiYmHfHl2dn+IiYmHfHh2dn+IiYmHfHh2dn+IiYiHfHh2dn6IiYiHe3h2dn6IiYiHe3h2dn6IiYiHe3h1dn6IiYiHe3h1dn6IiIiHe3h1dX6IiIiHe3h1dX6IiIiGe3h1dX6IiIiGe3h1dX6IiIiGe3d1dX6IiIiGend1dX2HiIiGend1dX2HiIiFend0dX2HiIiFend0dX2HiIiFend0dH2HiIiFend0dH2HiIiFend0dH2Hh4iFend0dH2Hh4iFend0dH2Hh4iEendzdH2Hh4iEeXdzdH2Gh4iEeXdzdHyGh4iEeXdzdHyGh4iEeXdzdHyGh4eDOA=='
+          'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JjYuGfnV1e4OKjYyHf3Z0eYKKjYyIgHh2eoOKjYyJgXl3e4OLjYyJgXl4e4OLjYyJgXl4e4OLjIyJgHl4eoKLjIyJgHl4eoKLjIyKgHl4eoKLjIyKgHp5eoKLjIyKgHp5eoKKjIyKgHp5eoKKjIyKgHp5eoKKjIyKgHp5eoKKi4uKf3p5eoKKi4uKf3p5eoKKi4uKf3p5eoGKi4uKf3p5eoGKi4uKf3p5eoGKi4uKf3p5eoGKi4uKf3p5eoGKi4uKf3p5eoGKioqKf3p5eoGKioqKf3p5eoGKioqKf3p5eoGKioqKf3p5eYGKioqKfnp5eYGKioqKfnp5eYGKioqKfnp5eYGKioqKfnp5eYGKioqKfnp5eYCKioqKfnp5eYCJioqJfnp5eYCJioqJfnp5eYCJioqJfnp4eYCJioqJfXp4eYCJioqJfXp4eICJioqJfXp4eICJioqJfXp4eICJioqJfXp4eICJiomJfXp4d4CJiomJfXl4d4CJiomJfXl4d4CJiomIfXl4d4CJiomIfXl3d4CJiomIfXl3d3+JiomIfXl3d3+JiYmIfXl3d3+JiYmIfXl3d3+JiYmIfXl3dn+JiYmIfHl3dn+JiYmIfHl2dn+JiYmHfHl2dn+IiYmHfHl2dn+IiYmHfHh2dn+IiYmHfHh2dn+IiYiHfHh2dn6IiYiHe3h2dn6IiYiHe3h2dn6IiYiHe3h1dn6IiYiHe3h1dn6IiIiHe3h1dX6IiIiHe3h1dX6IiIiGe3h1dX6IiIiGe3h1dX6IiIiGe3d1dX6IiIiGend1dX2HiIiGend1dX2HiIiFend0dX2HiIiFend0dX2HiIiFend0dH2HiIiFend0dH2HiIiFend0dH2Hh4iFend0dH2Hh4iFend0dH2Hh4iEendzdH2Hh4iEeXdzdH2Gh4iEeXdzdHyGh4iEeXdzdHyGh4iEeXdzdHyGh4eDOA=='
         );
         void audioRef.current.play().catch(() => undefined);
       } catch {
@@ -342,12 +353,18 @@ export const QuizTaking: React.FC = () => {
 
           <Card className="mb-6">
             <CardBody>
-              <QuizQuestionContent
-                question={currentQuestion.question}
-                currentAnswer={answers[currentQuestion.question.id]}
-                onAnswerChange={handleAnswerChange}
-                t={t}
-              />
+              {currentQuestion ? (
+                <QuizQuestionContent
+                  question={currentQuestion.question}
+                  currentAnswer={answers[currentQuestion.id]}
+                  onAnswerChange={handleAnswerChange}
+                  t={t}
+                />
+              ) : (
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                  {t('quiz.noQuestions', 'No questions available for this attempt.')}
+                </p>
+              )}
             </CardBody>
           </Card>
 
@@ -358,12 +375,12 @@ export const QuizTaking: React.FC = () => {
             submitting={submitting}
             onPrevious={() => setCurrentQuestionIndex((previous) => Math.max(0, previous - 1))}
             onNext={() =>
-              setCurrentQuestionIndex((previous) => Math.min(quiz.questions.length - 1, previous + 1))
+              setCurrentQuestionIndex((previous) =>
+                Math.min(quiz.questions.length - 1, previous + 1)
+              )
             }
             onJumpToQuestion={setCurrentQuestionIndex}
-            onSubmit={() => {
-              void handleSubmit();
-            }}
+            onSubmit={() => void handleSubmit()}
             t={t}
           />
         </div>

@@ -1,0 +1,218 @@
+{
+  "version": "1.0",
+  "course": {
+    "code": "TEST-101",
+    "titleUk": "Тестовий курс",
+    "titleEn": "Test Course",
+    "descriptionUk": "Простий курс для тестування імпорту",
+    "descriptionEn": "Simple course for testing import functionality",
+    "visibility": "PUBLIC",
+    "maxStudents": 50,
+    "isPublished": true
+  },
+  "modules": [
+    {
+      "title": "Module 1 — Introduction",
+      "description": "Welcome module with basic resources",
+      "position": 1,
+      "isPublished": true,
+      "resources": [
+        {
+          "title": "Welcome Note",
+          "description": "Read this first — an overview of the course with examples of math, code, and formatting",
+          "resourceType": "TEXT",
+          "textContent": "# Welcome to the Test Course\n\nWelcome, everyone! This course is designed to introduce the **fundamentals of Computer Science** and build your practical skills step-by-step.\n\n> *\"The only way to learn a new programming language is by writing programs in it.\"*\n> — Dennis Ritchie\n\n---\n\n## Course Overview\n\nThroughout this course you'll explore:\n\n- **Module 1** — Introduction & mathematical foundations\n- **Module 2** — Programming basics with Python\n- **Module 3** — Data structures & algorithms\n- **Module 4** — Final project\n\n---\n\n## Mathematical Foundations\n\nA solid grasp of math helps you understand algorithms. Here are some key formulas you'll encounter.\n\n### Quadratic Formula\n\nFor any equation $ax^2 + bx + c = 0$, the roots are:\n\n$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$\n\n### Euler's Identity\n\nOften called the most beautiful equation in mathematics:\n\n$$e^{i\\pi} + 1 = 0$$\n\n### Big-O Notation\n\nWe measure algorithmic complexity using Big-O. Common classes:\n\n| Complexity | Name | Example |\n|---|---|---|\n| $O(1)$ | Constant | Hash table lookup |\n| $O(\\log n)$ | Logarithmic | Binary search |\n| $O(n)$ | Linear | Linear search |\n| $O(n \\log n)$ | Linearithmic | Merge sort |\n| $O(n^2)$ | Quadratic | Bubble sort |\n| $O(2^n)$ | Exponential | Brute-force subsets |\n\n### Summation Formulas\n\nThe sum of the first $n$ natural numbers:\n\n$$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$\n\nThe geometric series:\n\n$$\\sum_{i=0}^{n} r^i = \\frac{1 - r^{n+1}}{1 - r}, \\quad r \\neq 1$$\n\n---\n\n## A Taste of Code\n\nHere's your first Python program — the classic *Hello World*:\n\n```python\nprint(\"Hello, World!\")\n```\n\nAnd a slightly more advanced snippet — computing the Fibonacci sequence:\n\n```python\ndef fibonacci(n: int) -> list[int]:\n    \"\"\"Return the first n Fibonacci numbers.\"\"\"\n    fib = [0, 1]\n    for i in range(2, n):\n        fib.append(fib[i - 1] + fib[i - 2])\n    return fib[:n]\n\nprint(fibonacci(10))\n# Output: [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]\n```\n\nYou can also write inline code like `print()` or `len()` right in the text.\n\n---\n\n## Matrices & Linear Algebra\n\nMatrix multiplication is fundamental in machine learning. Given two matrices $A$ and $B$:\n\n$$C_{ij} = \\sum_{k=1}^{n} A_{ik} \\cdot B_{kj}$$\n\nThe determinant of a $2 \\times 2$ matrix:\n\n$$\\det \\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix} = ad - bc$$\n\n---\n\n## What You'll Need\n\n1. A laptop with **Python 3.10+** installed\n2. A code editor (we recommend [VS Code](https://code.visualstudio.com))\n3. Curiosity and willingness to experiment!\n\n> **Tip:** Don't worry if the math looks intimidating at first. We'll build up from simple examples and you'll be comfortable with these formulas by the end of the course.\n\n---\n\n## Grading Breakdown\n\n| Component | Weight |\n|---|---|\n| Assignments | 40% |\n| Quizzes | 20% |\n| Midterm Project | 15% |\n| Final Project | 25% |\n\nGood luck and enjoy the journey! 🚀",
+          "position": 1
+        },
+        {
+          "title": "Course Overview Video",
+          "resourceType": "LINK",
+          "externalUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "position": 2
+        }
+      ],
+      "assignments": [
+        {
+          "assignmentType": "FILE_UPLOAD",
+          "title": "Intro Assignment — Upload Your Bio",
+          "description": "Upload a short bio document (PDF or DOCX)",
+          "maxPoints": 10,
+          "allowedFileTypes": ["pdf", "docx"],
+          "maxFiles": 1,
+          "maxFileSize": 5242880,
+          "tags": ["intro", "easy"],
+          "estimatedDuration": 15,
+          "isPublished": true
+        }
+      ]
+    },
+    {
+      "title": "Module 2 — Programming Basics",
+      "description": "Hands-on coding exercises",
+      "position": 2,
+      "isPublished": true,
+      "resources": [
+        {
+          "title": "Python Cheat Sheet",
+          "description": "Comprehensive reference for Python syntax, data structures, and algorithms",
+          "resourceType": "TEXT",
+          "textContent": "# Python Cheat Sheet\n\nA quick-reference guide covering the essentials of Python programming.\n\n---\n\n## 1. Variables & Data Types\n\n```python\n# Numbers\nage: int = 25\npi: float = 3.14159\ncomplex_num: complex = 3 + 4j\n\n# Strings\nname: str = \"Alice\"\nmultiline = \"\"\"This is\na multiline string\"\"\"\n\n# Boolean\nis_active: bool = True\n```\n\n> **Note:** Python uses *dynamic typing*, but you can add **type hints** (as shown above) for better readability and IDE support.\n\n---\n\n## 2. Control Flow\n\n```python\n# Conditional statements\ndef classify_grade(score: float) -> str:\n    if score >= 90:\n        return \"A\"\n    elif score >= 80:\n        return \"B\"\n    elif score >= 70:\n        return \"C\"\n    else:\n        return \"F\"\n\n# For loop with enumerate\nfruits = [\"apple\", \"banana\", \"cherry\"]\nfor index, fruit in enumerate(fruits):\n    print(f\"{index}: {fruit}\")\n\n# While loop\ncount = 0\nwhile count < 5:\n    count += 1\n\n# List comprehension\nsquares = [x**2 for x in range(10)]\n# [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]\n```\n\n---\n\n## 3. Data Structures\n\n| Structure | Ordered | Mutable | Duplicates | Syntax |\n|---|---|---|---|---|\n| `list` | ✅ | ✅ | ✅ | `[1, 2, 3]` |\n| `tuple` | ✅ | ❌ | ✅ | `(1, 2, 3)` |\n| `set` | ❌ | ✅ | ❌ | `{1, 2, 3}` |\n| `dict` | ✅ | ✅ | Keys: ❌ | `{\"a\": 1}` |\n\n### Dictionary operations\n\n```python\nstudent = {\n    \"name\": \"Bob\",\n    \"grade\": 85,\n    \"courses\": [\"Math\", \"CS\"]\n}\n\n# Access with default\ngrade = student.get(\"grade\", 0)\n\n# Dictionary comprehension\nsquare_map = {n: n**2 for n in range(6)}\n# {0: 0, 1: 1, 2: 4, 3: 9, 4: 16, 5: 25}\n```\n\n---\n\n## 4. Functions & Decorators\n\n```python\nfrom functools import lru_cache\nimport time\n\ndef timer(func):\n    \"\"\"Decorator that measures execution time.\"\"\"\n    def wrapper(*args, **kwargs):\n        start = time.perf_counter()\n        result = func(*args, **kwargs)\n        elapsed = time.perf_counter() - start\n        print(f\"{func.__name__} took {elapsed:.4f}s\")\n        return result\n    return wrapper\n\n@timer\n@lru_cache(maxsize=128)\ndef fibonacci(n: int) -> int:\n    \"\"\"Compute nth Fibonacci number recursively with memoization.\"\"\"\n    if n < 2:\n        return n\n    return fibonacci(n - 1) + fibonacci(n - 2)\n\nprint(fibonacci(40))  # 102334155\n```\n\n---\n\n## 5. Algorithm Complexity\n\nWhen analyzing algorithms, we care about how runtime grows with input size $n$.\n\n### Common time complexities:\n\n- **Constant** $O(1)$ — accessing an array element\n- **Logarithmic** $O(\\log n)$ — binary search halves the input\n- **Linear** $O(n)$ — scanning every element once\n- **Quadratic** $O(n^2)$ — nested loops over the same data\n\n### Binary Search\n\nBinary search finds an element in a sorted array in $O(\\log_2 n)$ time:\n\n```python\ndef binary_search(arr: list[int], target: int) -> int:\n    lo, hi = 0, len(arr) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1  # not found\n```\n\nFor an array of $n = 1{,}000{,}000$ elements, binary search needs at most:\n\n$$\\lceil \\log_2(1{,}000{,}000) \\rceil = 20 \\text{ comparisons}$$\n\n---\n\n## 6. Sorting Algorithms\n\n### Quick Sort\n\nAverage case: $O(n \\log n)$, worst case: $O(n^2)$\n\n```python\ndef quicksort(arr: list[int]) -> list[int]:\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[len(arr) // 2]\n    left = [x for x in arr if x < pivot]\n    middle = [x for x in arr if x == pivot]\n    right = [x for x in arr if x > pivot]\n    return quicksort(left) + middle + quicksort(right)\n\nprint(quicksort([3, 6, 8, 10, 1, 2, 1]))\n# [1, 1, 2, 3, 6, 8, 10]\n```\n\n### Comparison of sorting algorithms\n\n| Algorithm | Best | Average | Worst | Space |\n|---|---|---|---|---|\n| Bubble Sort | $O(n)$ | $O(n^2)$ | $O(n^2)$ | $O(1)$ |\n| Merge Sort | $O(n \\log n)$ | $O(n \\log n)$ | $O(n \\log n)$ | $O(n)$ |\n| Quick Sort | $O(n \\log n)$ | $O(n \\log n)$ | $O(n^2)$ | $O(\\log n)$ |\n| Tim Sort | $O(n)$ | $O(n \\log n)$ | $O(n \\log n)$ | $O(n)$ |\n\n---\n\n## 7. Useful One-Liners\n\n```python\n# Swap variables\na, b = b, a\n\n# Flatten a 2D list\nflat = [item for row in matrix for item in row]\n\n# Count occurrences\nfrom collections import Counter\ncounts = Counter([\"a\", \"b\", \"a\", \"c\", \"a\"])\n# Counter({'a': 3, 'b': 1, 'c': 1})\n\n# Read a file\nlines = open(\"data.txt\").read().splitlines()\n```\n\n> **Remember:** Python's built-in `sorted()` uses **TimSort** — a hybrid of merge sort and insertion sort with $O(n \\log n)$ guaranteed performance.\n\nHappy coding! 🐍",
+          "position": 1
+        }
+      ],
+      "assignments": [
+        {
+          "assignmentType": "CODE",
+          "title": "FizzBuzz Challenge",
+          "description": "Implement the classic FizzBuzz problem",
+          "instructions": "Write a function fizzbuzz(n) that returns 'Fizz' for multiples of 3, 'Buzz' for multiples of 5, 'FizzBuzz' for both, and the number as string otherwise.",
+          "maxPoints": 25,
+          "programmingLanguage": "python",
+          "starterCode": "def fizzbuzz(n):\n    # Your code here\n    pass\n",
+          "autoGradingEnabled": true,
+          "testCases": [
+            {"input": "3", "expectedOutput": "Fizz"},
+            {"input": "5", "expectedOutput": "Buzz"},
+            {"input": "15", "expectedOutput": "FizzBuzz"},
+            {"input": "7", "expectedOutput": "7"}
+          ],
+          "tags": ["python", "logic"],
+          "estimatedDuration": 30,
+          "isPublished": true
+        }
+      ]
+    }
+  ],
+  "standaloneAssignments": [
+    {
+      "assignmentType": "TEXT",
+      "title": "Final Essay — What I Learned",
+      "description": "Write a 500-word essay summarizing what you learned in this course.",
+      "maxPoints": 50,
+      "submissionTypes": ["text"],
+      "allowLateSubmission": true,
+      "latePenaltyPercent": 10,
+      "tags": ["essay", "final"],
+      "estimatedDuration": 60,
+      "isPublished": false
+    }
+  ],
+  "quizzes": [
+    {
+      "title": "Module 1 Quiz",
+      "description": "Quick quiz covering the introduction material",
+      "timeLimit": 15,
+      "attemptsAllowed": 2,
+      "shuffleQuestions": true,
+      "shuffleAnswers": true,
+      "passPercentage": 60,
+      "showCorrectAnswers": true
+    }
+  ],
+  "questionBank": [
+    {
+      "questionType": "MULTIPLE_CHOICE",
+      "stem": "What is the capital of Ukraine?",
+      "options": {
+        "A": "Lviv",
+        "B": "Kyiv",
+        "C": "Odesa",
+        "D": "Kharkiv"
+      },
+      "correctAnswer": {
+        "answer": "B"
+      },
+      "explanation": "Kyiv is the capital and largest city of Ukraine.",
+      "points": 5
+    },
+    {
+      "questionType": "TRUE_FALSE",
+      "stem": "Python is an interpreted programming language.",
+      "options": {
+        "A": "True",
+        "B": "False"
+      },
+      "correctAnswer": {
+        "answer": "A"
+      },
+      "explanation": "Python is indeed an interpreted, high-level language.",
+      "points": 3
+    },
+    {
+      "questionType": "SHORT_ANSWER",
+      "stem": "What keyword is used to define a function in Python?",
+      "options": {},
+      "correctAnswer": {
+        "answer": "def"
+      },
+      "explanation": "The 'def' keyword is used to define functions in Python.",
+      "points": 5
+    },
+    {
+      "questionType": "MULTIPLE_CHOICE",
+      "stem": "Which of the following are valid Python data types? (Select all that apply)",
+      "options": {
+        "A": "int",
+        "B": "float",
+        "C": "varchar",
+        "D": "list",
+        "E": "tuple"
+      },
+      "correctAnswer": {
+        "answers": ["A", "B", "D", "E"]
+      },
+      "explanation": "int, float, list, and tuple are built-in Python types. 'varchar' is a SQL type.",
+      "points": 8
+    },
+    {
+      "questionType": "ESSAY",
+      "stem": "Explain the difference between a list and a tuple in Python. When would you use each?",
+      "options": {},
+      "correctAnswer": {
+        "rubric": "Should mention: mutability (lists mutable, tuples immutable), syntax differences, performance, use cases"
+      },
+      "explanation": "Lists are mutable and tuples are immutable. Tuples are faster and can be used as dictionary keys.",
+      "points": 10
+    },
+    {
+      "questionType": "MATCHING",
+      "stem": "Match each Python keyword with its purpose:",
+      "options": {
+        "left": ["for", "if", "import", "class"],
+        "right": ["loop iteration", "conditional", "load module", "define object"]
+      },
+      "correctAnswer": {
+        "pairs": {
+          "for": "loop iteration",
+          "if": "conditional",
+          "import": "load module",
+          "class": "define object"
+        }
+      },
+      "explanation": "These are fundamental Python keywords and their primary purposes.",
+      "points": 8
+    },
+    {
+      "questionType": "FILL_BLANK",
+      "stem": "To print 'Hello World' in Python, you write: ___('Hello World')",
+      "options": {},
+      "correctAnswer": {
+        "answer": "print"
+      },
+      "explanation": "The print() function outputs text to the console.",
+      "points": 3
+    },
+    {
+      "questionType": "NUMERICAL",
+      "stem": "What is the result of 2 ** 10 in Python?",
+      "options": {
+        "tolerance": 0
+      },
+      "correctAnswer": {
+        "answer": 1024
+      },
+      "explanation": "2 ** 10 means 2 to the power of 10, which equals 1024.",
+      "points": 5
+    }
+  ]
+}

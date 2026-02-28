@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -44,7 +45,7 @@ public class PeerReview {
     private PeerReviewStatus status = PeerReviewStatus.PENDING;
 
     @Column(name = "overall_score")
-    private Double overallScore;
+    private BigDecimal overallScore;
 
     @Column(name = "overall_feedback", columnDefinition = "TEXT")
     private String overallFeedback;

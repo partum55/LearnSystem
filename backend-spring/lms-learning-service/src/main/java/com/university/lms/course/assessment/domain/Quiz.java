@@ -86,6 +86,11 @@ public class Quiz {
     @Builder.Default
     private Set<QuizQuestion> quizQuestions = new HashSet<>();
 
+    @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("position ASC")
+    @Builder.Default
+    private java.util.List<QuizSection> sections = new java.util.ArrayList<>();
+
     // Helper methods
     public boolean canShowCorrectAnswers() {
         if (!showCorrectAnswers) {
@@ -107,4 +112,3 @@ public class Quiz {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }
-

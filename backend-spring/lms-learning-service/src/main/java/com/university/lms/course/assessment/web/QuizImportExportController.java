@@ -1,0 +1,54 @@
+package com.university.lms.course.assessment.web;
+
+import com.university.lms.course.assessment.dto.QuizDto;
+import com.university.lms.course.assessment.dto.QuizImportRequest;
+import com.university.lms.course.assessment.service.QuizImportExportService;
+import com.university.lms.course.web.RequestUserContext;
+import jakarta.validation.Valid;
+import java.util.Map;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+/** REST endpoints for quiz import/export in JSON and CSV formats. */
+@RestController
+@RequestMapping("/quizzes")
+@RequiredArgsConstructor
+public class QuizImportExportController {
+
+  private final QuizImportExportService quizImportExportService;
+  private final RequestUserContext requestUserContext;
+
+  @GetMapping("/{quizId}/export/json")
+  public ResponseEntity<Map<String, Object>> exportJson(@PathVariable UUID quizId) {
+    return ResponseEntity.ok(quizImportExportService.exportQuizAsJson(quizId));
+  }
+
+  @GetMapping("/{quizId}/export/csv")
+  public ResponseEntity<String> exportCsv(@PathVariable UUID quizId) {
+    String csv = quizImportExportService.exportQuizAsCsv(quizId);
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=quiz-" + quizId + ".csv")
+        .contentType(MediaType.TEXT_PLAIN)
+        .body(csv);
+  }
+
+  @PostMapping("/import/json")
+  public ResponseEntity<QuizDto> importJson(@Valid @RequestBody QuizImportRequest request) {
+    UUID userId = requestUserContext.requireUserId();
+    return ResponseEntity.ok(quizImportExportService.importFromJson(request, userId));
+  }
+
+  @PostMapping(value = "/import/csv", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<QuizDto> importCsv(
+      @RequestParam UUID courseId,
+      @RequestParam String title,
+      @RequestPart MultipartFile file) {
+    UUID userId = requestUserContext.requireUserId();
+    return ResponseEntity.ok(quizImportExportService.importFromCsv(courseId, title, file, userId));
+  }
+}

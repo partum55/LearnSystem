@@ -119,7 +119,7 @@ Request:
 
 ### 6. Генерація квізу
 
-**POST** `/api/ai/quizzes/generate?courseId={uuid}&topic={text}&language=uk&questionCount=10&timeLimit=30`
+**POST** `/api/ai/quizzes/generate?moduleId={uuid}&topic={text}&language=uk&questionCount=10&timeLimit=30`
 
 ## Приклади використання
 

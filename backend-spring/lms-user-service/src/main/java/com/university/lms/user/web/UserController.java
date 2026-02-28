@@ -4,6 +4,7 @@ import com.university.lms.common.domain.UserRole;
 import com.university.lms.common.dto.PageResponse;
 import com.university.lms.common.exception.ValidationException;
 import com.university.lms.user.dto.ChangePasswordRequest;
+import com.university.lms.user.dto.RegisterRequest;
 import com.university.lms.user.dto.UpdateUserRequest;
 import com.university.lms.user.dto.UserDto;
 import com.university.lms.user.service.UserService;
@@ -94,6 +95,13 @@ public class UserController {
                 : userService.searchUsers(query, pageable);
 
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    public ResponseEntity<UserDto> adminCreateUser(@Valid @RequestBody RegisterRequest request) {
+        UserDto user = userService.adminCreateUser(request);
+        return ResponseEntity.status(201).body(user);
     }
 
     @PutMapping("/{id}")

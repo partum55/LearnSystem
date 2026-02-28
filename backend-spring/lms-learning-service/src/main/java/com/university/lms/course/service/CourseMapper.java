@@ -39,7 +39,7 @@ public class CourseMapper {
         .hasCapacity(course.hasCapacity())
         .isActive(course.isActive())
         .moduleCount(course.getModules() != null ? course.getModules().size() : 0)
-        .memberCount(course.getMembers() != null ? course.getMembers().size() : 0)
+        .memberCount(course.getCurrentEnrollment())
         .build();
   }
 

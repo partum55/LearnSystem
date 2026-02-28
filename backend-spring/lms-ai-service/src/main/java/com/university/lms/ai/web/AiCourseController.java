@@ -215,13 +215,13 @@ public class AiCourseController {
    */
   @PostMapping("/quizzes/generate")
   public ResponseEntity<Map<String, Object>> generateQuiz(
-      @RequestParam UUID courseId,
+      @RequestParam UUID moduleId,
       @RequestParam String topic,
       @RequestParam(defaultValue = "uk") String language,
       @RequestParam(defaultValue = "10") int questionCount,
       @RequestParam(defaultValue = "30") int timeLimit) {
 
-    log.info("Generating quiz with {} questions for course: {}", questionCount, courseId);
+    log.info("Generating quiz with {} questions for module: {}", questionCount, moduleId);
 
     String prompt = "Створи квіз з " + questionCount + " питань на тему: " + topic;
 
@@ -238,12 +238,12 @@ public class AiCourseController {
 
     return ResponseEntity.ok(
         Map.of(
-            "courseId",
-            courseId,
+            "moduleId",
+            moduleId,
             "quizzes",
-            response.getModules().isEmpty() || response.getModules().get(0).getQuizzes().isEmpty()
+            response.getQuizzes() == null || response.getQuizzes().isEmpty()
                 ? java.util.Collections.emptyList()
-                : response.getModules().get(0).getQuizzes()));
+                : response.getQuizzes()));
   }
 
   private UUID getAuthenticatedUserId() {

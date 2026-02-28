@@ -9,6 +9,7 @@ import {
   Loading,
   CreateQuestionModal,
 } from '../components';
+import { StaggeredList, StaggeredItem } from '../components/animation';
 import { ConfirmModal } from '../components/common/ConfirmModal';
 import apiClient from '../api/client';
 import { PlusIcon, PencilIcon, TrashIcon, FunnelIcon } from '@heroicons/react/24/outline';
@@ -127,18 +128,23 @@ export const QuestionBank: React.FC = () => {
 
   const getQuestionTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      'MULTIPLE_CHOICE': 'Multiple Choice',
+      'SINGLE_CHOICE': 'Single Choice',
+      'MULTIPLE_CHOICE': 'Single Choice',
+      'MULTIPLE_RESPONSE': 'Multiple Response',
       'TRUE_FALSE': 'True/False',
       'FILL_BLANK': 'Fill in the Blank',
       'SHORT_ANSWER': 'Short Answer',
       'ESSAY': 'Essay',
       'MATCHING': 'Matching',
-      'NUMERICAL': 'Numerical',
+      'ORDERING': 'Ordering',
+      'NUMERICAL': 'Numeric',
+      'NUMERIC': 'Numeric',
     };
     return labels[type] || type;
   };
 
-  const getQuestionTypeBadgeColor = (_type: string) => {
+  const getQuestionTypeBadgeColor = (type: string) => {
+    void type;
     return 'badge';
   };
 
@@ -150,13 +156,17 @@ export const QuestionBank: React.FC = () => {
 
   const questionTypes = [
     'ALL',
+    'SINGLE_CHOICE',
+    'MULTIPLE_RESPONSE',
     'MULTIPLE_CHOICE',
     'TRUE_FALSE',
     'FILL_BLANK',
     'SHORT_ANSWER',
     'ESSAY',
     'MATCHING',
+    'ORDERING',
     'NUMERICAL',
+    'NUMERIC',
   ];
 
   if (loading) {
@@ -186,8 +196,8 @@ export const QuestionBank: React.FC = () => {
           </div>
 
           {/* Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card>
+          <StaggeredList className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <StaggeredItem><Card>
               <CardBody>
                 <div className="text-center">
                   <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
@@ -198,22 +208,22 @@ export const QuestionBank: React.FC = () => {
                   </p>
                 </div>
               </CardBody>
-            </Card>
+            </Card></StaggeredItem>
 
-            <Card>
+            <StaggeredItem><Card>
               <CardBody>
                 <div className="text-center">
                   <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                    {questions.filter(q => q.question_type === 'MULTIPLE_CHOICE').length}
+                    {questions.filter(q => q.question_type === 'SINGLE_CHOICE' || q.question_type === 'MULTIPLE_CHOICE').length}
                   </p>
                   <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                     Multiple Choice
                   </p>
                 </div>
               </CardBody>
-            </Card>
+            </Card></StaggeredItem>
 
-            <Card>
+            <StaggeredItem><Card>
               <CardBody>
                 <div className="text-center">
                   <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
@@ -224,9 +234,9 @@ export const QuestionBank: React.FC = () => {
                   </p>
                 </div>
               </CardBody>
-            </Card>
+            </Card></StaggeredItem>
 
-            <Card>
+            <StaggeredItem><Card>
               <CardBody>
                 <div className="text-center">
                   <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
@@ -237,8 +247,8 @@ export const QuestionBank: React.FC = () => {
                   </p>
                 </div>
               </CardBody>
-            </Card>
-          </div>
+            </Card></StaggeredItem>
+          </StaggeredList>
 
           {/* Filters and Search */}
           <Card className="mb-6">
@@ -291,9 +301,10 @@ export const QuestionBank: React.FC = () => {
               </CardBody>
             </Card>
           ) : (
-            <div className="space-y-4">
+            <StaggeredList className="space-y-4">
               {filteredQuestions.map((question) => (
-                <Card key={question.id}>
+                <StaggeredItem key={question.id}>
+                <Card>
                   <CardBody>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -308,7 +319,7 @@ export const QuestionBank: React.FC = () => {
                         </h3>
 
                         {/* Multiple Choice Options Preview */}
-                        {question.question_type === 'MULTIPLE_CHOICE' && question.options?.choices && (
+                        {(question.question_type === 'MULTIPLE_CHOICE' || question.question_type === 'SINGLE_CHOICE') && question.options?.choices && (
                           <div className="mt-3 space-y-1">
                             {question.options.choices.slice(0, 3).map((choice: string, idx: number) => (
                               <div key={idx} className="flex items-center text-sm" style={{ color: 'var(--text-muted)' }}>
@@ -373,8 +384,9 @@ export const QuestionBank: React.FC = () => {
                     </div>
                   </CardBody>
                 </Card>
+                </StaggeredItem>
               ))}
-            </div>
+            </StaggeredList>
           )}
 
           {/* Pagination Info */}

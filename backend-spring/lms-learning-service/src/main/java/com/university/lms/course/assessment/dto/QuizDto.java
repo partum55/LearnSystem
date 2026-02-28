@@ -22,6 +22,7 @@ public class QuizDto {
 
     private UUID id;
     private UUID courseId;
+    private UUID moduleId;
     private String title;
     private String description;
 
@@ -50,5 +51,5 @@ public class QuizDto {
     private Integer totalQuestions;
     private BigDecimal totalPoints;
     private List<QuizQuestionDto> questions;
+    private List<QuizSectionDto> sections;
 }
-

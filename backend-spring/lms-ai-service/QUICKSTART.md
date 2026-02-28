@@ -114,7 +114,7 @@ curl -X POST "http://localhost:8085/api/ai/assignments/generate?moduleId=$MODULE
 ```bash
 COURSE_ID="existing-course-uuid"
 
-curl -X POST "http://localhost:8085/api/ai/quizzes/generate?courseId=$COURSE_ID&topic=Основи HTML та CSS&language=uk&questionCount=15&timeLimit=45" \
+curl -X POST "http://localhost:8085/api/ai/quizzes/generate?moduleId=$MODULE_ID&topic=Основи HTML та CSS&language=uk&questionCount=15&timeLimit=45" \
   -H "Content-Type: application/json" | jq .
 ```
 

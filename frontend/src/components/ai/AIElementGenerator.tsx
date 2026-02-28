@@ -140,11 +140,11 @@ export const AIElementGenerator: React.FC<AIElementGeneratorProps> = ({
           break;
 
         case 'quiz':
-          if (!courseId) {
-            throw new Error('Course ID required for quiz generation');
+          if (!moduleId) {
+            throw new Error('Module ID required for quiz generation');
           }
           result = await aiApi.generateQuiz({
-            courseId,
+            moduleId,
             topic: promptWithContext,
             language: formData.language,
             questionCount: formData.count,

@@ -10,6 +10,8 @@ export * from './Layout';
 export * from './Loading';
 export * from './Modal';
 export * from './Sidebar';
+export * from './CourseSidebar';
+export * from './CourseLayout';
 export * from './AddResourceModal';
 export * from './ResourceItem';
 export * from './EnrollStudentsModal';

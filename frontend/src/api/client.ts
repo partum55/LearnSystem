@@ -64,11 +64,9 @@ class ApiClient {
       } catch {
         // ignore storage errors
       }
-
-      const path = window.location?.pathname || '';
-      if (!path.startsWith('/login') && !path.startsWith('/register')) {
-        window.location.replace('/login');
-      }
+      // Do NOT hard-redirect here — let React state (isAuthenticated: false)
+      // drive the redirect via PrivateRoute. Hard redirects race with state
+      // updates and cause reload loops.
     }
   }
 
@@ -168,10 +166,10 @@ class ApiClient {
               return this.client(originalRequest);
             }
           } catch {
-            // fall through
+            // fall through — refreshAccessToken already called handleAuthFailure
           }
-
-          this.handleAuthFailure();
+          // refreshAccessToken already handles auth failure internally,
+          // no need to call handleAuthFailure again here.
         }
 
         // Normalize error so consumers don't render objects

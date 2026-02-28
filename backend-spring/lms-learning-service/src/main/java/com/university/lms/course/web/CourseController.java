@@ -3,6 +3,7 @@ package com.university.lms.course.web;
 import com.university.lms.common.domain.CourseVisibility;
 import com.university.lms.common.dto.PageResponse;
 import com.university.lms.course.dto.*;
+import com.university.lms.course.service.CoursePublishChecklistService;
 import com.university.lms.course.service.CourseService;
 import com.university.lms.course.service.EnrollmentService;
 import jakarta.validation.Valid;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 public class CourseController {
 
   private final CourseService courseService;
+  private final CoursePublishChecklistService coursePublishChecklistService;
   private final EnrollmentService enrollmentService;
   private final RequestUserContext requestUserContext;
 
@@ -155,13 +157,46 @@ public class CourseController {
     return ResponseEntity.noContent().build();
   }
 
+  @GetMapping("/{id}/publish-checklist")
+  @PreAuthorize("hasAnyRole('TEACHER','SUPERADMIN')")
+  public ResponseEntity<CoursePublishChecklistDto> getPublishChecklist(@PathVariable UUID id) {
+    UUID userId = requestUserContext.requireUserId();
+    String userRole = requestUserContext.requireUserRole();
+    CoursePublishChecklistDto checklist = coursePublishChecklistService.evaluate(id, userId, userRole);
+    return ResponseEntity.ok(checklist);
+  }
+
   /** Publish a course. */
   @PostMapping("/{id}/publish")
   @PreAuthorize("hasAnyRole('TEACHER','SUPERADMIN')")
-  public ResponseEntity<CourseDto> publishCourse(@PathVariable UUID id) {
+  public ResponseEntity<?> publishCourse(
+      @PathVariable UUID id, @RequestBody(required = false) PublishCourseRequest request) {
 
     UUID userId = requestUserContext.requireUserId();
     String userRole = requestUserContext.requireUserRole();
+
+    CoursePublishChecklistDto checklist = coursePublishChecklistService.evaluate(id, userId, userRole);
+    boolean forcePublish = request != null && Boolean.TRUE.equals(request.getForcePublish());
+
+    if (!checklist.isReadyToPublish() && !forcePublish) {
+      return ResponseEntity.status(HttpStatus.CONFLICT)
+          .body(
+              PublishCourseBlockedResponse.builder()
+                  .message("Course publish checklist is incomplete")
+                  .checklist(checklist)
+                  .build());
+    }
+
+    if (forcePublish
+        && (request.getOverrideReason() == null || request.getOverrideReason().isBlank())) {
+      return ResponseEntity.badRequest()
+          .body(
+              PublishCourseBlockedResponse.builder()
+                  .message("Override reason is required when force publishing")
+                  .checklist(checklist)
+                  .build());
+    }
+
     CourseDto course = courseService.publishCourse(id, userId, userRole);
     return ResponseEntity.ok(course);
   }

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -23,7 +24,7 @@ import java.util.stream.Collectors;
 public class SubmissionMapper {
 
     public SubmissionResponse toResponse(Submission submission) {
-        List<SubmissionFileResponse> files = Optional.ofNullable(submission.getFiles())
+        List<SubmissionFileResponse> files = Optional.<Collection<SubmissionFile>>ofNullable(submission.getFiles())
                 .orElseGet(List::of)
                 .stream()
                 .sorted(Comparator.comparing(SubmissionFile::getUploadedAt,
@@ -37,7 +38,7 @@ public class SubmissionMapper {
                         .build())
                 .collect(Collectors.toList());
 
-        List<SubmissionCommentResponse> comments = Optional.ofNullable(submission.getComments())
+        List<SubmissionCommentResponse> comments = Optional.<Collection<SubmissionComment>>ofNullable(submission.getComments())
                 .orElseGet(List::of)
                 .stream()
                 .sorted(Comparator.comparing(SubmissionComment::getCreatedAt,

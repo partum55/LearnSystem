@@ -1,5 +1,5 @@
 import apiClient from './client';
-import { Assignment, Quiz, Question } from '../types';
+import { Assignment, Quiz, Question, QuizSection, QuizAttemptQuestion, QuizAttempt } from '../types';
 
 interface PageResponse<T> {
   content: T[];
@@ -28,10 +28,13 @@ const mapAssignmentFromApi = (raw: UnknownRecord): Assignment => ({
   ...raw,
   id: String(raw.id ?? ''),
   course_id: String(raw.courseId ?? raw.course_id ?? raw.course ?? ''),
+  module_id: (raw.moduleId ?? raw.module_id) ? String(raw.moduleId ?? raw.module_id) : undefined,
   assignment_type: String(raw.assignmentType ?? raw.assignment_type ?? 'FILE_UPLOAD') as Assignment['assignment_type'],
   title: String(raw.title ?? ''),
   description: String(raw.description ?? ''),
+  description_format: String(raw.descriptionFormat ?? raw.description_format ?? 'MARKDOWN'),
   instructions: (raw.instructions as string | undefined) || undefined,
+  instructions_format: String(raw.instructionsFormat ?? raw.instructions_format ?? 'MARKDOWN'),
   due_date: (raw.dueDate as string | undefined) || (raw.due_date as string | undefined),
   available_from: (raw.availableFrom as string | undefined) || (raw.available_from as string | undefined),
   available_until: (raw.availableUntil as string | undefined) || (raw.available_until as string | undefined),
@@ -63,6 +66,12 @@ const mapAssignmentFromApi = (raw: UnknownRecord): Assignment => ({
 });
 
 const mapAssignmentToApi = (raw: Partial<Assignment> & UnknownRecord): UnknownRecord => {
+  const quizRef = raw.quizId ?? raw.quiz_id ?? raw.quiz;
+  const quizId = typeof quizRef === 'string' ? quizRef : undefined;
+  const inlineQuiz = (raw.quiz && typeof raw.quiz === 'object' && !Array.isArray(raw.quiz))
+    ? raw.quiz
+    : undefined;
+
   return compact({
     courseId: raw.courseId ?? raw.course_id ?? raw.course,
     moduleId: raw.moduleId ?? raw.module_id ?? raw.module,
@@ -90,7 +99,8 @@ const mapAssignmentToApi = (raw: Partial<Assignment> & UnknownRecord): UnknownRe
     allowedFileTypes: raw.allowedFileTypes ?? raw.allowed_file_types,
     maxFileSize: raw.maxFileSize ?? raw.max_file_size,
     maxFiles: raw.maxFiles ?? raw.max_files,
-    quizId: raw.quizId ?? raw.quiz_id ?? raw.quiz,
+    quizId,
+    quiz: inlineQuiz,
     externalToolUrl: raw.externalToolUrl ?? raw.external_tool_url,
     gradeAnonymously: raw.gradeAnonymously ?? raw.grade_anonymously,
     peerReviewEnabled: raw.peerReviewEnabled ?? raw.peer_review_enabled,
@@ -107,6 +117,7 @@ const mapQuizFromApi = (raw: UnknownRecord): Quiz => ({
   ...raw,
   id: String(raw.id ?? ''),
   course_id: String(raw.courseId ?? raw.course_id ?? raw.course ?? ''),
+  module_id: (raw.moduleId ?? raw.module_id) ? String(raw.moduleId ?? raw.module_id) : undefined,
   title: String(raw.title ?? ''),
   description: (raw.description as string | undefined) || '',
   time_limit: (raw.timeLimit as number | undefined) ?? (raw.time_limit as number | undefined),
@@ -114,6 +125,20 @@ const mapQuizFromApi = (raw: UnknownRecord): Quiz => ({
   randomize_questions: Boolean(raw.shuffleQuestions ?? raw.randomize_questions ?? raw.shuffle_questions),
   randomize_answers: Boolean(raw.shuffleAnswers ?? raw.randomize_answers ?? raw.shuffle_answers),
   questions: (raw.questions as Question[] | undefined) || [],
+  sections: ((raw.sections as UnknownRecord[] | undefined) || []).map((section) => ({
+    id: String(section.id ?? ''),
+    quiz_id: String(section.quizId ?? section.quiz_id ?? ''),
+    title: String(section.title ?? ''),
+    position: asNumber(section.position, 0),
+    question_count: asNumber(section.questionCount ?? section.question_count, 0),
+    rules: ((section.rules as UnknownRecord[] | undefined) || []).map((rule) => ({
+      id: String(rule.id ?? ''),
+      question_type: (rule.questionType as string | undefined) || (rule.question_type as string | undefined),
+      difficulty: (rule.difficulty as string | undefined),
+      tag: (rule.tag as string | undefined),
+      quota: asNumber(rule.quota, 1),
+    })),
+  })),
   created_at: (raw.createdAt as string | undefined) || (raw.created_at as string) || '',
   updated_at: (raw.updatedAt as string | undefined) || (raw.updated_at as string) || '',
 });
@@ -122,11 +147,42 @@ const mapQuestionFromApi = (raw: UnknownRecord): Question => ({
   ...raw,
   id: String(raw.id ?? ''),
   course_id: String(raw.courseId ?? raw.course_id ?? ''),
+  topic: (raw.topic as string | undefined) || undefined,
+  difficulty: (raw.difficulty as string | undefined) || undefined,
+  tags: (raw.tags as string[] | undefined) || undefined,
   type: String(raw.questionType ?? raw.question_type ?? 'short_answer').toLowerCase() as Question['type'],
   stem: String(raw.stem ?? ''),
-  options: (raw.options as string[] | undefined) || [],
+  options: (
+    (Array.isArray(raw.options) ? raw.options : undefined)
+      || (((raw.options as UnknownRecord | undefined)?.choices as string[] | undefined))
+      || []
+  ),
   correct_answer: ((raw.correctAnswer as unknown) ?? raw.correct_answer ?? '') as Question['correct_answer'],
   points: asNumber(raw.points, 1),
+  latest_version: asNumber(raw.latestVersion ?? raw.latest_version, 0),
+});
+
+const mapAttemptQuestionFromApi = (raw: UnknownRecord): QuizAttemptQuestion => ({
+  id: String(raw.id ?? ''),
+  attempt_id: String(raw.attemptId ?? raw.attempt_id ?? ''),
+  question_id: String(raw.questionId ?? raw.question_id ?? ''),
+  question_version_id: (raw.questionVersionId ?? raw.question_version_id) ? String(raw.questionVersionId ?? raw.question_version_id) : undefined,
+  position: asNumber(raw.position, 0),
+  points: asNumber(raw.points, 0),
+  prompt_snapshot: (raw.promptSnapshot as Record<string, unknown> | undefined) || (raw.prompt_snapshot as Record<string, unknown> | undefined) || {},
+  payload_snapshot: (raw.payloadSnapshot as Record<string, unknown> | undefined) || (raw.payload_snapshot as Record<string, unknown> | undefined) || {},
+});
+
+const mapAttemptFromApi = (raw: UnknownRecord): QuizAttempt => ({
+  id: String(raw.id ?? ''),
+  quiz_id: String(raw.quizId ?? raw.quiz_id ?? ''),
+  user_id: String(raw.userId ?? raw.user_id ?? ''),
+  started_at: String(raw.startedAt ?? raw.started_at ?? ''),
+  submitted_at: (raw.submittedAt as string | undefined) || (raw.submitted_at as string | undefined),
+  answers: (raw.answers as Record<string, unknown> | undefined) || {},
+  auto_score: (raw.autoScore ?? raw.auto_score) !== undefined ? asNumber(raw.autoScore ?? raw.auto_score) : undefined,
+  final_score: (raw.finalScore ?? raw.final_score) !== undefined ? asNumber(raw.finalScore ?? raw.final_score) : undefined,
+  graded_by: (raw.gradedBy ?? raw.graded_by) ? String(raw.gradedBy ?? raw.graded_by) : undefined,
 });
 
 // Assignment API - Spring backend URLs
@@ -163,31 +219,62 @@ export const assignmentsApi = {
 
   delete: (id: string) => apiClient.delete(`/assessments/assignments/${id}`),
 
-  getStatistics: (id: string) => {
-    void id;
-    return Promise.reject(new Error('Assignment statistics endpoint is not available in current backend.'));
+  getStatistics: async (id: string) => {
+    const response = await apiClient.get<UnknownRecord[]>(`/submissions?assignmentId=${encodeURIComponent(id)}`);
+    const submissions = Array.isArray(response.data) ? response.data : [];
+    const gradedScores = submissions
+      .map((submission) => submission.grade ?? submission.score)
+      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+    const averageScore =
+      gradedScores.length > 0
+        ? gradedScores.reduce((sum, value) => sum + value, 0) / gradedScores.length
+        : 0;
+
+    return {
+      ...response,
+      data: {
+        totalSubmissions: submissions.length,
+        gradedSubmissions: gradedScores.length,
+        pendingSubmissions: Math.max(0, submissions.length - gradedScores.length),
+        averageScore,
+      },
+    };
   },
 
-  duplicate: (id: string, courseId?: string) => {
-    void id;
-    void courseId;
-    return Promise.reject(new Error('Assignment duplicate endpoint is not available in current backend.'));
-  },
+  duplicate: (
+    id: string,
+    payload?: { targetCourseId?: string; targetModuleId?: string }
+  ) =>
+    apiClient
+      .post<UnknownRecord>(
+        `/assessments/assignments/${id}/duplicate`,
+        compact({
+          targetCourseId: payload?.targetCourseId,
+          targetModuleId: payload?.targetModuleId,
+        })
+      )
+      .then((response) => ({
+      ...response,
+      data: mapAssignmentFromApi(response.data),
+    })),
 
-  archive: (id: string) => {
-    void id;
-    return Promise.reject(new Error('Assignment archive endpoint is not available in current backend.'));
-  },
+  archive: (id: string) =>
+    apiClient.post<UnknownRecord>(`/assessments/assignments/${id}/archive`).then((response) => ({
+      ...response,
+      data: mapAssignmentFromApi(response.data),
+    })),
 
-  publish: (id: string) => {
-    void id;
-    return Promise.reject(new Error('Assignment publish endpoint is not available in current backend.'));
-  },
+  publish: (id: string) =>
+    apiClient.post<UnknownRecord>(`/assessments/assignments/${id}/publish`).then((response) => ({
+      ...response,
+      data: mapAssignmentFromApi(response.data),
+    })),
 
-  unpublish: (id: string) => {
-    void id;
-    return Promise.reject(new Error('Assignment unpublish endpoint is not available in current backend.'));
-  },
+  unpublish: (id: string) =>
+    apiClient.post<UnknownRecord>(`/assessments/assignments/${id}/unpublish`).then((response) => ({
+      ...response,
+      data: mapAssignmentFromApi(response.data),
+    })),
 
   getPublished: (courseId: string) =>
     apiClient.get<UnknownRecord[]>(`/assessments/assignments/course/${courseId}/published`).then((response) => ({
@@ -210,11 +297,35 @@ export const assignmentsApi = {
 
 // Quiz API - Spring backend URLs
 export const quizzesApi = {
-  getAll: (courseId: string) => {
-    return apiClient.get<PageResponse<UnknownRecord>>(`/assessments/quizzes/course/${courseId}`).then((response) => ({
-      ...response,
-      data: (response.data.content || []).map(mapQuizFromApi),
-    }));
+  getAll: async (courseId: string) => {
+    const assignmentsResponse = await apiClient.get<PageResponse<UnknownRecord>>(
+      `/assessments/assignments/course/${courseId}?size=200`
+    );
+    const quizIds = Array.from(
+      new Set(
+        (assignmentsResponse.data.content || [])
+          .filter((item) => String(item.assignmentType ?? item.assignment_type ?? '') === 'QUIZ')
+          .map((item) => item.quizId ?? item.quiz_id)
+          .filter((quizId): quizId is string => Boolean(quizId))
+          .map((quizId) => String(quizId))
+      )
+    );
+
+    const quizzes = await Promise.all(
+      quizIds.map(async (quizId) => {
+        try {
+          const quizResponse = await apiClient.get<UnknownRecord>(`/assessments/quizzes/${quizId}`);
+          return mapQuizFromApi(quizResponse.data);
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    return {
+      ...assignmentsResponse,
+      data: quizzes.filter((quiz): quiz is Quiz => Boolean(quiz)),
+    };
   },
 
   getById: (id: string) =>
@@ -223,22 +334,44 @@ export const quizzesApi = {
       data: mapQuizFromApi(response.data),
     })),
 
-  create: (data: Partial<Quiz> & UnknownRecord) => {
+  create: async (data: Partial<Quiz> & UnknownRecord) => {
     const courseId = String(data.course_id ?? data.courseId ?? data.course ?? '');
+    const moduleId = String(data.module_id ?? data.moduleId ?? data.module ?? '');
     const title = String(data.title ?? '');
     const description = (data.description as string | undefined) || undefined;
-    return apiClient
-      .post<UnknownRecord>('/assessments/quizzes', null, {
-        params: compact({
-          courseId,
-          title,
-          description,
-        }),
-      })
-      .then((response) => ({
-        ...response,
-        data: mapQuizFromApi(response.data),
-      }));
+    if (!moduleId) {
+      throw new Error('moduleId is required to create a quiz');
+    }
+
+    const assignmentResponse = await apiClient.post<UnknownRecord>('/assessments/assignments', compact({
+      courseId,
+      moduleId,
+      assignmentType: 'QUIZ',
+      title,
+      description: description ?? '',
+      maxPoints: 100,
+      isPublished: false,
+      quiz: {
+        title,
+        description,
+        timeLimit: data.time_limit ?? data.timeLimit,
+        attemptsAllowed: data.attempts_allowed ?? data.attemptsAllowed,
+        shuffleQuestions: data.randomize_questions ?? data.shuffleQuestions ?? data.shuffle_questions,
+        shuffleAnswers: data.randomize_answers ?? data.shuffleAnswers ?? data.shuffle_answers,
+        showCorrectAnswers: (data as UnknownRecord).show_correct_answers ?? (data as UnknownRecord).showCorrectAnswers,
+        passPercentage: data.pass_percentage ?? data.passPercentage,
+      },
+    }));
+
+    const createdQuizId = assignmentResponse.data.quizId ?? assignmentResponse.data.quiz_id;
+    if (!createdQuizId) {
+      throw new Error('Quiz was not created for the assignment');
+    }
+    const quizResponse = await apiClient.get<UnknownRecord>(`/assessments/quizzes/${String(createdQuizId)}`);
+    return {
+      ...assignmentResponse,
+      data: mapQuizFromApi(quizResponse.data),
+    };
   },
 
   update: (id: string, data: Partial<Quiz>) =>
@@ -256,6 +389,23 @@ export const quizzesApi = {
 
   delete: (id: string) => apiClient.delete(`/assessments/quizzes/${id}`),
 
+  duplicate: (
+    id: string,
+    payload?: { targetCourseId?: string; targetModuleId?: string }
+  ) =>
+    apiClient
+      .post<UnknownRecord>(
+        `/assessments/quizzes/${id}/duplicate`,
+        compact({
+          targetCourseId: payload?.targetCourseId,
+          targetModuleId: payload?.targetModuleId,
+        })
+      )
+      .then((response) => ({
+        ...response,
+        data: mapQuizFromApi(response.data),
+      })),
+
   addQuestions: (quizId: string, questionIds: string[]) =>
     Promise.all(
       questionIds.map((questionId) =>
@@ -268,6 +418,58 @@ export const quizzesApi = {
 
   getAttempts: (quizId: string) =>
     apiClient.get(`/assessments/quiz-attempts/quiz/${quizId}/user`),
+
+  getSections: (quizId: string) =>
+    apiClient.get<UnknownRecord[]>(`/assessments/quizzes/${quizId}/sections`).then((response) => ({
+      ...response,
+      data: response.data.map((section) => ({
+        id: String(section.id ?? ''),
+        quiz_id: String(section.quizId ?? section.quiz_id ?? ''),
+        title: String(section.title ?? ''),
+        position: asNumber(section.position, 0),
+        question_count: asNumber(section.questionCount ?? section.question_count, 0),
+        rules: ((section.rules as UnknownRecord[] | undefined) || []).map((rule) => ({
+          id: String(rule.id ?? ''),
+          question_type: (rule.questionType as string | undefined) || (rule.question_type as string | undefined),
+          difficulty: (rule.difficulty as string | undefined),
+          tag: (rule.tag as string | undefined),
+          quota: asNumber(rule.quota, 1),
+        })),
+      })) as QuizSection[],
+    })),
+
+  createSection: (
+    quizId: string,
+    payload: { title: string; position?: number; questionCount?: number; rules?: Array<{ questionType?: string; difficulty?: string; tag?: string; quota: number }> }
+  ) => apiClient.post(`/assessments/quizzes/${quizId}/sections`, payload),
+
+  updateSection: (
+    quizId: string,
+    sectionId: string,
+    payload: { title: string; position?: number; questionCount?: number; rules?: Array<{ questionType?: string; difficulty?: string; tag?: string; quota: number }> }
+  ) => apiClient.put(`/assessments/quizzes/${quizId}/sections/${sectionId}`, payload),
+
+  deleteSection: (quizId: string, sectionId: string) =>
+    apiClient.delete(`/assessments/quizzes/${quizId}/sections/${sectionId}`),
+
+  exportJson: (quizId: string) =>
+    apiClient.get(`/assessments/quizzes/${quizId}/export/json`),
+
+  exportCsv: (quizId: string) =>
+    apiClient.get(`/assessments/quizzes/${quizId}/export/csv`, { responseType: 'text' as const }),
+
+  importJson: (payload: UnknownRecord) =>
+    apiClient.post(`/assessments/quizzes/import/json`, payload),
+
+  importCsv: (courseId: string, title: string, file: File) => {
+    const formData = new FormData();
+    formData.append('courseId', courseId);
+    formData.append('title', title);
+    formData.append('file', file);
+    return apiClient.post(`/assessments/quizzes/import/csv`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 // Question Bank API - Spring backend URLs
@@ -289,6 +491,9 @@ export const questionsApi = {
     apiClient.post<UnknownRecord>('/assessments/questions', compact({
       courseId: data.courseId ?? data.course_id ?? data.course,
       questionType: data.questionType ?? data.question_type ?? data.type,
+      topic: data.topic,
+      difficulty: data.difficulty,
+      tags: data.tags,
       stem: data.stem,
       options: data.options,
       correctAnswer: data.correctAnswer ?? data.correct_answer,
@@ -303,6 +508,9 @@ export const questionsApi = {
   update: (id: string, data: Partial<Question>) =>
     apiClient.put<UnknownRecord>(`/assessments/questions/${id}`, compact({
       questionType: (data as UnknownRecord).questionType ?? (data as UnknownRecord).question_type ?? data.type,
+      topic: (data as UnknownRecord).topic,
+      difficulty: (data as UnknownRecord).difficulty,
+      tags: (data as UnknownRecord).tags,
       stem: data.stem,
       options: data.options,
       correctAnswer: (data as UnknownRecord).correctAnswer ?? (data as UnknownRecord).correct_answer,
@@ -316,26 +524,63 @@ export const questionsApi = {
 
   delete: (id: string) => apiClient.delete(`/assessments/questions/${id}`),
 
-  bulkCreate: (questions: Partial<Question>[]) => {
-    void questions;
-    return Promise.reject(new Error('Question bulk-create endpoint is not available in current backend.'));
+  getVersions: (questionId: string) =>
+    apiClient.get<UnknownRecord[]>(`/assessments/questions/${questionId}/versions`).then((response) => ({
+      ...response,
+      data: response.data.map((item) => ({
+        id: String(item.id ?? ''),
+        question_id: String(item.questionId ?? item.question_id ?? ''),
+        version_number: asNumber(item.versionNumber ?? item.version_number, 0),
+        prompt_doc_json: (item.promptDocJson as Record<string, unknown> | undefined) || (item.prompt_doc_json as Record<string, unknown> | undefined) || {},
+        payload_json: (item.payloadJson as Record<string, unknown> | undefined) || (item.payload_json as Record<string, unknown> | undefined) || {},
+        answer_key_json: (item.answerKeyJson as Record<string, unknown> | undefined) || (item.answer_key_json as Record<string, unknown> | undefined) || {},
+      })),
+    })),
+
+  getLatestVersion: (questionId: string) =>
+    apiClient.get<UnknownRecord>(`/assessments/questions/${questionId}/versions/latest`),
+
+  createVersion: (
+    questionId: string,
+    payload: {
+      promptDocJson: Record<string, unknown>;
+      payloadJson?: Record<string, unknown>;
+      answerKeyJson?: Record<string, unknown>;
+    }
+  ) => apiClient.post(`/assessments/questions/${questionId}/versions`, payload),
+
+  bulkCreate: async (questions: Partial<Question>[]) => {
+    const created = await Promise.all(
+      questions.map((question) => questionsApi.create(question as Partial<Question> & UnknownRecord))
+    );
+    return {
+      data: created.map((response) => response.data),
+    };
   },
 };
 
 // Quiz Attempt API - Spring backend URLs
 export const attemptsApi = {
-  getById: (id: string) => {
-    void id;
-    return Promise.reject(new Error('Quiz attempt lookup by ID endpoint is not available in current backend.'));
-  },
+  getById: (id: string) =>
+    apiClient.get<UnknownRecord>(`/assessments/quiz-attempts/${id}`).then((response) => ({
+      ...response,
+      data: mapAttemptFromApi(response.data),
+    })),
 
   submit: (id: string, answers: Record<string, unknown>) =>
     apiClient.post(`/assessments/quiz-attempts/${id}/submit`, answers),
 
-  getResults: (id: string) => {
-    void id;
-    return Promise.reject(new Error('Quiz attempt results endpoint is not available in current backend.'));
-  },
+  save: (id: string, answers: Record<string, unknown>) =>
+    apiClient.post(`/assessments/quiz-attempts/${id}/save`, answers),
+
+  getQuestions: (id: string) =>
+    apiClient.get<UnknownRecord[]>(`/assessments/quiz-attempts/${id}/questions`).then((response) => ({
+      ...response,
+      data: response.data.map(mapAttemptQuestionFromApi),
+    })),
+
+  getResults: (id: string) =>
+    apiClient.get<UnknownRecord>(`/assessments/quiz-attempts/${id}/results`),
   getAttemptsForQuiz: (quizId: string) =>
     apiClient.get(`/assessments/quiz-attempts/quiz/${quizId}/user`),
   getLatestForQuiz: (quizId: string) =>

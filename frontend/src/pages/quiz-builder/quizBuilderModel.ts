@@ -1,10 +1,17 @@
 export type QuestionType =
-  | 'multiple_choice'
-  | 'true_false'
+  | 'single_choice'
+  | 'multiple_response'
   | 'short_answer'
   | 'essay'
-  | 'multiple_select'
-  | 'fill_blank';
+  | 'numeric'
+  | 'matching'
+  | 'ordering'
+  | 'true_false';
+
+export interface MatchingPair {
+  left: string;
+  right: string;
+}
 
 export interface Question {
   id?: string | number;
@@ -12,9 +19,28 @@ export interface Question {
   question_type: QuestionType;
   points: number;
   choices?: string[];
-  correct_answer?: string | string[];
+  correct_answer?: string | string[] | number;
   explanation?: string;
   required?: boolean;
+  numeric_tolerance?: number;
+  matching_pairs?: MatchingPair[];
+  ordering_items?: string[];
+}
+
+export interface QuizSectionRule {
+  id?: string;
+  question_type?: string;
+  difficulty?: string;
+  tag?: string;
+  quota: number;
+}
+
+export interface QuizSection {
+  id?: string;
+  title: string;
+  position: number;
+  question_count: number;
+  rules: QuizSectionRule[];
 }
 
 export interface QuizSettings {
@@ -40,6 +66,7 @@ export interface Quiz {
   available_until?: string;
   passing_score?: number;
   questions: Question[];
+  sections: QuizSection[];
   settings: QuizSettings;
 }
 
@@ -59,12 +86,14 @@ export const DEFAULT_QUIZ_SETTINGS: QuizSettings = {
 };
 
 export const QUIZ_QUESTION_TYPE_OPTIONS: Array<{ value: QuestionType; labelKey: string; defaultLabel: string }> = [
-  { value: 'multiple_choice', labelKey: 'quiz.multipleChoice', defaultLabel: 'Multiple Choice' },
-  { value: 'multiple_select', labelKey: 'quiz.multipleSelect', defaultLabel: 'Multiple Select' },
+  { value: 'single_choice', labelKey: 'quiz.singleChoice', defaultLabel: 'Single Choice' },
+  { value: 'multiple_response', labelKey: 'quiz.multipleResponse', defaultLabel: 'Multiple Response' },
   { value: 'true_false', labelKey: 'quiz.trueFalse', defaultLabel: 'True/False' },
   { value: 'short_answer', labelKey: 'quiz.shortAnswer', defaultLabel: 'Short Answer' },
+  { value: 'numeric', labelKey: 'quiz.numeric', defaultLabel: 'Numeric' },
+  { value: 'matching', labelKey: 'quiz.matching', defaultLabel: 'Matching' },
+  { value: 'ordering', labelKey: 'quiz.ordering', defaultLabel: 'Ordering' },
   { value: 'essay', labelKey: 'quiz.essay', defaultLabel: 'Essay' },
-  { value: 'fill_blank', labelKey: 'quiz.fillBlank', defaultLabel: 'Fill in the Blank' },
 ];
 
 export const QUIZ_SETTINGS_TOGGLE_OPTIONS: Array<{ key: QuizSettingsToggleKey; labelKey: string; defaultLabel: string }> = [
@@ -93,10 +122,11 @@ export const createInitialQuiz = (): Quiz => ({
   attempts_allowed: 1,
   passing_score: 70,
   questions: [],
+  sections: [],
   settings: { ...DEFAULT_QUIZ_SETTINGS },
 });
 
-export const createQuestion = (type: QuestionType = 'multiple_choice'): Question => {
+export const createQuestion = (type: QuestionType = 'single_choice'): Question => {
   const question: Question = {
     question_text: '',
     question_type: type,
@@ -104,12 +134,19 @@ export const createQuestion = (type: QuestionType = 'multiple_choice'): Question
     required: true,
   };
 
-  if (type === 'multiple_choice' || type === 'multiple_select') {
+  if (type === 'single_choice' || type === 'multiple_response') {
     question.choices = ['', '', '', ''];
-    question.correct_answer = type === 'multiple_select' ? [] : '';
+    question.correct_answer = type === 'multiple_response' ? [] : '';
   } else if (type === 'true_false') {
     question.choices = ['True', 'False'];
     question.correct_answer = '';
+  } else if (type === 'numeric') {
+    question.correct_answer = 0;
+    question.numeric_tolerance = 0.01;
+  } else if (type === 'matching') {
+    question.matching_pairs = [{ left: '', right: '' }, { left: '', right: '' }];
+  } else if (type === 'ordering') {
+    question.ordering_items = ['', '', ''];
   }
 
   return question;
@@ -121,11 +158,14 @@ export const applyQuestionTypeDefaults = (question: Question, type: QuestionType
     question_type: type,
   };
 
-  if (type === 'multiple_choice' || type === 'multiple_select') {
+  if (type === 'single_choice' || type === 'multiple_response') {
     return {
       ...baseQuestion,
       choices: ['', '', '', ''],
-      correct_answer: type === 'multiple_select' ? [] : '',
+      correct_answer: type === 'multiple_response' ? [] : '',
+      numeric_tolerance: undefined,
+      matching_pairs: undefined,
+      ordering_items: undefined,
     };
   }
 
@@ -134,6 +174,42 @@ export const applyQuestionTypeDefaults = (question: Question, type: QuestionType
       ...baseQuestion,
       choices: ['True', 'False'],
       correct_answer: '',
+      numeric_tolerance: undefined,
+      matching_pairs: undefined,
+      ordering_items: undefined,
+    };
+  }
+
+  if (type === 'numeric') {
+    return {
+      ...baseQuestion,
+      choices: undefined,
+      correct_answer: 0,
+      numeric_tolerance: 0.01,
+      matching_pairs: undefined,
+      ordering_items: undefined,
+    };
+  }
+
+  if (type === 'matching') {
+    return {
+      ...baseQuestion,
+      choices: undefined,
+      correct_answer: undefined,
+      numeric_tolerance: undefined,
+      matching_pairs: [{ left: '', right: '' }, { left: '', right: '' }],
+      ordering_items: undefined,
+    };
+  }
+
+  if (type === 'ordering') {
+    return {
+      ...baseQuestion,
+      choices: undefined,
+      correct_answer: undefined,
+      numeric_tolerance: undefined,
+      matching_pairs: undefined,
+      ordering_items: ['', '', ''],
     };
   }
 
@@ -141,5 +217,8 @@ export const applyQuestionTypeDefaults = (question: Question, type: QuestionType
     ...baseQuestion,
     choices: undefined,
     correct_answer: '',
+    numeric_tolerance: undefined,
+    matching_pairs: undefined,
+    ordering_items: undefined,
   };
 };

@@ -85,6 +85,57 @@ export interface Module {
   assignments?: Assignment[];
 }
 
+export interface ModulePage {
+  id: string;
+  module_id: string;
+  parent_page_id?: string;
+  title: string;
+  slug: string;
+  position: number;
+  is_published: boolean;
+  has_unpublished_changes: boolean;
+  created_by: string;
+  updated_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CanonicalMark {
+  type: string;
+  attrs?: Record<string, unknown>;
+}
+
+export interface CanonicalNode {
+  id?: string;
+  type: string;
+  attrs?: Record<string, unknown>;
+  text?: string;
+  marks?: CanonicalMark[];
+  content?: CanonicalNode[];
+}
+
+export interface CanonicalDocument {
+  version: number;
+  type: 'doc';
+  meta?: Record<string, unknown>;
+  content: CanonicalNode[];
+}
+
+export interface CanonicalDocumentPayload {
+  owner_id: string;
+  schema_version: number;
+  document_hash?: string;
+  document: CanonicalDocument;
+  updated_at?: string;
+  published_snapshot?: boolean;
+}
+
+export interface TocItem {
+  level: number;
+  text: string;
+  anchor: string;
+}
+
 export type ResourceType = 'VIDEO' | 'PDF' | 'SLIDE' | 'LINK' | 'TEXT' | 'CODE' | 'OTHER';
 
 export interface Resource {
@@ -134,10 +185,13 @@ export type AssignmentType =
 export interface Assignment {
   id: string;
   course_id: string;
+  module_id?: string;
   assignment_type: AssignmentType;
   title: string;
   description: string;
+  description_format?: string;
   instructions?: string;
+  instructions_format?: string;
   due_date?: string;
   available_from?: string;
   available_until?: string;
@@ -206,16 +260,21 @@ export interface Question {
   id: string;
   course_id: string;
   type: QuestionType;
+  topic?: string;
+  difficulty?: string;
+  tags?: string[];
   stem: string;
   options?: string[];
   correct_answer: string | number | boolean | string[] | number[];
   points: number;
   metadata?: Record<string, unknown>;
+  latest_version?: number;
 }
 
 export interface Quiz {
   id: string;
   course_id: string;
+  module_id?: string;
   title: string;
   description?: string;
   time_limit?: number;
@@ -223,8 +282,37 @@ export interface Quiz {
   randomize_questions: boolean;
   randomize_answers: boolean;
   questions: Question[];
+  sections?: QuizSection[];
   created_at: string;
   updated_at: string;
+}
+
+export interface QuizSectionRule {
+  id?: string;
+  question_type?: string;
+  difficulty?: string;
+  tag?: string;
+  quota: number;
+}
+
+export interface QuizSection {
+  id?: string;
+  quiz_id?: string;
+  title: string;
+  position: number;
+  question_count: number;
+  rules: QuizSectionRule[];
+}
+
+export interface QuizAttemptQuestion {
+  id: string;
+  attempt_id: string;
+  question_id: string;
+  question_version_id?: string;
+  position: number;
+  points: number;
+  prompt_snapshot: Record<string, unknown>;
+  payload_snapshot: Record<string, unknown>;
 }
 
 export interface QuizAttempt {

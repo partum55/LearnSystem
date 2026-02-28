@@ -30,7 +30,7 @@ export const CourseDetailHeader: React.FC<CourseDetailHeaderProps> = ({
         {t('courses.title')}
       </Link>
       <span className="mx-2">/</span>
-      <span>{course.code}</span>
+      <span>{course.title}</span>
     </div>
 
     <Card>
@@ -43,10 +43,10 @@ export const CourseDetailHeader: React.FC<CourseDetailHeaderProps> = ({
                 className="text-3xl font-bold"
                 style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
               >
-                {course.code}
+                {course.title}
               </h1>
             </div>
-            <h2 className="text-xl" style={{ color: 'var(--text-secondary)' }}>{course.title}</h2>
+            <h2 className="text-sm" style={{ color: 'var(--text-muted)' }}>{course.code}</h2>
           </div>
           {isInstructor && (
             <div className="flex gap-2">

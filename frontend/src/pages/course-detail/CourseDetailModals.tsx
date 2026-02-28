@@ -1,6 +1,5 @@
 import React from 'react';
 import { TFunction } from 'i18next';
-import { AssignmentWizard } from '../../components/wizards/AssignmentWizard';
 import { ResourceWizard } from '../../components/wizards/ResourceWizard';
 import {
   AIElementGenerator,
@@ -16,7 +15,6 @@ interface CourseDetailModalsProps {
   courseId: string;
   currentCourse: Course;
   showModuleModal: boolean;
-  showAssignmentModal: boolean;
   showResourceModal: boolean;
   showEnrollModal: boolean;
   showAIModuleGenerator: boolean;
@@ -25,13 +23,11 @@ interface CourseDetailModalsProps {
   selectedModuleContext: string;
   deleteConfirmation: DeleteConfirmationState | null;
   onCloseModuleModal: () => void;
-  onCloseAssignmentModal: () => void;
   onCloseResourceModal: () => void;
   onCloseEnrollModal: () => void;
   onCloseAIModuleGenerator: () => void;
   onCloseAIAssignmentGenerator: () => void;
   onModuleCreated: () => void;
-  onAssignmentCreated: () => void;
   onResourceCreated: () => void;
   onEnrolled: () => void;
   onAIModuleGenerated: () => void;
@@ -46,7 +42,6 @@ export const CourseDetailModals: React.FC<CourseDetailModalsProps> = ({
   courseId,
   currentCourse,
   showModuleModal,
-  showAssignmentModal,
   showResourceModal,
   showEnrollModal,
   showAIModuleGenerator,
@@ -55,13 +50,11 @@ export const CourseDetailModals: React.FC<CourseDetailModalsProps> = ({
   selectedModuleContext,
   deleteConfirmation,
   onCloseModuleModal,
-  onCloseAssignmentModal,
   onCloseResourceModal,
   onCloseEnrollModal,
   onCloseAIModuleGenerator,
   onCloseAIAssignmentGenerator,
   onModuleCreated,
-  onAssignmentCreated,
   onResourceCreated,
   onEnrolled,
   onAIModuleGenerated,
@@ -78,13 +71,6 @@ export const CourseDetailModals: React.FC<CourseDetailModalsProps> = ({
           onClose={onCloseModuleModal}
           courseId={courseId}
           onModuleCreated={onModuleCreated}
-        />
-        <AssignmentWizard
-          isOpen={showAssignmentModal}
-          onClose={onCloseAssignmentModal}
-          courseId={courseId}
-          moduleId={selectedModuleId || ''}
-          onAssignmentCreated={onAssignmentCreated}
         />
         {selectedModuleId && (
           <ResourceWizard

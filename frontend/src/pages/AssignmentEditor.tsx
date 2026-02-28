@@ -7,8 +7,9 @@ import { UnsavedChangesPrompt } from '../components/common/UnsavedChangesPrompt'
 import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning';
 import {
   AssignmentEditorTabContent,
-  getAssignmentEditorTabs,
 } from './assignment-editor/AssignmentEditorTabContent';
+import { getAssignmentEditorTabs } from './assignment-editor/assignmentEditorTabs';
+import { TabTransition } from '../components/animation';
 import {
   AssignmentEditorTab,
   AssignmentFormData,
@@ -18,9 +19,11 @@ import {
 } from './assignment-editor/assignmentEditorModel';
 
 const AssignmentEditor: React.FC = () => {
-  const { id: assignmentId } = useParams<{ id: string }>();
+  const params = useParams<{ id?: string; assignmentId?: string; courseId?: string; moduleId?: string }>();
+  const assignmentId = params.assignmentId || params.id;
   const [searchParams] = useSearchParams();
-  const courseId = searchParams.get('courseId') || '';
+  const courseId = params.courseId || searchParams.get('courseId') || '';
+  const moduleId = params.moduleId || '';
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -125,7 +128,11 @@ const AssignmentEditor: React.FC = () => {
       } else {
         await api.post('/assessments/assignments', payload);
       }
-      navigate(courseId ? `/courses/${courseId}` : `/assignments/${assignmentId}`);
+      if (courseId && moduleId) {
+        navigate(`/courses/${courseId}/modules/${moduleId}/assignments/${assignmentId}`);
+      } else {
+        navigate(courseId ? `/courses/${courseId}` : `/assignments/${assignmentId}`);
+      }
     } catch (submitError) {
       setError(extractErrorMessage(submitError));
     } finally {
@@ -137,7 +144,24 @@ const AssignmentEditor: React.FC = () => {
     if (!assignmentId) return;
 
     try {
-      setError(t('assignment.errors.duplicateNotSupported', 'Duplicate is not supported by current backend.'));
+      const response = await api.post<{ id: string; courseId?: string; course_id?: string; moduleId?: string; module_id?: string }>(
+        `/assessments/assignments/${assignmentId}/duplicate`,
+        {
+          targetCourseId: courseId || undefined,
+          targetModuleId: moduleId || undefined,
+        }
+      );
+      const duplicatedId = String(response.data.id);
+      const duplicatedCourseId = String(response.data.courseId || response.data.course_id || courseId || '');
+      const duplicatedModuleId = String(response.data.moduleId || response.data.module_id || moduleId || '');
+
+      if (duplicatedCourseId && duplicatedModuleId) {
+        navigate(`/courses/${duplicatedCourseId}/modules/${duplicatedModuleId}/assignments/${duplicatedId}`);
+      } else if (duplicatedCourseId) {
+        navigate(`/courses/${duplicatedCourseId}`);
+      } else {
+        navigate(`/assignments/${duplicatedId}`);
+      }
     } catch (duplicateError) {
       setError(extractErrorMessage(duplicateError));
     }
@@ -250,21 +274,23 @@ const AssignmentEditor: React.FC = () => {
           </div>
 
           <div className="rounded-b-lg p-6" style={{ background: 'var(--bg-surface)' }}>
-            <AssignmentEditorTabContent
-              activeTab={activeTab}
-              formData={formData}
-              setFormData={setFormData}
-              validationErrors={validationErrors}
-              availableAssignments={availableAssignments}
-              assignmentId={assignmentId}
-              addResource={addResource}
-              updateResource={updateResource}
-              removeResource={removeResource}
-              addTestCase={addTestCase}
-              updateTestCase={updateTestCase}
-              removeTestCase={removeTestCase}
-              t={t}
-            />
+            <TabTransition tabKey={activeTab}>
+              <AssignmentEditorTabContent
+                activeTab={activeTab}
+                formData={formData}
+                setFormData={setFormData}
+                validationErrors={validationErrors}
+                availableAssignments={availableAssignments}
+                assignmentId={assignmentId}
+                addResource={addResource}
+                updateResource={updateResource}
+                removeResource={removeResource}
+                addTestCase={addTestCase}
+                updateTestCase={updateTestCase}
+                removeTestCase={removeTestCase}
+                t={t}
+              />
+            </TabTransition>
           </div>
 
           <div className="mt-6 flex gap-4">
@@ -305,7 +331,11 @@ const AssignmentEditor: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => navigate(courseId ? `/courses/${courseId}` : `/assignments/${assignmentId}`)}
+              onClick={() => navigate(
+                courseId && moduleId
+                  ? `/courses/${courseId}/modules/${moduleId}/assignments/${assignmentId}`
+                  : courseId ? `/courses/${courseId}` : `/assignments/${assignmentId}`
+              )}
               className="btn btn-secondary py-3"
             >
               {t('common.cancel')}

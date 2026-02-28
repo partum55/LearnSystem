@@ -11,11 +11,14 @@ import com.university.lms.submission.dto.GradeSubmissionRequest;
 import com.university.lms.submission.dto.SpeedGraderResponse;
 import com.university.lms.submission.dto.SubmissionResponse;
 import com.university.lms.submission.dto.SubmitSubmissionRequest;
+import com.university.lms.course.assessment.repository.AssignmentRepository;
+import com.university.lms.gradebook.event.SubmissionGradedEvent;
 import com.university.lms.submission.repository.SubmissionCommentRepository;
 import com.university.lms.submission.repository.SubmissionFileRepository;
 import com.university.lms.submission.repository.SubmissionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.io.PathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
@@ -48,6 +51,8 @@ public class SubmissionService {
     private final SubmissionAccessService submissionAccessService;
     private final SubmissionLateStatusService submissionLateStatusService;
     private final SubmissionMapper submissionMapper;
+    private final ApplicationEventPublisher eventPublisher;
+    private final AssignmentRepository assignmentRepository;
 
     @Transactional(readOnly = true)
     public List<SubmissionResponse> getSubmissionsForAssignment(UUID assignmentId, UUID requesterId, String requesterRole) {
@@ -166,6 +171,28 @@ public class SubmissionService {
         submission.setGraderId(graderId);
 
         submissionRepository.save(submission);
+
+        // Publish event so gradebook entry is created/updated
+        try {
+            UUID courseId = assignmentRepository.findById(submission.getAssignmentId())
+                    .map(a -> a.getCourseId())
+                    .orElse(null);
+            if (courseId != null) {
+                eventPublisher.publishEvent(new SubmissionGradedEvent(
+                        this,
+                        submission.getId(),
+                        submission.getAssignmentId(),
+                        submission.getUserId(),
+                        courseId,
+                        grade,
+                        Boolean.TRUE.equals(submission.getIsLate())
+                ));
+                log.info("Published SubmissionGradedEvent for submission {}", submissionId);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to publish SubmissionGradedEvent: {}", e.getMessage());
+        }
+
         return submissionMapper.toResponse(findSubmission(submissionId));
     }
 

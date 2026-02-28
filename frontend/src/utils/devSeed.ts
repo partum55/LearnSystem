@@ -242,15 +242,24 @@ async function seedTestData() {
     const q4Id = String(q4Res.data.id);
     console.log('[dev-seed] Questions created');
 
-    // 5. Create quiz and attach questions
-    const quizRes = await apiClient.post<Record<string, unknown>>('/assessments/quizzes', null, {
-      params: {
-        courseId,
+    // 5. Create quiz assignment and attach questions
+    const quizAssignmentRes = await apiClient.post<Record<string, unknown>>('/assessments/assignments', {
+      courseId,
+      moduleId: mod1Id,
+      assignmentType: 'QUIZ',
+      title: 'Quiz 1: Programming Basics',
+      description: 'Test your knowledge of fundamental programming concepts.',
+      maxPoints: 100,
+      isPublished: true,
+      quiz: {
         title: 'Quiz 1: Programming Basics',
         description: 'Test your knowledge of fundamental programming concepts.',
       },
     });
-    const quizId = String(quizRes.data.id);
+    const quizId = String(quizAssignmentRes.data.quizId || quizAssignmentRes.data.quiz_id || '');
+    if (!quizId) {
+      throw new Error('Failed to create quiz for seed assignment');
+    }
 
     for (const qId of [q1Id, q2Id, q3Id, q4Id]) {
       await apiClient.post(`/assessments/quizzes/${quizId}/questions/${qId}`);

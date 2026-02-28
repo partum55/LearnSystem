@@ -51,7 +51,7 @@ public interface QuestionBankRepository extends JpaRepository<QuestionBank, UUID
      * Find questions by difficulty (from metadata).
      */
     @Query(value = "SELECT * FROM question_bank WHERE course_id = :courseId " +
-           "AND metadata->>'difficulty' = :difficulty", nativeQuery = true)
+           "AND (difficulty = :difficulty OR metadata->>'difficulty' = :difficulty)", nativeQuery = true)
     List<QuestionBank> findByDifficulty(@Param("courseId") UUID courseId, @Param("difficulty") String difficulty);
 
     /**
@@ -63,5 +63,10 @@ public interface QuestionBankRepository extends JpaRepository<QuestionBank, UUID
      * Count questions by type.
      */
     long countByCourseIdAndQuestionType(UUID courseId, String questionType);
-}
 
+    /**
+     * Get active course questions for quiz-section selection.
+     */
+    @Query("SELECT q FROM QuestionBank q WHERE q.courseId = :courseId AND q.isArchived = false")
+    List<QuestionBank> findActiveByCourseId(@Param("courseId") UUID courseId);
+}

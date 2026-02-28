@@ -29,7 +29,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U lms_user -d lms_db"]
+      test: [ "CMD-SHELL", "pg_isready -U lms_user -d lms_db" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -48,7 +48,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -76,7 +76,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8761/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -101,19 +101,21 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker,supabase
       - SERVER_PORT=8081
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://${SUPABASE_DB_HOST}:${SUPABASE_DB_PORT:-6543}/${SUPABASE_DB_NAME:-postgres}
-      - SPRING_DATASOURCE_USERNAME=${SUPABASE_DB_USER}
-      - SPRING_DATASOURCE_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://${SUPABASE_DB_HOST:-postgres}:${SUPABASE_DB_PORT:-5432}/${SUPABASE_DB_NAME:-lms_db}
+      - SPRING_DATASOURCE_USERNAME=${SUPABASE_DB_USER:-lms_user}
+      - SPRING_DATASOURCE_PASSWORD=${SUPABASE_DB_PASSWORD:-lms_password_local}
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:-local-dev-secret-key-for-jwt-must-be-at-least-256-bits-long-for-hs256-algorithm}
       - JWT_EXPIRATION=${JWT_EXPIRATION:-86400000}
       - EUREKA_URI=http://eureka-server:8761/eureka
       - JAVA_OPTS=-Xmx384m -Xms192m
-      - BOOTSTRAP_ADMIN_ENABLED=${BOOTSTRAP_ADMIN_ENABLED:-false}
+      - BOOTSTRAP_ADMIN_ENABLED=${BOOTSTRAP_ADMIN_ENABLED:-true}
       - BOOTSTRAP_ADMIN_EMAIL=${BOOTSTRAP_ADMIN_EMAIL:-admin@ucu.edu.ua}
-      - BOOTSTRAP_ADMIN_PASSWORD=${BOOTSTRAP_ADMIN_PASSWORD}
+      - BOOTSTRAP_ADMIN_PASSWORD=${BOOTSTRAP_ADMIN_PASSWORD:-Admin123!}
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
       eureka-server:
@@ -121,7 +123,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/api/actuator/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8081/api/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -143,18 +145,20 @@ services:
       - SPRING_PROFILES_ACTIVE=docker,supabase
       - SERVER_PORT=8089
       # Learning service supabase profile uses DATABASE_URL / DB_USERNAME / DB_PASSWORD
-      - DATABASE_URL=jdbc:postgresql://${SUPABASE_DB_HOST}:${SUPABASE_DB_PORT:-6543}/${SUPABASE_DB_NAME:-postgres}
-      - DB_USERNAME=${SUPABASE_DB_USER}
-      - DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - DATABASE_URL=jdbc:postgresql://${SUPABASE_DB_HOST:-postgres}:${SUPABASE_DB_PORT:-5432}/${SUPABASE_DB_NAME:-lms_db}
+      - DB_USERNAME=${SUPABASE_DB_USER:-lms_user}
+      - DB_PASSWORD=${SUPABASE_DB_PASSWORD:-lms_password_local}
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:-local-dev-secret-key-for-jwt-must-be-at-least-256-bits-long-for-hs256-algorithm}
       - EUREKA_URI=http://eureka-server:8761/eureka
       - SUBMISSION_STORAGE_PATH=/data/submissions
       - JAVA_OPTS=-Xmx512m -Xms256m
     volumes:
       - submission_data:/data/submissions
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
       eureka-server:
@@ -162,7 +166,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8089/api/actuator/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8089/api/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -184,18 +188,21 @@ services:
       - SPRING_PROFILES_ACTIVE=docker,supabase
       - SERVER_PORT=8085
       # AI service uses DB_URL/DB_USERNAME/DB_PASSWORD (not SPRING_DATASOURCE_*)
-      - DB_URL=jdbc:postgresql://${SUPABASE_DB_HOST}:${SUPABASE_DB_PORT:-6543}/${SUPABASE_DB_NAME:-postgres}
-      - DB_USERNAME=${SUPABASE_DB_USER}
-      - DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - DB_URL=jdbc:postgresql://${SUPABASE_DB_HOST:-postgres}:${SUPABASE_DB_PORT:-5432}/${SUPABASE_DB_NAME:-lms_db}
+      - DB_USERNAME=${SUPABASE_DB_USER:-lms_user}
+      - DB_PASSWORD=${SUPABASE_DB_PASSWORD:-lms_password_local}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - LLAMA_API_URL=${LLAMA_API_URL:-https://api.groq.com/openai/v1}
       - LLAMA_API_KEY=${LLAMA_API_KEY}
       - LLAMA_MODEL=${LLAMA_MODEL:-llama-3.3-70b-versatile}
       - EUREKA_URI=http://eureka-server:8761/eureka
-      - JWT_SECRET=${JWT_SECRET}
+      - LEARNING_SERVICE_URL=http://lms-learning-service:8089
+      - JWT_SECRET=${JWT_SECRET:-local-dev-secret-key-for-jwt-must-be-at-least-256-bits-long-for-hs256-algorithm}
       - JAVA_OPTS=-Xmx768m -Xms384m -XX:+UseG1GC
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
       eureka-server:
@@ -203,7 +210,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8085/api/actuator/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8085/api/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -224,15 +231,17 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker,supabase
       - SERVER_PORT=8088
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://${SUPABASE_DB_HOST}:${SUPABASE_DB_PORT:-6543}/${SUPABASE_DB_NAME:-postgres}
-      - SPRING_DATASOURCE_USERNAME=${SUPABASE_DB_USER}
-      - SPRING_DATASOURCE_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://${SUPABASE_DB_HOST:-postgres}:${SUPABASE_DB_PORT:-5432}/${SUPABASE_DB_NAME:-lms_db}
+      - SPRING_DATASOURCE_USERNAME=${SUPABASE_DB_USER:-lms_user}
+      - SPRING_DATASOURCE_PASSWORD=${SUPABASE_DB_PASSWORD:-lms_password_local}
       - SPRING_FLYWAY_ENABLED=false
       - SPRING_DATA_REDIS_HOST=redis
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:-local-dev-secret-key-for-jwt-must-be-at-least-256-bits-long-for-hs256-algorithm}
       - EUREKA_URI=http://eureka-server:8761/eureka
       - JAVA_OPTS=-Xmx384m -Xms192m
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
       eureka-server:
@@ -240,7 +249,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8088/api/actuator/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8088/api/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -277,7 +286,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -304,7 +313,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost/health" ]
       interval: 30s
       timeout: 3s
       retries: 3

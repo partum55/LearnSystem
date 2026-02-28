@@ -1,14 +1,14 @@
 package com.university.lms.course.assessment.web;
 
 import com.university.lms.course.assessment.dto.QuizDto;
+import com.university.lms.course.assessment.dto.DuplicateQuizRequest;
+import com.university.lms.course.assessment.dto.AssignmentDto;
+import com.university.lms.course.assessment.repository.AssignmentRepository;
+import com.university.lms.course.assessment.service.AssignmentService;
 import com.university.lms.course.assessment.service.QuizService;
 import com.university.lms.course.web.RequestUserContext;
-import com.university.lms.common.dto.PageResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +27,8 @@ import java.util.UUID;
 public class QuizController {
 
     private final QuizService quizService;
+    private final AssignmentService assignmentService;
+    private final AssignmentRepository assignmentRepository;
     private final RequestUserContext requestUserContext;
 
     /**
@@ -36,47 +38,6 @@ public class QuizController {
     public ResponseEntity<QuizDto> getQuiz(@PathVariable UUID id) {
         QuizDto quiz = quizService.getQuizById(id);
         return ResponseEntity.ok(quiz);
-    }
-
-    /**
-     * Get quizzes by course.
-     */
-    @GetMapping("/course/{courseId}")
-    public ResponseEntity<PageResponse<QuizDto>> getQuizzesByCourse(
-            @PathVariable UUID courseId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-
-        log.info("REST request to get quizzes for course: {}", courseId);
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        PageResponse<QuizDto> quizzes = quizService.getQuizzesByCourse(courseId, pageable);
-        log.info("Found {} quizzes for course {}", quizzes.getTotalElements(), courseId);
-        return ResponseEntity.ok(quizzes);
-    }
-
-    /**
-     * Get quizzes by course (list).
-     */
-    @GetMapping("/course/{courseId}/list")
-    public ResponseEntity<List<QuizDto>> getQuizzesByCourseList(@PathVariable UUID courseId) {
-        log.info("REST request to get quizzes list for course: {}", courseId);
-        List<QuizDto> quizzes = quizService.getQuizzesByCourseList(courseId);
-        log.info("Found {} quizzes in list for course {}", quizzes.size(), courseId);
-        return ResponseEntity.ok(quizzes);
-    }
-
-    /**
-     * Create quiz.
-     */
-    @PostMapping
-    public ResponseEntity<QuizDto> createQuiz(
-            @RequestParam UUID courseId,
-            @RequestParam String title,
-            @RequestParam(required = false) String description) {
-
-        UUID createdBy = requestUserContext.requireUserId();
-        QuizDto quiz = quizService.createQuiz(courseId, title, description, createdBy);
-        return ResponseEntity.status(HttpStatus.CREATED).body(quiz);
     }
 
     /**
@@ -102,6 +63,48 @@ public class QuizController {
         UUID userId = requestUserContext.requireUserId();
         quizService.deleteQuiz(id, userId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Duplicate quiz.
+     */
+    @PostMapping("/{id}/duplicate")
+    public ResponseEntity<QuizDto> duplicateQuiz(
+            @PathVariable UUID id,
+            @RequestBody(required = false) DuplicateQuizRequest request,
+            @RequestParam(required = false) UUID courseId,
+            @RequestParam(required = false) UUID moduleId) {
+        UUID userId = requestUserContext.requireUserId();
+        String userRole = requestUserContext.requireUserRole();
+
+        UUID targetCourseId =
+                request != null && request.getTargetCourseId() != null
+                        ? request.getTargetCourseId()
+                        : courseId;
+        UUID targetModuleId =
+                request != null && request.getTargetModuleId() != null
+                        ? request.getTargetModuleId()
+                        : moduleId;
+
+        AssignmentDto duplicatedAssignment =
+                assignmentRepository.findFirstByQuizId(id)
+                        .map(assignment ->
+                                assignmentService.duplicateAssignment(
+                                        assignment.getId(),
+                                        userId,
+                                        userRole,
+                                        targetCourseId,
+                                        targetModuleId))
+                        .orElse(null);
+
+        if (duplicatedAssignment != null && duplicatedAssignment.getQuizId() != null) {
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(quizService.getQuizById(duplicatedAssignment.getQuizId()));
+        }
+
+        QuizDto duplicated =
+                quizService.duplicateQuiz(id, userId, userRole, targetCourseId, true);
+        return ResponseEntity.status(HttpStatus.CREATED).body(duplicated);
     }
 
     /**

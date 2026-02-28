@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -29,7 +30,7 @@ public class PeerReviewRating {
     private Long rubricId;
 
     @Column(name = "score", nullable = false)
-    private Double score;
+    private BigDecimal score;
 
     @Column(name = "feedback", columnDefinition = "TEXT")
     private String feedback;
