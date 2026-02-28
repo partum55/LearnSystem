@@ -69,6 +69,7 @@ export const CourseDetail: React.FC = () => {
   const [overrideReason, setOverrideReason] = useState('');
   const [isForcePublishing, setIsForcePublishing] = useState(false);
   const [publishChecklistError, setPublishChecklistError] = useState<string | null>(null);
+  const [publishActionError, setPublishActionError] = useState<string | null>(null);
 
   const courseId = id || '';
   const isInstructor = user?.role === 'TEACHER' || user?.role === 'SUPERADMIN';
@@ -312,6 +313,7 @@ export const CourseDetail: React.FC = () => {
     setPublishChecklist(checklist);
     setOverrideReason('');
     setPublishChecklistError(null);
+    setPublishActionError(null);
     setShowPublishChecklistModal(true);
   }, []);
 
@@ -321,6 +323,7 @@ export const CourseDetail: React.FC = () => {
     }
 
     setPublishChecklistError(null);
+    setPublishActionError(null);
     setIsPublishActionLoading(true);
 
     if (currentCourse.isPublished) {
@@ -328,7 +331,7 @@ export const CourseDetail: React.FC = () => {
         await coursesApi.unpublish(id);
         await fetchCourseById(id);
       } catch (error) {
-        window.alert(extractErrorMessage(error));
+        setPublishActionError(extractErrorMessage(error));
       } finally {
         setIsPublishActionLoading(false);
       }
@@ -345,14 +348,26 @@ export const CourseDetail: React.FC = () => {
       await coursesApi.publish(id);
       await fetchCourseById(id);
     } catch (error) {
-      const conflictChecklist = (
-        error as { response?: { status?: number; data?: { checklist?: CoursePublishChecklist } } }
-      )?.response?.data?.checklist;
+      const responseData = (
+        error as {
+          response?: {
+            data?: {
+              checklist?: CoursePublishChecklist;
+              data?: { checklist?: CoursePublishChecklist };
+              payload?: { checklist?: CoursePublishChecklist };
+            };
+          };
+        }
+      )?.response?.data;
+      const conflictChecklist =
+        responseData?.checklist ??
+        responseData?.data?.checklist ??
+        responseData?.payload?.checklist;
 
       if (conflictChecklist) {
         openChecklistModal(conflictChecklist);
       } else {
-        window.alert(extractErrorMessage(error));
+        setPublishActionError(extractErrorMessage(error));
       }
     } finally {
       setIsPublishActionLoading(false);
@@ -404,6 +419,19 @@ export const CourseDetail: React.FC = () => {
               }}
               t={t}
             />
+
+            {publishActionError && (
+              <div
+                className="mb-4 rounded-md px-3 py-2 text-sm"
+                style={{
+                  background: 'rgba(239,68,68,0.08)',
+                  border: '1px solid rgba(239,68,68,0.15)',
+                  color: 'var(--fn-error)',
+                }}
+              >
+                {publishActionError}
+              </div>
+            )}
 
             <CourseDetailTabs tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} />
 
