@@ -144,7 +144,24 @@ const AssignmentEditor: React.FC = () => {
     if (!assignmentId) return;
 
     try {
-      setError(t('assignment.errors.duplicateNotSupported', 'Duplicate is not supported by current backend.'));
+      const response = await api.post<{ id: string; courseId?: string; course_id?: string; moduleId?: string; module_id?: string }>(
+        `/assessments/assignments/${assignmentId}/duplicate`,
+        {
+          targetCourseId: courseId || undefined,
+          targetModuleId: moduleId || undefined,
+        }
+      );
+      const duplicatedId = String(response.data.id);
+      const duplicatedCourseId = String(response.data.courseId || response.data.course_id || courseId || '');
+      const duplicatedModuleId = String(response.data.moduleId || response.data.module_id || moduleId || '');
+
+      if (duplicatedCourseId && duplicatedModuleId) {
+        navigate(`/courses/${duplicatedCourseId}/modules/${duplicatedModuleId}/assignments/${duplicatedId}`);
+      } else if (duplicatedCourseId) {
+        navigate(`/courses/${duplicatedCourseId}`);
+      } else {
+        navigate(`/assignments/${duplicatedId}`);
+      }
     } catch (duplicateError) {
       setError(extractErrorMessage(duplicateError));
     }

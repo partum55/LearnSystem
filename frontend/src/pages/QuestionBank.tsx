@@ -128,13 +128,17 @@ export const QuestionBank: React.FC = () => {
 
   const getQuestionTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      'MULTIPLE_CHOICE': 'Multiple Choice',
+      'SINGLE_CHOICE': 'Single Choice',
+      'MULTIPLE_CHOICE': 'Single Choice',
+      'MULTIPLE_RESPONSE': 'Multiple Response',
       'TRUE_FALSE': 'True/False',
       'FILL_BLANK': 'Fill in the Blank',
       'SHORT_ANSWER': 'Short Answer',
       'ESSAY': 'Essay',
       'MATCHING': 'Matching',
-      'NUMERICAL': 'Numerical',
+      'ORDERING': 'Ordering',
+      'NUMERICAL': 'Numeric',
+      'NUMERIC': 'Numeric',
     };
     return labels[type] || type;
   };
@@ -152,13 +156,17 @@ export const QuestionBank: React.FC = () => {
 
   const questionTypes = [
     'ALL',
+    'SINGLE_CHOICE',
+    'MULTIPLE_RESPONSE',
     'MULTIPLE_CHOICE',
     'TRUE_FALSE',
     'FILL_BLANK',
     'SHORT_ANSWER',
     'ESSAY',
     'MATCHING',
+    'ORDERING',
     'NUMERICAL',
+    'NUMERIC',
   ];
 
   if (loading) {
@@ -206,7 +214,7 @@ export const QuestionBank: React.FC = () => {
               <CardBody>
                 <div className="text-center">
                   <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                    {questions.filter(q => q.question_type === 'MULTIPLE_CHOICE').length}
+                    {questions.filter(q => q.question_type === 'SINGLE_CHOICE' || q.question_type === 'MULTIPLE_CHOICE').length}
                   </p>
                   <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                     Multiple Choice
@@ -311,7 +319,7 @@ export const QuestionBank: React.FC = () => {
                         </h3>
 
                         {/* Multiple Choice Options Preview */}
-                        {question.question_type === 'MULTIPLE_CHOICE' && question.options?.choices && (
+                        {(question.question_type === 'MULTIPLE_CHOICE' || question.question_type === 'SINGLE_CHOICE') && question.options?.choices && (
                           <div className="mt-3 space-y-1">
                             {question.options.choices.slice(0, 3).map((choice: string, idx: number) => (
                               <div key={idx} className="flex items-center text-sm" style={{ color: 'var(--text-muted)' }}>

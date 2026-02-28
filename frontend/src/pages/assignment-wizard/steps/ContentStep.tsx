@@ -1,14 +1,21 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { WizardFormData } from '../wizardTypes';
-import ObsidianMDXEditor from '../../../components/editors/ObsidianMDXEditor';
-import AIToolbarPlugin from '../../../components/editors/AIToolbarPlugin';
 import CodeEditor from '../../../components/CodeEditor';
+import {
+  BlockEditor,
+  parseCanonicalDocument,
+  serializeCanonicalDocument,
+} from '../../../features/editor-core';
+import { editorMediaApi } from '../../../api/pages';
+import { CanonicalDocument } from '../../../types';
 
 interface ContentStepProps {
   formData: WizardFormData;
   onChange: (partial: Partial<WizardFormData>) => void;
   validationErrors: Record<string, string>;
+  templateDocument: CanonicalDocument;
+  onTemplateChange: (document: CanonicalDocument) => void;
 }
 
 const LANGUAGES = [
@@ -16,9 +23,23 @@ const LANGUAGES = [
   'csharp', 'go', 'rust', 'ruby', 'php', 'kotlin', 'swift', 'sql',
 ];
 
-const ContentStep: React.FC<ContentStepProps> = ({ formData, onChange, validationErrors }) => {
+const ContentStep: React.FC<ContentStepProps> = ({
+  formData,
+  onChange,
+  validationErrors,
+  templateDocument,
+  onTemplateChange,
+}) => {
   const { t } = useTranslation();
   const isCode = formData.assignment_type === 'CODE' || formData.assignment_type === 'VIRTUAL_LAB';
+
+  const descriptionDocument = parseCanonicalDocument(formData.description, '');
+  const instructionsDocument = parseCanonicalDocument(formData.instructions, '');
+
+  const handleUploadMedia = async (file: File) => {
+    const response = await editorMediaApi.upload(file);
+    return { url: response.data.url, contentType: response.data.contentType };
+  };
 
   return (
     <div className="space-y-6">
@@ -49,19 +70,20 @@ const ContentStep: React.FC<ContentStepProps> = ({ formData, onChange, validatio
 
       {/* Description */}
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className="label">
-            {t('assignment.description', 'Description')} *
-          </label>
-          <AIToolbarPlugin
-            currentContent={formData.description}
-            onContentUpdate={(content) => onChange({ description: content })}
-          />
-        </div>
-        <ObsidianMDXEditor
-          value={formData.description}
-          onChange={(val) => onChange({ description: val })}
+        <label className="label mb-2 block">
+          {t('assignment.description', 'Description')} *
+        </label>
+        <BlockEditor
+          value={descriptionDocument}
+          onChange={(doc) =>
+            onChange({
+              description: serializeCanonicalDocument(doc),
+              description_format: 'RICH',
+            })
+          }
+          mode="full"
           placeholder={t('assignment.description_placeholder', 'Enter assignment description')}
+          onUploadMedia={handleUploadMedia}
         />
         {validationErrors.description && (
           <p className="error-text mt-1">{t(`validation.${validationErrors.description}`, validationErrors.description)}</p>
@@ -70,19 +92,20 @@ const ContentStep: React.FC<ContentStepProps> = ({ formData, onChange, validatio
 
       {/* Instructions */}
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className="label">
-            {t('assignment.instructions', 'Instructions')}
-          </label>
-          <AIToolbarPlugin
-            currentContent={formData.instructions}
-            onContentUpdate={(content) => onChange({ instructions: content })}
-          />
-        </div>
-        <ObsidianMDXEditor
-          value={formData.instructions}
-          onChange={(val) => onChange({ instructions: val })}
+        <label className="label mb-2 block">
+          {t('assignment.instructions', 'Instructions')}
+        </label>
+        <BlockEditor
+          value={instructionsDocument}
+          onChange={(doc) =>
+            onChange({
+              instructions: serializeCanonicalDocument(doc),
+              instructions_format: 'RICH',
+            })
+          }
+          mode="full"
           placeholder={t('assignment.instructions_placeholder', 'Enter instructions for students')}
+          onUploadMedia={handleUploadMedia}
         />
       </div>
 
@@ -131,6 +154,19 @@ const ContentStep: React.FC<ContentStepProps> = ({ formData, onChange, validatio
           </div>
         </>
       )}
+
+      <div>
+        <label className="label mb-2 block">
+          {t('assignment.answer_template', 'Student answer template (optional)')}
+        </label>
+        <BlockEditor
+          value={templateDocument}
+          onChange={onTemplateChange}
+          mode="lite"
+          placeholder={t('assignment.answer_template_placeholder', 'Prefill starter worksheet content for students')}
+          onUploadMedia={handleUploadMedia}
+        />
+      </div>
     </div>
   );
 };

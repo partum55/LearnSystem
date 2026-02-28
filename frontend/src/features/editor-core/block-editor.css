@@ -1,0 +1,436 @@
+/* ═══════════════════════════════════════════════
+   Block Editor — Custom node styles
+   Uses Obsidian design system variables
+   ═══════════════════════════════════════════════ */
+
+/* ── ProseMirror base ── */
+.ProseMirror {
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  line-height: 1.75;
+}
+
+.ProseMirror > * + * {
+  margin-top: 0.75em;
+}
+
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3,
+.ProseMirror h4,
+.ProseMirror h5,
+.ProseMirror h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: var(--letter-tight);
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+
+.ProseMirror h1 { font-size: 1.875rem; margin-top: 1.5em; }
+.ProseMirror h2 { font-size: 1.5rem; margin-top: 1.25em; }
+.ProseMirror h3 { font-size: 1.25rem; margin-top: 1em; }
+.ProseMirror h4 { font-size: 1.125rem; margin-top: 1em; }
+
+.ProseMirror p {
+  margin: 0;
+}
+
+.ProseMirror a {
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ProseMirror a:hover {
+  color: var(--text-secondary);
+}
+
+.ProseMirror code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background: var(--bg-overlay);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+}
+
+.ProseMirror pre {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--sp-4);
+  overflow-x: auto;
+  line-height: 1.6;
+}
+
+.ProseMirror pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+.ProseMirror blockquote {
+  border-left: 3px solid var(--border-strong);
+  padding-left: var(--sp-4);
+  color: var(--text-secondary);
+  font-style: italic;
+  margin: 0.75em 0;
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+  padding-left: 1.5em;
+}
+
+.ProseMirror ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.ProseMirror ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+}
+
+.ProseMirror ul[data-type="taskList"] li input[type="checkbox"] {
+  margin-top: 0.35em;
+  accent-color: var(--text-primary);
+}
+
+.ProseMirror hr {
+  border: none;
+  border-top: 1px solid var(--border-default);
+  margin: 1.5em 0;
+}
+
+/* ── Tables ── */
+.ProseMirror table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.ProseMirror th,
+.ProseMirror td {
+  border: 1px solid var(--border-default);
+  padding: var(--sp-2) var(--sp-3);
+  text-align: left;
+  vertical-align: top;
+  min-width: 80px;
+}
+
+.ProseMirror th {
+  background: var(--bg-elevated);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.ProseMirror td {
+  background: var(--bg-surface);
+}
+
+.ProseMirror .selectedCell {
+  background: var(--bg-active);
+}
+
+/* ── Placeholder ── */
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--text-faint);
+  pointer-events: none;
+  height: 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Custom Block Nodes
+   ═══════════════════════════════════════════════ */
+
+/* ── Callout ── */
+.editor-callout {
+  border-left: 4px solid var(--fn-info);
+  background: rgba(161, 161, 170, 0.06);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: var(--sp-3) var(--sp-4);
+  margin: 0.75em 0;
+  color: var(--text-primary);
+}
+
+.editor-callout-info {
+  border-left-color: var(--fn-info);
+  background: rgba(161, 161, 170, 0.06);
+}
+
+.editor-callout-warn {
+  border-left-color: var(--fn-warning);
+  background: rgba(234, 179, 8, 0.06);
+}
+
+.editor-callout-example {
+  border-left-color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.06);
+}
+
+.editor-callout-hint {
+  border-left-color: var(--fn-success);
+  background: rgba(34, 197, 94, 0.06);
+}
+
+/* ── Citation ── */
+.editor-citation {
+  font-style: italic;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--sp-3) var(--sp-4);
+  margin: 0.75em 0;
+  position: relative;
+  padding-left: var(--sp-6);
+}
+
+.editor-citation::before {
+  content: "\201C";
+  position: absolute;
+  left: var(--sp-2);
+  top: var(--sp-2);
+  font-size: 1.5rem;
+  color: var(--text-faint);
+  font-family: var(--font-display);
+  line-height: 1;
+}
+
+/* ── Math Block ── */
+.editor-math-block {
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--sp-4);
+  margin: 0.75em 0;
+  text-align: center;
+  font-family: var(--font-mono);
+  overflow-x: auto;
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.editor-math-block:hover {
+  border-color: var(--border-strong);
+}
+
+.editor-math-block .katex-display {
+  margin: 0;
+}
+
+/* ── Math Inline ── */
+.editor-math-inline {
+  font-family: var(--font-mono);
+  background: var(--bg-overlay);
+  padding: 1px 4px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.editor-math-inline .katex {
+  font-size: 1em;
+}
+
+/* ── Mermaid ── */
+.editor-mermaid-block {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-base);
+  padding: var(--sp-3);
+  margin: 0.75em 0;
+  overflow-x: auto;
+}
+
+.editor-mermaid-svg svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.editor-mermaid-error {
+  color: var(--fn-error);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  white-space: pre-wrap;
+}
+
+/* ── Footnote ── */
+.editor-footnote {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--sp-2);
+  margin-top: var(--sp-4);
+  padding-left: var(--sp-4);
+  position: relative;
+}
+
+.editor-footnote::before {
+  content: attr(data-ordinal) ".";
+  position: absolute;
+  left: 0;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+/* ── Numbered Paragraph ── */
+.editor-numbered-paragraph {
+  padding-left: var(--sp-8);
+  position: relative;
+  color: var(--text-primary);
+}
+
+.editor-numbered-paragraph::before {
+  content: attr(data-sequence) ".";
+  position: absolute;
+  left: 0;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+}
+
+/* ── Test Case ── */
+.editor-test-case {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--sp-3) var(--sp-4);
+  margin: 0.75em 0;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── Embed ── */
+.editor-embed {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--sp-3);
+  margin: 0.75em 0;
+  overflow: hidden;
+}
+
+.editor-embed-frame-wrap {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  background: var(--bg-base);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.editor-embed-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--bg-base);
+}
+
+.editor-embed-blocked {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--fn-error);
+}
+
+.editor-embed a {
+  display: block;
+  margin-top: var(--sp-2);
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-size: 0.875rem;
+  word-break: break-word;
+}
+
+.editor-embed a:hover {
+  color: var(--text-secondary);
+}
+
+/* ── Image Block ── */
+.editor-image-block {
+  margin: 1em 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.editor-image-block img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: var(--radius-md);
+}
+
+.editor-image-block figcaption {
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  padding: var(--sp-2) 0;
+  font-style: italic;
+}
+
+.editor-image-block figcaption:empty {
+  display: none;
+}
+
+.editor-image-block.align-center {
+  text-align: center;
+}
+
+.editor-image-block.align-center img {
+  margin: 0 auto;
+}
+
+.editor-image-block.align-left {
+  text-align: left;
+}
+
+.editor-image-block.align-right {
+  text-align: right;
+}
+
+.editor-image-block.align-right img {
+  margin-left: auto;
+}
+
+/* ═══════════════════════════════════════════════
+   Slash Command Panel
+   ═══════════════════════════════════════════════ */
+.slash-command-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ═══════════════════════════════════════════════
+   KaTeX overrides for dark theme
+   ═══════════════════════════════════════════════ */
+.katex {
+  color: var(--text-primary);
+}
+
+.katex .katex-html {
+  color: var(--text-primary);
+}

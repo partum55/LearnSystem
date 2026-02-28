@@ -45,7 +45,7 @@ export const QuizTakingNavigation: React.FC<QuizTakingNavigationProps> = ({
             style={
               index === currentQuestionIndex
                 ? { background: 'var(--text-primary)', color: 'var(--bg-base)' }
-                : answers[quizQuestion.question.id]
+                : answers[quizQuestion.id]
                   ? { background: 'rgba(34, 197, 94, 0.15)', color: 'var(--fn-success)' }
                   : { background: 'var(--bg-overlay)', color: 'var(--text-muted)' }
             }

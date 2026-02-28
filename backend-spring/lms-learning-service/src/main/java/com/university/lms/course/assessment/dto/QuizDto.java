@@ -51,4 +51,5 @@ public class QuizDto {
     private Integer totalQuestions;
     private BigDecimal totalPoints;
     private List<QuizQuestionDto> questions;
+    private List<QuizSectionDto> sections;
 }

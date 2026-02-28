@@ -60,6 +60,87 @@ export const QuizBuilderTabContent: React.FC<QuizBuilderTabContentProps> = ({
   toggleCorrectAnswer,
   t,
 }) => {
+  const addSection = () => {
+    setQuiz((previousQuiz) => ({
+      ...previousQuiz,
+      sections: [
+        ...previousQuiz.sections,
+        {
+          title: `Section ${previousQuiz.sections.length + 1}`,
+          position: previousQuiz.sections.length,
+          question_count: 0,
+          rules: [],
+        },
+      ],
+    }));
+  };
+
+  const updateSection = (
+    sectionIndex: number,
+    field: 'title' | 'position' | 'question_count',
+    value: string | number
+  ) => {
+    setQuiz((previousQuiz) => ({
+      ...previousQuiz,
+      sections: previousQuiz.sections.map((section, idx) =>
+        idx === sectionIndex ? { ...section, [field]: value } : section
+      ),
+    }));
+  };
+
+  const removeSection = (sectionIndex: number) => {
+    setQuiz((previousQuiz) => ({
+      ...previousQuiz,
+      sections: previousQuiz.sections.filter((_, idx) => idx !== sectionIndex),
+    }));
+  };
+
+  const addRule = (sectionIndex: number) => {
+    setQuiz((previousQuiz) => ({
+      ...previousQuiz,
+      sections: previousQuiz.sections.map((section, idx) =>
+        idx === sectionIndex
+          ? {
+              ...section,
+              rules: [...section.rules, { quota: 1 }],
+            }
+          : section
+      ),
+    }));
+  };
+
+  const updateRule = (
+    sectionIndex: number,
+    ruleIndex: number,
+    field: 'question_type' | 'difficulty' | 'tag' | 'quota',
+    value: string | number
+  ) => {
+    setQuiz((previousQuiz) => ({
+      ...previousQuiz,
+      sections: previousQuiz.sections.map((section, sIdx) =>
+        sIdx === sectionIndex
+          ? {
+              ...section,
+              rules: section.rules.map((rule, rIdx) =>
+                rIdx === ruleIndex ? { ...rule, [field]: value } : rule
+              ),
+            }
+          : section
+      ),
+    }));
+  };
+
+  const removeRule = (sectionIndex: number, ruleIndex: number) => {
+    setQuiz((previousQuiz) => ({
+      ...previousQuiz,
+      sections: previousQuiz.sections.map((section, idx) =>
+        idx === sectionIndex
+          ? { ...section, rules: section.rules.filter((_, rIdx) => rIdx !== ruleIndex) }
+          : section
+      ),
+    }));
+  };
+
   if (activeTab === 'basic') {
     return (
       <Card>
@@ -387,6 +468,142 @@ export const QuizBuilderTabContent: React.FC<QuizBuilderTabContentProps> = ({
               ))}
             </div>
           </div>
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+              {t('quiz.sections', 'Randomization Sections')}
+            </h2>
+            <button
+              type="button"
+              className="text-sm"
+              style={{ color: 'var(--text-secondary)' }}
+              onClick={addSection}
+            >
+              + {t('quiz.addSection', 'Add Section')}
+            </button>
+          </div>
+        </CardHeader>
+        <CardBody>
+          {quiz.sections.length === 0 ? (
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              {t(
+                'quiz.sectionsHint',
+                'Optional. Define section quotas and rules to randomize question selection by type/difficulty/tag.'
+              )}
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {quiz.sections.map((section, sectionIndex) => (
+                <div
+                  key={`${section.id || 'new'}-${sectionIndex}`}
+                  className="rounded-lg p-3"
+                  style={{ border: '1px solid var(--border-default)' }}
+                >
+                  <div className="mb-3 grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <input
+                      className="input"
+                      value={section.title}
+                      onChange={(event) => updateSection(sectionIndex, 'title', event.target.value)}
+                      placeholder={t('quiz.sectionTitle', 'Section title')}
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      className="input"
+                      value={section.position}
+                      onChange={(event) => updateSection(sectionIndex, 'position', parseInt(event.target.value, 10) || 0)}
+                      placeholder={t('quiz.position', 'Position')}
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      className="input"
+                      value={section.question_count}
+                      onChange={(event) => updateSection(sectionIndex, 'question_count', parseInt(event.target.value, 10) || 0)}
+                      placeholder={t('quiz.questionCount', 'Question count')}
+                    />
+                    <button
+                      type="button"
+                      className="px-3 py-2 rounded border"
+                      style={{ borderColor: 'var(--border-default)', color: 'var(--fn-error)' }}
+                      onClick={() => removeSection(sectionIndex)}
+                    >
+                      {t('common.delete', 'Delete')}
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                        {t('quiz.selectionRules', 'Selection Rules')}
+                      </p>
+                      <button
+                        type="button"
+                        className="text-sm"
+                        style={{ color: 'var(--text-secondary)' }}
+                        onClick={() => addRule(sectionIndex)}
+                      >
+                        + {t('quiz.addRule', 'Add Rule')}
+                      </button>
+                    </div>
+                    {section.rules.map((rule, ruleIndex) => (
+                      <div key={rule.id || `${sectionIndex}-${ruleIndex}`} className="grid grid-cols-1 md:grid-cols-5 gap-2">
+                        <select
+                          className="input"
+                          value={rule.question_type || ''}
+                          onChange={(event) => updateRule(sectionIndex, ruleIndex, 'question_type', event.target.value)}
+                        >
+                          <option value="">{t('quiz.anyType', 'Any Type')}</option>
+                          {QUIZ_QUESTION_TYPE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value.toUpperCase()}>
+                              {t(option.labelKey, option.defaultLabel)}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          className="input"
+                          value={rule.difficulty || ''}
+                          onChange={(event) => updateRule(sectionIndex, ruleIndex, 'difficulty', event.target.value)}
+                          placeholder={t('quiz.difficulty', 'Difficulty')}
+                        />
+                        <input
+                          className="input"
+                          value={rule.tag || ''}
+                          onChange={(event) => updateRule(sectionIndex, ruleIndex, 'tag', event.target.value)}
+                          placeholder={t('quiz.tag', 'Tag')}
+                        />
+                        <input
+                          type="number"
+                          min="1"
+                          className="input"
+                          value={rule.quota}
+                          onChange={(event) => updateRule(sectionIndex, ruleIndex, 'quota', parseInt(event.target.value, 10) || 1)}
+                          placeholder={t('quiz.quota', 'Quota')}
+                        />
+                        <button
+                          type="button"
+                          className="px-3 py-2 rounded border"
+                          style={{ borderColor: 'var(--border-default)', color: 'var(--fn-error)' }}
+                          onClick={() => removeRule(sectionIndex, ruleIndex)}
+                        >
+                          {t('common.delete', 'Delete')}
+                        </button>
+                      </div>
+                    ))}
+                    {section.rules.length === 0 && (
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {t('quiz.noRules', 'No rules yet. Section will pull random questions from the course pool.')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardBody>
       </Card>
     </div>

@@ -1,12 +1,16 @@
 package com.university.lms.course.assessment.web;
 
 import com.university.lms.course.assessment.domain.QuizAttempt;
+import com.university.lms.course.assessment.dto.QuizAttemptDto;
+import com.university.lms.course.assessment.dto.QuizAttemptQuestionDto;
+import com.university.lms.course.assessment.dto.QuizAttemptResultDto;
 import com.university.lms.course.assessment.service.QuizAttemptService;
 import com.university.lms.course.web.RequestUserContext;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -42,6 +46,19 @@ public class QuizAttemptController {
     }
 
     /**
+     * Save in-progress answers without submitting attempt.
+     */
+    @PostMapping("/{attemptId}/save")
+    public ResponseEntity<QuizAttempt> saveQuizAttemptProgress(
+            @PathVariable UUID attemptId,
+            @RequestBody Map<String, Object> answers) {
+
+        UUID userId = requestUserContext.requireUserId();
+        QuizAttempt attempt = quizAttemptService.saveProgress(attemptId, answers, userId);
+        return ResponseEntity.ok(attempt);
+    }
+
+    /**
      * Submit quiz attempt.
      */
     @PostMapping("/{attemptId}/submit")
@@ -55,9 +72,40 @@ public class QuizAttemptController {
     }
 
     /**
+     * Get frozen question snapshots for an attempt.
+     */
+    @GetMapping("/{attemptId}")
+    public ResponseEntity<QuizAttemptDto> getAttempt(@PathVariable UUID attemptId) {
+        UUID userId = requestUserContext.requireUserId();
+        String userRole = requestUserContext.requireUserRole();
+        return ResponseEntity.ok(quizAttemptService.getAttemptById(attemptId, userId, userRole));
+    }
+
+    /**
+     * Get grading results for an attempt.
+     */
+    @GetMapping("/{attemptId}/results")
+    public ResponseEntity<QuizAttemptResultDto> getAttemptResults(@PathVariable UUID attemptId) {
+        UUID userId = requestUserContext.requireUserId();
+        String userRole = requestUserContext.requireUserRole();
+        return ResponseEntity.ok(quizAttemptService.getAttemptResults(attemptId, userId, userRole));
+    }
+
+    /**
+     * Get frozen question snapshots for an attempt.
+     */
+    @GetMapping("/{attemptId}/questions")
+    public ResponseEntity<List<QuizAttemptQuestionDto>> getAttemptQuestions(@PathVariable UUID attemptId) {
+        UUID userId = requestUserContext.requireUserId();
+        String userRole = requestUserContext.requireUserRole();
+        return ResponseEntity.ok(quizAttemptService.getAttemptQuestions(attemptId, userId, userRole));
+    }
+
+    /**
      * Grade quiz attempt.
      */
     @PostMapping("/{attemptId}/grade")
+    @PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
     public ResponseEntity<QuizAttempt> gradeQuizAttempt(
             @PathVariable UUID attemptId,
             @RequestParam BigDecimal score,
@@ -113,6 +161,7 @@ public class QuizAttemptController {
      * Get ungraded attempts for a quiz (instructors only).
      */
     @GetMapping("/quiz/{quizId}/ungraded")
+    @PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
     public ResponseEntity<List<QuizAttempt>> getUngradedAttempts(@PathVariable UUID quizId) {
         List<QuizAttempt> attempts = quizAttemptService.getUngradedAttempts(quizId);
         return ResponseEntity.ok(attempts);

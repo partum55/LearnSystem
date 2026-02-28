@@ -275,8 +275,11 @@ export const adminCourseDeepApi = {
     return response.data;
   },
 
-  duplicateAssignment: async (id: string) => {
-    const response = await apiClient.post(`/assessments/assignments/${id}/duplicate`);
+  duplicateAssignment: async (
+    id: string,
+    payload?: { targetCourseId?: string; targetModuleId?: string }
+  ) => {
+    const response = await apiClient.post(`/assessments/assignments/${id}/duplicate`, payload || {});
     return response.data;
   },
 
@@ -338,6 +341,11 @@ export const adminCourseDeepApi = {
 
   deleteQuiz: async (id: string) => {
     await apiClient.delete(`/assessments/quizzes/${id}`);
+  },
+
+  duplicateQuiz: async (id: string, payload?: { targetCourseId?: string; targetModuleId?: string }) => {
+    const response = await apiClient.post(`/assessments/quizzes/${id}/duplicate`, payload || {});
+    return response.data;
   },
 
   addQuestionToQuiz: async (quizId: string, questionId: string) => {

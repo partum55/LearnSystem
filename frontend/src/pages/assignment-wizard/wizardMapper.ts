@@ -4,6 +4,11 @@ import {
   AssignmentRequestPayload,
   mapAssignmentResponseToFormData,
 } from '../assignment-editor/assignmentEditorModel';
+import {
+  createParagraphDocument,
+  parseCanonicalDocument,
+  serializeCanonicalDocument,
+} from '../../features/editor-core/documentUtils';
 
 /**
  * Convert backend API response to wizard form data.
@@ -17,14 +22,21 @@ export function apiResponseToWizardData(raw: Record<string, unknown>): WizardFor
  * Convert legacy AssignmentFormData to wizard state.
  */
 export function legacyToWizardData(legacy: AssignmentFormData): WizardFormData {
+  const descriptionDoc = legacy.description_format === 'RICH'
+    ? parseCanonicalDocument(legacy.description)
+    : createParagraphDocument(legacy.description);
+  const instructionsDoc = legacy.instructions_format === 'RICH'
+    ? parseCanonicalDocument(legacy.instructions)
+    : createParagraphDocument(legacy.instructions);
+
   return {
     ...initialWizardFormData,
     assignment_type: legacy.assignment_type as WizardFormData['assignment_type'],
     title: legacy.title,
-    description: legacy.description,
-    description_format: legacy.description_format,
-    instructions: legacy.instructions,
-    instructions_format: legacy.instructions_format,
+    description: serializeCanonicalDocument(descriptionDoc),
+    description_format: 'RICH',
+    instructions: serializeCanonicalDocument(instructionsDoc),
+    instructions_format: 'RICH',
     programming_language: legacy.programming_language,
     starter_code: legacy.starter_code,
     solution_code: legacy.solution_code,
@@ -77,9 +89,9 @@ export function wizardDataToApiPayload(
     assignmentType: data.assignment_type,
     title: data.title,
     description: data.description,
-    descriptionFormat: data.description_format,
+    descriptionFormat: 'RICH',
     instructions: data.instructions,
-    instructionsFormat: data.instructions_format,
+    instructionsFormat: 'RICH',
     maxPoints: data.max_points,
     dueDate: data.due_date || null,
     availableFrom: data.available_from || null,

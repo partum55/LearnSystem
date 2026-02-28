@@ -78,6 +78,22 @@ submission:
   storage:
     path: ${SUBMISSION_STORAGE_PATH:/tmp/lms-submissions}
 
+editor:
+  document:
+    max-json-bytes: ${EDITOR_MAX_JSON_BYTES:2097152}
+    max-blocks: ${EDITOR_MAX_BLOCKS:2000}
+  table:
+    max-rows: ${EDITOR_MAX_TABLE_ROWS:100}
+    max-columns: ${EDITOR_MAX_TABLE_COLUMNS:20}
+  embed:
+    allowed-hosts: ${EDITOR_ALLOWED_EMBED_HOSTS:youtube.com,www.youtube.com,youtu.be}
+  media:
+    storage:
+      path: ${EDITOR_MEDIA_STORAGE_PATH:/tmp/lms-editor-media}
+    max-file-size-bytes: ${EDITOR_MEDIA_MAX_FILE_SIZE_BYTES:10485760}
+    allowed-mime-types: ${EDITOR_MEDIA_ALLOWED_MIME_TYPES:image/png,image/jpeg,image/gif,image/webp,application/pdf}
+    allowed-extensions: ${EDITOR_MEDIA_ALLOWED_EXTENSIONS:png,jpg,jpeg,gif,webp,pdf}
+
 deadline:
   ingestion:
     cron: ${DEADLINE_INGESTION_CRON:0 */10 * * * *}

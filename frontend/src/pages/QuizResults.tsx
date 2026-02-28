@@ -9,7 +9,7 @@ interface Question {
   id: string;
   question_type: string;
   stem: string;
-  options?: { choices: string[] };
+  options?: { choices?: string[] };
   correct_answer: Record<string, unknown> | string | number | boolean;
   explanation?: string;
   points: number;
@@ -17,8 +17,11 @@ interface Question {
 
 interface StudentAnswer {
   selected_index?: number;
-  value?: boolean;
+  selected_indices?: number[];
+  value?: boolean | number;
   text?: string;
+  order?: string[];
+  pairs?: Record<string, string>;
   [key: string]: unknown;
 }
 
@@ -66,6 +69,14 @@ interface ApiQuizQuestion {
   effectivePoints?: number;
 }
 
+interface ApiAttemptQuestion {
+  id: string;
+  questionId: string;
+  position: number;
+  points: number;
+  payloadSnapshot?: Record<string, unknown>;
+}
+
 interface ApiQuiz {
   id: string;
   courseId: string;
@@ -88,6 +99,11 @@ interface ApiAttempt {
   gradedBy?: string;
 }
 
+const readStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => String(item ?? '')).filter((item) => item.length > 0);
+};
+
 export const QuizResults: React.FC = () => {
   const { id: quizId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -107,42 +123,72 @@ export const QuizResults: React.FC = () => {
     if (!correctAnswer) return { isCorrect: null, pointsMultiplier: 0 };
 
     const type = questionType.toUpperCase();
-    if (type === 'MULTIPLE_CHOICE') {
-      const expected = String(correctAnswer.choice ?? '');
+    if (type === 'MULTIPLE_CHOICE' || type === 'SINGLE_CHOICE') {
+      const expected = String(correctAnswer.choice ?? correctAnswer.answer ?? correctAnswer.value ?? '');
       const actual = String(answerValue ?? '');
       const correct = expected.length > 0 && actual === expected;
       return { isCorrect: correct, pointsMultiplier: correct ? 1 : 0 };
     }
+    if (type === 'MULTIPLE_RESPONSE' || type === 'MULTI_SELECT') {
+      const expected = new Set(readStringArray(correctAnswer.choices ?? correctAnswer.values));
+      const actual = new Set(readStringArray(answerValue));
+      const correct = expected.size > 0 && expected.size === actual.size && [...expected].every((item) => actual.has(item));
+      return { isCorrect: correct, pointsMultiplier: correct ? 1 : 0 };
+    }
     if (type === 'TRUE_FALSE') {
-      const expected = Boolean(correctAnswer.value);
-      const actual = Boolean(answerValue);
+      const expected = String(correctAnswer.choice ?? correctAnswer.value ?? '').toLowerCase() === 'true';
+      const actual = String(answerValue ?? '').toLowerCase() === 'true';
       const correct = actual === expected;
       return { isCorrect: correct, pointsMultiplier: correct ? 1 : 0 };
     }
-    if (type === 'FILL_BLANK') {
-      const expectedAnswers = Array.isArray(correctAnswer.answers) ? correctAnswer.answers.map(String) : [];
-      const provided = answerValue as { answers?: unknown[] } | undefined;
-      const actualAnswers = Array.isArray(provided?.answers) ? provided!.answers!.map(String) : [];
-      if (!expectedAnswers.length || !actualAnswers.length) return { isCorrect: false, pointsMultiplier: 0 };
-      const correctCount = expectedAnswers.filter((ans, idx) => (actualAnswers[idx] || '').trim().toLowerCase() === ans.trim().toLowerCase()).length;
-      return { isCorrect: correctCount === expectedAnswers.length, pointsMultiplier: correctCount / expectedAnswers.length };
+    if (type === 'NUMERIC' || type === 'NUMERICAL') {
+      const expected = Number(correctAnswer.value ?? NaN);
+      const tolerance = Number(correctAnswer.tolerance ?? 0.01);
+      const actual = Number(answerValue);
+      if (!Number.isFinite(expected) || !Number.isFinite(actual)) {
+        return { isCorrect: false, pointsMultiplier: 0 };
+      }
+      const allowed = Math.abs(expected) * tolerance;
+      const diff = Math.abs(expected - actual);
+      const correct = diff <= allowed;
+      return { isCorrect: correct, pointsMultiplier: correct ? 1 : 0 };
+    }
+    if (type === 'SHORT_ANSWER') {
+      const expectedAnswers = readStringArray(correctAnswer.answers).map((ans) => ans.toLowerCase());
+      const actual = String(answerValue ?? '').trim().toLowerCase();
+      if (!expectedAnswers.length || !actual) return { isCorrect: null, pointsMultiplier: 0 };
+      const correct = expectedAnswers.includes(actual);
+      return { isCorrect: correct, pointsMultiplier: correct ? 1 : 0 };
     }
     // Short answer / essay / code are manually graded in backend
     return { isCorrect: null, pointsMultiplier: 0 };
   };
 
   const mapAnswerForDisplay = (question: Question, rawAnswer: unknown): StudentAnswer => {
-    if (question.question_type === 'MULTIPLE_CHOICE') {
+    const type = question.question_type.toUpperCase();
+    if (type === 'MULTIPLE_CHOICE' || type === 'SINGLE_CHOICE') {
       const choices = question.options?.choices || [];
       const selectedIndex = choices.findIndex((choice) => choice === rawAnswer);
       return selectedIndex >= 0 ? { selected_index: selectedIndex } : { text: String(rawAnswer ?? '') };
     }
-    if (question.question_type === 'TRUE_FALSE') {
-      return { value: Boolean(rawAnswer) };
+    if (type === 'MULTIPLE_RESPONSE' || type === 'MULTI_SELECT') {
+      const choices = question.options?.choices || [];
+      const selectedIndices = readStringArray(rawAnswer)
+        .map((value) => choices.findIndex((choice) => choice === value))
+        .filter((idx) => idx >= 0);
+      return { selected_indices: selectedIndices };
     }
-    if (question.question_type === 'FILL_BLANK' && typeof rawAnswer === 'object' && rawAnswer !== null) {
-      const answers = (rawAnswer as { answers?: string[] }).answers || [];
-      return { text: answers[0] || '' };
+    if (type === 'TRUE_FALSE') {
+      return { value: String(rawAnswer ?? '').toLowerCase() === 'true' };
+    }
+    if (type === 'NUMERIC' || type === 'NUMERICAL') {
+      return { value: Number(rawAnswer) };
+    }
+    if (type === 'MATCHING' && typeof rawAnswer === 'object' && rawAnswer !== null) {
+      return { pairs: (rawAnswer as { pairs?: Record<string, string> }).pairs || {} };
+    }
+    if (type === 'ORDERING') {
+      return { order: readStringArray(rawAnswer) };
     }
     if (typeof rawAnswer === 'string') {
       return { text: rawAnswer };
@@ -162,28 +208,50 @@ export const QuizResults: React.FC = () => {
       const quizData = quizResponse.data;
       const attemptData = attemptResponse.data;
       const answersMap = attemptData.answers || {};
+      const attemptQuestionsResponse = await apiClient.get<ApiAttemptQuestion[]>(
+        `/assessments/quiz-attempts/${attemptData.id}/questions`
+      );
+      const attemptQuestions = Array.isArray(attemptQuestionsResponse.data) ? attemptQuestionsResponse.data : [];
 
-      const questions = (quizData.questions || []).map((quizQuestion) => {
-        const apiQuestion = quizQuestion.question;
-        const questionId = apiQuestion?.id || quizQuestion.questionId || '';
-        const points = Number(quizQuestion.effectivePoints ?? apiQuestion?.points ?? 0);
+      const quizQuestionsByQuestionId = new Map(
+        (quizData.questions || []).map((quizQuestion) => {
+          const questionId = quizQuestion.question?.id || quizQuestion.questionId || '';
+          return [questionId, quizQuestion] as const;
+        })
+      );
+
+      const questions = (attemptQuestions.length > 0 ? attemptQuestions : (quizData.questions || []).map((item) => ({
+        id: item.id,
+        questionId: item.question?.id || item.questionId || '',
+        position: 0,
+        points: Number(item.effectivePoints ?? item.question?.points ?? 0),
+        payloadSnapshot: { questionType: item.question?.questionType, options: item.question?.options || {} },
+      }))).map((attemptQuestion) => {
+        const baseQuizQuestion = quizQuestionsByQuestionId.get(attemptQuestion.questionId);
+        const apiQuestion = baseQuizQuestion?.question;
+        const snapshot = (attemptQuestion.payloadSnapshot || {}) as Record<string, unknown>;
+        const snapshotType = String(snapshot.questionType ?? snapshot.question_type ?? apiQuestion?.questionType ?? 'SHORT_ANSWER');
+        const snapshotOptions = (snapshot.options && typeof snapshot.options === 'object')
+          ? (snapshot.options as { choices?: string[] })
+          : {};
+        const points = Number(attemptQuestion.points ?? baseQuizQuestion?.effectivePoints ?? apiQuestion?.points ?? 0);
         const question: Question = {
-          id: questionId,
-          question_type: apiQuestion?.questionType || 'SHORT_ANSWER',
+          id: attemptQuestion.id,
+          question_type: snapshotType,
           stem: apiQuestion?.stem || '',
-          options: apiQuestion?.options?.choices ? { choices: apiQuestion.options.choices } : undefined,
+          options: snapshotOptions.choices ? { choices: snapshotOptions.choices } : undefined,
           correct_answer: apiQuestion?.correctAnswer || {},
           explanation: apiQuestion?.explanation,
           points,
         };
 
-        const rawAnswer = answersMap[questionId];
+        const rawAnswer = answersMap[attemptQuestion.id] ?? answersMap[attemptQuestion.questionId];
         const studentAnswer = mapAnswerForDisplay(question, rawAnswer);
         const evaluation = evaluateAnswer(question.question_type, rawAnswer, apiQuestion?.correctAnswer);
         const pointsEarned = evaluation.isCorrect === null ? 0 : points * evaluation.pointsMultiplier;
 
         return {
-          id: quizQuestion.id,
+          id: attemptQuestion.id,
           question,
           student_answer: studentAnswer,
           is_correct: evaluation.isCorrect,
@@ -252,20 +320,40 @@ export const QuizResults: React.FC = () => {
   const getAnswerDisplay = (question: Question, answer: StudentAnswer) => {
     if (!answer) return t('quiz.noAnswer');
 
-    switch (question.question_type) {
+    switch (question.question_type.toUpperCase()) {
       case 'MULTIPLE_CHOICE':
+      case 'SINGLE_CHOICE':
         if (question.options?.choices && answer.selected_index !== undefined) {
-          return question.options.choices[answer.selected_index];
+          return question.options.choices?.[answer.selected_index] || t('quiz.noAnswer');
+        }
+        return t('quiz.noAnswer');
+
+      case 'MULTIPLE_RESPONSE':
+      case 'MULTI_SELECT':
+        if (question.options?.choices && answer.selected_indices) {
+          return answer.selected_indices
+            .map((index) => question.options?.choices?.[index])
+            .filter((choice): choice is string => Boolean(choice))
+            .join(', ');
         }
         return t('quiz.noAnswer');
 
       case 'TRUE_FALSE':
         return answer.value ? t('question.true') : t('question.false');
 
-      case 'FILL_BLANK':
+      case 'NUMERIC':
+      case 'NUMERICAL':
+        return answer.value ?? answer.text ?? t('quiz.noAnswer');
+
       case 'SHORT_ANSWER':
       case 'ESSAY':
         return answer.text || t('quiz.noAnswer');
+
+      case 'MATCHING':
+        return JSON.stringify(answer.pairs || {});
+
+      case 'ORDERING':
+        return (answer.order || []).join(' → ');
 
       default:
         return JSON.stringify(answer);
@@ -273,31 +361,42 @@ export const QuizResults: React.FC = () => {
   };
 
   const getCorrectAnswerDisplay = (question: Question) => {
-    switch (question.question_type) {
+    const normalizedType = question.question_type.toUpperCase();
+    const correctAnswerMap =
+      typeof question.correct_answer === 'object' && question.correct_answer !== null
+        ? (question.correct_answer as Record<string, unknown>)
+        : {};
+
+    switch (normalizedType) {
       case 'MULTIPLE_CHOICE':
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (question.options?.choices && (question.correct_answer as any)?.index !== undefined) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          return question.options.choices[(question.correct_answer as any).index];
+      case 'SINGLE_CHOICE':
+        if (correctAnswerMap.choice) {
+          return String(correctAnswerMap.choice);
         }
         return '\u2014';
+
+      case 'MULTIPLE_RESPONSE':
+      case 'MULTI_SELECT':
+        return readStringArray(correctAnswerMap.choices ?? correctAnswerMap.values).join(', ') || '\u2014';
 
       case 'TRUE_FALSE':
-        return (question.correct_answer as { value?: boolean })?.value ? t('question.true') : t('question.false');
-
-      case 'FILL_BLANK':
-        if ((question.correct_answer as { answers?: string[] })?.answers) {
-          return (question.correct_answer as { answers: string[] }).answers.join(', ');
-        }
-        return '\u2014';
+        return String(correctAnswerMap.choice ?? correctAnswerMap.value ?? '\u2014');
 
       case 'SHORT_ANSWER':
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if ((question.correct_answer as any)?.keywords) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          return t('quiz.keywordsUsed') + ': ' + (question.correct_answer as any).keywords.join(', ');
+        if (readStringArray(correctAnswerMap.answers).length > 0) {
+          return readStringArray(correctAnswerMap.answers).join(', ');
         }
         return t('quiz.manuallyGraded');
+
+      case 'NUMERIC':
+      case 'NUMERICAL':
+        return String(correctAnswerMap.value ?? '\u2014');
+
+      case 'ORDERING':
+        return readStringArray(correctAnswerMap.order).join(' → ') || '\u2014';
+
+      case 'MATCHING':
+        return JSON.stringify(correctAnswerMap.pairs || {});
 
       case 'ESSAY':
         return t('quiz.manuallyGraded');
@@ -331,7 +430,7 @@ export const QuizResults: React.FC = () => {
   const percentage = totalPoints > 0 ? (result.final_score / totalPoints) * 100 : 0;
   const passed = percentage >= result.quiz.pass_percentage;
   const needsManualGrading = result.manual_score === null &&
-    result.questions.some(q => ['SHORT_ANSWER', 'ESSAY'].includes(q.question.question_type));
+    result.questions.some(q => ['SHORT_ANSWER', 'ESSAY'].includes(q.question.question_type.toUpperCase()));
 
   return (
     <Layout>

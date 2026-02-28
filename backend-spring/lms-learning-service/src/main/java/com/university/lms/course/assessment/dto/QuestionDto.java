@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -23,12 +24,16 @@ public class QuestionDto {
     private UUID id;
     private UUID courseId;
     private String questionType;
+    private String topic;
+    private String difficulty;
     private String stem;
     private Map<String, Object> options;
     private Map<String, Object> correctAnswer; // Only for instructors
     private String explanation;
     private BigDecimal points;
     private Map<String, Object> metadata;
+    private List<String> tags;
+    private Integer latestVersion;
     private UUID createdBy;
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
@@ -37,4 +42,3 @@ public class QuestionDto {
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime updatedAt;
 }
-

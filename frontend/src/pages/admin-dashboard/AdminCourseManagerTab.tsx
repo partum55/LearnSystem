@@ -77,8 +77,41 @@ export const AdminCourseManagerTab: React.FC<Props> = ({ onFeedback }) => {
       }
       onFeedback('success', course.isPublished ? 'Unpublished' : 'Published');
       refreshCourses();
-    } catch {
-      onFeedback('error', 'Failed');
+    } catch (error) {
+      const status = (error as { response?: { status?: number; data?: { checklist?: { items?: Array<{ label?: string; details?: string; passed?: boolean }> } } } })?.response?.status;
+      if (!course.isPublished && status === 409) {
+        const checklistItems =
+          (error as { response?: { data?: { checklist?: { items?: Array<{ label?: string; details?: string; passed?: boolean }> } } } })
+            ?.response?.data?.checklist?.items || [];
+        const failed = checklistItems.filter((item) => !item.passed);
+        const summary = failed
+          .map((item) => `• ${item.label || 'Requirement'}${item.details ? `: ${item.details}` : ''}`)
+          .join('\n');
+
+        const shouldOverride = window.confirm(
+          `Publish checklist is incomplete:\n\n${summary || 'Unknown checklist issue'}\n\nForce publish anyway?`
+        );
+        if (shouldOverride) {
+          const overrideReason = window.prompt(
+            'Provide override reason (required):',
+            'Published with checklist override by admin'
+          );
+          if (overrideReason && overrideReason.trim()) {
+            await publishAdminCourse(course.id, {
+              forcePublish: true,
+              overrideReason: overrideReason.trim(),
+            });
+            onFeedback('success', 'Published with checklist override');
+            refreshCourses();
+          } else {
+            onFeedback('error', 'Publish override canceled: reason is required');
+          }
+        } else {
+          onFeedback('error', 'Publish canceled by checklist');
+        }
+      } else {
+        onFeedback('error', 'Failed');
+      }
     }
     setActionLoading(null);
   };

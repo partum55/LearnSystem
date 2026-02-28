@@ -272,9 +272,12 @@ export const AdminCourseDeepManager: React.FC<Props> = ({ course, onBack, onFeed
     }
   };
 
-  const duplicateAssignment = async (id: string) => {
+  const duplicateAssignment = async (assignment: AnyRecord) => {
     try {
-      await adminCourseDeepApi.duplicateAssignment(id);
+      await adminCourseDeepApi.duplicateAssignment(String(assignment.id), {
+        targetCourseId: courseId,
+        targetModuleId: assignment.moduleId || assignment.module_id || undefined,
+      });
       onFeedback('success', 'Assignment duplicated');
       await loadAll();
     } catch (e: unknown) {
@@ -302,6 +305,19 @@ export const AdminCourseDeepManager: React.FC<Props> = ({ course, onBack, onFeed
     try {
       await adminCourseDeepApi.deleteQuiz(id);
       onFeedback('success', 'Quiz deleted');
+      await loadAll();
+    } catch (e: unknown) {
+      onFeedback('error', `Failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  const duplicateQuiz = async (quiz: AnyRecord) => {
+    try {
+      await adminCourseDeepApi.duplicateQuiz(String(quiz.id), {
+        targetCourseId: courseId,
+        targetModuleId: quiz.moduleId || quiz.module_id || undefined,
+      });
+      onFeedback('success', 'Quiz duplicated');
       await loadAll();
     } catch (e: unknown) {
       onFeedback('error', `Failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -527,7 +543,7 @@ export const AdminCourseDeepManager: React.FC<Props> = ({ course, onBack, onFeed
                 <button className="btn btn-ghost btn-xs" title="Toggle publish" onClick={() => toggleAssignmentPublish(assn)}>
                   {(assn.isPublished ?? assn.is_published) ? <EyeSlashIcon className="h-3.5 w-3.5" /> : <EyeIcon className="h-3.5 w-3.5" />}
                 </button>
-                <button className="btn btn-ghost btn-xs" title="Duplicate" onClick={() => duplicateAssignment(assn.id)}>
+                <button className="btn btn-ghost btn-xs" title="Duplicate" onClick={() => duplicateAssignment(assn)}>
                   <DocumentDuplicateIcon className="h-3.5 w-3.5" />
                 </button>
                 <button className="btn btn-ghost btn-xs" style={{ color: 'var(--fn-error)' }} title="Delete" onClick={() => deleteAssignment(assn.id)}>
@@ -576,9 +592,14 @@ export const AdminCourseDeepManager: React.FC<Props> = ({ course, onBack, onFeed
                 {quiz.totalQuestions ?? quiz.total_questions ?? '?'} questions
               </span>
             </div>
-            <button className="btn btn-ghost btn-xs" style={{ color: 'var(--fn-error)' }} onClick={() => deleteQuiz(quiz.id)}>
-              <TrashIcon className="h-3.5 w-3.5" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button className="btn btn-ghost btn-xs" title="Duplicate quiz" onClick={() => duplicateQuiz(quiz)}>
+                <DocumentDuplicateIcon className="h-3.5 w-3.5" />
+              </button>
+              <button className="btn btn-ghost btn-xs" style={{ color: 'var(--fn-error)' }} onClick={() => deleteQuiz(quiz.id)}>
+                <TrashIcon className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
         ))}
       </Section>

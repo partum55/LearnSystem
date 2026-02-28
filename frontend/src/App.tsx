@@ -27,9 +27,6 @@ const CourseCreate = lazy(() => import('./pages/CourseCreate'));
 const CourseEdit = lazy(() => import('./pages/CourseEdit'));
 const Assignments = lazy(() => import('./pages/Assignments'));
 const AssignmentDetail = lazy(() => import('./pages/AssignmentDetail'));
-// Legacy editor kept for backward compatibility, wizard is the primary editor
-const _AssignmentEditor = lazy(() => import('./pages/AssignmentEditor'));
-void _AssignmentEditor;
 const AssignmentWizard = lazy(() => import('./pages/assignment-wizard/AssignmentWizard'));
 const SubmitAssignment = lazy(() => import('./pages/SubmitAssignment'));
 const StudentGradebook = lazy(() => import('./pages/StudentGradebook'));
@@ -48,6 +45,7 @@ const VirtualLab = lazy(() => import('./pages/VirtualLab'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const DesignSystemDemo = lazy(() => import('./pages/DesignSystemDemo'));
 const Landing = lazy(() => import('./pages/Landing'));
+const ModulePageEditor = lazy(() => import('./pages/ModulePageEditor'));
 
 // Private route wrapper with auth check
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -161,6 +159,20 @@ const AppOptimized: React.FC = () => {
             } />
             <Route path="/courses/:id" element={<LazyRoute isPrivate><CourseDetail /></LazyRoute>} />
             <Route path="/courses/:courseId/modules/:moduleId/resources/:resourceId" element={<LazyRoute isPrivate><ResourceView /></LazyRoute>} />
+            <Route path="/courses/:courseId/modules/:moduleId/pages" element={
+              <LazyRoute isPrivate>
+                <RoleRoute allowedRoles={['TEACHER', 'TA', 'SUPERADMIN']}>
+                  <ModulePageEditor />
+                </RoleRoute>
+              </LazyRoute>
+            } />
+            <Route path="/courses/:courseId/modules/:moduleId/pages/:pageId/edit" element={
+              <LazyRoute isPrivate>
+                <RoleRoute allowedRoles={['TEACHER', 'TA', 'SUPERADMIN']}>
+                  <ModulePageEditor />
+                </RoleRoute>
+              </LazyRoute>
+            } />
             <Route path="/courses/:courseId/modules/:moduleId/assignments/:assignmentId" element={<LazyRoute isPrivate><AssignmentDetail /></LazyRoute>} />
             <Route path="/courses/:courseId/modules/:moduleId/assignments/:assignmentId/edit" element={
               <LazyRoute isPrivate>

@@ -30,6 +30,7 @@ public class QuestionService {
 
     private final QuestionBankRepository questionBankRepository;
     private final AssessmentMapper mapper;
+    private final QuestionVersionService questionVersionService;
 
     /**
      * Get question by ID.
@@ -38,7 +39,9 @@ public class QuestionService {
     public QuestionDto getQuestionById(UUID id) {
         log.debug("Fetching question by ID: {}", id);
         QuestionBank question = findQuestionById(id);
-        return mapper.toDto(question);
+        QuestionDto dto = mapper.toDto(question);
+        dto.setLatestVersion(questionVersionService.getLatestVersionDto(id).getVersionNumber());
+        return dto;
     }
 
     /**
@@ -101,19 +104,25 @@ public class QuestionService {
         QuestionBank question = QuestionBank.builder()
             .courseId(questionDto.getCourseId())
             .questionType(questionDto.getQuestionType())
+            .topic(questionDto.getTopic())
+            .difficulty(questionDto.getDifficulty())
             .stem(questionDto.getStem())
             .options(questionDto.getOptions())
             .correctAnswer(questionDto.getCorrectAnswer())
             .explanation(questionDto.getExplanation())
-            .points(questionDto.getPoints())
+            .points(questionDto.getPoints() == null ? java.math.BigDecimal.ONE : questionDto.getPoints())
             .metadata(questionDto.getMetadata())
+            .tags(questionDto.getTags() == null ? java.util.List.of() : questionDto.getTags())
             .createdBy(createdBy)
             .build();
 
         QuestionBank savedQuestion = questionBankRepository.save(question);
+        questionVersionService.createVersionFromQuestion(savedQuestion, createdBy);
         log.info("Question created successfully with ID: {}", savedQuestion.getId());
 
-        return mapper.toDto(savedQuestion);
+        QuestionDto dto = mapper.toDto(savedQuestion);
+        dto.setLatestVersion(questionVersionService.getLatestVersionDto(savedQuestion.getId()).getVersionNumber());
+        return dto;
     }
 
     /**
@@ -132,16 +141,22 @@ public class QuestionService {
         }
 
         if (updates.getStem() != null) question.setStem(updates.getStem());
+        if (updates.getTopic() != null) question.setTopic(updates.getTopic());
+        if (updates.getDifficulty() != null) question.setDifficulty(updates.getDifficulty());
         if (updates.getOptions() != null) question.setOptions(updates.getOptions());
         if (updates.getCorrectAnswer() != null) question.setCorrectAnswer(updates.getCorrectAnswer());
         if (updates.getExplanation() != null) question.setExplanation(updates.getExplanation());
         if (updates.getPoints() != null) question.setPoints(updates.getPoints());
         if (updates.getMetadata() != null) question.setMetadata(updates.getMetadata());
+        if (updates.getTags() != null) question.setTags(updates.getTags());
 
         QuestionBank updatedQuestion = questionBankRepository.save(question);
+        questionVersionService.createVersionFromQuestion(updatedQuestion, userId);
         log.info("Question updated successfully: {}", id);
 
-        return mapper.toDto(updatedQuestion);
+        QuestionDto dto = mapper.toDto(updatedQuestion);
+        dto.setLatestVersion(questionVersionService.getLatestVersionDto(updatedQuestion.getId()).getVersionNumber());
+        return dto;
     }
 
     /**
@@ -175,19 +190,25 @@ public class QuestionService {
         QuestionBank copy = QuestionBank.builder()
             .courseId(original.getCourseId())
             .questionType(original.getQuestionType())
+            .topic(original.getTopic())
+            .difficulty(original.getDifficulty())
             .stem(original.getStem() + " (Copy)")
             .options(original.getOptions())
             .correctAnswer(original.getCorrectAnswer())
             .explanation(original.getExplanation())
             .points(original.getPoints())
             .metadata(original.getMetadata())
+            .tags(original.getTags())
             .createdBy(userId)
             .build();
 
         QuestionBank savedCopy = questionBankRepository.save(copy);
+        questionVersionService.createVersionFromQuestion(savedCopy, userId);
         log.info("Question duplicated successfully: {} -> {}", id, savedCopy.getId());
 
-        return mapper.toDto(savedCopy);
+        QuestionDto dto = mapper.toDto(savedCopy);
+        dto.setLatestVersion(questionVersionService.getLatestVersionDto(savedCopy.getId()).getVersionNumber());
+        return dto;
     }
 
     // Helper methods
@@ -203,20 +224,22 @@ public class QuestionService {
             throw new ValidationException("Question stem is required");
         }
 
-        String type = question.getQuestionType();
+        String type = question.getQuestionType() == null ? "" : question.getQuestionType().trim().toUpperCase();
 
-        if ("MULTIPLE_CHOICE".equals(type) && (question.getOptions() == null || question.getOptions().isEmpty())) {
+        if (("MULTIPLE_CHOICE".equals(type) || "SINGLE_CHOICE".equals(type) || "MULTIPLE_RESPONSE".equals(type))
+            && (question.getOptions() == null || question.getOptions().isEmpty())) {
             throw new ValidationException("Options are required for multiple choice questions");
         }
 
-        if (question.getCorrectAnswer() == null || question.getCorrectAnswer().isEmpty()) {
+        boolean manualOnlyType = "ESSAY".equals(type) || "SHORT_ANSWER".equals(type);
+        if (!manualOnlyType && (question.getCorrectAnswer() == null || question.getCorrectAnswer().isEmpty())) {
             throw new ValidationException("Correct answer is required");
         }
     }
 
     private PageResponse<QuestionDto> mapToPageResponse(Page<QuestionBank> page) {
         return PageResponse.<QuestionDto>builder()
-            .content(page.getContent().stream().map(mapper::toDto).toList())
+            .content(page.getContent().stream().map(this::mapAndEnrich).toList())
             .pageNumber(page.getNumber())
             .pageSize(page.getSize())
             .totalElements(page.getTotalElements())
@@ -224,5 +247,13 @@ public class QuestionService {
             .last(page.isLast())
             .build();
     }
-}
 
+    private QuestionDto mapAndEnrich(QuestionBank question) {
+        QuestionDto dto = mapper.toDto(question);
+        dto.setLatestVersion(
+            questionVersionService
+                .ensureLatestVersion(question.getId(), question.getCreatedBy())
+                .getVersionNumber());
+        return dto;
+    }
+}

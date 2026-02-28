@@ -102,6 +102,25 @@ export interface AdminCourse {
   createdAt: string;
 }
 
+export interface CoursePublishChecklistItem {
+  key: string;
+  label: string;
+  required: boolean;
+  passed: boolean;
+  details?: string;
+}
+
+export interface CoursePublishChecklist {
+  courseId: string;
+  readyToPublish: boolean;
+  items: CoursePublishChecklistItem[];
+}
+
+export interface PublishCourseBlockedPayload {
+  message: string;
+  checklist: CoursePublishChecklist;
+}
+
 export interface CreateAdminCourseRequest {
   code: string;
   titleUk: string;
@@ -211,8 +230,16 @@ export const deleteAdminCourse = async (courseId: string): Promise<void> => {
   await apiClient.delete(`/courses/${courseId}`);
 };
 
-export const publishAdminCourse = async (courseId: string): Promise<AdminCourse> => {
-  const response = await apiClient.post<AdminCourse>(`/courses/${courseId}/publish`);
+export const getAdminCoursePublishChecklist = async (courseId: string): Promise<CoursePublishChecklist> => {
+  const response = await apiClient.get<CoursePublishChecklist>(`/courses/${courseId}/publish-checklist`);
+  return response.data;
+};
+
+export const publishAdminCourse = async (
+  courseId: string,
+  payload?: { forcePublish?: boolean; overrideReason?: string }
+): Promise<AdminCourse> => {
+  const response = await apiClient.post<AdminCourse>(`/courses/${courseId}/publish`, payload || {});
   return response.data;
 };
 

@@ -155,6 +155,17 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
                     size="sm"
                     onClick={(event) => {
                       event.stopPropagation();
+                      navigate(`/courses/${courseId}/modules/${module.id}/pages`);
+                    }}
+                  >
+                    <DocumentTextIcon className="mr-1 h-4 w-4" />
+                    Pages
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={(event) => {
+                      event.stopPropagation();
                       navigate(`/courses/${courseId}/modules/${module.id}/assignments/new`);
                     }}
                   >

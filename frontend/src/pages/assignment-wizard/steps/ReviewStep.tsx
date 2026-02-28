@@ -1,11 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import remarkGfm from 'remark-gfm';
-import rehypeKatex from 'rehype-katex';
-import rehypeHighlight from 'rehype-highlight';
 import { WizardFormData } from '../wizardTypes';
+import { BlockEditor, parseCanonicalDocument } from '../../../features/editor-core';
 
 interface ReviewStepProps {
   formData: WizardFormData;
@@ -126,13 +122,13 @@ const ReviewStep: React.FC<ReviewStepProps> = ({
             </div>
 
             {formData.description && (
-              <div className="prose prose-sm max-w-none mb-4" style={{ color: 'var(--text-primary)' }}>
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeKatex, rehypeHighlight]}
-                >
-                  {formData.description}
-                </ReactMarkdown>
+              <div className="mb-4" style={{ color: 'var(--text-primary)' }}>
+                <BlockEditor
+                  value={parseCanonicalDocument(formData.description)}
+                  onChange={() => undefined}
+                  readOnly
+                  mode="full"
+                />
               </div>
             )}
 
@@ -141,14 +137,12 @@ const ReviewStep: React.FC<ReviewStepProps> = ({
                 <h3 className="text-sm font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>
                   {t('assignment.instructions', 'Instructions')}
                 </h3>
-                <div className="prose prose-sm max-w-none" style={{ color: 'var(--text-primary)' }}>
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm, remarkMath]}
-                    rehypePlugins={[rehypeKatex, rehypeHighlight]}
-                  >
-                    {formData.instructions}
-                  </ReactMarkdown>
-                </div>
+                <BlockEditor
+                  value={parseCanonicalDocument(formData.instructions)}
+                  onChange={() => undefined}
+                  readOnly
+                  mode="full"
+                />
               </div>
             )}
 

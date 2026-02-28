@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import api, { extractErrorMessage } from '../../api/client';
+import { assignmentDocumentsApi } from '../../api/pages';
 import { useWizardState } from './useWizardState';
 import { apiResponseToWizardData, wizardDataToApiPayload } from './wizardMapper';
 import { wizardSlide } from '../../components/animation/variants';
@@ -15,6 +16,8 @@ import GradingStep from './steps/GradingStep';
 import ReviewStep from './steps/ReviewStep';
 import { UnsavedChangesPrompt } from '../../components/common/UnsavedChangesPrompt';
 import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
+import { CanonicalDocument } from '../../types';
+import { createEmptyDocument, parseCanonicalDocument } from '../../features/editor-core/documentUtils';
 
 const AssignmentWizard: React.FC = () => {
   const params = useParams<{ id?: string; assignmentId?: string; courseId?: string; moduleId?: string }>();
@@ -28,6 +31,10 @@ const AssignmentWizard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [templateDocument, setTemplateDocument] = useState<CanonicalDocument>(createEmptyDocument());
+  const [initialTemplateSnapshot, setInitialTemplateSnapshot] = useState<string>(
+    JSON.stringify(createEmptyDocument()),
+  );
 
   const wizard = useWizardState(courseId, assignmentId);
   const reduced = useReducedMotion();
@@ -45,7 +52,8 @@ const AssignmentWizard: React.FC = () => {
     handleLeaveWithoutSaving,
     handleStay,
   } = useUnsavedChangesWarning({
-    isDirty: wizard.isDirty && !saving,
+    isDirty:
+      (wizard.isDirty || JSON.stringify(templateDocument) !== initialTemplateSnapshot) && !saving,
     message: t('assignment.unsavedEditorWarning', 'You have unsaved changes. Are you sure you want to leave?'),
   });
 
@@ -55,9 +63,21 @@ const AssignmentWizard: React.FC = () => {
     const loadAssignment = async () => {
       try {
         setLoading(true);
-        const response = await api.get<Record<string, unknown>>(`/assessments/assignments/${assignmentId}`);
-        const wizardData = apiResponseToWizardData(response.data);
+        const [assignmentResponse, templateResponse] = await Promise.all([
+          api.get<Record<string, unknown>>(`/assessments/assignments/${assignmentId}`),
+          assignmentDocumentsApi.getTemplate(assignmentId).catch(() => null),
+        ]);
+        const wizardData = apiResponseToWizardData(assignmentResponse.data);
         wizard.loadExisting(wizardData);
+        if (templateResponse?.data?.document) {
+          const parsedTemplate = parseCanonicalDocument(templateResponse.data.document);
+          setTemplateDocument(parsedTemplate);
+          setInitialTemplateSnapshot(JSON.stringify(parsedTemplate));
+        } else {
+          const emptyTemplate = createEmptyDocument();
+          setTemplateDocument(emptyTemplate);
+          setInitialTemplateSnapshot(JSON.stringify(emptyTemplate));
+        }
       } catch (err) {
         setError(extractErrorMessage(err));
       } finally {
@@ -78,13 +98,27 @@ const AssignmentWizard: React.FC = () => {
         moduleId,
       );
 
+      let savedAssignmentId = assignmentId;
       if (assignmentId) {
-        await api.put(`/assessments/assignments/${assignmentId}`, payload);
+        const response = await api.put<Record<string, unknown>>(
+          `/assessments/assignments/${assignmentId}`,
+          payload,
+        );
+        savedAssignmentId = String(response.data.id ?? assignmentId);
       } else {
-        await api.post('/assessments/assignments', payload);
+        const response = await api.post<Record<string, unknown>>('/assessments/assignments', payload);
+        savedAssignmentId = String(response.data.id ?? '');
+      }
+
+      if (savedAssignmentId) {
+        await assignmentDocumentsApi.upsertTemplate(savedAssignmentId, {
+          document: templateDocument,
+          schemaVersion: 1,
+        });
       }
 
       wizard.clearDraft();
+      setInitialTemplateSnapshot(JSON.stringify(templateDocument));
 
       if (courseId && moduleId) {
         navigate(`/courses/${courseId}`);
@@ -131,6 +165,8 @@ const AssignmentWizard: React.FC = () => {
             formData={wizard.formData}
             onChange={wizard.updateFormData}
             validationErrors={wizard.validationErrors}
+            templateDocument={templateDocument}
+            onTemplateChange={setTemplateDocument}
           />
         );
       case 'resources':

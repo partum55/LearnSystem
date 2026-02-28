@@ -6,6 +6,10 @@ import {
   WIZARD_STEPS,
   initialWizardFormData,
 } from './wizardTypes';
+import {
+  hasMeaningfulDocumentContent,
+  parseCanonicalDocument,
+} from '../../features/editor-core/documentUtils';
 
 const DRAFT_PREFIX = 'draft:assignment:';
 
@@ -22,7 +26,9 @@ function validateStep(step: WizardStep, data: WizardFormData): WizardStepValidat
       break;
     case 'content':
       if (!data.title.trim()) errors.title = 'required';
-      if (!data.description.trim()) errors.description = 'required';
+      if (!hasMeaningfulDocumentContent(parseCanonicalDocument(data.description))) {
+        errors.description = 'required';
+      }
       break;
     case 'resources':
       break;

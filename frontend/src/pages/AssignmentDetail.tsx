@@ -9,12 +9,16 @@ import { Card, CardHeader, CardBody } from '../components';
 import { Button } from '../components';
 import { Loading } from '../components';
 import { ChevronRightIcon } from '@heroicons/react/24/outline';
+import { BlockEditor, parseCanonicalDocument } from '../features/editor-core';
 
 interface Assignment {
   id: string;
   course: string;
   title: string;
   description: string;
+  description_format: string;
+  instructions: string;
+  instructions_format: string;
   due_date: string;
   available_from: string | null;
   max_points: number;
@@ -97,6 +101,9 @@ export const AssignmentDetail: React.FC = () => {
         course: String(data.courseId || data.course || ''),
         title: String(data.title || ''),
         description: String(data.description || ''),
+        description_format: String(data.descriptionFormat || data.description_format || 'MARKDOWN'),
+        instructions: String(data.instructions || ''),
+        instructions_format: String(data.instructionsFormat || data.instructions_format || 'MARKDOWN'),
         due_date: String(data.dueDate || ''),
         available_from: (data.availableFrom as string | null) || null,
         max_points: Number(data.maxPoints || 0),
@@ -185,6 +192,13 @@ export const AssignmentDetail: React.FC = () => {
   }
 
   const Wrapper = courseId ? ({ children }: { children: React.ReactNode }) => <CourseLayout courseId={courseId}>{children}</CourseLayout> : Layout;
+
+  const renderContent = (content: string, format: string) => {
+    if (format === 'RICH') {
+      return <BlockEditor value={parseCanonicalDocument(content)} onChange={() => undefined} readOnly mode="full" />;
+    }
+    return <p style={{ color: 'var(--text-muted)' }}>{content}</p>;
+  };
 
   return (
     <Wrapper>
@@ -379,8 +393,15 @@ export const AssignmentDetail: React.FC = () => {
                 <div className="space-y-4">
                   <div>
                     <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Description</h3>
-                    <p style={{ color: 'var(--text-muted)' }}>{assignment.description}</p>
+                    {renderContent(assignment.description, assignment.description_format)}
                   </div>
+
+                  {assignment.instructions && (
+                    <div>
+                      <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Instructions</h3>
+                      {renderContent(assignment.instructions, assignment.instructions_format)}
+                    </div>
+                  )}
 
                   <div>
                     <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Submission Types</h3>

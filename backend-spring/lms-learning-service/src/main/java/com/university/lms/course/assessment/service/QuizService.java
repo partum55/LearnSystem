@@ -3,6 +3,8 @@ package com.university.lms.course.assessment.service;
 import com.university.lms.course.assessment.domain.Quiz;
 import com.university.lms.course.assessment.domain.QuizQuestion;
 import com.university.lms.course.assessment.domain.QuestionBank;
+import com.university.lms.course.assessment.domain.QuizSection;
+import com.university.lms.course.assessment.domain.QuizSectionRule;
 import com.university.lms.course.assessment.dto.InlineQuizRequest;
 import com.university.lms.course.assessment.dto.QuizDto;
 import com.university.lms.course.assessment.repository.AssignmentRepository;
@@ -11,6 +13,9 @@ import com.university.lms.course.assessment.repository.QuestionBankRepository;
 import com.university.lms.common.dto.PageResponse;
 import com.university.lms.common.exception.ResourceNotFoundException;
 import com.university.lms.common.exception.ValidationException;
+import com.university.lms.course.domain.Course;
+import com.university.lms.course.repository.CourseMemberRepository;
+import com.university.lms.course.repository.CourseRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -21,7 +26,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -38,6 +47,9 @@ public class QuizService {
     private final QuizRepository quizRepository;
     private final AssignmentRepository assignmentRepository;
     private final QuestionBankRepository questionBankRepository;
+    private final QuestionVersionService questionVersionService;
+    private final CourseRepository courseRepository;
+    private final CourseMemberRepository courseMemberRepository;
     private final AssessmentMapper mapper;
 
     /**
@@ -159,6 +171,95 @@ public class QuizService {
 
         Quiz updatedQuiz = quizRepository.save(quiz);
         return mapAndEnrich(updatedQuiz);
+    }
+
+    /**
+     * Duplicate a quiz and optionally move it to another course.
+     * When duplicated across courses, questions are deep-cloned into the target course.
+     */
+    @Transactional
+    @CacheEvict(value = "quizzes", allEntries = true)
+    public QuizDto duplicateQuiz(
+        UUID id, UUID userId, String userRole, UUID targetCourseId, boolean deepCloneQuestions) {
+        Quiz original = findQuizById(id);
+        ensureCanManageCourse(original.getCourseId(), userId, userRole);
+
+        UUID resolvedTargetCourseId = targetCourseId != null ? targetCourseId : original.getCourseId();
+        ensureCanManageCourse(resolvedTargetCourseId, userId, userRole);
+
+        boolean cloneQuestions =
+            deepCloneQuestions || !original.getCourseId().equals(resolvedTargetCourseId);
+
+        Quiz copy =
+            Quiz.builder()
+                .courseId(resolvedTargetCourseId)
+                .title(buildCopyTitle(original.getTitle()))
+                .description(original.getDescription())
+                .timeLimit(original.getTimeLimit())
+                .attemptsAllowed(original.getAttemptsAllowed())
+                .shuffleQuestions(original.getShuffleQuestions())
+                .shuffleAnswers(original.getShuffleAnswers())
+                .showCorrectAnswers(original.getShowCorrectAnswers())
+                .showCorrectAnswersAt(original.getShowCorrectAnswersAt())
+                .passPercentage(original.getPassPercentage())
+                .createdBy(userId)
+                .quizQuestions(new java.util.HashSet<>())
+                .sections(new ArrayList<>())
+                .build();
+
+        Map<UUID, QuestionBank> clonedQuestions = new LinkedHashMap<>();
+        List<QuizQuestion> quizQuestions =
+            original.getQuizQuestions().stream()
+                .sorted(java.util.Comparator.comparingInt(QuizQuestion::getPosition))
+                .toList();
+        for (QuizQuestion originalQuestion : quizQuestions) {
+            QuestionBank resolvedQuestion =
+                cloneQuestions
+                    ? clonedQuestions.computeIfAbsent(
+                        originalQuestion.getQuestion().getId(),
+                        ignored -> cloneQuestion(originalQuestion.getQuestion(), resolvedTargetCourseId, userId))
+                    : originalQuestion.getQuestion();
+
+            QuizQuestion copyQuestion =
+                QuizQuestion.builder()
+                    .quiz(copy)
+                    .question(resolvedQuestion)
+                    .position(originalQuestion.getPosition())
+                    .pointsOverride(originalQuestion.getPointsOverride())
+                    .build();
+            copy.getQuizQuestions().add(copyQuestion);
+        }
+
+        List<QuizSection> sectionCopies = new ArrayList<>();
+        for (QuizSection section : original.getSections()) {
+            QuizSection sectionCopy =
+                QuizSection.builder()
+                    .quiz(copy)
+                    .title(section.getTitle())
+                    .position(section.getPosition())
+                    .questionCount(section.getQuestionCount())
+                    .rules(new ArrayList<>())
+                    .build();
+
+            List<QuizSectionRule> ruleCopies = new ArrayList<>();
+            for (QuizSectionRule rule : section.getRules()) {
+                QuizSectionRule ruleCopy =
+                    QuizSectionRule.builder()
+                        .section(sectionCopy)
+                        .questionType(rule.getQuestionType())
+                        .difficulty(rule.getDifficulty())
+                        .tag(rule.getTag())
+                        .quota(rule.getQuota())
+                        .build();
+                ruleCopies.add(ruleCopy);
+            }
+            sectionCopy.setRules(ruleCopies);
+            sectionCopies.add(sectionCopy);
+        }
+        copy.setSections(sectionCopies);
+
+        Quiz savedCopy = quizRepository.save(copy);
+        return mapAndEnrich(savedCopy);
     }
 
     /**
@@ -314,6 +415,28 @@ public class QuizService {
                 .orElseThrow(() -> new ResourceNotFoundException("Question", "id", id));
     }
 
+    private QuestionBank cloneQuestion(QuestionBank original, UUID targetCourseId, UUID userId) {
+        QuestionBank clone =
+            QuestionBank.builder()
+                .courseId(targetCourseId)
+                .questionType(original.getQuestionType())
+                .topic(original.getTopic())
+                .difficulty(original.getDifficulty())
+                .stem(original.getStem())
+                .options(copyMap(original.getOptions()))
+                .correctAnswer(copyMap(original.getCorrectAnswer()))
+                .explanation(original.getExplanation())
+                .points(original.getPoints())
+                .metadata(copyMap(original.getMetadata()))
+                .tags(copyStringList(original.getTags()))
+                .isArchived(false)
+                .createdBy(userId)
+                .build();
+        QuestionBank saved = questionBankRepository.save(clone);
+        questionVersionService.createVersionFromQuestion(saved, userId);
+        return saved;
+    }
+
     private QuizDto mapAndEnrich(Quiz quiz) {
         QuizDto dto = mapper.toDto(quiz);
         resolveModuleId(quiz.getId()).ifPresent(dto::setModuleId);
@@ -331,6 +454,37 @@ public class QuizService {
         return assignmentRepository.findFirstByQuizId(quiz.getId())
                 .map(assignment -> assignment.getCreatedBy().equals(userId))
                 .orElse(false);
+    }
+
+    private void ensureCanManageCourse(UUID courseId, UUID userId, String userRole) {
+        Course course = courseRepository
+            .findById(courseId)
+            .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
+        if (isSuperAdmin(userRole)
+            || course.getOwnerId().equals(userId)
+            || courseMemberRepository.canUserManageCourse(courseId, userId)) {
+            return;
+        }
+        throw new ValidationException("You don't have permission to duplicate quizzes in this course");
+    }
+
+    private boolean isSuperAdmin(String userRole) {
+        return "SUPERADMIN".equalsIgnoreCase(userRole);
+    }
+
+    private String buildCopyTitle(String originalTitle) {
+        if (originalTitle == null || originalTitle.isBlank()) {
+            return "Untitled quiz (Copy)";
+        }
+        return originalTitle + " (Copy)";
+    }
+
+    private Map<String, Object> copyMap(Map<String, Object> source) {
+        return source == null ? new HashMap<>() : new HashMap<>(source);
+    }
+
+    private List<String> copyStringList(List<String> source) {
+        return source == null ? new ArrayList<>() : new ArrayList<>(source);
     }
 
     private PageResponse<QuizDto> mapToPageResponse(Page<Quiz> page) {

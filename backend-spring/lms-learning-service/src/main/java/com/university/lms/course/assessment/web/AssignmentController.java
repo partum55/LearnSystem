@@ -2,6 +2,7 @@ package com.university.lms.course.assessment.web;
 
 import com.university.lms.course.assessment.dto.AssignmentDto;
 import com.university.lms.course.assessment.dto.CreateAssignmentRequest;
+import com.university.lms.course.assessment.dto.DuplicateAssignmentRequest;
 import com.university.lms.course.assessment.dto.UpdateAssignmentRequest;
 import com.university.lms.course.assessment.service.AssignmentService;
 import com.university.lms.course.web.RequestUserContext;
@@ -197,9 +198,23 @@ public class AssignmentController {
      * Duplicate assignment.
      */
     @PostMapping("/{id}/duplicate")
-    public ResponseEntity<AssignmentDto> duplicateAssignment(@PathVariable UUID id) {
+    public ResponseEntity<AssignmentDto> duplicateAssignment(
+            @PathVariable UUID id,
+            @RequestBody(required = false) DuplicateAssignmentRequest request,
+            @RequestParam(required = false) UUID courseId,
+            @RequestParam(required = false) UUID moduleId) {
         UUID userId = requestUserContext.requireUserId();
-        AssignmentDto assignment = assignmentService.duplicateAssignment(id, userId);
+        String userRole = requestUserContext.requireUserRole();
+
+        UUID targetCourseId = request != null && request.getTargetCourseId() != null
+                ? request.getTargetCourseId()
+                : courseId;
+        UUID targetModuleId = request != null && request.getTargetModuleId() != null
+                ? request.getTargetModuleId()
+                : moduleId;
+
+        AssignmentDto assignment =
+                assignmentService.duplicateAssignment(id, userId, userRole, targetCourseId, targetModuleId);
         return ResponseEntity.status(HttpStatus.CREATED).body(assignment);
     }
 

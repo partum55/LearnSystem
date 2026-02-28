@@ -312,8 +312,41 @@ export const AdminDashboard: React.FC = () => {
       setFeedback({ type: 'success', message: course.isPublished ? 'Course unpublished.' : 'Course published.' });
       await loadCourses();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to change course state';
-      setFeedback({ type: 'error', message });
+      const conflictStatus = (error as { response?: { status?: number; data?: { checklist?: { items?: Array<{ label?: string; details?: string; passed?: boolean }> } } } })?.response?.status;
+      if (!course.isPublished && conflictStatus === 409) {
+        const checklistItems =
+          (error as { response?: { data?: { checklist?: { items?: Array<{ label?: string; details?: string; passed?: boolean }> } } } })
+            ?.response?.data?.checklist?.items || [];
+        const failed = checklistItems.filter((item) => !item.passed);
+        const summary = failed
+          .map((item) => `• ${item.label || 'Requirement'}${item.details ? `: ${item.details}` : ''}`)
+          .join('\n');
+
+        const shouldOverride = window.confirm(
+          `Publish checklist is incomplete:\n\n${summary || 'Unknown checklist issue'}\n\nForce publish anyway?`
+        );
+        if (shouldOverride) {
+          const overrideReason = window.prompt(
+            'Provide override reason (required):',
+            'Published with checklist override by admin'
+          );
+          if (overrideReason && overrideReason.trim()) {
+            await publishAdminCourse(course.id, {
+              forcePublish: true,
+              overrideReason: overrideReason.trim(),
+            });
+            setFeedback({ type: 'success', message: 'Course published with checklist override.' });
+            await loadCourses();
+          } else {
+            setFeedback({ type: 'error', message: 'Publish override canceled: reason is required.' });
+          }
+        } else {
+          setFeedback({ type: 'error', message: 'Course publish canceled by checklist.' });
+        }
+      } else {
+        const message = error instanceof Error ? error.message : 'Failed to change course state';
+        setFeedback({ type: 'error', message });
+      }
     } finally {
       setCourseActionLoadingId(null);
     }

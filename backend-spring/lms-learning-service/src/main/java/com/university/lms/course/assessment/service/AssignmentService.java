@@ -1,5 +1,7 @@
 package com.university.lms.course.assessment.service;
 
+import com.university.lms.course.assessment.document.domain.AssignmentTemplateDocument;
+import com.university.lms.course.assessment.document.repository.AssignmentTemplateDocumentRepository;
 import com.university.lms.course.assessment.domain.Assignment;
 import com.university.lms.course.assessment.dto.AssignmentDto;
 import com.university.lms.course.assessment.dto.CreateAssignmentRequest;
@@ -10,8 +12,15 @@ import com.university.lms.course.assessment.repository.AssignmentRepository;
 import com.university.lms.common.dto.PageResponse;
 import com.university.lms.common.exception.ResourceNotFoundException;
 import com.university.lms.common.exception.ValidationException;
+import com.university.lms.course.domain.Course;
 import com.university.lms.course.domain.Module;
+import com.university.lms.course.repository.CourseMemberRepository;
+import com.university.lms.course.repository.CourseRepository;
 import com.university.lms.course.repository.ModuleRepository;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -21,8 +30,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -37,6 +46,9 @@ public class AssignmentService {
 
     private final AssignmentRepository assignmentRepository;
     private final ModuleRepository moduleRepository;
+    private final CourseRepository courseRepository;
+    private final CourseMemberRepository courseMemberRepository;
+    private final AssignmentTemplateDocumentRepository assignmentTemplateDocumentRepository;
     private final QuizService quizService;
     private final AssessmentMapper mapper;
 
@@ -276,49 +288,76 @@ public class AssignmentService {
      * Duplicate an assignment.
      */
     @Transactional
-    public AssignmentDto duplicateAssignment(UUID id, UUID userId) {
-        log.info("Duplicating assignment: {}", id);
+    public AssignmentDto duplicateAssignment(
+        UUID id, UUID userId, String userRole, UUID targetCourseId, UUID targetModuleId) {
+        log.info("Duplicating assignment {} to course {} module {}", id, targetCourseId, targetModuleId);
 
         Assignment original = findAssignmentById(id);
+        ensureCanDuplicateAssignment(original, userId, userRole);
 
-        // Create a copy
+        UUID resolvedCourseId = targetCourseId != null ? targetCourseId : original.getCourseId();
+        ensureCanManageCourse(resolvedCourseId, userId, userRole);
+
+        UUID resolvedModuleId = resolveTargetModuleId(original, resolvedCourseId, targetModuleId);
+        if ("QUIZ".equals(original.getAssignmentType()) && resolvedModuleId == null) {
+            throw new ValidationException("Target module is required when duplicating QUIZ assignments");
+        }
+
+        UUID resolvedQuizId = null;
+        if ("QUIZ".equals(original.getAssignmentType()) && original.getQuizId() != null) {
+            QuizDto duplicatedQuiz =
+                quizService.duplicateQuiz(
+                    original.getQuizId(), userId, userRole, resolvedCourseId, true);
+            resolvedQuizId = duplicatedQuiz.getId();
+        }
+
         Assignment copy = Assignment.builder()
-            .courseId(original.getCourseId())
-            .moduleId(original.getModuleId())
-            .categoryId(original.getCategoryId())
+            .courseId(resolvedCourseId)
+            .moduleId(resolvedModuleId)
+            .categoryId(resolvedCourseId.equals(original.getCourseId()) ? original.getCategoryId() : null)
             .position(original.getPosition())
             .assignmentType(original.getAssignmentType())
-            .title(original.getTitle() + " (Copy)")
+            .title(buildCopyTitle(original.getTitle()))
             .description(original.getDescription())
             .descriptionFormat(original.getDescriptionFormat())
             .instructions(original.getInstructions())
             .instructionsFormat(original.getInstructionsFormat())
-            .resources(original.getResources())
+            .resources(copyResourceList(original.getResources()))
             .starterCode(original.getStarterCode())
+            .solutionCode(original.getSolutionCode())
             .programmingLanguage(original.getProgrammingLanguage())
-            .autoGradingEnabled(original.getAutoGradingEnabled())
-            .testCases(original.getTestCases())
-            .maxPoints(original.getMaxPoints())
-            .rubric(original.getRubric())
-            .allowLateSubmission(original.getAllowLateSubmission())
-            .latePenaltyPercent(original.getLatePenaltyPercent())
-            .submissionTypes(original.getSubmissionTypes())
-            .allowedFileTypes(original.getAllowedFileTypes())
+            .autoGradingEnabled(Boolean.TRUE.equals(original.getAutoGradingEnabled()))
+            .testCases(copyResourceList(original.getTestCases()))
+            .maxPoints(original.getMaxPoints() != null ? original.getMaxPoints() : BigDecimal.valueOf(100.00))
+            .rubric(copyMap(original.getRubric()))
+            .dueDate(original.getDueDate())
+            .availableFrom(original.getAvailableFrom())
+            .availableUntil(original.getAvailableUntil())
+            .allowLateSubmission(Boolean.TRUE.equals(original.getAllowLateSubmission()))
+            .latePenaltyPercent(original.getLatePenaltyPercent() != null ? original.getLatePenaltyPercent() : BigDecimal.ZERO)
+            .submissionTypes(copyStringList(original.getSubmissionTypes()))
+            .allowedFileTypes(copyStringList(original.getAllowedFileTypes()))
             .maxFileSize(original.getMaxFileSize())
             .maxFiles(original.getMaxFiles())
-            .gradeAnonymously(original.getGradeAnonymously())
-            .peerReviewEnabled(original.getPeerReviewEnabled())
+            .quizId(resolvedQuizId)
+            .externalToolUrl(original.getExternalToolUrl())
+            .externalToolConfig(copyMap(original.getExternalToolConfig()))
+            .gradeAnonymously(Boolean.TRUE.equals(original.getGradeAnonymously()))
+            .peerReviewEnabled(Boolean.TRUE.equals(original.getPeerReviewEnabled()))
             .peerReviewsRequired(original.getPeerReviewsRequired())
-            .tags(original.getTags())
+            .tags(copyStringList(original.getTags()))
             .estimatedDuration(original.getEstimatedDuration())
+            .isTemplate(Boolean.TRUE.equals(original.getIsTemplate()))
+            .isArchived(false)
             .originalAssignmentId(original.getId())
             .isPublished(false)
             .createdBy(userId)
             .build();
 
         Assignment savedCopy = assignmentRepository.save(copy);
-        log.info("Assignment duplicated successfully: {} -> {}", id, savedCopy.getId());
+        cloneTemplateDocumentIfPresent(original.getId(), savedCopy.getId(), userId);
 
+        log.info("Assignment duplicated successfully: {} -> {}", id, savedCopy.getId());
         return mapper.toDto(savedCopy);
     }
 
@@ -327,6 +366,83 @@ public class AssignmentService {
     private Assignment findAssignmentById(UUID id) {
         return assignmentRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Assignment", "id", id));
+    }
+
+    private void ensureCanDuplicateAssignment(Assignment assignment, UUID userId, String userRole) {
+        if (isSuperAdmin(userRole)
+            || assignment.getCreatedBy().equals(userId)
+            || courseMemberRepository.canUserManageCourse(assignment.getCourseId(), userId)) {
+            return;
+        }
+        throw new ValidationException("You don't have permission to duplicate this assignment");
+    }
+
+    private void ensureCanManageCourse(UUID courseId, UUID userId, String userRole) {
+        Course course = courseRepository
+            .findById(courseId)
+            .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
+        if (isSuperAdmin(userRole)
+            || course.getOwnerId().equals(userId)
+            || courseMemberRepository.canUserManageCourse(courseId, userId)) {
+            return;
+        }
+        throw new ValidationException("You don't have permission to duplicate content to the selected course");
+    }
+
+    private boolean isSuperAdmin(String userRole) {
+        return "SUPERADMIN".equalsIgnoreCase(userRole);
+    }
+
+    private UUID resolveTargetModuleId(Assignment original, UUID targetCourseId, UUID targetModuleId) {
+        if (targetModuleId != null) {
+            validateModuleForCourse(targetCourseId, targetModuleId);
+            return targetModuleId;
+        }
+
+        if (targetCourseId.equals(original.getCourseId())) {
+            return original.getModuleId();
+        }
+
+        if (original.getModuleId() == null) {
+            return null;
+        }
+
+        throw new ValidationException("Target module is required when duplicating to another course");
+    }
+
+    private void cloneTemplateDocumentIfPresent(UUID sourceAssignmentId, UUID targetAssignmentId, UUID userId) {
+        assignmentTemplateDocumentRepository.findById(sourceAssignmentId).ifPresent(template -> {
+            AssignmentTemplateDocument cloned =
+                AssignmentTemplateDocument.builder()
+                    .assignmentId(targetAssignmentId)
+                    .docJson(copyMap(template.getDocJson()))
+                    .schemaVersion(template.getSchemaVersion())
+                    .updatedBy(userId)
+                    .build();
+            assignmentTemplateDocumentRepository.save(cloned);
+        });
+    }
+
+    private String buildCopyTitle(String originalTitle) {
+        if (originalTitle == null || originalTitle.isBlank()) {
+            return "Untitled (Copy)";
+        }
+        return originalTitle + " (Copy)";
+    }
+
+    private List<Map<String, Object>> copyResourceList(List<Map<String, Object>> source) {
+        if (source == null) {
+            return new ArrayList<>();
+        }
+        return source.stream().map(this::copyMap).collect(Collectors.toList());
+    }
+
+    private List<String> copyStringList(List<String> source) {
+        return source == null ? new ArrayList<>() : new ArrayList<>(source);
+    }
+
+    private Map<String, Object> copyMap(Map<String, Object> source) {
+        return source == null ? new HashMap<>() : new HashMap<>(source);
     }
 
     private void validateAssignmentRequest(CreateAssignmentRequest request) {

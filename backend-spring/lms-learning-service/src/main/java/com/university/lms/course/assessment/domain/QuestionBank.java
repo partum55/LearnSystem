@@ -20,7 +20,9 @@ import java.util.UUID;
 @Table(name = "question_bank", indexes = {
     @Index(name = "idx_question_course", columnList = "course_id"),
     @Index(name = "idx_question_type", columnList = "question_type"),
-    @Index(name = "idx_question_created_by", columnList = "created_by")
+    @Index(name = "idx_question_created_by", columnList = "created_by"),
+    @Index(name = "idx_question_bank_topic", columnList = "topic"),
+    @Index(name = "idx_question_bank_difficulty", columnList = "difficulty")
 })
 @Getter
 @Setter
@@ -39,6 +41,12 @@ public class QuestionBank {
 
     @Column(name = "question_type", nullable = false, length = 30)
     private String questionType; // MULTIPLE_CHOICE, TRUE_FALSE, FILL_BLANK, MATCHING, NUMERICAL, FORMULA, SHORT_ANSWER, ESSAY, CODE, FILE_UPLOAD, ORDERING, HOTSPOT, DRAG_DROP
+
+    @Column(length = 255)
+    private String topic;
+
+    @Column(length = 20)
+    private String difficulty;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String stem; // The main question text
@@ -70,6 +78,15 @@ public class QuestionBank {
     @Builder.Default
     private Map<String, Object> metadata = new HashMap<>();
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb", nullable = false)
+    @Builder.Default
+    private java.util.List<String> tags = new java.util.ArrayList<>();
+
+    @Column(name = "is_archived", nullable = false)
+    @Builder.Default
+    private Boolean isArchived = false;
+
     // Audit fields
     @Column(name = "created_by", nullable = false)
     private UUID createdBy;
@@ -82,16 +99,4 @@ public class QuestionBank {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    // Helper methods
-    public String getDifficulty() {
-        return metadata != null ? (String) metadata.get("difficulty") : null;
-    }
-
-    public void setDifficulty(String difficulty) {
-        if (metadata == null) {
-            metadata = new HashMap<>();
-        }
-        metadata.put("difficulty", difficulty);
-    }
 }
-

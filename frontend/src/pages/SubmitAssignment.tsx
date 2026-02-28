@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '../api/client';
@@ -6,6 +6,16 @@ import { CourseLayout } from '../components/CourseLayout';
 import { Layout } from '../components';
 import { UnsavedChangesPrompt } from '../components/common/UnsavedChangesPrompt';
 import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning';
+import {
+  BlockEditor,
+  createEmptyDocument,
+  createParagraphDocument,
+  extractDocumentText,
+  hasMeaningfulDocumentContent,
+  parseCanonicalDocument,
+} from '../features/editor-core';
+import { assignmentDocumentsApi, editorMediaApi, submissionDocumentsApi } from '../api/pages';
+import { CanonicalDocument } from '../types';
 
 interface Assignment {
   id: string;
@@ -36,12 +46,36 @@ interface Submission {
   id: string;
   status: string;
   text_answer: string;
+  textAnswer?: string;
   submission_url: string;
+  submissionUrl?: string;
   files: SubmissionFile[];
   grade: number | null;
   feedback: string;
   submitted_at: string | null;
+  submittedAt?: string | null;
 }
+
+const parseSubmission = (raw: Record<string, unknown>): Submission => ({
+  id: String(raw.id ?? ''),
+  status: String(raw.status ?? 'DRAFT'),
+  text_answer: String(raw.textAnswer ?? raw.text_answer ?? ''),
+  textAnswer: raw.textAnswer ? String(raw.textAnswer) : undefined,
+  submission_url: String(raw.submissionUrl ?? raw.submission_url ?? ''),
+  submissionUrl: raw.submissionUrl ? String(raw.submissionUrl) : undefined,
+  files: Array.isArray(raw.files)
+    ? raw.files.map((item) => ({
+        id: String((item as Record<string, unknown>).id ?? ''),
+        file_url: String((item as Record<string, unknown>).fileUrl ?? (item as Record<string, unknown>).file_url ?? ''),
+        filename: String((item as Record<string, unknown>).filename ?? ''),
+        file_size: Number((item as Record<string, unknown>).fileSize ?? (item as Record<string, unknown>).file_size ?? 0),
+      }))
+    : [],
+  grade: raw.grade == null ? null : Number(raw.grade),
+  feedback: String(raw.feedback ?? ''),
+  submitted_at: raw.submittedAt ? String(raw.submittedAt) : (raw.submitted_at ? String(raw.submitted_at) : null),
+  submittedAt: raw.submittedAt ? String(raw.submittedAt) : undefined,
+});
 
 const SubmitAssignment: React.FC = () => {
   const params = useParams<{ id?: string; assignmentId?: string; courseId?: string; moduleId?: string }>();
@@ -68,9 +102,17 @@ const SubmitAssignment: React.FC = () => {
   const [urlAnswer, setUrlAnswer] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [textDocument, setTextDocument] = useState<CanonicalDocument>(createEmptyDocument());
+  const [documentLoading, setDocumentLoading] = useState(false);
+  const [loadedDocumentSubmissionId, setLoadedDocumentSubmissionId] = useState<string | null>(null);
 
   // Track initial values for dirty checking
-  const [initialValues, setInitialValues] = useState({ textAnswer: '', codeAnswer: '', urlAnswer: '' });
+  const [initialValues, setInitialValues] = useState({
+    textAnswer: '',
+    codeAnswer: '',
+    urlAnswer: '',
+    textDocument: JSON.stringify(createEmptyDocument()),
+  });
 
   // Check if form has unsaved changes
   const hasUnsavedChanges = useMemo(() => {
@@ -79,8 +121,21 @@ const SubmitAssignment: React.FC = () => {
     const hasCodeChanges = codeAnswer !== initialValues.codeAnswer;
     const hasUrlChanges = urlAnswer !== initialValues.urlAnswer;
     const hasFileChanges = files.length > 0;
-    return hasTextChanges || hasCodeChanges || hasUrlChanges || hasFileChanges;
-  }, [textAnswer, codeAnswer, urlAnswer, files, initialValues, submitting]);
+    const hasDocumentChanges =
+      assignment?.assignment_type === 'TEXT' &&
+      JSON.stringify(textDocument) !== initialValues.textDocument;
+
+    return hasTextChanges || hasCodeChanges || hasUrlChanges || hasFileChanges || Boolean(hasDocumentChanges);
+  }, [
+    textAnswer,
+    codeAnswer,
+    urlAnswer,
+    files,
+    initialValues,
+    submitting,
+    assignment?.assignment_type,
+    textDocument,
+  ]);
 
   // Unsaved changes warning
   const {
@@ -94,10 +149,23 @@ const SubmitAssignment: React.FC = () => {
   });
 
   useEffect(() => {
-    fetchAssignment();
-    fetchOrCreateSubmission();
+    void fetchAssignment();
+    void fetchOrCreateSubmission();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignmentId]);
+
+  useEffect(() => {
+    if (!submission?.id || assignment?.assignment_type !== 'TEXT') {
+      return;
+    }
+
+    if (loadedDocumentSubmissionId === submission.id) {
+      return;
+    }
+
+    void initializeSubmissionDocument(submission.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignment?.assignment_type, submission?.id, loadedDocumentSubmissionId]);
 
   const fetchAssignment = async () => {
     try {
@@ -107,17 +175,17 @@ const SubmitAssignment: React.FC = () => {
         id: String(data.id || ''),
         title: String(data.title || ''),
         description: String(data.description || ''),
-        description_format: String(data.descriptionFormat || 'MARKDOWN'),
+        description_format: String(data.descriptionFormat || data.description_format || 'MARKDOWN'),
         instructions: String(data.instructions || ''),
-        instructions_format: String(data.instructionsFormat || 'MARKDOWN'),
-        assignment_type: String(data.assignmentType || 'FILE_UPLOAD'),
-        max_points: Number(data.maxPoints || 0),
-        due_date: (data.dueDate as string | null) || null,
-        starter_code: String(data.starterCode || ''),
-        programming_language: String(data.programmingLanguage || 'python'),
-        allowed_file_types: (data.allowedFileTypes as string[]) || [],
-        max_file_size: Number(data.maxFileSize || 10485760),
-        max_files: Number(data.maxFiles || 5),
+        instructions_format: String(data.instructionsFormat || data.instructions_format || 'MARKDOWN'),
+        assignment_type: String(data.assignmentType || data.assignment_type || 'FILE_UPLOAD'),
+        max_points: Number(data.maxPoints || data.max_points || 0),
+        due_date: (data.dueDate as string | null) || (data.due_date as string | null) || null,
+        starter_code: String(data.starterCode || data.starter_code || ''),
+        programming_language: String(data.programmingLanguage || data.programming_language || 'python'),
+        allowed_file_types: (data.allowedFileTypes as string[]) || (data.allowed_file_types as string[]) || [],
+        max_file_size: Number(data.maxFileSize || data.max_file_size || 10485760),
+        max_files: Number(data.maxFiles || data.max_files || 5),
         resources: (data.resources as { name: string; url: string }[]) || [],
       };
       setAssignment(mappedAssignment);
@@ -125,8 +193,7 @@ const SubmitAssignment: React.FC = () => {
         setCodeAnswer(mappedAssignment.starter_code);
       }
     } catch (err: unknown) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const error = err as any;
+      const error = err as { response?: { data?: { message?: string } } };
       setError(error.response?.data?.message || 'Failed to load assignment');
     } finally {
       setLoading(false);
@@ -136,7 +203,7 @@ const SubmitAssignment: React.FC = () => {
   const fetchOrCreateSubmission = async () => {
     try {
       // Try to get existing submission
-      const response = await api.get<{ results?: Submission[]; content?: Submission[] } | Submission[]>(
+      const response = await api.get<{ results?: Record<string, unknown>[]; content?: Record<string, unknown>[] } | Record<string, unknown>[]>(
         `/submissions?assignmentId=${assignmentId}`
       );
       const fetchedSubmissions = Array.isArray(response.data)
@@ -144,48 +211,88 @@ const SubmitAssignment: React.FC = () => {
         : response.data.results || response.data.content || [];
 
       if (fetchedSubmissions.length > 0) {
-        const existingSub = fetchedSubmissions[0];
+        const existingSub = parseSubmission(fetchedSubmissions[0]);
         setSubmission(existingSub);
 
         // Load existing data
         if (existingSub.text_answer) {
           setTextAnswer(existingSub.text_answer);
           setCodeAnswer(existingSub.text_answer);
-          setInitialValues(prev => ({
+          setInitialValues((prev) => ({
             ...prev,
             textAnswer: existingSub.text_answer,
-            codeAnswer: existingSub.text_answer
+            codeAnswer: existingSub.text_answer,
           }));
         }
         if (existingSub.submission_url) {
           setUrlAnswer(existingSub.submission_url);
-          setInitialValues(prev => ({ ...prev, urlAnswer: existingSub.submission_url }));
+          setInitialValues((prev) => ({ ...prev, urlAnswer: existingSub.submission_url }));
         }
       } else {
         // Create new draft submission
         try {
-          const createResponse = await api.post<Submission>('/submissions', {
-            assignmentId: assignmentId,
-            status: 'DRAFT'
+          const createResponse = await api.post<Record<string, unknown>>('/submissions', {
+            assignmentId,
+            status: 'DRAFT',
           });
-          // Backend returns existing submission with 200 or new with 201
-          setSubmission(createResponse.data);
+          setSubmission(parseSubmission(createResponse.data));
         } catch (createErr: unknown) {
           console.error('Error creating submission:', createErr);
           // If creation fails, try fetching again in case it was created by another request
-          const retryResponse = await api.get<{ results?: Submission[]; content?: Submission[] } | Submission[]>(
+          const retryResponse = await api.get<{ results?: Record<string, unknown>[]; content?: Record<string, unknown>[] } | Record<string, unknown>[]>(
             `/submissions?assignmentId=${assignmentId}`
           );
           const retrySubmissions = Array.isArray(retryResponse.data)
             ? retryResponse.data
             : retryResponse.data.results || retryResponse.data.content || [];
           if (retrySubmissions.length > 0) {
-            setSubmission(retrySubmissions[0]);
+            setSubmission(parseSubmission(retrySubmissions[0]));
           }
         }
       }
     } catch (err: unknown) {
       console.error('Error fetching/creating submission:', err);
+    }
+  };
+
+  const initializeSubmissionDocument = async (submissionId: string) => {
+    if (!assignmentId) {
+      return;
+    }
+
+    setDocumentLoading(true);
+
+    try {
+      const existingDocResponse = await submissionDocumentsApi.get(submissionId);
+      let doc = parseCanonicalDocument(existingDocResponse.data.document);
+
+      if (!hasMeaningfulDocumentContent(doc)) {
+        try {
+          await assignmentDocumentsApi.cloneTemplateToSubmission(assignmentId);
+          const clonedDocResponse = await submissionDocumentsApi.get(submissionId);
+          doc = parseCanonicalDocument(clonedDocResponse.data.document);
+        } catch (cloneErr) {
+          console.warn('Template clone skipped or unavailable', cloneErr);
+        }
+      }
+
+      if (!hasMeaningfulDocumentContent(doc)) {
+        const existingText = submission?.text_answer || submission?.textAnswer || '';
+        if (existingText.trim()) {
+          doc = createParagraphDocument(existingText);
+        }
+      }
+
+      setTextDocument(doc);
+      setInitialValues((prev) => ({ ...prev, textDocument: JSON.stringify(doc) }));
+    } catch (err) {
+      console.error('Failed to initialize submission document', err);
+      const fallback = createEmptyDocument();
+      setTextDocument(fallback);
+      setInitialValues((prev) => ({ ...prev, textDocument: JSON.stringify(fallback) }));
+    } finally {
+      setLoadedDocumentSubmissionId(submissionId);
+      setDocumentLoading(false);
     }
   };
 
@@ -201,7 +308,7 @@ const SubmitAssignment: React.FC = () => {
 
       // Validate file size
       const maxSize = assignment?.max_file_size || 10485760;
-      const oversizedFiles = selectedFiles.filter(f => f.size > maxSize);
+      const oversizedFiles = selectedFiles.filter((f) => f.size > maxSize);
       if (oversizedFiles.length > 0) {
         setError(`Files exceed maximum size of ${(maxSize / 1048576).toFixed(1)}MB`);
         return;
@@ -227,15 +334,14 @@ const SubmitAssignment: React.FC = () => {
               ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
               : 0;
             setUploadProgress(((i + progress / 100) / files.length) * 100);
-          }
+          },
         });
       }
 
       setUploadProgress(100);
       return true;
     } catch (err: unknown) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const error = err as any;
+      const error = err as { response?: { data?: { error?: string } } };
       setError(error.response?.data?.error || 'File upload failed');
       return false;
     }
@@ -255,21 +361,34 @@ const SubmitAssignment: React.FC = () => {
           await api.post(`/submissions/${submission.id}/submit`, {
             type: 'CODE',
             code: codeAnswer,
-            language: assignment.programming_language
+            language: assignment.programming_language,
           });
           break;
 
-        case 'TEXT':
+        case 'TEXT': {
+          if (!hasMeaningfulDocumentContent(textDocument)) {
+            throw new Error('Text submission is empty');
+          }
+
+          await submissionDocumentsApi.upsert(submission.id, {
+            document: textDocument,
+            schemaVersion: 1,
+          });
+
+          const plainText = extractDocumentText(textDocument);
           await api.post(`/submissions/${submission.id}/submit`, {
             type: 'TEXT',
-            text_answer: textAnswer
+            text_answer: plainText || '[Submitted from block editor]',
           });
+
+          setInitialValues((prev) => ({ ...prev, textDocument: JSON.stringify(textDocument) }));
           break;
+        }
 
         case 'URL':
           await api.post(`/submissions/${submission.id}/submit`, {
             type: 'URL',
-            url: urlAnswer
+            url: urlAnswer,
           });
           break;
 
@@ -291,15 +410,19 @@ const SubmitAssignment: React.FC = () => {
 
       // Success - redirect to assignment page
       navigate(assignmentBasePath, {
-        state: { message: t('submission.submitted_successfully') }
+        state: { message: t('submission.submitted_successfully') },
       });
     } catch (err: unknown) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const error = err as any;
-      setError(error.response?.data?.error || 'Submission failed');
+      const error = err as { response?: { data?: { error?: string; message?: string } }; message?: string };
+      setError(error.response?.data?.error || error.response?.data?.message || error.message || 'Submission failed');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleEditorMediaUpload = async (file: File) => {
+    const response = await editorMediaApi.upload(file);
+    return { url: response.data.url, contentType: response.data.contentType };
   };
 
   const renderSubmissionForm = () => {
@@ -329,18 +452,26 @@ const SubmitAssignment: React.FC = () => {
 
       case 'TEXT':
         return (
-          <div>
-            <label className="label mb-2">
+          <div className="space-y-3">
+            <label className="label mb-2 block">
               {t('submission.text_answer')}
             </label>
-            <textarea
-              value={textAnswer}
-              onChange={(e) => setTextAnswer(e.target.value)}
-              placeholder={t('submission.enter_answer')}
-              rows={10}
-              className="input w-full"
-              required
-            />
+            {documentLoading ? (
+              <div className="rounded-lg border p-4" style={{ borderColor: 'var(--border-default)' }}>
+                {t('common.loading', 'Loading...')}
+              </div>
+            ) : (
+              <BlockEditor
+                value={textDocument}
+                onChange={setTextDocument}
+                mode="lite"
+                placeholder={t('submission.enter_answer', 'Enter your answer')}
+                onUploadMedia={handleEditorMediaUpload}
+              />
+            )}
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              {t('submission.text_editor_help', 'Use / commands for blocks, Alt+Up/Down to move blocks, and toolbar actions for formatting.')}
+            </p>
           </div>
         );
 
@@ -425,10 +556,15 @@ const SubmitAssignment: React.FC = () => {
   };
 
   const renderContent = (content: string, format: string) => {
-    if (format === 'MARKDOWN' || format === 'RICH') {
-      // Simple rendering - in production use a markdown/rich text library
+    if (format === 'RICH') {
+      const document = parseCanonicalDocument(content);
+      return <BlockEditor value={document} onChange={() => undefined} readOnly mode="full" />;
+    }
+
+    if (format === 'MARKDOWN') {
       return <div className="max-w-none whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>{content}</div>;
     }
+
     return <p className="whitespace-pre-wrap">{content}</p>;
   };
 
