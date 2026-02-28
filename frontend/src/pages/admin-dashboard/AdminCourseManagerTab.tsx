@@ -8,9 +8,19 @@ import {
   TrashIcon,
   WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
-import { AdminCourse, getAdminCourses, PageResponse, deleteAdminCourse, publishAdminCourse, unpublishAdminCourse } from '../../api/admin';
+import {
+  AdminCourse,
+  CoursePublishChecklist,
+  getAdminCourses,
+  PageResponse,
+  deleteAdminCourse,
+  publishAdminCourse,
+  unpublishAdminCourse,
+} from '../../api/admin';
 import { courseManagementApi } from '../../api/adminCourseManagement';
 import { Loading } from '../../components/Loading';
+import { Button, Modal } from '../../components';
+import { extractErrorMessage } from '../../api/client';
 import { AdminCourseDeepManager } from './AdminCourseDeepManager';
 
 interface Props {
@@ -27,6 +37,12 @@ export const AdminCourseManagerTab: React.FC<Props> = ({ onFeedback }) => {
   const [search, setSearch] = useState('');
   const [selectedCourse, setSelectedCourse] = useState<AdminCourse | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showPublishChecklistModal, setShowPublishChecklistModal] = useState(false);
+  const [publishChecklist, setPublishChecklist] = useState<CoursePublishChecklist | null>(null);
+  const [publishTargetCourse, setPublishTargetCourse] = useState<AdminCourse | null>(null);
+  const [overrideReason, setOverrideReason] = useState('');
+  const [isForcePublishing, setIsForcePublishing] = useState(false);
+  const [publishChecklistError, setPublishChecklistError] = useState<string | null>(null);
   const loading = !loadedRequest || loadedRequest.page !== page || loadedRequest.reloadToken !== reloadToken;
 
   const refreshCourses = useCallback(() => {
@@ -67,6 +83,23 @@ export const AdminCourseManagerTab: React.FC<Props> = ({ onFeedback }) => {
     );
   }, [courses, search]);
 
+  const closePublishChecklistModal = useCallback(() => {
+    if (isForcePublishing) return;
+    setShowPublishChecklistModal(false);
+    setPublishChecklist(null);
+    setPublishTargetCourse(null);
+    setOverrideReason('');
+    setPublishChecklistError(null);
+  }, [isForcePublishing]);
+
+  const openPublishChecklistModal = useCallback((course: AdminCourse, checklist: CoursePublishChecklist) => {
+    setPublishTargetCourse(course);
+    setPublishChecklist(checklist);
+    setOverrideReason('');
+    setPublishChecklistError(null);
+    setShowPublishChecklistModal(true);
+  }, []);
+
   const togglePublish = async (course: AdminCourse) => {
     setActionLoading(course.id);
     try {
@@ -78,42 +111,42 @@ export const AdminCourseManagerTab: React.FC<Props> = ({ onFeedback }) => {
       onFeedback('success', course.isPublished ? 'Unpublished' : 'Published');
       refreshCourses();
     } catch (error) {
-      const status = (error as { response?: { status?: number; data?: { checklist?: { items?: Array<{ label?: string; details?: string; passed?: boolean }> } } } })?.response?.status;
-      if (!course.isPublished && status === 409) {
-        const checklistItems =
-          (error as { response?: { data?: { checklist?: { items?: Array<{ label?: string; details?: string; passed?: boolean }> } } } })
-            ?.response?.data?.checklist?.items || [];
-        const failed = checklistItems.filter((item) => !item.passed);
-        const summary = failed
-          .map((item) => `• ${item.label || 'Requirement'}${item.details ? `: ${item.details}` : ''}`)
-          .join('\n');
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      const checklist = (
+        error as { response?: { data?: { checklist?: CoursePublishChecklist } } }
+      )?.response?.data?.checklist;
 
-        const shouldOverride = window.confirm(
-          `Publish checklist is incomplete:\n\n${summary || 'Unknown checklist issue'}\n\nForce publish anyway?`
-        );
-        if (shouldOverride) {
-          const overrideReason = window.prompt(
-            'Provide override reason (required):',
-            'Published with checklist override by admin'
-          );
-          if (overrideReason && overrideReason.trim()) {
-            await publishAdminCourse(course.id, {
-              forcePublish: true,
-              overrideReason: overrideReason.trim(),
-            });
-            onFeedback('success', 'Published with checklist override');
-            refreshCourses();
-          } else {
-            onFeedback('error', 'Publish override canceled: reason is required');
-          }
-        } else {
-          onFeedback('error', 'Publish canceled by checklist');
-        }
+      if (!course.isPublished && status === 409 && checklist) {
+        openPublishChecklistModal(course, checklist);
       } else {
-        onFeedback('error', 'Failed');
+        onFeedback('error', extractErrorMessage(error));
       }
     }
     setActionLoading(null);
+  };
+
+  const forcePublish = async () => {
+    if (!publishTargetCourse) return;
+    if (!overrideReason.trim()) {
+      setPublishChecklistError('Override reason is required.');
+      return;
+    }
+
+    setIsForcePublishing(true);
+    setPublishChecklistError(null);
+    try {
+      await publishAdminCourse(publishTargetCourse.id, {
+        forcePublish: true,
+        overrideReason: overrideReason.trim(),
+      });
+      onFeedback('success', 'Published with checklist override');
+      closePublishChecklistModal();
+      refreshCourses();
+    } catch (error) {
+      setPublishChecklistError(extractErrorMessage(error));
+    } finally {
+      setIsForcePublishing(false);
+    }
   };
 
   const removeCourse = async (course: AdminCourse) => {
@@ -152,110 +185,180 @@ export const AdminCourseManagerTab: React.FC<Props> = ({ onFeedback }) => {
   }
 
   return (
-    <div className="space-y-3">
-      {/* Search */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: 'var(--text-muted)' }} />
-          <input
-            className="input text-sm pl-8 w-full"
-            placeholder="Search courses by code or title..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+    <>
+      <div className="space-y-3">
+        {/* Search */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: 'var(--text-muted)' }} />
+            <input
+              className="input text-sm pl-8 w-full"
+              placeholder="Search courses by code or title..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <span className="text-xs shrink-0" style={{ color: 'var(--text-muted)' }}>
+            {totalElements} courses total
+          </span>
         </div>
-        <span className="text-xs shrink-0" style={{ color: 'var(--text-muted)' }}>
-          {totalElements} courses total
-        </span>
+
+        {loading ? <Loading /> : (
+          <>
+            {filtered.length === 0 && (
+              <p className="text-sm py-8 text-center" style={{ color: 'var(--text-muted)' }}>No courses found</p>
+            )}
+
+            <div className="space-y-1">
+              {filtered.map(course => (
+                <div
+                  key={course.id}
+                  className="rounded-lg p-3 flex items-center justify-between group transition-colors"
+                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="shrink-0 w-10 h-10 rounded flex items-center justify-center" style={{ background: 'var(--bg-elevated)' }}>
+                      <BookOpenIcon className="h-5 w-5" style={{ color: 'var(--text-muted)' }} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{course.code}</span>
+                        {course.isPublished ? (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(34,197,94,0.1)', color: 'var(--fn-success)' }}>Published</span>
+                        ) : (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(245,158,11,0.1)', color: 'var(--fn-warning)' }}>Draft</span>
+                        )}
+                        <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+                          {course.visibility}
+                        </span>
+                      </div>
+                      <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
+                        {course.titleUk}{course.titleEn ? ` / ${course.titleEn}` : ''}
+                      </p>
+                      <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                        {course.moduleCount ?? 0} modules · {course.memberCount ?? 0} members · {course.maxStudents ? `max ${course.maxStudents}` : 'unlimited'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      className="btn btn-primary btn-xs"
+                      title="Manage course content"
+                      onClick={() => setSelectedCourse(course)}
+                      disabled={actionLoading === course.id}
+                    >
+                      <WrenchScrewdriverIcon className="h-3.5 w-3.5" /> Manage
+                    </button>
+                    <button
+                      className="btn btn-ghost btn-xs"
+                      title="Export as JSON"
+                      onClick={() => exportCourse(course)}
+                      disabled={actionLoading === course.id}
+                    >
+                      <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      className="btn btn-ghost btn-xs"
+                      title={course.isPublished ? 'Unpublish' : 'Publish'}
+                      onClick={() => togglePublish(course)}
+                      disabled={actionLoading === course.id}
+                    >
+                      {course.isPublished ? <EyeSlashIcon className="h-3.5 w-3.5" /> : <EyeIcon className="h-3.5 w-3.5" />}
+                    </button>
+                    <button
+                      className="btn btn-ghost btn-xs"
+                      style={{ color: 'var(--fn-error)' }}
+                      title="Delete course"
+                      onClick={() => removeCourse(course)}
+                      disabled={actionLoading === course.id}
+                    >
+                      <TrashIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 pt-2">
+                <button className="btn btn-ghost btn-xs" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Previous</button>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Page {page + 1} of {totalPages}</span>
+                <button className="btn btn-ghost btn-xs" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Next</button>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
-      {loading ? <Loading /> : (
-        <>
-          {filtered.length === 0 && (
-            <p className="text-sm py-8 text-center" style={{ color: 'var(--text-muted)' }}>No courses found</p>
-          )}
+      <Modal
+        isOpen={showPublishChecklistModal}
+        onClose={closePublishChecklistModal}
+        title="Course Publish Checklist"
+      >
+        <div className="space-y-4">
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            Complete all required checks before publishing this course.
+          </p>
 
-          <div className="space-y-1">
-            {filtered.map(course => (
+          <div className="space-y-2">
+            {(publishChecklist?.items || []).map((item) => (
               <div
-                key={course.id}
-                className="rounded-lg p-3 flex items-center justify-between group transition-colors"
-                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
+                key={item.key}
+                className="rounded-md p-3"
+                style={{
+                  border: `1px solid ${item.passed ? 'rgba(34,197,94,0.25)' : 'rgba(248,113,113,0.25)'}`,
+                  background: item.passed ? 'rgba(34,197,94,0.08)' : 'rgba(248,113,113,0.08)',
+                }}
               >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="shrink-0 w-10 h-10 rounded flex items-center justify-center" style={{ background: 'var(--bg-elevated)' }}>
-                    <BookOpenIcon className="h-5 w-5" style={{ color: 'var(--text-muted)' }} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{course.code}</span>
-                      {course.isPublished ? (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(34,197,94,0.1)', color: 'var(--fn-success)' }}>Published</span>
-                      ) : (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(245,158,11,0.1)', color: 'var(--fn-warning)' }}>Draft</span>
-                      )}
-                      <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
-                        {course.visibility}
-                      </span>
-                    </div>
-                    <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
-                      {course.titleUk}{course.titleEn ? ` / ${course.titleEn}` : ''}
-                    </p>
-                    <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                      {course.moduleCount ?? 0} modules · {course.memberCount ?? 0} members · {course.maxStudents ? `max ${course.maxStudents}` : 'unlimited'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    className="btn btn-primary btn-xs"
-                    title="Manage course content"
-                    onClick={() => setSelectedCourse(course)}
-                    disabled={actionLoading === course.id}
-                  >
-                    <WrenchScrewdriverIcon className="h-3.5 w-3.5" /> Manage
-                  </button>
-                  <button
-                    className="btn btn-ghost btn-xs"
-                    title="Export as JSON"
-                    onClick={() => exportCourse(course)}
-                    disabled={actionLoading === course.id}
-                  >
-                    <ArrowDownTrayIcon className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    className="btn btn-ghost btn-xs"
-                    title={course.isPublished ? 'Unpublish' : 'Publish'}
-                    onClick={() => togglePublish(course)}
-                    disabled={actionLoading === course.id}
-                  >
-                    {course.isPublished ? <EyeSlashIcon className="h-3.5 w-3.5" /> : <EyeIcon className="h-3.5 w-3.5" />}
-                  </button>
-                  <button
-                    className="btn btn-ghost btn-xs"
-                    style={{ color: 'var(--fn-error)' }}
-                    title="Delete course"
-                    onClick={() => removeCourse(course)}
-                    disabled={actionLoading === course.id}
-                  >
-                    <TrashIcon className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{item.label}</p>
+                {item.details && (
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.details}</p>
+                )}
               </div>
             ))}
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 pt-2">
-              <button className="btn btn-ghost btn-xs" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Previous</button>
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Page {page + 1} of {totalPages}</span>
-              <button className="btn btn-ghost btn-xs" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Next</button>
-            </div>
+          <div className="space-y-2">
+            <label className="block text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
+              Override reason
+            </label>
+            <textarea
+              value={overrideReason}
+              onChange={(event) => setOverrideReason(event.target.value)}
+              rows={3}
+              className="input w-full"
+              placeholder="Provide reason for force publishing"
+            />
+          </div>
+
+          {publishChecklistError && (
+            <p className="text-sm" style={{ color: 'var(--fn-error)' }}>
+              {publishChecklistError}
+            </p>
           )}
-        </>
-      )}
-    </div>
+
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="secondary"
+              onClick={closePublishChecklistModal}
+              disabled={isForcePublishing}
+            >
+              Close
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                void forcePublish();
+              }}
+              isLoading={isForcePublishing}
+            >
+              Force Publish
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </>
   );
 };

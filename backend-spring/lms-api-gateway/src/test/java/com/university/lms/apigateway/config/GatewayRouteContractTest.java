@@ -38,6 +38,18 @@ class GatewayRouteContractTest {
 
     assertLearningRoute(
         routes,
+        "learning-assignment-documents",
+        Set.of(
+            "/api/assignments/*/template-document",
+            "/api/assignments/*/submissions/clone-template"));
+
+    assertLearningRoute(
+        routes,
+        "learning-submission-documents",
+        Set.of("/api/submissions/*/document"));
+
+    assertLearningRoute(
+        routes,
         "learning-submissions",
         Set.of("/api/v1/submissions/**", "/api/submissions/**"));
 
@@ -65,6 +77,22 @@ class GatewayRouteContractTest {
             "/api/analytics/courses/*/students/*/risk",
             "/api/v1/analytics/courses/*/at-risk-students",
             "/api/v1/analytics/courses/*/students/*/risk"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"application.yml", "application-docker.yml"})
+  void pathPredicatesMustNotUseDoubleWildcardInMiddle(String resourceName) {
+    List<Map<String, Object>> routes = loadRoutes(resourceName);
+
+    Set<String> invalidPatterns =
+        routes.stream()
+            .flatMap(route -> extractPathPatterns(route).stream())
+            .filter(path -> path.contains("**/"))
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+
+    assertThat(invalidPatterns)
+        .as("Path predicates cannot contain `**/` with Spring PathPattern parser")
+        .isEmpty();
   }
 
   private static void assertLearningRoute(

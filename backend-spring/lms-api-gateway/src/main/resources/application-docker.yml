@@ -48,12 +48,12 @@ spring:
         - id: learning-assignment-documents
           uri: lb://lms-learning-service
           predicates:
-            - Path=/api/assignments/**/template-document, /api/assignments/**/submissions/clone-template
+            - Path=/api/assignments/*/template-document, /api/assignments/*/submissions/clone-template
 
         - id: learning-submission-documents
           uri: lb://lms-learning-service
           predicates:
-            - Path=/api/submissions/**/document
+            - Path=/api/submissions/*/document
 
         - id: learning-submissions
           uri: lb://lms-learning-service

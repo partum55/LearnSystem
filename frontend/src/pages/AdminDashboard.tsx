@@ -4,6 +4,7 @@ import { TabTransition } from '../components/animation';
 import {
   activateAdminUser,
   AdminCourse,
+  CoursePublishChecklist,
   AdminUser,
   createAdminCourse,
   createAdminUser,
@@ -19,6 +20,7 @@ import {
   updateAdminCourse,
   updateAdminUser,
 } from '../api/admin';
+import { extractErrorMessage } from '../api/client';
 import {
   ArrowPathIcon,
   ArrowUpTrayIcon,
@@ -34,6 +36,7 @@ import { AdminUsersTab } from './admin-dashboard/AdminUsersTab';
 import { AdminCourseManagerTab } from './admin-dashboard/AdminCourseManagerTab';
 import { AdminImportExportTab } from './admin-dashboard/AdminImportExportTab';
 import { AdminTestLabTab } from './admin-dashboard/AdminTestLabTab';
+import { Button, Modal } from '../components';
 import {
   AdminTab,
   CreateCourseForm,
@@ -78,6 +81,12 @@ export const AdminDashboard: React.FC = () => {
   const [updateCourseForm, setUpdateCourseForm] = useState<UpdateCourseForm>(initialUpdateCourseForm);
   const [editingCourse, setEditingCourse] = useState<AdminCourse | null>(null);
   const [courseActionLoadingId, setCourseActionLoadingId] = useState<string | null>(null);
+  const [showPublishChecklistModal, setShowPublishChecklistModal] = useState(false);
+  const [publishChecklist, setPublishChecklist] = useState<CoursePublishChecklist | null>(null);
+  const [publishTargetCourse, setPublishTargetCourse] = useState<AdminCourse | null>(null);
+  const [overrideReason, setOverrideReason] = useState('');
+  const [isForcePublishing, setIsForcePublishing] = useState(false);
+  const [publishChecklistError, setPublishChecklistError] = useState<string | null>(null);
 
   const loadSystemHealth = useCallback(async () => {
     setServicesLoading(true);
@@ -312,45 +321,58 @@ export const AdminDashboard: React.FC = () => {
       setFeedback({ type: 'success', message: course.isPublished ? 'Course unpublished.' : 'Course published.' });
       await loadCourses();
     } catch (error) {
-      const conflictStatus = (error as { response?: { status?: number; data?: { checklist?: { items?: Array<{ label?: string; details?: string; passed?: boolean }> } } } })?.response?.status;
-      if (!course.isPublished && conflictStatus === 409) {
-        const checklistItems =
-          (error as { response?: { data?: { checklist?: { items?: Array<{ label?: string; details?: string; passed?: boolean }> } } } })
-            ?.response?.data?.checklist?.items || [];
-        const failed = checklistItems.filter((item) => !item.passed);
-        const summary = failed
-          .map((item) => `• ${item.label || 'Requirement'}${item.details ? `: ${item.details}` : ''}`)
-          .join('\n');
+      const conflictStatus = (error as { response?: { status?: number } })?.response?.status;
+      const checklist = (
+        error as { response?: { data?: { checklist?: CoursePublishChecklist } } }
+      )?.response?.data?.checklist;
 
-        const shouldOverride = window.confirm(
-          `Publish checklist is incomplete:\n\n${summary || 'Unknown checklist issue'}\n\nForce publish anyway?`
-        );
-        if (shouldOverride) {
-          const overrideReason = window.prompt(
-            'Provide override reason (required):',
-            'Published with checklist override by admin'
-          );
-          if (overrideReason && overrideReason.trim()) {
-            await publishAdminCourse(course.id, {
-              forcePublish: true,
-              overrideReason: overrideReason.trim(),
-            });
-            setFeedback({ type: 'success', message: 'Course published with checklist override.' });
-            await loadCourses();
-          } else {
-            setFeedback({ type: 'error', message: 'Publish override canceled: reason is required.' });
-          }
-        } else {
-          setFeedback({ type: 'error', message: 'Course publish canceled by checklist.' });
-        }
+      if (!course.isPublished && conflictStatus === 409 && checklist) {
+        setPublishTargetCourse(course);
+        setPublishChecklist(checklist);
+        setOverrideReason('');
+        setPublishChecklistError(null);
+        setShowPublishChecklistModal(true);
       } else {
-        const message = error instanceof Error ? error.message : 'Failed to change course state';
+        const message = extractErrorMessage(error);
         setFeedback({ type: 'error', message });
       }
     } finally {
       setCourseActionLoadingId(null);
     }
   };
+
+  const closePublishChecklistModal = useCallback(() => {
+    if (isForcePublishing) return;
+    setShowPublishChecklistModal(false);
+    setPublishChecklist(null);
+    setPublishTargetCourse(null);
+    setOverrideReason('');
+    setPublishChecklistError(null);
+  }, [isForcePublishing]);
+
+  const forcePublishCourse = useCallback(async () => {
+    if (!publishTargetCourse) return;
+    if (!overrideReason.trim()) {
+      setPublishChecklistError('Override reason is required.');
+      return;
+    }
+
+    setIsForcePublishing(true);
+    setPublishChecklistError(null);
+    try {
+      await publishAdminCourse(publishTargetCourse.id, {
+        forcePublish: true,
+        overrideReason: overrideReason.trim(),
+      });
+      setFeedback({ type: 'success', message: 'Course published with checklist override.' });
+      closePublishChecklistModal();
+      await loadCourses();
+    } catch (error) {
+      setPublishChecklistError(extractErrorMessage(error));
+    } finally {
+      setIsForcePublishing(false);
+    }
+  }, [closePublishChecklistModal, loadCourses, overrideReason, publishTargetCourse]);
 
   const removeCourse = async (course: AdminCourse) => {
     if (!window.confirm(`Delete course ${course.code}?`)) return;
@@ -494,6 +516,74 @@ export const AdminDashboard: React.FC = () => {
           )}
         </TabTransition>
       </div>
+
+      <Modal
+        isOpen={showPublishChecklistModal}
+        onClose={closePublishChecklistModal}
+        title="Course Publish Checklist"
+      >
+        <div className="space-y-4">
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            Complete all required checks before publishing this course.
+          </p>
+
+          <div className="space-y-2">
+            {(publishChecklist?.items || []).map((item) => (
+              <div
+                key={item.key}
+                className="rounded-md p-3"
+                style={{
+                  border: `1px solid ${item.passed ? 'rgba(34,197,94,0.25)' : 'rgba(248,113,113,0.25)'}`,
+                  background: item.passed ? 'rgba(34,197,94,0.08)' : 'rgba(248,113,113,0.08)',
+                }}
+              >
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{item.label}</p>
+                {item.details && (
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.details}</p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
+              Override reason
+            </label>
+            <textarea
+              value={overrideReason}
+              onChange={(event) => setOverrideReason(event.target.value)}
+              rows={3}
+              className="input w-full"
+              placeholder="Provide reason for force publishing"
+            />
+          </div>
+
+          {publishChecklistError && (
+            <p className="text-sm" style={{ color: 'var(--fn-error)' }}>
+              {publishChecklistError}
+            </p>
+          )}
+
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="secondary"
+              onClick={closePublishChecklistModal}
+              disabled={isForcePublishing}
+            >
+              Close
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                void forcePublishCourse();
+              }}
+              isLoading={isForcePublishing}
+            >
+              Force Publish
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </Layout>
   );
 };
