@@ -83,7 +83,7 @@ interface CourseSyllabusTabProps {
 export const CourseSyllabusTab: React.FC<CourseSyllabusTabProps> = ({
   courseId,
   canEdit,
-  initialSyllabus: _initialSyllabus,
+  initialSyllabus,
   onSyllabusUpdated,
   t,
 }) => {
@@ -104,7 +104,7 @@ export const CourseSyllabusTab: React.FC<CourseSyllabusTabProps> = ({
       try {
         const response = await coursesApi.getSyllabus(courseId);
         if (cancelled) return;
-        const raw = response.data.syllabus ?? '';
+        const raw = response.data.syllabus ?? initialSyllabus ?? '';
         const parsed = parseSyllabusData(raw);
         setSyllabusData(parsed);
         setSavedSnapshot(serializeSyllabusData(parsed));
@@ -116,7 +116,7 @@ export const CourseSyllabusTab: React.FC<CourseSyllabusTabProps> = ({
     };
     void fetchSyllabus();
     return () => { cancelled = true; };
-  }, [courseId]);
+  }, [courseId, initialSyllabus]);
 
   const currentPage = syllabusData.pages[activePageIndex] || syllabusData.pages[0];
   const isDirty = useMemo(

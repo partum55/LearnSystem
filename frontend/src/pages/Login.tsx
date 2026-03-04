@@ -16,6 +16,11 @@ interface LocationState {
   email?: string;
 }
 
+const resolveOauthErrorFromSearch = (search: string): string => {
+  const params = new URLSearchParams(search);
+  return params.get('oauth_error_message') || '';
+};
+
 const resolveApiBaseUrl = (): string => {
   let apiBaseUrl = import.meta.env.VITE_API_URL || import.meta.env.REACT_APP_API_URL || '';
   if (!apiBaseUrl) {
@@ -39,7 +44,7 @@ export const Login: React.FC = () => {
   const locationState = location.state as LocationState | null;
   const [email, setEmail] = useState(() => locationState?.email || '');
   const [password, setPassword] = useState('');
-  const [localError, setLocalError] = useState('');
+  const [localError, setLocalError] = useState(() => resolveOauthErrorFromSearch(location.search));
   const [successMessage, setSuccessMessage] = useState(() => locationState?.message || '');
 
   useEffect(() => {
@@ -49,14 +54,6 @@ export const Login: React.FC = () => {
   useEffect(() => {
     if (locationState?.message) window.history.replaceState({}, document.title);
   }, [locationState]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const oauthErrorMessage = params.get('oauth_error_message');
-    if (oauthErrorMessage) {
-      setLocalError(oauthErrorMessage);
-    }
-  }, [location.search]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

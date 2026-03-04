@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import {
   NodeViewWrapper,
   NodeViewProps,
@@ -10,6 +10,7 @@ import mermaid from 'mermaid';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { EmbedProvider, resolveSafeEmbed } from '../embedSecurity';
+import { ensureMermaidInitialized } from '../mermaidUtils';
 
 // ── Callout ──
 
@@ -306,44 +307,24 @@ export const ImageNode = Node.create({
 
 // ── Mermaid ──
 
-let mermaidInitialized = false;
-export const ensureMermaidInitialized = () => {
-  if (mermaidInitialized) {
-    return;
-  }
-  mermaid.initialize({
-    startOnLoad: false,
-    securityLevel: 'strict',
-    theme: 'neutral',
-    suppressErrorRendering: true,
-  });
-  mermaidInitialized = true;
-};
-
 const MermaidBlockView: React.FC<NodeViewProps> = ({ node, updateAttributes, editor }) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(node.attrs.code || ''));
   const [diagramSvg, setDiagramSvg] = useState('');
   const [renderError, setRenderError] = useState<string | null>(null);
-  const renderIdRef = useRef(`mermaid-${Math.random().toString(36).slice(2)}`);
+  const mermaidId = useId().replace(/:/g, '');
   const isEditable = editor.isEditable;
+  const code = String(node.attrs.code || '').trim();
 
   useEffect(() => {
-    setDraft(String(node.attrs.code || ''));
-  }, [node.attrs.code]);
-
-  useEffect(() => {
-    const code = String(node.attrs.code || '').trim();
     if (!code) {
-      setDiagramSvg('');
-      setRenderError('Mermaid code is empty.');
       return;
     }
 
     ensureMermaidInitialized();
     let disposed = false;
     mermaid
-      .render(renderIdRef.current, code)
+      .render(`mermaid-${mermaidId}`, code)
       .then(({ svg }) => {
         if (!disposed) {
           setDiagramSvg(svg);
@@ -360,7 +341,7 @@ const MermaidBlockView: React.FC<NodeViewProps> = ({ node, updateAttributes, edi
     return () => {
       disposed = true;
     };
-  }, [node.attrs.code]);
+  }, [code, mermaidId]);
 
   if (editing && isEditable) {
     return (
@@ -404,12 +385,15 @@ const MermaidBlockView: React.FC<NodeViewProps> = ({ node, updateAttributes, edi
       className="editor-mermaid-block"
       onDoubleClick={() => {
         if (isEditable) {
+          setDraft(String(node.attrs.code || ''));
           setEditing(true);
         }
       }}
     >
       {renderError ? (
         <div className="editor-mermaid-error">Mermaid render error: {renderError}</div>
+      ) : !code ? (
+        <div className="editor-mermaid-error">Mermaid code is empty.</div>
       ) : (
         <div className="editor-mermaid-svg" dangerouslySetInnerHTML={{ __html: diagramSvg }} />
       )}
@@ -417,7 +401,10 @@ const MermaidBlockView: React.FC<NodeViewProps> = ({ node, updateAttributes, edi
         <button
           type="button"
           className="btn btn-ghost btn-xs mt-2"
-          onClick={() => setEditing(true)}
+          onClick={() => {
+            setDraft(String(node.attrs.code || ''));
+            setEditing(true);
+          }}
         >
           Edit Mermaid
         </button>
@@ -459,7 +446,7 @@ export const MermaidNode = Node.create({
 
 // ── KaTeX helpers ──
 
-export const renderKatex = (latex: string, displayMode: boolean): string => {
+const renderKatex = (latex: string, displayMode: boolean): string => {
   try {
     return katex.renderToString(latex, { displayMode, throwOnError: false });
   } catch {
@@ -471,11 +458,10 @@ export const renderKatex = (latex: string, displayMode: boolean): string => {
 
 const MathBlockView: React.FC<NodeViewProps> = ({ node, updateAttributes, editor }) => {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(node.attrs.latex as string);
+  const currentLatex = String(node.attrs.latex || '');
+  const [draft, setDraft] = useState(currentLatex);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isEditable = editor.isEditable;
-
-  useEffect(() => { setDraft(node.attrs.latex as string); }, [node.attrs.latex]);
 
   useEffect(() => {
     if (editing && textareaRef.current) textareaRef.current.focus();
@@ -508,7 +494,12 @@ const MathBlockView: React.FC<NodeViewProps> = ({ node, updateAttributes, editor
   return (
     <NodeViewWrapper
       className="editor-math-block"
-      onClick={() => isEditable && setEditing(true)}
+      onClick={() => {
+        if (isEditable) {
+          setDraft(currentLatex);
+          setEditing(true);
+        }
+      }}
     >
       <div dangerouslySetInnerHTML={{ __html: html }} />
     </NodeViewWrapper>
@@ -549,11 +540,11 @@ export const MathBlockNode = Node.create({
 
 const MathInlineView: React.FC<NodeViewProps> = ({ node, updateAttributes, editor }) => {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(node.attrs.latex as string);
+  const currentLatex = String(node.attrs.latex || '');
+  const [draft, setDraft] = useState(currentLatex);
   const inputRef = useRef<HTMLInputElement>(null);
   const isEditable = editor.isEditable;
 
-  useEffect(() => { setDraft(node.attrs.latex as string); }, [node.attrs.latex]);
   useEffect(() => { if (editing && inputRef.current) inputRef.current.focus(); }, [editing]);
 
   if (editing && isEditable) {
@@ -579,7 +570,12 @@ const MathInlineView: React.FC<NodeViewProps> = ({ node, updateAttributes, edito
     <NodeViewWrapper
       as="span"
       className="editor-math-inline"
-      onClick={() => isEditable && setEditing(true)}
+      onClick={() => {
+        if (isEditable) {
+          setDraft(currentLatex);
+          setEditing(true);
+        }
+      }}
     >
       <span dangerouslySetInnerHTML={{ __html: html }} />
     </NodeViewWrapper>

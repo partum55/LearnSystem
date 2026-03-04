@@ -52,77 +52,78 @@ export const useCourseDeadlines = (
 ): UseCourseDeadlinesResult => {
   const { enabled = true } = options;
   const [deadlines, setDeadlines] = useState<CourseDeadlineItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [resolvedKey, setResolvedKey] = useState('');
 
+  const eligibleCourses = useMemo(
+    () => (courses || []).filter((course) => Boolean(course.id)),
+    [courses]
+  );
   const courseKey = useMemo(
     () =>
-      (courses || [])
-        .filter((course) => Boolean(course.id))
+      eligibleCourses
         .map((course) => `${course.id}:${course.code}:${course.title}`)
         .sort()
         .join('|'),
-    [courses]
-  );
-  const eligibleCourses = useMemo(
-    () => (courses || []).filter((course) => Boolean(course.id)),
-    [courseKey]
+    [eligibleCourses]
   );
 
   useEffect(() => {
     if (!enabled || eligibleCourses.length === 0) {
-      setDeadlines([]);
-      setIsLoading(false);
       return;
     }
 
     let cancelled = false;
-    setIsLoading(true);
 
     void (async () => {
-      const results = await Promise.all(
-        eligibleCourses.map(async (course) => {
-          const [upcoming, overdue] = await Promise.allSettled([
-            assignmentsApi.getUpcoming(course.id),
-            assignmentsApi.getOverdue(course.id),
-          ]);
+      try {
+        const results = await Promise.all(
+          eligibleCourses.map(async (course) => {
+            const [upcoming, overdue] = await Promise.allSettled([
+              assignmentsApi.getUpcoming(course.id),
+              assignmentsApi.getOverdue(course.id),
+            ]);
 
-          const upcomingAssignments =
-            upcoming.status === 'fulfilled' && Array.isArray(upcoming.value.data)
-              ? (upcoming.value.data as Assignment[])
-              : [];
-          const overdueAssignments =
-            overdue.status === 'fulfilled' && Array.isArray(overdue.value.data)
-              ? (overdue.value.data as Assignment[])
-              : [];
+            const upcomingAssignments =
+              upcoming.status === 'fulfilled' && Array.isArray(upcoming.value.data)
+                ? (upcoming.value.data as Assignment[])
+                : [];
+            const overdueAssignments =
+              overdue.status === 'fulfilled' && Array.isArray(overdue.value.data)
+                ? (overdue.value.data as Assignment[])
+                : [];
 
-          return [
-            ...mapAssignments(upcomingAssignments, course, 'upcoming'),
-            ...mapAssignments(overdueAssignments, course, 'overdue'),
-          ];
-        })
-      );
+            return [
+              ...mapAssignments(upcomingAssignments, course, 'upcoming'),
+              ...mapAssignments(overdueAssignments, course, 'overdue'),
+            ];
+          })
+        );
 
-      if (cancelled) {
-        return;
-      }
-
-      const uniqueByAssignment = new Map<string, CourseDeadlineItem>();
-      results.flat().forEach((item) => {
-        const existing = uniqueByAssignment.get(item.assignmentId);
-        if (!existing) {
-          uniqueByAssignment.set(item.assignmentId, item);
+        if (cancelled) {
           return;
         }
-        if (existing.status === 'upcoming' && item.status === 'overdue') {
-          uniqueByAssignment.set(item.assignmentId, item);
-        }
-      });
 
-      const sorted = Array.from(uniqueByAssignment.values()).sort(
-        (a, b) => parseDate(a.dueDate) - parseDate(b.dueDate)
-      );
-      setDeadlines(sorted);
-      setIsLoading(false);
+        const uniqueByAssignment = new Map<string, CourseDeadlineItem>();
+        results.flat().forEach((item) => {
+          const existing = uniqueByAssignment.get(item.assignmentId);
+          if (!existing) {
+            uniqueByAssignment.set(item.assignmentId, item);
+            return;
+          }
+          if (existing.status === 'upcoming' && item.status === 'overdue') {
+            uniqueByAssignment.set(item.assignmentId, item);
+          }
+        });
+
+        const sorted = Array.from(uniqueByAssignment.values()).sort(
+          (a, b) => parseDate(a.dueDate) - parseDate(b.dueDate)
+        );
+        setDeadlines(sorted);
+      } finally {
+        if (!cancelled) {
+          setResolvedKey(courseKey);
+        }
+      }
     })();
 
     return () => {
@@ -130,6 +131,11 @@ export const useCourseDeadlines = (
     };
   }, [courseKey, eligibleCourses, enabled]);
 
+  if (!enabled || eligibleCourses.length === 0) {
+    return { deadlines: [], isLoading: false };
+  }
+
+  const isLoading = resolvedKey !== courseKey;
   return { deadlines, isLoading };
 };
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import mermaid from 'mermaid';
@@ -6,7 +6,7 @@ import { common, createLowlight } from 'lowlight';
 import DOMPurify from 'dompurify';
 import { CanonicalDocument, CanonicalMark, CanonicalNode } from '../../types';
 import { resolveSafeEmbed, EmbedProvider } from './embedSecurity';
-import { ensureMermaidInitialized } from './nodes';
+import { ensureMermaidInitialized } from './mermaidUtils';
 import './block-editor.css';
 
 const lowlight = createLowlight(common);
@@ -72,21 +72,33 @@ const renderInlineContent = (nodes?: CanonicalNode[]): React.ReactNode => {
 // ── KaTeX components ──
 
 const InlineMath: React.FC<{ latex: string }> = ({ latex }) => {
+  let html: string | null = null;
   try {
-    const html = katex.renderToString(latex, { displayMode: false, throwOnError: false });
-    return <span className="doc-renderer-math-inline" dangerouslySetInnerHTML={{ __html: html }} />;
+    html = katex.renderToString(latex, { displayMode: false, throwOnError: false });
   } catch {
+    html = null;
+  }
+
+  if (!html) {
     return <code>{latex}</code>;
   }
+
+  return <span className="doc-renderer-math-inline" dangerouslySetInnerHTML={{ __html: html }} />;
 };
 
 const BlockMath: React.FC<{ latex: string }> = ({ latex }) => {
+  let html: string | null = null;
   try {
-    const html = katex.renderToString(latex, { displayMode: true, throwOnError: false });
-    return <div className="doc-renderer-math-block" dangerouslySetInnerHTML={{ __html: html }} />;
+    html = katex.renderToString(latex, { displayMode: true, throwOnError: false });
   } catch {
+    html = null;
+  }
+
+  if (!html) {
     return <pre><code>{latex}</code></pre>;
   }
+
+  return <div className="doc-renderer-math-block" dangerouslySetInnerHTML={{ __html: html }} />;
 };
 
 // ── Mermaid component ──
@@ -94,17 +106,17 @@ const BlockMath: React.FC<{ latex: string }> = ({ latex }) => {
 const MermaidDiagram: React.FC<{ code: string }> = ({ code }) => {
   const [svg, setSvg] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const idRef = useRef(`doc-mermaid-${Math.random().toString(36).slice(2)}`);
+  const mermaidId = useId().replace(/:/g, '');
+  const trimmedCode = code.trim();
 
   useEffect(() => {
-    if (!code.trim()) {
-      setError('Empty mermaid code');
+    if (!trimmedCode) {
       return;
     }
     ensureMermaidInitialized();
     let disposed = false;
     mermaid
-      .render(idRef.current, code)
+      .render(`doc-mermaid-${mermaidId}`, trimmedCode)
       .then(({ svg: rendered }) => {
         if (!disposed) {
           setSvg(rendered);
@@ -118,7 +130,11 @@ const MermaidDiagram: React.FC<{ code: string }> = ({ code }) => {
         }
       });
     return () => { disposed = true; };
-  }, [code]);
+  }, [trimmedCode, mermaidId]);
+
+  if (!trimmedCode) {
+    return <div className="doc-renderer-mermaid-error">Empty mermaid code</div>;
+  }
 
   if (error) {
     return <div className="doc-renderer-mermaid-error">{error}</div>;
