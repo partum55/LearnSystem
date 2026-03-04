@@ -1,5 +1,6 @@
 package com.university.lms.ai.config;
 
+import com.university.lms.ai.security.ApiKeyValidationFilter;
 import com.university.lms.ai.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -20,11 +21,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
+  private final ApiKeyValidationFilter apiKeyValidationFilter;
 
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http.csrf(AbstractHttpConfigurer::disable)
-        // Disable CORS here - handled by API Gateway
         .cors(AbstractHttpConfigurer::disable)
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -36,33 +37,12 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/actuator/**")
                     .hasRole("SUPERADMIN")
-                    // All other requests require authentication
                     .anyRequest()
                     .authenticated());
 
     http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+    http.addFilterAfter(apiKeyValidationFilter, JwtAuthenticationFilter.class);
 
     return http.build();
   }
-
-  // CORS is disabled - handled by API Gateway
-  // Keeping this method commented in case direct access is needed in the future
-  /*
-  @Bean
-  public CorsConfigurationSource corsConfigurationSource() {
-      CorsConfiguration configuration = new CorsConfiguration();
-
-      // Allow specific origins for development and production
-      configuration.setAllowedOriginPatterns(Arrays.asList("*"));
-      configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-      configuration.setAllowedHeaders(Arrays.asList("*"));
-      configuration.setExposedHeaders(Arrays.asList("*"));
-      configuration.setAllowCredentials(false);
-
-      UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-      source.registerCorsConfiguration("/**", configuration);
-
-      return source;
-  }
-  */
 }

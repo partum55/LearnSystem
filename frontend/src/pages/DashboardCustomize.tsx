@@ -9,8 +9,9 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 const DEFAULT_WIDGETS: DashboardWidgetConfig[] = [
   { id: 'stats-1', type: 'stats', title: 'Statistics Overview', visible: true, order: 0, size: 'full' },
   { id: 'courses-1', type: 'courses', title: 'My Courses', visible: true, order: 1, size: 'medium' },
-  { id: 'deadlines-1', type: 'deadlines', title: 'Upcoming Deadlines', visible: true, order: 2, size: 'medium' },
-  { id: 'notifications-1', type: 'notifications', title: 'Recent Activity', visible: true, order: 3, size: 'medium' },
+  { id: 'due-today-1', type: 'due-today', title: 'Due Today', visible: true, order: 2, size: 'medium' },
+  { id: 'deadlines-1', type: 'deadlines', title: 'Upcoming Deadlines', visible: true, order: 3, size: 'medium' },
+  { id: 'notifications-1', type: 'notifications', title: 'Recent Activity', visible: true, order: 4, size: 'medium' },
 ];
 
 export const DashboardCustomize: React.FC = () => {

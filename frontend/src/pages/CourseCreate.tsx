@@ -1,17 +1,23 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Layout } from '../components';
 import { Card, CardHeader, CardBody } from '../components/Card';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
+import { Breadcrumbs } from '../components/common/Breadcrumbs';
 import { useCourseStore } from '../store/courseStore';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { coursesApi } from '../api/courses';
+
+const isHexColor = (value: string) =>
+  /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value);
 
 export const CourseCreate: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { createCourse, isLoading } = useCourseStore();
+  const [searchParams] = useSearchParams();
+  const templateFromQuery = searchParams.get('template') || '';
+  const { createCourse, fetchCourses, courses, isLoading } = useCourseStore();
 
   const [formData, setFormData] = useState({
     code: '',
@@ -21,13 +27,42 @@ export const CourseCreate: React.FC = () => {
     start_date: '',
     end_date: '',
     max_students: '',
+    thumbnail_url: '',
+    theme_color: '#1f2937',
+    is_template: Boolean(templateFromQuery),
+    template_course_id: templateFromQuery,
+    copy_schedule_dates: false,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  useEffect(() => {
+    if (formData.is_template) {
+      void fetchCourses();
+    }
+  }, [fetchCourses, formData.is_template]);
+
+  const templateOptions = useMemo(
+    () =>
+      (courses || [])
+        .slice()
+        .sort((a, b) => a.code.localeCompare(b.code)),
+    [courses]
+  );
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const target = e.target;
+    const { name } = target;
+    let value: string | boolean =
+      target instanceof HTMLInputElement && target.type === 'checkbox'
+        ? target.checked
+        : target.value;
+    if (name === 'code' && typeof value === 'string') {
+      value = value.toUpperCase();
+    }
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -39,11 +74,14 @@ export const CourseCreate: React.FC = () => {
     if (!formData.code.trim()) {
       newErrors.code = t('courses.errors.codeRequired');
     }
-    if (!formData.title.trim()) {
+    if (!formData.is_template && !formData.title.trim()) {
       newErrors.title = t('courses.errors.titleRequired');
     }
-    if (!formData.description.trim()) {
+    if (!formData.is_template && !formData.description.trim()) {
       newErrors.description = t('courses.errors.descriptionRequired');
+    }
+    if (formData.is_template && !formData.template_course_id) {
+      newErrors.template_course_id = t('courses.templateRequired', 'Select a template course');
     }
 
     if (formData.start_date && formData.end_date) {
@@ -54,6 +92,9 @@ export const CourseCreate: React.FC = () => {
 
     if (formData.max_students && parseInt(formData.max_students) < 1) {
       newErrors.max_students = t('courses.errors.maxStudentsPositive');
+    }
+    if (formData.theme_color && !isHexColor(formData.theme_color)) {
+      newErrors.theme_color = t('courses.invalidThemeColor', 'Use HEX format, for example #1d4ed8');
     }
 
     setErrors(newErrors);
@@ -68,8 +109,28 @@ export const CourseCreate: React.FC = () => {
     }
 
     try {
-      const courseData = {
-        code: formData.code.trim(),
+      if (formData.is_template && formData.template_course_id) {
+        const response = await coursesApi.cloneStructure(formData.template_course_id, {
+          code: formData.code.trim().toUpperCase(),
+          titleUk: formData.title.trim() || undefined,
+          titleEn: formData.title.trim() || undefined,
+          descriptionUk: formData.description.trim() || undefined,
+          descriptionEn: formData.description.trim() || undefined,
+          visibility: formData.visibility,
+          startDate: formData.start_date || undefined,
+          endDate: formData.end_date || undefined,
+          maxStudents: formData.max_students ? parseInt(formData.max_students) : undefined,
+          isPublished: formData.visibility !== 'DRAFT',
+          thumbnailUrl: formData.thumbnail_url.trim() || undefined,
+          themeColor: formData.theme_color.trim() || undefined,
+          copyScheduleDates: formData.copy_schedule_dates,
+        });
+        navigate(`/courses/${response.data.courseId}`);
+        return;
+      }
+
+      const newCourse = await createCourse({
+        code: formData.code.trim().toUpperCase(),
         titleUk: formData.title.trim(),
         titleEn: formData.title.trim(),
         descriptionUk: formData.description.trim(),
@@ -79,9 +140,9 @@ export const CourseCreate: React.FC = () => {
         endDate: formData.end_date || undefined,
         maxStudents: formData.max_students ? parseInt(formData.max_students) : undefined,
         isPublished: formData.visibility !== 'DRAFT',
-      };
-
-      const newCourse = await createCourse(courseData);
+        thumbnailUrl: formData.thumbnail_url.trim() || undefined,
+        themeColor: formData.theme_color.trim() || undefined,
+      });
       navigate(`/courses/${newCourse.id}`);
     } catch (error) {
       console.error('Failed to create course:', error);
@@ -93,21 +154,13 @@ export const CourseCreate: React.FC = () => {
     <Layout>
       <div className="p-4 sm:p-6 lg:p-8">
         <div className="max-w-4xl mx-auto">
-          {/* Breadcrumb */}
-          <div className="flex items-center text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-            <button
-              onClick={() => navigate('/courses')}
-              className="flex items-center transition-colors"
-              style={{ color: 'var(--text-muted)' }}
-              onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
-              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
-            >
-              <ArrowLeftIcon className="h-4 w-4 mr-1" />
-              {t('courses.title')}
-            </button>
-            <span className="mx-2">/</span>
-            <span>{t('courses.createCourse')}</span>
-          </div>
+          <Breadcrumbs
+            className="mb-4"
+            items={[
+              { label: t('courses.title'), to: '/courses' },
+              { label: t('courses.createCourse') },
+            ]}
+          />
 
           {/* Header */}
           <div className="mb-8">
@@ -135,6 +188,69 @@ export const CourseCreate: React.FC = () => {
               </CardHeader>
               <CardBody>
                 <div className="space-y-6">
+                  <section
+                    className="rounded-lg border p-4"
+                    style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-elevated)' }}
+                  >
+                    <label className="flex items-start gap-2">
+                      <input
+                        type="checkbox"
+                        name="is_template"
+                        checked={formData.is_template}
+                        onChange={handleChange}
+                        className="mt-1 h-4 w-4"
+                      />
+                      <span>
+                        <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                          {t('courses.useTemplate', 'Create from existing course template')}
+                        </span>
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                          {t(
+                            'courses.useTemplateHint',
+                            'Reuse modules, resources, assignments and quizzes for a new semester in one action.'
+                          )}
+                        </p>
+                      </span>
+                    </label>
+
+                    {formData.is_template && (
+                      <div className="mt-4 space-y-3">
+                        <div className="input-group">
+                          <label className="label">{t('courses.templateCourse', 'Template course')}</label>
+                          <select
+                            name="template_course_id"
+                            value={formData.template_course_id}
+                            onChange={handleChange}
+                            className="input"
+                          >
+                            <option value="">
+                              {t('courses.selectTemplate', 'Select course')}
+                            </option>
+                            {templateOptions.map((course) => (
+                              <option key={course.id} value={course.id}>
+                                {course.code} · {course.title}
+                              </option>
+                            ))}
+                          </select>
+                          {errors.template_course_id && (
+                            <p className="error-text">{errors.template_course_id}</p>
+                          )}
+                        </div>
+
+                        <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+                          <input
+                            type="checkbox"
+                            name="copy_schedule_dates"
+                            checked={formData.copy_schedule_dates}
+                            onChange={handleChange}
+                            className="h-4 w-4"
+                          />
+                          {t('courses.copyScheduleDates', 'Copy due/publish dates as well')}
+                        </label>
+                      </div>
+                    )}
+                  </section>
+
                   <div>
                     <Input
                       label={t('courses.courseCode')}
@@ -158,13 +274,13 @@ export const CourseCreate: React.FC = () => {
                       onChange={handleChange}
                       placeholder={t('courses.courseTitlePlaceholder')}
                       error={errors.title}
-                      required
+                      required={!formData.is_template}
                     />
                   </div>
 
                   <div className="input-group">
                     <label className="label">
-                      {t('courses.description')} *
+                      {t('courses.description')}
                     </label>
                     <textarea
                       name="description"
@@ -174,11 +290,43 @@ export const CourseCreate: React.FC = () => {
                       className="input"
                       style={{ resize: 'vertical' }}
                       placeholder={t('courses.descriptionPlaceholder')}
-                      required
+                      required={!formData.is_template}
                     />
                     {errors.description && (
                       <p className="error-text">{errors.description}</p>
                     )}
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <div>
+                      <Input
+                        label={t('courses.thumbnailUrl', 'Course cover URL')}
+                        name="thumbnail_url"
+                        value={formData.thumbnail_url}
+                        onChange={handleChange}
+                        placeholder="https://..."
+                      />
+                    </div>
+                    <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
+                      <Input
+                        label={t('courses.themeColor', 'Theme color')}
+                        name="theme_color"
+                        value={formData.theme_color}
+                        onChange={handleChange}
+                        placeholder="#1d4ed8"
+                        error={errors.theme_color}
+                      />
+                      <div
+                        className="h-10 w-10 rounded-md border"
+                        style={{
+                          borderColor: 'var(--border-default)',
+                          background: isHexColor(formData.theme_color)
+                            ? formData.theme_color
+                            : 'var(--bg-overlay)',
+                        }}
+                        aria-hidden="true"
+                      />
+                    </div>
                   </div>
 
                   <div className="input-group">
@@ -265,7 +413,9 @@ export const CourseCreate: React.FC = () => {
                 type="submit"
                 isLoading={isLoading}
               >
-                {t('courses.createCourse')}
+                {formData.is_template
+                  ? t('courses.createFromTemplate', 'Create from template')
+                  : t('courses.createCourse')}
               </Button>
             </div>
           </form>

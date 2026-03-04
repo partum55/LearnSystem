@@ -35,6 +35,7 @@ public class CourseService {
   private final CourseRepository courseRepository;
   private final CourseMemberRepository courseMemberRepository;
   private final CourseMapper courseMapper;
+  private final CourseArchiveService courseArchiveService;
 
   /** Get course by ID. */
   @Cacheable(
@@ -45,6 +46,17 @@ public class CourseService {
     Course course = findCourseById(id);
     enforceCourseVisibility(course, userId, userRole);
     return courseMapper.toDto(course);
+  }
+
+  /** Get syllabus for a course. */
+  public CourseSyllabusDto getCourseSyllabus(UUID id, UUID userId, String userRole) {
+    Course course = findCourseById(id);
+    enforceCourseVisibility(course, userId, userRole);
+    return CourseSyllabusDto.builder()
+        .courseId(course.getId())
+        .syllabus(course.getSyllabus())
+        .updatedAt(course.getUpdatedAt())
+        .build();
   }
 
   /** Get course by code. */
@@ -154,6 +166,8 @@ public class CourseService {
       throw new ValidationException("User does not have permission to update this course");
     }
 
+    CourseStatus previousStatus = course.getStatus();
+
     // Validate dates if both are provided
     LocalDate effectiveStartDate =
         request.getStartDate() != null ? request.getStartDate() : course.getStartDate();
@@ -162,10 +176,38 @@ public class CourseService {
     validateDateRange(effectiveStartDate, effectiveEndDate);
 
     courseMapper.updateEntityFromDto(course, request);
+    if (request.getStatus() == CourseStatus.ARCHIVED) {
+      course.setIsPublished(false);
+    }
     Course updatedCourse = courseRepository.save(course);
+    if (previousStatus != CourseStatus.ARCHIVED
+        && updatedCourse.getStatus() == CourseStatus.ARCHIVED) {
+      courseArchiveService.createSnapshotIfMissing(updatedCourse.getId(), userId, userRole);
+    }
 
     log.info("Course updated successfully: {}", id);
     return courseMapper.toDto(updatedCourse);
+  }
+
+  /** Update syllabus for a course. */
+  @Transactional
+  @CacheEvict(value = "courses", allEntries = true)
+  public CourseSyllabusDto updateCourseSyllabus(
+      UUID id, UpdateCourseSyllabusRequest request, UUID userId, String userRole) {
+    log.info("Updating syllabus for course: {} by user: {}", id, userId);
+
+    Course course = findCourseById(id);
+    if (!canUserManageCourse(course, userId, userRole)) {
+      throw new ValidationException("User does not have permission to update this course syllabus");
+    }
+
+    course.setSyllabus(request.getSyllabus());
+    Course updatedCourse = courseRepository.save(course);
+    return CourseSyllabusDto.builder()
+        .courseId(updatedCourse.getId())
+        .syllabus(updatedCourse.getSyllabus())
+        .updatedAt(updatedCourse.getUpdatedAt())
+        .build();
   }
 
   /** Delete a course. */
@@ -242,6 +284,28 @@ public class CourseService {
 
     log.info("Course unpublished successfully: {}", id);
     return courseMapper.toDto(updatedCourse);
+  }
+
+  /** Archive a course and capture immutable content snapshot. */
+  @Transactional
+  @CacheEvict(value = "courses", allEntries = true)
+  public CourseDto archiveCourse(UUID id, UUID userId, String userRole) {
+    log.info("Archiving course: {} by user: {}", id, userId);
+
+    Course course = findCourseById(id);
+    if (!canUserManageCourse(course, userId, userRole)) {
+      throw new ValidationException("User does not have permission to archive this course");
+    }
+
+    if (course.getStatus() != CourseStatus.ARCHIVED) {
+      course.setStatus(CourseStatus.ARCHIVED);
+      course.setIsPublished(false);
+      course = courseRepository.save(course);
+    }
+    courseArchiveService.createSnapshotIfMissing(course.getId(), userId, userRole);
+
+    log.info("Course archived successfully: {}", id);
+    return courseMapper.toDto(course);
   }
 
   // Helper methods

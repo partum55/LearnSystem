@@ -1,171 +1,87 @@
 # Environment Variables Reference
 
-Complete reference for all environment variables used in LearnSystemUCU.
+This document lists the active environment contracts used by the current Docker/Vite setup.
 
----
+## Source of truth
 
-## Core Services
+- Local Docker stack: root `.env.example`
+- Production Docker stack: `.env.production.example`
+- Frontend dev/proxy config: `frontend/.env.example`
 
-### Database Configuration
+## Root `.env` (Docker/local)
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `DB_URL` | Yes | `jdbc:postgresql://localhost:5432/lms_db` | JDBC connection URL |
-| `DB_USERNAME` | Yes | `lms_user` | Database username |
-| `DB_PASSWORD` | Yes | `lms_password` | Database password |
+### Security
 
-### Redis Configuration
+- `JWT_SECRET`
+- `JWT_EXPIRATION`
+- `GOOGLE_OAUTH_CLIENT_ID`
+- `GOOGLE_OAUTH_CLIENT_SECRET`
+- `GOOGLE_OAUTH_REDIRECT_URI`
+- `GOOGLE_OAUTH_FRONTEND_SUCCESS_URI`
+- `GOOGLE_OAUTH_FRONTEND_FAILURE_URI`
+- `GOOGLE_OAUTH_ALLOWED_DOMAINS`
+- `GOOGLE_OAUTH_ALLOWED_DOMAIN` (legacy compatibility)
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `REDIS_HOST` | No | `localhost` | Redis server hostname |
-| `REDIS_PORT` | No | `6379` | Redis server port |
-| `REDIS_PASSWORD` | No | `` | Redis password (if auth enabled) |
+### AI
 
-### Service Discovery
+- `LLAMA_API_URL`
+- `LLAMA_API_KEY`
+- `LLAMA_MODEL`
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `EUREKA_URI` | No | `http://localhost:8761/eureka` | Eureka server URL |
+### Gateway rate limits
 
----
+- `QUIZ_ATTEMPT_RATE_LIMIT_REPLENISH_RATE`
+- `QUIZ_ATTEMPT_RATE_LIMIT_BURST_CAPACITY`
+- `QUIZ_ATTEMPT_RATE_LIMIT_REQUESTED_TOKENS`
 
-## AI Service Configuration
+### Database container defaults
 
-### LLM Provider - Groq (Primary)
+- `POSTGRES_DB`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `LLAMA_API_KEY` | Yes | `` | Groq API key for LLM access |
-| `LLAMA_API_URL` | No | `https://api.groq.com/openai/v1` | Groq API base URL |
-| `LLAMA_MODEL` | No | `llama-3.3-70b-versatile` | Model to use |
+## Root `.env.production` (Docker/prod)
 
-### LLM Provider - OpenAI (Fallback)
+### Supabase database
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `OPENAI_API_KEY` | No | `` | OpenAI API key (enables fallback) |
-| `OPENAI_MODEL` | No | `gpt-4o-mini` | OpenAI model to use |
+- `SUPABASE_DB_HOST`
+- `SUPABASE_DB_PORT`
+- `SUPABASE_DB_NAME`
+- `SUPABASE_DB_USER`
+- `SUPABASE_DB_PASSWORD`
 
-### AI Caching
+### Security / OAuth / AI
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `AI_CACHE_ENABLED` | No | `true` | Enable Redis caching for AI |
-| `AI_CACHE_TTL_MINUTES` | No | `60` | Cache TTL in minutes |
-| `AI_CACHE_MAX_TOKENS` | No | `8000` | Max tokens for cached responses |
+- Same keys as local for JWT, Google OAuth, and LLAMA provider.
 
-### AI Pricing & Limits
+### Bootstrap admin
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `AI_PRICING_PROMPT` | No | `0.05` | Cost per million prompt tokens |
-| `AI_PRICING_COMPLETION` | No | `0.10` | Cost per million completion tokens |
-| `AI_MONTHLY_TOKEN_LIMIT` | No | `1000000` | Monthly token limit per user |
+- `BOOTSTRAP_ADMIN_ENABLED`
+- `BOOTSTRAP_ADMIN_EMAIL`
+- `BOOTSTRAP_ADMIN_PASSWORD`
 
----
+### Gateway CORS
 
-## Kafka Configuration
+- `GATEWAY_CORS_ALLOWED_ORIGINS`
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `KAFKA_ENABLED` | No | `false` | Enable Kafka event publishing |
-| `KAFKA_BOOTSTRAP_SERVERS` | No | `localhost:9092` | Kafka broker addresses |
+## Frontend `.env` (Vite)
 
----
+Preferred keys:
 
-## API Gateway Configuration
+- `VITE_API_URL`
+- `VITE_AI_SERVICE_URL`
+- `VITE_API_TARGET`
+- `VITE_REQUIRE_UCU_EMAIL`
+- `VITE_VAPID_PUBLIC_KEY`
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `GATEWAY_RATE_LIMIT_REPLENISH` | No | `10` | Requests per second |
-| `GATEWAY_RATE_LIMIT_BURST` | No | `20` | Burst capacity |
+Legacy aliases still supported by code (not preferred):
 
----
+- `REACT_APP_API_URL`
+- `REACT_APP_AI_SERVICE_URL`
+- `REACT_APP_REQUIRE_UCU_EMAIL`
+- `REACT_APP_VAPID_PUBLIC_KEY`
 
-## Frontend Configuration
+## Service-level compatibility notes
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `REACT_APP_API_URL` | No | `` | Backend API base URL |
-| `REACT_APP_AI_SERVICE_URL` | No | `` | AI service URL (deprecated) |
-| `GENERATE_SOURCEMAP` | No | `true` | Generate source maps |
-
----
-
-## Monitoring Configuration
-
-### Prometheus
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `PROMETHEUS_URL` | No | `http://prometheus:9090` | Prometheus server URL |
-
-### Grafana
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `GF_SECURITY_ADMIN_USER` | No | `admin` | Grafana admin username |
-| `GF_SECURITY_ADMIN_PASSWORD` | No | `admin` | Grafana admin password |
-| `GF_USERS_ALLOW_SIGN_UP` | No | `false` | Allow user registration |
-
----
-
-## Spring Profiles
-
-| Variable | Values | Description |
-|----------|--------|-------------|
-| `SPRING_PROFILES_ACTIVE` | `dev`, `docker`, `production` | Active Spring profile |
-
-### Profile-Specific Behavior
-
-- **dev**: Debug logging, H2 console, no rate limiting
-- **docker**: Docker-friendly defaults, service discovery
-- **production**: Optimized settings, minimal logging, full security
-
----
-
-## Docker Compose Environment
-
-Example `.env` file:
-
-```bash
-# Database
-DB_PASSWORD=secure_password_here
-
-# AI
-LLAMA_API_KEY=gsk_your_groq_api_key_here
-OPENAI_API_KEY=sk-your_openai_key_here
-
-# Monitoring
-GRAFANA_PASSWORD=secure_grafana_password
-
-# Kafka (optional)
-KAFKA_ENABLED=false
-```
-
----
-
-## Kubernetes Secrets
-
-Create secrets:
-
-```bash
-kubectl create secret generic lms-secrets \
-  --from-literal=db-url=jdbc:postgresql://postgres:5432/lms_db \
-  --from-literal=db-username=lms_user \
-  --from-literal=db-password=secure_password \
-  --from-literal=llama-api-key=gsk_xxx \
-  --from-literal=openai-api-key=sk-xxx
-```
-
----
-
-## Security Considerations
-
-1. **Never commit secrets** to version control
-2. Use **environment-specific** `.env` files
-3. Rotate API keys **regularly**
-4. Use **Kubernetes secrets** or **Vault** in production
-5. Restrict **database access** by IP in production
-
+Some backend services still accept legacy aliases internally (for example `DB_URL` or `DATABASE_URL` in specific profiles).  
+For new configuration and docs, prefer the canonical environment templates above and avoid introducing new aliases.

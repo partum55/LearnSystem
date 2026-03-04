@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { queryClient } from './api/queryClient';
@@ -18,17 +18,21 @@ const PageLoader: React.FC = () => (
 
 // Lazy load pages for code splitting
 const Login = lazy(() => import('./pages/Login'));
+const GoogleAuthCallback = lazy(() => import('./pages/GoogleAuthCallback'));
 const Register = lazy(() => import('./pages/Register'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const CourseList = lazy(() => import('./pages/CourseList'));
+const CoursePreview = lazy(() => import('./pages/CoursePreview'));
+const CourseArchive = lazy(() => import('./pages/CourseArchive'));
 const CourseDetail = lazy(() => import('./pages/CourseDetail'));
 const ResourceView = lazy(() => import('./pages/course/resources/ResourceView'));
+const ResourceEditor = lazy(() => import('./pages/ResourceEditor'));
 const CourseCreate = lazy(() => import('./pages/CourseCreate'));
 const CourseEdit = lazy(() => import('./pages/CourseEdit'));
 const Assignments = lazy(() => import('./pages/Assignments'));
 const AssignmentDetail = lazy(() => import('./pages/AssignmentDetail'));
+const AssignmentPrintView = lazy(() => import('./pages/AssignmentPrintView'));
 const AssignmentWizard = lazy(() => import('./pages/assignment-wizard/AssignmentWizard'));
-const SubmitAssignment = lazy(() => import('./pages/SubmitAssignment'));
 const StudentGradebook = lazy(() => import('./pages/StudentGradebook'));
 const SpeedGrader = lazy(() => import('./pages/SpeedGrader'));
 const QuestionBank = lazy(() => import('./pages/QuestionBank'));
@@ -39,6 +43,8 @@ const QuizResults = lazy(() => import('./pages/QuizResults'));
 const QuizDetail = lazy(() => import('./pages/QuizDetail'));
 const QuizBuilder = lazy(() => import('./pages/QuizBuilder'));
 const DashboardCustomize = lazy(() => import('./pages/DashboardCustomize'));
+const TodaySubmissions = lazy(() => import('./pages/TodaySubmissions'));
+const TeacherTodoDashboard = lazy(() => import('./pages/TeacherTodoDashboard'));
 const ProfileSettings = lazy(() => import('./pages/ProfileSettings'));
 const CalendarPage = lazy(() => import('./pages/CalendarPage'));
 const VirtualLab = lazy(() => import('./pages/VirtualLab'));
@@ -46,6 +52,12 @@ const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const DesignSystemDemo = lazy(() => import('./pages/DesignSystemDemo'));
 const Landing = lazy(() => import('./pages/Landing'));
 const ModulePageEditor = lazy(() => import('./pages/ModulePageEditor'));
+
+// Wrapper to key ResourceEditor by resourceId so it remounts on route changes
+const ResourceEditorKeyed: React.FC = () => {
+  const { resourceId } = useParams<{ resourceId: string }>();
+  return <ResourceEditor key={resourceId} />;
+};
 
 // Private route wrapper with auth check
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -137,12 +149,23 @@ const AppOptimized: React.FC = () => {
           <Routes>
             <Route path="/" element={<LazyRoute><Landing /></LazyRoute>} />
             <Route path="/login" element={<LazyRoute><Login /></LazyRoute>} />
+            <Route path="/auth/google/callback" element={<LazyRoute><GoogleAuthCallback /></LazyRoute>} />
             <Route path="/register" element={<LazyRoute><Register /></LazyRoute>} />
 
             <Route path="/dashboard" element={<LazyRoute isPrivate><Dashboard /></LazyRoute>} />
             <Route path="/dashboard/customize" element={<LazyRoute isPrivate><DashboardCustomize /></LazyRoute>} />
+            <Route path="/today" element={<LazyRoute isPrivate><TodaySubmissions /></LazyRoute>} />
+            <Route path="/teacher/todo" element={
+              <LazyRoute isPrivate>
+                <RoleRoute allowedRoles={['TEACHER', 'TA', 'SUPERADMIN']}>
+                  <TeacherTodoDashboard />
+                </RoleRoute>
+              </LazyRoute>
+            } />
 
             <Route path="/courses" element={<LazyRoute isPrivate><CourseList /></LazyRoute>} />
+            <Route path="/courses/:id/preview" element={<LazyRoute><CoursePreview /></LazyRoute>} />
+            <Route path="/courses/:id/archive" element={<LazyRoute isPrivate><CourseArchive /></LazyRoute>} />
             <Route path="/courses/create" element={
               <LazyRoute isPrivate>
                 <RoleRoute allowedRoles={['TEACHER', 'SUPERADMIN']}>
@@ -159,6 +182,20 @@ const AppOptimized: React.FC = () => {
             } />
             <Route path="/courses/:id" element={<LazyRoute isPrivate><CourseDetail /></LazyRoute>} />
             <Route path="/courses/:courseId/modules/:moduleId/resources/:resourceId" element={<LazyRoute isPrivate><ResourceView /></LazyRoute>} />
+            <Route path="/courses/:courseId/modules/:moduleId/resources/new" element={
+              <LazyRoute isPrivate>
+                <RoleRoute allowedRoles={['TEACHER', 'TA', 'SUPERADMIN']}>
+                  <ResourceEditor key="new" />
+                </RoleRoute>
+              </LazyRoute>
+            } />
+            <Route path="/courses/:courseId/modules/:moduleId/resources/:resourceId/edit" element={
+              <LazyRoute isPrivate>
+                <RoleRoute allowedRoles={['TEACHER', 'TA', 'SUPERADMIN']}>
+                  <ResourceEditorKeyed />
+                </RoleRoute>
+              </LazyRoute>
+            } />
             <Route path="/courses/:courseId/modules/:moduleId/pages" element={
               <LazyRoute isPrivate>
                 <RoleRoute allowedRoles={['TEACHER', 'TA', 'SUPERADMIN']}>
@@ -188,12 +225,13 @@ const AppOptimized: React.FC = () => {
                 </RoleRoute>
               </LazyRoute>
             } />
-            <Route path="/courses/:courseId/modules/:moduleId/assignments/:assignmentId/submit" element={<LazyRoute isPrivate><SubmitAssignment /></LazyRoute>} />
+            <Route path="/courses/:courseId/modules/:moduleId/assignments/:assignmentId/print" element={<LazyRoute isPrivate><AssignmentPrintView /></LazyRoute>} />
 
             <Route path="/calendar" element={<LazyRoute isPrivate><CalendarPage /></LazyRoute>} />
 
             <Route path="/assignments" element={<LazyRoute isPrivate><Assignments /></LazyRoute>} />
             <Route path="/assignments/:id" element={<LazyRoute isPrivate><AssignmentDetail /></LazyRoute>} />
+            <Route path="/assignments/:id/print" element={<LazyRoute isPrivate><AssignmentPrintView /></LazyRoute>} />
             <Route path="/assignments/:id/edit" element={
               <LazyRoute isPrivate>
                 <RoleRoute allowedRoles={['TEACHER', 'TA', 'SUPERADMIN']}>
@@ -201,7 +239,6 @@ const AppOptimized: React.FC = () => {
                 </RoleRoute>
               </LazyRoute>
             } />
-            <Route path="/assignments/:id/submit" element={<LazyRoute isPrivate><SubmitAssignment /></LazyRoute>} />
 
             <Route path="/grades" element={<LazyRoute isPrivate><AllGrades /></LazyRoute>} />
             <Route path="/gradebook" element={<LazyRoute isPrivate><StudentGradebook /></LazyRoute>} />

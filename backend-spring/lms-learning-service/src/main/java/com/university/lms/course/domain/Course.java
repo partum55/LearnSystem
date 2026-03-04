@@ -67,6 +67,9 @@ public class Course {
   @Column(length = 500)
   private String thumbnailUrl;
 
+  @Column(name = "theme_color", length = 20)
+  private String themeColor;
+
   // Date tracking
   @Column(name = "start_date")
   private LocalDate startDate;

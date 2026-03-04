@@ -16,6 +16,7 @@ export interface MatchingPair {
 export interface Question {
   id?: string | number;
   question_text: string;
+  image_url?: string;
   question_type: QuestionType;
   points: number;
   choices?: string[];

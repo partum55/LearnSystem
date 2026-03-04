@@ -36,7 +36,9 @@ public class SecurityConfig {
             "/auth/refresh",
             "/auth/verify-email",
             "/auth/forgot-password",
-            "/auth/reset-password"
+            "/auth/reset-password",
+            "/auth/oauth2/google/start",
+            "/auth/oauth2/google/callback"
     };
 
     private static final String[] PUBLIC_STATIC_ENDPOINTS = {
@@ -76,6 +78,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_AUTH_ENDPOINTS).permitAll()
+                        .requestMatchers("/internal/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/actuator/prometheus").hasRole("SUPERADMIN")
                         .requestMatchers("/admin/**", "/actuator/**").hasRole("SUPERADMIN")

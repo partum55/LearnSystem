@@ -1,13 +1,6 @@
 import apiClient from './client';
 import { Assignment, Quiz, Question, QuizSection, QuizAttemptQuestion, QuizAttempt } from '../types';
-
-interface PageResponse<T> {
-  content: T[];
-  pageNumber?: number;
-  pageSize?: number;
-  totalElements?: number;
-  totalPages?: number;
-}
+import { PageResponse } from './types';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -152,6 +145,7 @@ const mapQuestionFromApi = (raw: UnknownRecord): Question => ({
   tags: (raw.tags as string[] | undefined) || undefined,
   type: String(raw.questionType ?? raw.question_type ?? 'short_answer').toLowerCase() as Question['type'],
   stem: String(raw.stem ?? ''),
+  image_url: (raw.imageUrl as string | undefined) || (raw.image_url as string | undefined),
   options: (
     (Array.isArray(raw.options) ? raw.options : undefined)
       || (((raw.options as UnknownRecord | undefined)?.choices as string[] | undefined))
@@ -290,6 +284,12 @@ export const assignmentsApi = {
 
   getUpcoming: (courseId: string) =>
     apiClient.get<UnknownRecord[]>(`/assessments/assignments/course/${courseId}/upcoming`).then((response) => ({
+      ...response,
+      data: response.data.map(mapAssignmentFromApi),
+    })),
+
+  getOverdue: (courseId: string) =>
+    apiClient.get<UnknownRecord[]>(`/assessments/assignments/course/${courseId}/overdue`).then((response) => ({
       ...response,
       data: response.data.map(mapAssignmentFromApi),
     })),
@@ -470,6 +470,26 @@ export const quizzesApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+
+  importExcel: (courseId: string, title: string, file: File) => {
+    const formData = new FormData();
+    formData.append('courseId', courseId);
+    formData.append('title', title);
+    formData.append('file', file);
+    return apiClient.post(`/assessments/quizzes/import/excel`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
+  importWord: (courseId: string, title: string, file: File) => {
+    const formData = new FormData();
+    formData.append('courseId', courseId);
+    formData.append('title', title);
+    formData.append('file', file);
+    return apiClient.post(`/assessments/quizzes/import/word`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 // Question Bank API - Spring backend URLs
@@ -495,6 +515,7 @@ export const questionsApi = {
       difficulty: data.difficulty,
       tags: data.tags,
       stem: data.stem,
+      imageUrl: data.imageUrl ?? data.image_url,
       options: data.options,
       correctAnswer: data.correctAnswer ?? data.correct_answer,
       explanation: data.explanation,
@@ -512,6 +533,7 @@ export const questionsApi = {
       difficulty: (data as UnknownRecord).difficulty,
       tags: (data as UnknownRecord).tags,
       stem: data.stem,
+      imageUrl: (data as UnknownRecord).imageUrl ?? (data as UnknownRecord).image_url,
       options: data.options,
       correctAnswer: (data as UnknownRecord).correctAnswer ?? (data as UnknownRecord).correct_answer,
       explanation: (data as UnknownRecord).explanation,
@@ -594,6 +616,27 @@ export const submissionsApi = {
   getForAssignment: (assignmentId: string) =>
     apiClient.get(`/submissions?assignmentId=${encodeURIComponent(assignmentId)}`),
 
+  getReviewQueue: (
+    assignmentId: string,
+    params?: {
+      status?: string;
+      search?: string;
+      page?: number;
+      size?: number;
+      sort?: string;
+    }
+  ) =>
+    apiClient.get('/submissions/review-queue', {
+      params: compact({
+        assignmentId,
+        status: params?.status,
+        search: params?.search,
+        page: params?.page,
+        size: params?.size,
+        sort: params?.sort,
+      }),
+    }),
+
   getMySubmission: (assignmentId: string) =>
     apiClient.get(`/submissions/my?assignmentId=${encodeURIComponent(assignmentId)}`),
 
@@ -610,8 +653,49 @@ export const submissionsApi = {
   },
 
   grade: (submissionId: string, score: number, feedback?: string) =>
-    apiClient.post(`/submissions/${submissionId}/grade`, { score, feedback }),
+    apiClient.post(`/submissions/${submissionId}/grade-draft`, { finalScore: score, feedback }),
+
+  saveGradeDraft: (
+    submissionId: string,
+    payload: {
+      rawScore?: number;
+      finalScore?: number;
+      feedback?: string;
+      overridePenalty?: boolean;
+      version?: number | null;
+    }
+  ) => apiClient.post(`/submissions/${submissionId}/grade-draft`, payload),
+
+  publishGrade: (
+    submissionId: string,
+    payload?: {
+      finalScore?: number;
+      feedback?: string;
+      version?: number | null;
+    }
+  ) => apiClient.post(`/submissions/${submissionId}/publish-grade`, payload || {}),
+
+  publishBulk: (
+    items: Array<{ submissionId: string; version?: number | null }>
+  ) =>
+    apiClient.post('/submissions/grades/publish-bulk', {
+      items: items.map((item) => ({
+        submissionId: item.submissionId,
+        version: item.version,
+      })),
+    }),
 
   getById: (id: string) =>
     apiClient.get(`/submissions/${id}`),
+
+  updateDraft: (
+    submissionId: string,
+    payload: {
+      content?: string;
+      textAnswer?: string;
+      submissionUrl?: string;
+      programmingLanguage?: string;
+    }
+  ) =>
+    apiClient.put(`/submissions/${submissionId}/draft`, payload),
 };

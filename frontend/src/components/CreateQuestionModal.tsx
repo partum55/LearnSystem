@@ -39,6 +39,7 @@ const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
 const createDefaultForm = () => ({
   question_type: 'SINGLE_CHOICE' as QuestionType,
   stem: '',
+  image_url: '',
   points: '1',
   explanation: '',
   choices: ['', '', '', ''],
@@ -80,6 +81,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         ...(courseId ? { courseId } : {}),
         questionType: formData.question_type,
         stem: formData.stem,
+        imageUrl: formData.image_url || undefined,
         points: parseFloat(formData.points),
         explanation: formData.explanation,
         metadata: {},
@@ -252,6 +254,13 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
             placeholder={t('question.stemPlaceholder')}
           />
         </div>
+
+        <Input
+          label={t('question.imageUrl', 'Question image URL')}
+          value={formData.image_url}
+          onChange={(event) => setFormData((prev) => ({ ...prev, image_url: event.target.value }))}
+          placeholder="https://example.edu/image.png"
+        />
 
         {(formData.question_type === 'SINGLE_CHOICE' || formData.question_type === 'MULTIPLE_RESPONSE') && (
           <div className="space-y-3">

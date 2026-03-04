@@ -7,6 +7,8 @@ import {
   DocumentDuplicateIcon,
 } from '@heroicons/react/24/outline';
 import { Card, CardBody } from '../../components';
+import { BlockEditor } from '../../features/editor-core/BlockEditor';
+import { parseCanonicalDocument, serializeCanonicalDocument } from '../../features/editor-core/documentUtils';
 import { Question, QUIZ_QUESTION_TYPE_OPTIONS } from './quizBuilderModel';
 
 interface QuizQuestionEditorProps {
@@ -182,13 +184,26 @@ export const QuizQuestionEditor: React.FC<QuizQuestionEditorProps> = ({
             <label className="label">
               {t('quiz.questionText', 'Question Text')} *
             </label>
-            <textarea
-              value={question.question_text}
-              onChange={(event) => updateQuestion(index, 'question_text', event.target.value)}
-              rows={3}
-              className="input w-full"
+            <BlockEditor
+              value={parseCanonicalDocument(question.question_text)}
+              onChange={(doc) => updateQuestion(index, 'question_text', serializeCanonicalDocument(doc))}
+              mode="lite"
+              showSidebarTabs={false}
+              mobileToolsDrawer={false}
               placeholder={t('quiz.questionTextPlaceholder', 'Enter your question')}
-              required
+            />
+          </div>
+
+          <div>
+            <label className="label">
+              {t('quiz.questionImageUrl', 'Question image URL')} (optional)
+            </label>
+            <input
+              type="url"
+              value={question.image_url || ''}
+              onChange={(event) => updateQuestion(index, 'image_url', event.target.value)}
+              className="input w-full"
+              placeholder="https://example.edu/diagram.png"
             />
           </div>
 

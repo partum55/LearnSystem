@@ -13,6 +13,16 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -136,27 +146,146 @@ public class QuizImportExportService {
       }
 
       String[] values = splitCsv(line);
-      if (values.length < 8) {
-        continue;
-      }
-
-      QuestionDto question = new QuestionDto();
-      question.setQuestionType(unquote(values[0]));
-      question.setStem(unquote(values[1]));
-      question.setPoints(parseBigDecimal(unquote(values[2]), BigDecimal.ONE));
-      question.setCorrectAnswer(parseJsonMap(unquote(values[3])));
-      question.setOptions(parseJsonMap(unquote(values[4])));
-      question.setTopic(unquote(values[5]));
-      question.setDifficulty(unquote(values[6]));
-      question.setTags(parseJsonList(unquote(values[7])));
-      request.getQuestions().add(question);
+      appendQuestionFromCells(
+          request,
+          Arrays.stream(values).map(this::unquote).toList());
     }
 
     return importFromJson(request, createdBy);
   }
 
+  @Transactional
+  public QuizDto importFromExcel(UUID courseId, String title, MultipartFile file, UUID createdBy) {
+    QuizImportRequest request = QuizImportRequest.builder().courseId(courseId).title(title).build();
+    try (InputStream inputStream = file.getInputStream();
+        Workbook workbook = WorkbookFactory.create(inputStream)) {
+      Sheet sheet = workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
+      if (sheet == null) {
+        throw new ValidationException("Excel file does not contain sheets");
+      }
+
+      DataFormatter formatter = new DataFormatter();
+      int firstRow = sheet.getFirstRowNum();
+      int lastRow = sheet.getLastRowNum();
+      for (int rowIndex = firstRow + 1; rowIndex <= lastRow; rowIndex++) {
+        Row row = sheet.getRow(rowIndex);
+        if (row == null) {
+          continue;
+        }
+        List<String> values = new ArrayList<>();
+        for (int col = 0; col < 10; col++) {
+          Cell cell = row.getCell(col, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+          values.add(cell == null ? "" : formatter.formatCellValue(cell).trim());
+        }
+        appendQuestionFromCells(request, values);
+      }
+    } catch (IOException ex) {
+      throw new ValidationException("Failed to read Excel file");
+    } catch (ValidationException ex) {
+      throw ex;
+    } catch (Exception ex) {
+      throw new ValidationException("Failed to parse Excel file");
+    }
+
+    if (request.getQuestions().isEmpty()) {
+      throw new ValidationException("No questions were found in the Excel file");
+    }
+    return importFromJson(request, createdBy);
+  }
+
+  @Transactional
+  public QuizDto importFromWord(UUID courseId, String title, MultipartFile file, UUID createdBy) {
+    QuizImportRequest request = QuizImportRequest.builder().courseId(courseId).title(title).build();
+    try (InputStream inputStream = file.getInputStream(); XWPFDocument document = new XWPFDocument(inputStream)) {
+      List<XWPFTable> tables = document.getTables();
+      if (tables.isEmpty()) {
+        throw new ValidationException("Word import expects a table with quiz question rows");
+      }
+
+      XWPFTable table = tables.get(0);
+      List<XWPFTableRow> rows = table.getRows();
+      for (int rowIndex = 1; rowIndex < rows.size(); rowIndex++) {
+        XWPFTableRow row = rows.get(rowIndex);
+        List<XWPFTableCell> cells = row.getTableCells();
+        if (cells == null || cells.isEmpty()) {
+          continue;
+        }
+        List<String> values = cells.stream().map(cell -> cell == null ? "" : cell.getText().trim()).toList();
+        appendQuestionFromCells(request, values);
+      }
+    } catch (IOException ex) {
+      throw new ValidationException("Failed to read Word file");
+    }
+
+    if (request.getQuestions().isEmpty()) {
+      throw new ValidationException("No questions were found in the Word table");
+    }
+    return importFromJson(request, createdBy);
+  }
+
   private String[] splitCsv(String line) {
     return line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+  }
+
+  private void appendQuestionFromCells(QuizImportRequest request, List<String> values) {
+    if (values == null || values.isEmpty()) {
+      return;
+    }
+
+    String questionType = readCell(values, 0);
+    String stem = readCell(values, 1);
+    if (questionType.isBlank() || stem.isBlank()) {
+      return;
+    }
+
+    QuestionDto question = new QuestionDto();
+    question.setQuestionType(questionType);
+    question.setStem(stem);
+    question.setPoints(parseBigDecimal(readCell(values, 2), BigDecimal.ONE));
+    question.setCorrectAnswer(parseCorrectAnswerCell(readCell(values, 3)));
+    question.setOptions(parseOptionsCell(readCell(values, 4)));
+    question.setTopic(readCell(values, 5));
+    question.setDifficulty(readCell(values, 6));
+    question.setTags(parseJsonList(readCell(values, 7)));
+    question.setImageUrl(readCell(values, 8));
+    question.setExplanation(readCell(values, 9));
+    request.getQuestions().add(question);
+  }
+
+  private String readCell(List<String> values, int index) {
+    if (index < 0 || index >= values.size()) {
+      return "";
+    }
+    String value = values.get(index);
+    return value == null ? "" : value.trim();
+  }
+
+  private Map<String, Object> parseCorrectAnswerCell(String raw) {
+    if (raw == null || raw.isBlank()) {
+      return Map.of();
+    }
+    Map<String, Object> parsed = parseJsonMap(raw);
+    if (!parsed.isEmpty()) {
+      return parsed;
+    }
+    return Map.of("value", raw);
+  }
+
+  private Map<String, Object> parseOptionsCell(String raw) {
+    if (raw == null || raw.isBlank()) {
+      return Map.of();
+    }
+    Map<String, Object> parsed = parseJsonMap(raw);
+    if (!parsed.isEmpty()) {
+      return parsed;
+    }
+    String[] split = raw.split("[|;]");
+    List<String> choices =
+        Arrays.stream(split).map(String::trim).filter(item -> !item.isBlank()).toList();
+    if (choices.isEmpty()) {
+      return Map.of();
+    }
+    return Map.of("choices", choices);
   }
 
   private String csvCell(String value) {

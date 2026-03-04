@@ -24,6 +24,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmailIgnoreCaseAndIsDeletedFalse(String email);
 
     /**
+     * Find user by email regardless of soft-delete status.
+     */
+    Optional<User> findByEmailIgnoreCase(String email);
+
+    /**
      * Find active (not soft-deleted) user by ID.
      */
     Optional<User> findByIdAndIsDeletedFalse(UUID id);

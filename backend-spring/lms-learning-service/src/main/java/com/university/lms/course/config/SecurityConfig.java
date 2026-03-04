@@ -93,6 +93,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/courses/code/**")
                     .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/courses/*/preview")
+                    .permitAll()
                     // Admin endpoints
                     .requestMatchers("/actuator/prometheus")
                     .hasRole("SUPERADMIN")

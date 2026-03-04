@@ -11,7 +11,9 @@ import {
   ClipboardDocumentListIcon,
   XMarkIcon,
   CalendarIcon,
+  ClockIcon,
   Cog6ToothIcon,
+  ClipboardIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../store/authStore';
 import clsx from 'clsx';
@@ -29,15 +31,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
     { name: t('nav.dashboard'), href: '/dashboard', icon: HomeIcon },
     { name: t('nav.courses'), href: '/courses', icon: AcademicCapIcon },
     { name: t('nav.calendar'), href: '/calendar', icon: CalendarIcon },
+    { name: t('nav.today', 'Due today'), href: '/today', icon: ClockIcon },
     { name: t('nav.assignments'), href: '/assignments', icon: DocumentTextIcon },
     { name: t('nav.grades'), href: '/grades', icon: ChartBarIcon },
     { name: t('nav.profile'), href: '/profile', icon: UserIcon },
   ];
 
-  if (user?.role === 'TEACHER' || user?.role === 'SUPERADMIN') {
+  if (user?.role === 'TEACHER' || user?.role === 'TA' || user?.role === 'SUPERADMIN') {
     navigation.splice(3, 0,
       { name: t('nav.questionBank', 'Question Bank'), href: '/question-bank', icon: ClipboardDocumentListIcon },
-      { name: t('nav.quizBuilder', 'Quiz Builder'), href: '/quiz-builder', icon: BeakerIcon }
+      { name: t('nav.quizBuilder', 'Quiz Builder'), href: '/quiz-builder', icon: BeakerIcon },
+      { name: t('nav.teacherTodo', 'Teacher To-do'), href: '/teacher/todo', icon: ClipboardIcon }
     );
   }
 

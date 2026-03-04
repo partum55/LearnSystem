@@ -16,6 +16,20 @@ interface LocationState {
   email?: string;
 }
 
+const resolveApiBaseUrl = (): string => {
+  let apiBaseUrl = import.meta.env.VITE_API_URL || import.meta.env.REACT_APP_API_URL || '';
+  if (!apiBaseUrl) {
+    if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+      const host = window.location.hostname;
+      const protocol = window.location.protocol;
+      if (host === 'localhost' || host === '127.0.0.1') {
+        apiBaseUrl = `${protocol}//localhost:8080/api`;
+      }
+    }
+  }
+  return apiBaseUrl || '/api';
+};
+
 export const Login: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -35,6 +49,14 @@ export const Login: React.FC = () => {
   useEffect(() => {
     if (locationState?.message) window.history.replaceState({}, document.title);
   }, [locationState]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const oauthErrorMessage = params.get('oauth_error_message');
+    if (oauthErrorMessage) {
+      setLocalError(oauthErrorMessage);
+    }
+  }, [location.search]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,6 +82,11 @@ export const Login: React.FC = () => {
     } catch {
       setLocalError(error || t('auth.loginError'));
     }
+  };
+
+  const handleGoogleLogin = () => {
+    const base = resolveApiBaseUrl().replace(/\/$/, '');
+    window.location.href = `${base}/auth/oauth2/google/start`;
   };
 
   return (
@@ -204,6 +231,22 @@ export const Login: React.FC = () => {
               </Button>
             </div>
           </form>
+
+          <div className="my-4 flex items-center gap-3">
+            <div className="h-px flex-1" style={{ background: 'var(--border-default)' }} />
+            <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>or</span>
+            <div className="h-px flex-1" style={{ background: 'var(--border-default)' }} />
+          </div>
+
+          <Button
+            type="button"
+            fullWidth
+            size="md"
+            variant="secondary"
+            onClick={handleGoogleLogin}
+          >
+            {t('auth.continueWithGoogle', 'Continue with Google')}
+          </Button>
 
           <p className="text-center mt-6 text-sm animate-fade-in-up" style={{ color: 'var(--text-muted)', animationDelay: '300ms', animationFillMode: 'both' }}>
             {t('auth.register.noAccount')}{' '}

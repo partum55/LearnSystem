@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { EditorContent, JSONContent, useEditor, NodeViewWrapper, NodeViewProps, ReactNodeViewRenderer } from '@tiptap/react';
-import { Node, mergeAttributes } from '@tiptap/core';
+import {
+  EditorContent,
+  JSONContent,
+  useEditor,
+} from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import TaskItem from '@tiptap/extension-task-item';
@@ -10,18 +13,41 @@ import TextAlign from '@tiptap/extension-text-align';
 import { Table } from '@tiptap/extension-table';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import { common, createLowlight } from 'lowlight';
+
+const lowlight = createLowlight(common);
 import TableRow from '@tiptap/extension-table-row';
 import DOMPurify from 'dompurify';
-import mermaid from 'mermaid';
+import { marked } from 'marked';
 import { CitationModal } from './modals/CitationModal';
 import { TestCaseModal } from './modals/TestCaseModal';
 import { MathInputModal } from './modals/MathInputModal';
 import { EmbedModal } from './modals/EmbedModal';
 import { CodeBlockModal } from './modals/CodeBlockModal';
 import { FootnoteModal } from './modals/FootnoteModal';
-import katex from 'katex';
-import 'katex/dist/katex.min.css';
 import { CanonicalDocument, CanonicalNode } from '../../types';
+import { resolveSafeEmbed } from './embedSecurity';
+import {
+  CalloutNode,
+  CitationNode,
+  FootnoteNode,
+  NumberedParagraphNode,
+  TestCaseNode,
+  EmbedNode,
+  ImageNode,
+  MermaidNode,
+  MathBlockNode,
+  MathInlineNode,
+} from './nodes';
+import {
+  SlashCommandPalette,
+  SlashCommand,
+  SLASH_COMMAND_ICONS,
+} from './SlashCommandPalette';
+import { EditorBubbleToolbar } from './EditorBubbleToolbar';
+import { EditorSidebar, MobileToolsDrawer } from './EditorSidebar';
+import { MarkdownInputRules } from './markdownInputRules';
 import './block-editor.css';
 
 type EditorMode = 'full' | 'lite';
@@ -33,791 +59,70 @@ interface BlockEditorProps {
   mode?: EditorMode;
   placeholder?: string;
   onUploadMedia?: (file: File) => Promise<{ url: string; contentType?: string }>;
+  mobileToolsDrawer?: boolean;
+  hotkeysProfile?: 'standard' | 'extended';
+  showSidebarTabs?: boolean;
 }
 
-type SlashCommand = {
+type SidebarTab = 'blocks' | 'structure' | 'assets' | 'history';
+
+type BlockAction = {
   key: string;
   label: string;
-  keywords: string[];
+  hint: string;
   execute: () => void;
+  shortcut?: string;
+};
+
+type TextStyleAction = {
+  key: string;
+  label: string;
+  execute: () => void;
+  isActive?: boolean;
+  shortcut?: string;
+};
+
+const MARKDOWN_PATTERNS = [
+  /^#{1,6}\s/m,           // headings
+  /```[\s\S]*?```/,       // fenced code blocks
+  /\[.+?\]\(.+?\)/,       // links
+  /(\*\*|__).+?\1/,       // bold
+  /(\*|_)[^*_]+?\1/,      // italic
+  /^[-*+]\s/m,            // unordered list items
+  /^\d+\.\s/m,            // ordered list items
+  /^>\s/m,                // blockquotes
+  /^---$/m,               // horizontal rules
+  /!\[.*?\]\(.*?\)/,      // images
+];
+
+const looksLikeMarkdown = (text: string): boolean => {
+  let hits = 0;
+  for (const pattern of MARKDOWN_PATTERNS) {
+    if (pattern.test(text)) hits++;
+    if (hits >= 2) return true;
+  }
+  return false;
 };
 
 const sanitizeImportedHtml = (rawHtml: string): string =>
   DOMPurify.sanitize(rawHtml, {
     ALLOWED_TAGS: [
-      'p',
-      'br',
-      'span',
-      'strong',
-      'em',
-      'code',
-      'pre',
-      'ul',
-      'ol',
-      'li',
-      'blockquote',
-      'h1',
-      'h2',
-      'h3',
-      'h4',
-      'h5',
-      'h6',
-      'table',
-      'thead',
-      'tbody',
-      'tr',
-      'td',
-      'th',
-      'a',
-      'img',
-      'figure',
-      'figcaption',
-      'div',
+      'p', 'br', 'span', 'strong', 'em', 'code', 'pre',
+      'ul', 'ol', 'li', 'blockquote',
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'table', 'thead', 'tbody', 'tr', 'td', 'th',
+      'a', 'img', 'figure', 'figcaption', 'div',
     ],
     ALLOWED_ATTR: [
-      'href',
-      'target',
-      'rel',
-      'src',
-      'alt',
-      'title',
-      'class',
-      'data-type',
-      'data-variant',
-      'data-sequence',
-      'data-latex',
-      'data-provider',
-      'data-url',
-      'data-embed-url',
-      'data-caption',
-      'data-alignment',
-      'data-citation-type',
-      'data-author',
-      'data-year',
-      'data-key',
-      'data-ordinal',
-      'data-score',
-      'data-input',
-      'data-output',
-      'data-visibility',
-      'data-code',
-      'style',
+      'href', 'target', 'rel', 'src', 'alt', 'title', 'class',
+      'data-type', 'data-variant', 'data-sequence', 'data-latex',
+      'data-provider', 'data-url', 'data-embed-url', 'data-caption',
+      'data-alignment', 'data-citation-type', 'data-author', 'data-year',
+      'data-key', 'data-ordinal', 'data-score', 'data-input', 'data-output',
+      'data-visibility', 'data-code', 'style',
     ],
     KEEP_CONTENT: true,
   });
-
-type EmbedProvider = 'youtube' | 'pdf';
-
-type SafeEmbed = {
-  embedUrl: string;
-  sourceUrl: string;
-};
-
-const EMBED_PROTOCOL_ALLOWLIST = new Set(['https:', 'http:']);
-const YOUTUBE_HOST_ALLOWLIST = [
-  'youtube.com',
-  'www.youtube.com',
-  'm.youtube.com',
-  'youtu.be',
-  'www.youtu.be',
-  'youtube-nocookie.com',
-  'www.youtube-nocookie.com',
-];
-
-const normalizeHost = (host: string): string => host.trim().toLowerCase();
-
-const hostAllowed = (host: string, allowlist: string[]): boolean => {
-  const normalizedHost = normalizeHost(host);
-  return allowlist.some((item) => {
-    const normalizedItem = normalizeHost(item);
-    if (!normalizedItem) return false;
-    if (normalizedItem.startsWith('*.')) {
-      const bare = normalizedItem.slice(2);
-      return normalizedHost === bare || normalizedHost.endsWith(`.${bare}`);
-    }
-    return normalizedHost === normalizedItem;
-  });
-};
-
-const readPdfAllowlist = (): string[] => {
-  const configured = (import.meta.env.VITE_PDF_EMBED_ALLOWLIST || '')
-    .split(',')
-    .map((host: string) => host.trim())
-    .filter(Boolean);
-  const localHost = typeof window !== 'undefined' ? [window.location.hostname] : [];
-  return Array.from(new Set([...localHost, ...configured]));
-};
-
-const parseEmbedUrl = (rawUrl: string): URL | null => {
-  const value = rawUrl.trim();
-  if (!value) return null;
-  try {
-    return new URL(value);
-  } catch {
-    if (value.startsWith('/')) {
-      try {
-        const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
-        return new URL(value, origin);
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  }
-};
-
-const extractYouTubeVideoId = (url: URL): string | null => {
-  const host = normalizeHost(url.hostname);
-  if (host === 'youtu.be' || host === 'www.youtu.be') {
-    const segment = url.pathname.split('/').filter(Boolean)[0];
-    return segment || null;
-  }
-
-  if (hostAllowed(host, YOUTUBE_HOST_ALLOWLIST)) {
-    const fromWatch = url.searchParams.get('v');
-    if (fromWatch) return fromWatch;
-
-    const parts = url.pathname.split('/').filter(Boolean);
-    if (parts[0] === 'embed' && parts[1]) {
-      return parts[1];
-    }
-    if (parts[0] === 'shorts' && parts[1]) {
-      return parts[1];
-    }
-  }
-
-  return null;
-};
-
-const resolveSafeEmbed = (provider: EmbedProvider, rawUrl: string): SafeEmbed | null => {
-  const parsed = parseEmbedUrl(rawUrl);
-  if (!parsed) return null;
-  if (!EMBED_PROTOCOL_ALLOWLIST.has(parsed.protocol)) return null;
-
-  if (provider === 'youtube') {
-    if (!hostAllowed(parsed.hostname, YOUTUBE_HOST_ALLOWLIST)) return null;
-    const videoId = extractYouTubeVideoId(parsed);
-    if (!videoId || !/^[a-zA-Z0-9_-]{6,}$/.test(videoId)) return null;
-
-    return {
-      sourceUrl: parsed.href,
-      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}`,
-    };
-  }
-
-  const pdfAllowlist = readPdfAllowlist();
-  if (!hostAllowed(parsed.hostname, pdfAllowlist)) return null;
-  if (!/\.pdf(?:[?#].*)?$/i.test(parsed.href)) return null;
-
-  return {
-    sourceUrl: parsed.href,
-    embedUrl: parsed.href,
-  };
-};
-
-const CalloutNode = Node.create({
-  name: 'callout',
-  group: 'block',
-  content: 'inline*',
-  defining: true,
-  addAttributes() {
-    return {
-      variant: { default: 'info' },
-    };
-  },
-  parseHTML() {
-    return [{ tag: 'div[data-type="callout"]' }];
-  },
-  renderHTML({ HTMLAttributes }) {
-    const variant = String(HTMLAttributes.variant || 'info');
-    return [
-      'div',
-      mergeAttributes(HTMLAttributes, {
-        'data-type': 'callout',
-        'data-variant': variant,
-        class: `editor-callout editor-callout-${variant}`,
-      }),
-      0,
-    ];
-  },
-});
-
-const CitationNode = Node.create({
-  name: 'citation',
-  group: 'block',
-  atom: true,
-  selectable: true,
-  draggable: true,
-  addAttributes() {
-    return {
-      author: { default: '' },
-      title: { default: '' },
-      year: { default: null },
-      url: { default: '' },
-      citationType: { default: 'APA' },
-    };
-  },
-  parseHTML() {
-    return [{ tag: 'div[data-type="citation"]' }];
-  },
-  renderHTML({ HTMLAttributes }) {
-    const author = String(HTMLAttributes.author || 'Unknown author');
-    const title = String(HTMLAttributes.title || 'Untitled');
-    const year = HTMLAttributes.year ? String(HTMLAttributes.year) : 'n.d.';
-    const citationType = String(HTMLAttributes.citationType || 'APA');
-    const url = String(HTMLAttributes.url || '');
-
-    const content = `${author} (${year}). ${title}${url ? ` — ${url}` : ''}`;
-
-    return [
-      'div',
-      mergeAttributes(HTMLAttributes, {
-        'data-type': 'citation',
-        'data-citation-type': citationType,
-        class: 'editor-citation',
-      }),
-      content,
-    ];
-  },
-});
-
-const FootnoteNode = Node.create({
-  name: 'footnote',
-  group: 'block',
-  content: 'inline*',
-  defining: true,
-  addAttributes() {
-    return {
-      key: { default: '' },
-      ordinal: { default: null },
-    };
-  },
-  parseHTML() {
-    return [{ tag: 'div[data-type="footnote"]' }];
-  },
-  renderHTML({ HTMLAttributes }) {
-    return [
-      'div',
-      mergeAttributes(HTMLAttributes, {
-        'data-type': 'footnote',
-        class: 'editor-footnote',
-      }),
-      0,
-    ];
-  },
-});
-
-const NumberedParagraphNode = Node.create({
-  name: 'numberedParagraph',
-  group: 'block',
-  content: 'inline*',
-  defining: true,
-  addAttributes() {
-    return {
-      sequence: { default: null },
-    };
-  },
-  parseHTML() {
-    return [{ tag: 'p[data-type="numbered-paragraph"]' }];
-  },
-  renderHTML({ HTMLAttributes }) {
-    return [
-      'p',
-      mergeAttributes(HTMLAttributes, {
-        'data-type': 'numbered-paragraph',
-        class: 'editor-numbered-paragraph',
-      }),
-      0,
-    ];
-  },
-});
-
-const TestCaseNode = Node.create({
-  name: 'testCase',
-  group: 'block',
-  atom: true,
-  selectable: true,
-  draggable: true,
-  addAttributes() {
-    return {
-      input: { default: '' },
-      output: { default: '' },
-      visibility: { default: 'public' },
-      score: { default: 0 },
-    };
-  },
-  parseHTML() {
-    return [{ tag: 'div[data-type="test-case"]' }];
-  },
-  renderHTML({ HTMLAttributes }) {
-    const input = String(HTMLAttributes.input || '');
-    const output = String(HTMLAttributes.output || '');
-    const visibility = String(HTMLAttributes.visibility || 'public');
-    const score = Number(HTMLAttributes.score || 0);
-
-    return [
-      'div',
-      mergeAttributes(HTMLAttributes, {
-        'data-type': 'test-case',
-        class: 'editor-test-case',
-      }),
-      `TestCase [${visibility}] (${score} pts) input: ${input} | output: ${output}`,
-    ];
-  },
-});
-
-const EmbedView: React.FC<NodeViewProps> = ({ node }) => {
-  const provider = String(node.attrs.provider || 'youtube') as EmbedProvider;
-  const title = String(node.attrs.title || '').trim();
-  const rawUrl = String(node.attrs.url || node.attrs.embedUrl || '');
-  const safeEmbed = resolveSafeEmbed(provider, rawUrl);
-
-  return (
-    <NodeViewWrapper className="editor-embed">
-      <div className="editor-embed-frame-wrap">
-        {safeEmbed ? (
-          <iframe
-            className="editor-embed-frame"
-            src={safeEmbed.embedUrl}
-            title={title || `${provider} embed`}
-            loading="lazy"
-            referrerPolicy="strict-origin-when-cross-origin"
-            sandbox={
-              provider === 'youtube'
-                ? 'allow-scripts allow-same-origin allow-presentation'
-                : 'allow-same-origin allow-scripts'
-            }
-            allow={
-              provider === 'youtube'
-                ? 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
-                : undefined
-            }
-            allowFullScreen={provider === 'youtube'}
-          />
-        ) : (
-          <div className="editor-embed-blocked">
-            Embed blocked by provider/domain allowlist.
-          </div>
-        )}
-      </div>
-      {rawUrl && (
-        <a href={safeEmbed?.sourceUrl || rawUrl} target="_blank" rel="noopener noreferrer">
-          {title || rawUrl}
-        </a>
-      )}
-    </NodeViewWrapper>
-  );
-};
-
-const EmbedNode = Node.create({
-  name: 'embed',
-  group: 'block',
-  atom: true,
-  selectable: true,
-  draggable: true,
-  addAttributes() {
-    return {
-      provider: { default: 'youtube' },
-      url: { default: '' },
-      embedUrl: { default: '' },
-      title: { default: '' },
-    };
-  },
-  parseHTML() {
-    return [{ tag: 'div[data-type="embed"]' }];
-  },
-  renderHTML({ HTMLAttributes }) {
-    const provider = String(HTMLAttributes.provider || 'embed');
-    const url = String(HTMLAttributes.url || '');
-    const title = String(HTMLAttributes.title || `${provider} embed`);
-    const embedUrl = String(HTMLAttributes.embedUrl || '');
-
-    return [
-      'div',
-      mergeAttributes(HTMLAttributes, {
-        'data-type': 'embed',
-        'data-provider': provider,
-        'data-url': url,
-        'data-embed-url': embedUrl,
-        class: 'editor-embed',
-      }),
-      [
-        'a',
-        {
-          href: url,
-          target: '_blank',
-          rel: 'noopener noreferrer',
-        },
-        `${title || provider}: ${url}`,
-      ],
-    ];
-  },
-  addNodeView() {
-    return ReactNodeViewRenderer(EmbedView);
-  },
-});
-
-const ImageNode = Node.create({
-  name: 'image',
-  group: 'block',
-  atom: true,
-  selectable: true,
-  draggable: true,
-  addAttributes() {
-    return {
-      src: { default: '' },
-      alt: { default: '' },
-      caption: { default: '' },
-      alignment: { default: 'center' },
-    };
-  },
-  parseHTML() {
-    return [{ tag: 'figure[data-type="image"]' }, { tag: 'img[src]' }];
-  },
-  renderHTML({ HTMLAttributes }) {
-    const src = String(HTMLAttributes.src || '');
-    const alt = String(HTMLAttributes.alt || '');
-    const caption = String(HTMLAttributes.caption || '');
-    const alignment = String(HTMLAttributes.alignment || 'center');
-
-    return [
-      'figure',
-      mergeAttributes(HTMLAttributes, {
-        'data-type': 'image',
-        'data-caption': caption,
-        'data-alignment': alignment,
-        class: `editor-image-block align-${alignment}`,
-      }),
-      ['img', { src, alt }],
-      caption ? ['figcaption', {}, caption] : ['figcaption', {}, ''],
-    ];
-  },
-});
-
-let mermaidInitialized = false;
-const ensureMermaidInitialized = () => {
-  if (mermaidInitialized) {
-    return;
-  }
-  mermaid.initialize({
-    startOnLoad: false,
-    securityLevel: 'strict',
-    theme: 'neutral',
-    suppressErrorRendering: true,
-  });
-  mermaidInitialized = true;
-};
-
-const MermaidBlockView: React.FC<NodeViewProps> = ({ node, updateAttributes, editor }) => {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(node.attrs.code || ''));
-  const [diagramSvg, setDiagramSvg] = useState('');
-  const [renderError, setRenderError] = useState<string | null>(null);
-  const renderIdRef = useRef(`mermaid-${Math.random().toString(36).slice(2)}`);
-  const isEditable = editor.isEditable;
-
-  useEffect(() => {
-    setDraft(String(node.attrs.code || ''));
-  }, [node.attrs.code]);
-
-  useEffect(() => {
-    const code = String(node.attrs.code || '').trim();
-    if (!code) {
-      setDiagramSvg('');
-      setRenderError('Mermaid code is empty.');
-      return;
-    }
-
-    ensureMermaidInitialized();
-    let disposed = false;
-    mermaid
-      .render(renderIdRef.current, code)
-      .then(({ svg }) => {
-        if (!disposed) {
-          setDiagramSvg(svg);
-          setRenderError(null);
-        }
-      })
-      .catch((error: unknown) => {
-        if (!disposed) {
-          setRenderError(error instanceof Error ? error.message : 'Failed to render Mermaid.');
-          setDiagramSvg('');
-        }
-      });
-
-    return () => {
-      disposed = true;
-    };
-  }, [node.attrs.code]);
-
-  if (editing && isEditable) {
-    return (
-      <NodeViewWrapper className="editor-mermaid-block">
-        <textarea
-          className="w-full input"
-          rows={8}
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder="graph TD&#10;  A[Start] --> B[End]"
-          style={{ fontFamily: 'var(--font-mono)' }}
-        />
-        <div className="mt-2 flex gap-2">
-          <button
-            type="button"
-            className="btn btn-primary btn-xs"
-            onClick={() => {
-              updateAttributes({ code: draft });
-              setEditing(false);
-            }}
-          >
-            Save Diagram
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost btn-xs"
-            onClick={() => {
-              setDraft(String(node.attrs.code || ''));
-              setEditing(false);
-            }}
-          >
-            Cancel
-          </button>
-        </div>
-      </NodeViewWrapper>
-    );
-  }
-
-  return (
-    <NodeViewWrapper
-      className="editor-mermaid-block"
-      onDoubleClick={() => {
-        if (isEditable) {
-          setEditing(true);
-        }
-      }}
-    >
-      {renderError ? (
-        <div className="editor-mermaid-error">Mermaid render error: {renderError}</div>
-      ) : (
-        <div className="editor-mermaid-svg" dangerouslySetInnerHTML={{ __html: diagramSvg }} />
-      )}
-      {isEditable && (
-        <button
-          type="button"
-          className="btn btn-ghost btn-xs mt-2"
-          onClick={() => setEditing(true)}
-        >
-          Edit Mermaid
-        </button>
-      )}
-    </NodeViewWrapper>
-  );
-};
-
-const MermaidNode = Node.create({
-  name: 'mermaid',
-  group: 'block',
-  atom: true,
-  selectable: true,
-  draggable: true,
-  addAttributes() {
-    return {
-      code: { default: 'graph TD\n  A[Start] --> B[End]' },
-    };
-  },
-  parseHTML() {
-    return [{ tag: 'div[data-type="mermaid"]' }];
-  },
-  renderHTML({ HTMLAttributes }) {
-    const code = String(HTMLAttributes.code || '');
-    return [
-      'div',
-      mergeAttributes(HTMLAttributes, {
-        'data-type': 'mermaid',
-        'data-code': code,
-        class: 'editor-mermaid-block',
-      }),
-      ['pre', {}, code],
-    ];
-  },
-  addNodeView() {
-    return ReactNodeViewRenderer(MermaidBlockView);
-  },
-});
-
-const renderKatex = (latex: string, displayMode: boolean): string => {
-  try {
-    return katex.renderToString(latex, { displayMode, throwOnError: false });
-  } catch {
-    return `<span style="color:var(--fn-error)">${DOMPurify.sanitize(latex)}</span>`;
-  }
-};
-
-const MathBlockView: React.FC<NodeViewProps> = ({ node, updateAttributes, editor }) => {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(node.attrs.latex as string);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const isEditable = editor.isEditable;
-
-  useEffect(() => { setDraft(node.attrs.latex as string); }, [node.attrs.latex]);
-
-  useEffect(() => {
-    if (editing && textareaRef.current) textareaRef.current.focus();
-  }, [editing]);
-
-  if (editing && isEditable) {
-    return (
-      <NodeViewWrapper className="editor-math-block">
-        <textarea
-          ref={textareaRef}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={() => {
-            updateAttributes({ latex: draft });
-            setEditing(false);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') { updateAttributes({ latex: draft }); setEditing(false); }
-          }}
-          className="w-full bg-transparent text-sm resize-none outline-none"
-          style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', minHeight: '60px' }}
-          rows={3}
-        />
-        <div className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Press Escape or click outside to save</div>
-      </NodeViewWrapper>
-    );
-  }
-
-  const html = renderKatex(node.attrs.latex as string, true);
-  return (
-    <NodeViewWrapper
-      className="editor-math-block"
-      onClick={() => isEditable && setEditing(true)}
-    >
-      <div dangerouslySetInnerHTML={{ __html: html }} />
-    </NodeViewWrapper>
-  );
-};
-
-const MathInlineView: React.FC<NodeViewProps> = ({ node, updateAttributes, editor }) => {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(node.attrs.latex as string);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const isEditable = editor.isEditable;
-
-  useEffect(() => { setDraft(node.attrs.latex as string); }, [node.attrs.latex]);
-  useEffect(() => { if (editing && inputRef.current) inputRef.current.focus(); }, [editing]);
-
-  if (editing && isEditable) {
-    return (
-      <NodeViewWrapper as="span" className="editor-math-inline">
-        <input
-          ref={inputRef}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={() => { updateAttributes({ latex: draft }); setEditing(false); }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === 'Escape') { updateAttributes({ latex: draft }); setEditing(false); }
-          }}
-          className="bg-transparent outline-none text-sm"
-          style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', width: `${Math.max(draft.length * 0.6, 4)}em` }}
-        />
-      </NodeViewWrapper>
-    );
-  }
-
-  const html = renderKatex(node.attrs.latex as string, false);
-  return (
-    <NodeViewWrapper
-      as="span"
-      className="editor-math-inline"
-      onClick={() => isEditable && setEditing(true)}
-    >
-      <span dangerouslySetInnerHTML={{ __html: html }} />
-    </NodeViewWrapper>
-  );
-};
-
-const MathBlockNode = Node.create({
-  name: 'mathBlock',
-  group: 'block',
-  atom: true,
-  selectable: true,
-  draggable: true,
-  addAttributes() {
-    return {
-      latex: { default: '' },
-    };
-  },
-  parseHTML() {
-    return [{ tag: 'div[data-type="math-block"]' }];
-  },
-  renderHTML({ HTMLAttributes }) {
-    const latex = String(HTMLAttributes.latex || '');
-    return [
-      'div',
-      mergeAttributes(HTMLAttributes, {
-        'data-type': 'math-block',
-        class: 'editor-math-block',
-      }),
-      `$$${latex}$$`,
-    ];
-  },
-  addNodeView() {
-    return ReactNodeViewRenderer(MathBlockView);
-  },
-});
-
-const MathInlineNode = Node.create({
-  name: 'mathInline',
-  inline: true,
-  group: 'inline',
-  atom: true,
-  selectable: true,
-  addAttributes() {
-    return {
-      latex: { default: '' },
-    };
-  },
-  parseHTML() {
-    return [{ tag: 'span[data-type="math-inline"]' }];
-  },
-  renderHTML({ HTMLAttributes }) {
-    const latex = String(HTMLAttributes.latex || '');
-    return [
-      'span',
-      mergeAttributes(HTMLAttributes, {
-        'data-type': 'math-inline',
-        class: 'editor-math-inline',
-      }),
-      `\\(${latex}\\)`,
-    ];
-  },
-  addNodeView() {
-    return ReactNodeViewRenderer(MathInlineView);
-  },
-});
-
-const ToolbarButton: React.FC<{ label: string; onClick: () => void; disabled?: boolean; isActive?: boolean }> = ({
-  label,
-  onClick,
-  disabled,
-  isActive,
-}) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={disabled}
-    className="px-2 py-1 text-sm rounded border disabled:opacity-50 transition-colors"
-    style={{
-      borderColor: isActive ? 'var(--border-strong)' : 'var(--border-default)',
-      background: isActive ? 'var(--bg-active)' : 'transparent',
-      color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-    }}
-  >
-    {label}
-  </button>
-);
 
 export const BlockEditor: React.FC<BlockEditorProps> = ({
   value,
@@ -826,10 +131,15 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   mode = 'full',
   placeholder,
   onUploadMedia,
+  mobileToolsDrawer = true,
+  hotkeysProfile = 'extended',
+  showSidebarTabs = true,
 }) => {
   const [showSlashCommands, setShowSlashCommands] = useState(false);
   const [slashQuery, setSlashQuery] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [isMobileToolsOpen, setIsMobileToolsOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   // Modal states
@@ -839,6 +149,26 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   const [showEmbedModal, setShowEmbedModal] = useState<false | 'youtube' | 'pdf'>(false);
   const [showCodeBlockModal, setShowCodeBlockModal] = useState(false);
   const [showFootnoteModal, setShowFootnoteModal] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('blocks');
+  const [historyEvents, setHistoryEvents] = useState<string[]>([]);
+  const [lastAutoSavedAt, setLastAutoSavedAt] = useState<string | null>(null);
+  const historyTickRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (!mobileToolsDrawer || !isMobileToolsOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previous; };
+  }, [isMobileToolsOpen, mobileToolsDrawer]);
+
+  useEffect(() => {
+    if (!mobileToolsDrawer || !isMobileToolsOpen) return;
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsMobileToolsOpen(false);
+    };
+    window.addEventListener('keydown', onEscape);
+    return () => window.removeEventListener('keydown', onEscape);
+  }, [isMobileToolsOpen, mobileToolsDrawer]);
 
   const toTiptapDocument = (doc: CanonicalDocument): JSONContent => ({
     type: 'doc',
@@ -854,21 +184,14 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3, 4, 5, 6] },
-      }),
-      Placeholder.configure({
-        placeholder: placeholder || 'Type / for block commands...',
-      }),
+      StarterKit.configure({ heading: { levels: [1, 2, 3, 4, 5, 6] }, codeBlock: false }),
+      Placeholder.configure({ placeholder: placeholder || 'Type / for block commands...' }),
       TaskList,
       TaskItem.configure({ nested: true }),
-      Link.configure({
-        openOnClick: false,
-        autolink: true,
-      }),
-      TextAlign.configure({
-        types: ['heading', 'paragraph'],
-      }),
+      Link.configure({ openOnClick: false, autolink: true }),
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      MarkdownInputRules,
+      CodeBlockLowlight.configure({ lowlight, defaultLanguage: 'plaintext' }),
       Table.configure({ resizable: true }),
       TableRow,
       TableHeader,
@@ -888,30 +211,54 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     content: toTiptapDocument(value),
     onUpdate({ editor: tiptapEditor }) {
       onChange(toCanonicalDocument(tiptapEditor.getJSON(), value));
+      if (!readOnly) {
+        const now = Date.now();
+        setLastAutoSavedAt(new Date(now).toLocaleTimeString());
+        if (now - historyTickRef.current > 12000) {
+          historyTickRef.current = now;
+          setHistoryEvents((prev) => [
+            `${new Date(now).toLocaleTimeString()} · Updated`,
+            ...prev,
+          ].slice(0, 8));
+        }
+      }
     },
     editorProps: {
       attributes: {
-        class:
-          readOnly
-            ? 'p-2 outline-none max-w-none text-[var(--text-primary)] leading-7'
-            : 'min-h-[320px] p-4 outline-none max-w-none text-[var(--text-primary)] leading-7',
+        class: readOnly
+          ? 'p-2 outline-none max-w-none text-[var(--text-primary)] leading-7'
+          : 'min-h-[320px] p-4 outline-none max-w-none text-[var(--text-primary)] leading-7',
       },
       transformPastedHTML: (html) => sanitizeImportedHtml(html),
-      handleKeyDown: (_view, event) => {
-        if (event.isComposing || readOnly || !editor) {
-          return false;
-        }
+      handlePaste: (_view, event) => {
+        const html = event.clipboardData?.getData('text/html');
+        if (html) return false; // let TipTap handle native HTML paste
 
-        if (
-          event.key === '/' &&
-          !event.metaKey &&
-          !event.ctrlKey &&
-          !event.altKey &&
-          !event.shiftKey
-        ) {
+        const text = event.clipboardData?.getData('text/plain');
+        if (!text || !looksLikeMarkdown(text)) return false;
+
+        const parsed = marked.parse(text, { async: false, gfm: true, breaks: true });
+        const sanitized = sanitizeImportedHtml(parsed as string);
+        editor?.commands.insertContent(sanitized);
+        return true;
+      },
+      handleKeyDown: (_view, event) => {
+        if (event.isComposing || readOnly || !editor) return false;
+
+        if (event.key === '/' && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey) {
+          // Disable slash commands inside code blocks
+          if (editor.isActive('codeBlock')) return false;
           event.preventDefault();
           setSlashQuery('');
           setShowSlashCommands(true);
+          return true;
+        }
+
+        // Shift+Enter = soft break (newline within current block)
+        // Enter = create new block (default TipTap behavior for most nodes)
+        if (event.key === 'Enter' && event.shiftKey && !editor.isActive('codeBlock')) {
+          event.preventDefault();
+          editor.chain().focus().setHardBreak().run();
           return true;
         }
 
@@ -921,37 +268,56 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
           return true;
         }
 
-        if (event.altKey && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
-          if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        const key = event.key.toLowerCase();
+        const hasPrimaryModifier = event.metaKey || event.ctrlKey;
+
+        if (hasPrimaryModifier && !event.altKey) {
+          if (key === 'b' && !event.shiftKey) {
+            event.preventDefault();
+            editor.chain().focus().toggleBold().run();
+            return true;
+          }
+          if (key === 'i' && !event.shiftKey) {
+            event.preventDefault();
+            editor.chain().focus().toggleItalic().run();
+            return true;
+          }
+          if (key === 'k' && !event.shiftKey) {
+            event.preventDefault();
+            setLinkFromSelection();
+            return true;
+          }
+        }
+
+        if (event.altKey && !event.metaKey && !event.ctrlKey) {
+          if (hotkeysProfile === 'extended') {
+            if (!event.shiftKey && key === '1') { event.preventDefault(); editor.chain().focus().toggleHeading({ level: 1 }).run(); return true; }
+            if (!event.shiftKey && key === '2') { event.preventDefault(); editor.chain().focus().toggleHeading({ level: 2 }).run(); return true; }
+            if (!event.shiftKey && key === 'd') { event.preventDefault(); duplicateCurrentBlock(); return true; }
+            if (event.shiftKey && key === '7') { event.preventDefault(); editor.chain().focus().toggleOrderedList().run(); return true; }
+            if (event.shiftKey && key === '8') { event.preventDefault(); editor.chain().focus().toggleBulletList().run(); return true; }
+            if (event.shiftKey && key === 'x') { event.preventDefault(); editor.chain().focus().toggleTaskList().run(); return true; }
+            if (event.shiftKey && key === 'q') { event.preventDefault(); editor.chain().focus().toggleBlockquote().run(); return true; }
+          }
+
+          if (!event.shiftKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
             event.preventDefault();
             const direction = event.key === 'ArrowUp' ? -1 : 1;
-
             const current = editor.getJSON();
-            const blocks: JSONContent[] = Array.isArray(current.content)
-              ? [...(current.content as JSONContent[])]
-              : [];
-            if (blocks.length < 2) {
-              return true;
-            }
+            const blocks: JSONContent[] = Array.isArray(current.content) ? [...(current.content as JSONContent[])] : [];
+            if (blocks.length < 2) return true;
 
             const cursor = editor.state.selection.from;
             let selectedIndex = -1;
             editor.state.doc.forEach((node, offset, index) => {
               const start = offset + 1;
               const end = start + node.nodeSize - 1;
-              if (cursor >= start && cursor <= end) {
-                selectedIndex = index;
-              }
+              if (cursor >= start && cursor <= end) selectedIndex = index;
             });
 
-            if (selectedIndex === -1) {
-              return true;
-            }
-
+            if (selectedIndex === -1) return true;
             const targetIndex = selectedIndex + direction;
-            if (targetIndex < 0 || targetIndex >= blocks.length) {
-              return true;
-            }
+            if (targetIndex < 0 || targetIndex >= blocks.length) return true;
 
             const [moved] = blocks.splice(selectedIndex, 1);
             blocks.splice(targetIndex, 0, moved);
@@ -967,10 +333,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   });
 
   useEffect(() => {
-    if (!editor) {
-      return;
-    }
-
+    if (!editor) return;
     const current = editor.getJSON();
     const incoming = toTiptapDocument(value);
     if (JSON.stringify(current) !== JSON.stringify(incoming)) {
@@ -978,15 +341,10 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     }
   }, [editor, value]);
 
-  const insertInlineMath = () => {
-    if (!editor || readOnly) return;
-    setShowMathModal('inline');
-  };
+  // ── Insert helpers ──
 
-  const insertMathBlock = () => {
-    if (!editor || readOnly) return;
-    setShowMathModal('block');
-  };
+  const insertInlineMath = () => { if (!editor || readOnly) return; setShowMathModal('inline'); };
+  const insertMathBlock = () => { if (!editor || readOnly) return; setShowMathModal('block'); };
 
   const handleMathInsert = useCallback((latex: string) => {
     if (!editor) return;
@@ -995,68 +353,39 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   }, [editor, showMathModal]);
 
   const insertCallout = (variant: 'info' | 'warn' | 'example' | 'hint' = 'info') => {
-    if (!editor || readOnly) {
-      return;
-    }
-
-    editor
-      .chain()
-      .focus()
-      .insertContent({
-        type: 'callout',
-        attrs: { variant },
-        content: [{ type: 'text', text: 'Callout text' }],
-      })
-      .run();
-  };
-
-  const insertCitation = () => {
     if (!editor || readOnly) return;
-    setShowCitationModal(true);
+    editor.chain().focus().insertContent({
+      type: 'callout', attrs: { variant },
+      content: [{ type: 'text', text: 'Callout text' }],
+    }).run();
   };
+
+  const insertCitation = () => { if (!editor || readOnly) return; setShowCitationModal(true); };
 
   const handleCitationInsert = useCallback((data: { author: string; title: string; year: number | null; url: string; citationType: string }) => {
     if (!editor) return;
     editor.chain().focus().insertContent({ type: 'citation', attrs: data }).run();
   }, [editor]);
 
-  const insertFootnote = () => {
-    if (!editor || readOnly) return;
-    setShowFootnoteModal(true);
-  };
+  const insertFootnote = () => { if (!editor || readOnly) return; setShowFootnoteModal(true); };
 
   const handleFootnoteInsert = useCallback((key: string) => {
     if (!editor) return;
-    editor
-      .chain()
-      .focus()
-      .insertContent({
-        type: 'footnote',
-        attrs: { key: key || null },
-        content: [{ type: 'text', text: 'Footnote text' }],
-      })
-      .run();
+    editor.chain().focus().insertContent({
+      type: 'footnote', attrs: { key: key || null },
+      content: [{ type: 'text', text: 'Footnote text' }],
+    }).run();
   }, [editor]);
 
   const insertNumberedParagraph = () => {
-    if (!editor || readOnly) {
-      return;
-    }
-
-    editor
-      .chain()
-      .focus()
-      .insertContent({
-        type: 'numberedParagraph',
-        content: [{ type: 'text', text: 'Numbered paragraph text' }],
-      })
-      .run();
-  };
-
-  const insertTestCase = () => {
     if (!editor || readOnly) return;
-    setShowTestCaseModal(true);
+    editor.chain().focus().insertContent({
+      type: 'numberedParagraph',
+      content: [{ type: 'text', text: 'Numbered paragraph text' }],
+    }).run();
   };
+
+  const insertTestCase = () => { if (!editor || readOnly) return; setShowTestCaseModal(true); };
 
   const handleTestCaseInsert = useCallback((data: { input: string; output: string; visibility: string; score: number }) => {
     if (!editor) return;
@@ -1079,104 +408,57 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
       );
       return;
     }
-
-    editor
-      .chain()
-      .focus()
-      .insertContent({
-        type: 'embed',
-        attrs: {
-          provider: data.provider,
-          url: safeEmbed.sourceUrl,
-          embedUrl: safeEmbed.embedUrl,
-          title: data.title,
-        },
-      })
-      .run();
+    editor.chain().focus().insertContent({
+      type: 'embed',
+      attrs: { provider: data.provider, url: safeEmbed.sourceUrl, embedUrl: safeEmbed.embedUrl, title: data.title },
+    }).run();
   }, [editor]);
 
   const insertMermaid = () => {
     if (!editor || readOnly) return;
-    editor
-      .chain()
-      .focus()
-      .insertContent({
-        type: 'mermaid',
-        attrs: {
-          code: 'graph TD\n  A[Start] --> B[Process]\n  B --> C[Done]',
-        },
-      })
-      .run();
+    editor.chain().focus().insertContent({
+      type: 'mermaid',
+      attrs: { code: 'graph TD\n  A[Start] --> B[Process]\n  B --> C[Done]' },
+    }).run();
   };
 
   const duplicateCurrentBlock = () => {
-    if (!editor || readOnly) {
-      return;
-    }
-
+    if (!editor || readOnly) return;
     const current = editor.getJSON();
-    const blocks: JSONContent[] = Array.isArray(current.content)
-      ? [...(current.content as JSONContent[])]
-      : [];
-    if (blocks.length === 0) {
-      return;
-    }
+    const blocks: JSONContent[] = Array.isArray(current.content) ? [...(current.content as JSONContent[])] : [];
+    if (blocks.length === 0) return;
 
     const cursor = editor.state.selection.from;
     let selectedIndex = -1;
     editor.state.doc.forEach((node, offset, index) => {
       const start = offset + 1;
       const end = start + node.nodeSize - 1;
-      if (cursor >= start && cursor <= end) {
-        selectedIndex = index;
-      }
+      if (cursor >= start && cursor <= end) selectedIndex = index;
     });
 
-    if (selectedIndex < 0 || selectedIndex >= blocks.length) {
-      return;
-    }
-
+    if (selectedIndex < 0 || selectedIndex >= blocks.length) return;
     const clone = JSON.parse(JSON.stringify(blocks[selectedIndex])) as JSONContent;
     blocks.splice(selectedIndex + 1, 0, clone);
     editor.commands.setContent({ type: 'doc', content: blocks }, { emitUpdate: true });
     editor.commands.focus();
   };
 
-  const triggerImageUpload = () => {
-    if (readOnly) {
-      return;
-    }
-    imageInputRef.current?.click();
-  };
+  const triggerImageUpload = () => { if (readOnly) return; imageInputRef.current?.click(); };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!editor || readOnly) {
-      return;
-    }
-
+    if (!editor || readOnly) return;
     const file = event.target.files?.[0];
     event.target.value = '';
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     if (onUploadMedia) {
       setIsUploading(true);
       try {
         const uploaded = await onUploadMedia(file);
-        editor
-          .chain()
-          .focus()
-          .insertContent({
-            type: 'image',
-            attrs: {
-              src: uploaded.url,
-              alt: file.name,
-              caption: '',
-              alignment: 'center',
-            },
-          })
-          .run();
+        editor.chain().focus().insertContent({
+          type: 'image',
+          attrs: { src: uploaded.url, alt: file.name, caption: '', alignment: 'center' },
+        }).run();
         return;
       } catch (error) {
         console.error('Image upload failed', error);
@@ -1186,208 +468,134 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     }
 
     const fallbackUrl = window.prompt('Image URL', 'https://');
-    if (!fallbackUrl || !fallbackUrl.trim()) {
-      return;
-    }
-
-    editor
-      .chain()
-      .focus()
-      .insertContent({
-        type: 'image',
-        attrs: {
-          src: fallbackUrl.trim(),
-          alt: file.name,
-          caption: '',
-          alignment: 'center',
-        },
-      })
-      .run();
+    if (!fallbackUrl || !fallbackUrl.trim()) return;
+    editor.chain().focus().insertContent({
+      type: 'image',
+      attrs: { src: fallbackUrl.trim(), alt: file.name, caption: '', alignment: 'center' },
+    }).run();
   };
 
-  const insertCodeBlock = () => {
-    if (!editor || readOnly) return;
-    setShowCodeBlockModal(true);
-  };
+  const insertCodeBlock = () => { if (!editor || readOnly) return; setShowCodeBlockModal(true); };
 
   const handleCodeBlockInsert = useCallback((language: string) => {
     if (!editor) return;
     editor.chain().focus().setNode('codeBlock', { language }).run();
   }, [editor]);
 
+  // ── Slash commands (with descriptions, categories, icons) ──
+
   const slashCommands = useMemo<SlashCommand[]>(() => {
-    if (!editor || readOnly) {
-      return [];
-    }
+    if (!editor || readOnly) return [];
 
     const baseCommands: SlashCommand[] = [
-      {
-        key: 'paragraph',
-        label: 'Paragraph',
-        keywords: ['text', 'p'],
-        execute: () => editor.chain().focus().setParagraph().run(),
-      },
-      {
-        key: 'heading1',
-        label: 'Heading 1',
-        keywords: ['h1', 'title'],
-        execute: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
-      },
-      {
-        key: 'heading2',
-        label: 'Heading 2',
-        keywords: ['h2', 'subtitle'],
-        execute: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
-      },
-      {
-        key: 'heading3',
-        label: 'Heading 3',
-        keywords: ['h3'],
-        execute: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
-      },
-      {
-        key: 'bulletList',
-        label: 'Bulleted List',
-        keywords: ['list', 'bullet'],
-        execute: () => editor.chain().focus().toggleBulletList().run(),
-      },
-      {
-        key: 'orderedList',
-        label: 'Numbered List',
-        keywords: ['list', 'ordered'],
-        execute: () => editor.chain().focus().toggleOrderedList().run(),
-      },
-      {
-        key: 'taskList',
-        label: 'Checklist',
-        keywords: ['task', 'todo'],
-        execute: () => editor.chain().focus().toggleTaskList().run(),
-      },
-      {
-        key: 'quote',
-        label: 'Quote',
-        keywords: ['blockquote'],
-        execute: () => editor.chain().focus().toggleBlockquote().run(),
-      },
-      {
-        key: 'codeBlock',
-        label: 'Code Block',
-        keywords: ['code', 'snippet'],
-        execute: insertCodeBlock,
-      },
-      {
-        key: 'mathInline',
-        label: 'Inline Math',
-        keywords: ['latex', 'math'],
-        execute: insertInlineMath,
-      },
-      {
-        key: 'mathBlock',
-        label: 'Math Block',
-        keywords: ['latex', 'equation'],
-        execute: insertMathBlock,
-      },
-      {
-        key: 'table',
-        label: 'Table 3x3',
-        keywords: ['table'],
-        execute: () =>
-          editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
-      },
-      {
-        key: 'image',
-        label: 'Image',
-        keywords: ['media', 'upload'],
-        execute: triggerImageUpload,
-      },
+      { key: 'paragraph', label: 'Paragraph', description: 'Plain text block', keywords: ['text', 'p'], category: 'text', icon: SLASH_COMMAND_ICONS.paragraph, execute: () => editor.chain().focus().setParagraph().run() },
+      { key: 'heading1', label: 'Heading 1', description: 'Large section title', keywords: ['h1', 'title'], category: 'text', icon: SLASH_COMMAND_ICONS.heading1, execute: () => editor.chain().focus().toggleHeading({ level: 1 }).run() },
+      { key: 'heading2', label: 'Heading 2', description: 'Medium section title', keywords: ['h2', 'subtitle'], category: 'text', icon: SLASH_COMMAND_ICONS.heading2, execute: () => editor.chain().focus().toggleHeading({ level: 2 }).run() },
+      { key: 'heading3', label: 'Heading 3', description: 'Small section title', keywords: ['h3'], category: 'text', icon: SLASH_COMMAND_ICONS.heading3, execute: () => editor.chain().focus().toggleHeading({ level: 3 }).run() },
+      { key: 'bulletList', label: 'Bulleted List', description: 'Unordered list of items', keywords: ['list', 'bullet'], category: 'text', icon: SLASH_COMMAND_ICONS.bulletList, execute: () => editor.chain().focus().toggleBulletList().run() },
+      { key: 'orderedList', label: 'Numbered List', description: 'Ordered list of items', keywords: ['list', 'ordered'], category: 'text', icon: SLASH_COMMAND_ICONS.orderedList, execute: () => editor.chain().focus().toggleOrderedList().run() },
+      { key: 'taskList', label: 'Checklist', description: 'Trackable todo items', keywords: ['task', 'todo'], category: 'text', icon: SLASH_COMMAND_ICONS.taskList, execute: () => editor.chain().focus().toggleTaskList().run() },
+      { key: 'quote', label: 'Quote', description: 'Blockquote text', keywords: ['blockquote'], category: 'text', icon: SLASH_COMMAND_ICONS.quote, execute: () => editor.chain().focus().toggleBlockquote().run() },
+      { key: 'codeBlock', label: 'Code Block', description: 'Formatted code snippet', keywords: ['code', 'snippet'], category: 'code', icon: SLASH_COMMAND_ICONS.codeBlock, execute: insertCodeBlock },
+      { key: 'mathInline', label: 'Inline Math', description: 'LaTeX inline formula', keywords: ['latex', 'math'], category: 'code', icon: SLASH_COMMAND_ICONS.mathInline, execute: insertInlineMath },
+      { key: 'mathBlock', label: 'Math Block', description: 'LaTeX display equation', keywords: ['latex', 'equation'], category: 'code', icon: SLASH_COMMAND_ICONS.mathBlock, execute: insertMathBlock },
+      { key: 'table3x3', label: 'Table 3×3', description: 'Small data table', keywords: ['table', 'small'], category: 'media', icon: SLASH_COMMAND_ICONS.table, execute: () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
+      { key: 'table4x4', label: 'Table 4×4', description: 'Medium data table', keywords: ['table', 'medium'], category: 'media', icon: SLASH_COMMAND_ICONS.table, execute: () => editor.chain().focus().insertTable({ rows: 4, cols: 4, withHeaderRow: true }).run() },
+      { key: 'table5x5', label: 'Table 5×5', description: 'Large data table', keywords: ['table', 'large'], category: 'media', icon: SLASH_COMMAND_ICONS.table, execute: () => editor.chain().focus().insertTable({ rows: 5, cols: 5, withHeaderRow: true }).run() },
+      { key: 'table6x3', label: 'Table 6×3', description: 'Wide table (6 cols)', keywords: ['table', 'wide'], category: 'media', icon: SLASH_COMMAND_ICONS.table, execute: () => editor.chain().focus().insertTable({ rows: 3, cols: 6, withHeaderRow: true }).run() },
+      { key: 'table8x4', label: 'Table 8×4', description: 'Extra wide table (8 cols)', keywords: ['table', 'extra', 'xl'], category: 'media', icon: SLASH_COMMAND_ICONS.table, execute: () => editor.chain().focus().insertTable({ rows: 4, cols: 8, withHeaderRow: true }).run() },
+      { key: 'image', label: 'Image', description: 'Upload or link image', keywords: ['media', 'upload'], category: 'media', icon: SLASH_COMMAND_ICONS.image, execute: triggerImageUpload },
     ];
 
-    if (mode === 'lite') {
-      return baseCommands;
-    }
+    if (mode === 'lite') return baseCommands;
 
     return [
       ...baseCommands,
-      {
-        key: 'calloutInfo',
-        label: 'Callout (Info)',
-        keywords: ['callout', 'info'],
-        execute: () => insertCallout('info'),
-      },
-      {
-        key: 'calloutWarn',
-        label: 'Callout (Warn)',
-        keywords: ['callout', 'warn'],
-        execute: () => insertCallout('warn'),
-      },
-      {
-        key: 'calloutExample',
-        label: 'Callout (Example)',
-        keywords: ['callout', 'example'],
-        execute: () => insertCallout('example'),
-      },
-      {
-        key: 'calloutHint',
-        label: 'Callout (Hint)',
-        keywords: ['callout', 'hint'],
-        execute: () => insertCallout('hint'),
-      },
-      {
-        key: 'citation',
-        label: 'Citation',
-        keywords: ['reference', 'bibliography'],
-        execute: insertCitation,
-      },
-      {
-        key: 'footnote',
-        label: 'Footnote',
-        keywords: ['reference', 'note'],
-        execute: insertFootnote,
-      },
-      {
-        key: 'numberedParagraph',
-        label: 'Numbered Paragraph',
-        keywords: ['law', 'legal', 'numbering'],
-        execute: insertNumberedParagraph,
-      },
-      {
-        key: 'testCase',
-        label: 'TestCase',
-        keywords: ['stem', 'programming', 'grading'],
-        execute: insertTestCase,
-      },
-      {
-        key: 'youtube',
-        label: 'YouTube Embed',
-        keywords: ['video', 'embed', 'youtube'],
-        execute: () => insertEmbed('youtube'),
-      },
-      {
-        key: 'pdf',
-        label: 'PDF Embed',
-        keywords: ['pdf', 'embed'],
-        execute: () => insertEmbed('pdf'),
-      },
-      {
-        key: 'mermaid',
-        label: 'Mermaid Diagram',
-        keywords: ['diagram', 'flowchart', 'mermaid'],
-        execute: insertMermaid,
-      },
+      { key: 'calloutInfo', label: 'Callout (Info)', description: 'Informational note', keywords: ['callout', 'info'], category: 'advanced', icon: SLASH_COMMAND_ICONS.calloutInfo, execute: () => insertCallout('info') },
+      { key: 'calloutWarn', label: 'Callout (Warn)', description: 'Warning notice', keywords: ['callout', 'warn'], category: 'advanced', icon: SLASH_COMMAND_ICONS.calloutWarn, execute: () => insertCallout('warn') },
+      { key: 'calloutExample', label: 'Callout (Example)', description: 'Example highlight', keywords: ['callout', 'example'], category: 'advanced', icon: SLASH_COMMAND_ICONS.calloutExample, execute: () => insertCallout('example') },
+      { key: 'calloutHint', label: 'Callout (Hint)', description: 'Helpful hint', keywords: ['callout', 'hint'], category: 'advanced', icon: SLASH_COMMAND_ICONS.calloutHint, execute: () => insertCallout('hint') },
+      { key: 'citation', label: 'Citation', description: 'Academic reference', keywords: ['reference', 'bibliography'], category: 'advanced', icon: SLASH_COMMAND_ICONS.citation, execute: insertCitation },
+      { key: 'footnote', label: 'Footnote', description: 'Reference note', keywords: ['reference', 'note'], category: 'advanced', icon: SLASH_COMMAND_ICONS.footnote, execute: insertFootnote },
+      { key: 'numberedParagraph', label: 'Numbered Paragraph', description: 'Legal numbering style', keywords: ['law', 'legal', 'numbering'], category: 'advanced', icon: SLASH_COMMAND_ICONS.numberedParagraph, execute: insertNumberedParagraph },
+      { key: 'testCase', label: 'TestCase', description: 'Input/output evaluator', keywords: ['stem', 'programming', 'grading'], category: 'advanced', icon: SLASH_COMMAND_ICONS.testCase, execute: insertTestCase },
+      { key: 'youtube', label: 'YouTube Embed', description: 'Embedded video', keywords: ['video', 'embed', 'youtube'], category: 'media', icon: SLASH_COMMAND_ICONS.youtube, execute: () => insertEmbed('youtube') },
+      { key: 'pdf', label: 'PDF Embed', description: 'Embedded document', keywords: ['pdf', 'embed'], category: 'media', icon: SLASH_COMMAND_ICONS.pdf, execute: () => insertEmbed('pdf') },
+      { key: 'mermaid', label: 'Mermaid Diagram', description: 'Diagram as code', keywords: ['diagram', 'flowchart', 'mermaid'], category: 'code', icon: SLASH_COMMAND_ICONS.mermaid, execute: insertMermaid },
     ];
   }, [editor, mode, readOnly]);
 
-  const filteredSlashCommands = useMemo(() => {
-    const query = slashQuery.trim().toLowerCase();
-    if (!query) {
-      return slashCommands;
+  const blockActions = useMemo<BlockAction[]>(() => {
+    if (!editor || readOnly) return [];
+
+    const actions: BlockAction[] = [
+      { key: 'paragraph', label: 'Paragraph', hint: 'Basic text block', execute: () => editor.chain().focus().setParagraph().run() },
+      { key: 'heading1', label: 'Heading 1', hint: 'Primary section title', execute: () => editor.chain().focus().toggleHeading({ level: 1 }).run(), shortcut: hotkeysProfile === 'extended' ? 'Alt+1' : undefined },
+      { key: 'heading2', label: 'Heading 2', hint: 'Secondary section title', execute: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), shortcut: hotkeysProfile === 'extended' ? 'Alt+2' : undefined },
+      { key: 'heading3', label: 'Heading 3', hint: 'Tertiary section title', execute: () => editor.chain().focus().toggleHeading({ level: 3 }).run() },
+      { key: 'bulletList', label: 'Bulleted List', hint: 'Unordered list', execute: () => editor.chain().focus().toggleBulletList().run(), shortcut: hotkeysProfile === 'extended' ? 'Alt+Shift+8' : undefined },
+      { key: 'orderedList', label: 'Numbered List', hint: 'Ordered list', execute: () => editor.chain().focus().toggleOrderedList().run(), shortcut: hotkeysProfile === 'extended' ? 'Alt+Shift+7' : undefined },
+      { key: 'taskList', label: 'Checklist', hint: 'Trackable items', execute: () => editor.chain().focus().toggleTaskList().run(), shortcut: hotkeysProfile === 'extended' ? 'Alt+Shift+X' : undefined },
+      { key: 'quote', label: 'Quote', hint: 'Quote block', execute: () => editor.chain().focus().toggleBlockquote().run(), shortcut: hotkeysProfile === 'extended' ? 'Alt+Shift+Q' : undefined },
+      { key: 'codeBlock', label: 'Code Block', hint: 'Formatted code', execute: insertCodeBlock },
+      { key: 'table', label: 'Table 3×3', hint: 'Small table', execute: () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
+      { key: 'table4x4', label: 'Table 4×4', hint: 'Medium table', execute: () => editor.chain().focus().insertTable({ rows: 4, cols: 4, withHeaderRow: true }).run() },
+      { key: 'table5x5', label: 'Table 5×5', hint: 'Large table', execute: () => editor.chain().focus().insertTable({ rows: 5, cols: 5, withHeaderRow: true }).run() },
+      { key: 'tableBig', label: 'Table 8×4', hint: 'Extra wide', execute: () => editor.chain().focus().insertTable({ rows: 4, cols: 8, withHeaderRow: true }).run() },
+      { key: 'image', label: isUploading ? 'Uploading...' : 'Image', hint: 'Upload image media', execute: triggerImageUpload },
+      { key: 'mathInline', label: 'Inline Math', hint: 'LaTeX inline formula', execute: insertInlineMath },
+      { key: 'mathBlock', label: 'Math Block', hint: 'LaTeX equation block', execute: insertMathBlock },
+      { key: 'duplicate', label: 'Duplicate Block', hint: 'Copy current block below', execute: duplicateCurrentBlock, shortcut: hotkeysProfile === 'extended' ? 'Alt+D' : undefined },
+    ];
+
+    if (mode === 'full') {
+      actions.push(
+        { key: 'calloutInfo', label: 'Callout', hint: 'Highlighted note block', execute: () => insertCallout('info') },
+        { key: 'citation', label: 'Citation', hint: 'Academic citation', execute: insertCitation },
+        { key: 'footnote', label: 'Footnote', hint: 'Reference note', execute: insertFootnote },
+        { key: 'numberedParagraph', label: 'Numbered Paragraph', hint: 'Legal numbering style', execute: insertNumberedParagraph },
+        { key: 'testCase', label: 'TestCase', hint: 'Input/output evaluator', execute: insertTestCase },
+        { key: 'youtube', label: 'YouTube Embed', hint: 'Embedded YouTube video', execute: () => insertEmbed('youtube') },
+        { key: 'pdf', label: 'PDF Embed', hint: 'Embedded PDF document', execute: () => insertEmbed('pdf') },
+        { key: 'mermaid', label: 'Mermaid Diagram', hint: 'Diagram as code', execute: insertMermaid },
+      );
     }
 
-    return slashCommands.filter((command) => {
-      const haystack = `${command.label} ${command.keywords.join(' ')}`.toLowerCase();
-      return haystack.includes(query);
-    });
-  }, [slashCommands, slashQuery]);
+    return actions;
+  }, [editor, hotkeysProfile, isUploading, mode, readOnly]);
+
+  const headingOutline = useMemo(() => {
+    const list: Array<{ text: string; level: number }> = [];
+    const walk = (nodes: CanonicalNode[] | undefined) => {
+      if (!nodes) return;
+      for (const node of nodes) {
+        if (node.type === 'heading') {
+          const level = typeof node.attrs?.level === 'number' ? node.attrs.level : Number(node.attrs?.level || 1);
+          const text = node.content?.filter((child) => child.type === 'text' && child.text).map((child) => child.text).join(' ').trim() || `Heading ${list.length + 1}`;
+          list.push({ text, level: Number.isFinite(level) ? Math.max(1, Math.min(level, 6)) : 1 });
+        }
+        if (node.content?.length) walk(node.content);
+      }
+    };
+    walk(value.content);
+    return list;
+  }, [value.content]);
+
+  const assetStats = useMemo(() => {
+    let images = 0, embeds = 0, tables = 0, codeBlocks = 0;
+    const walk = (nodes: CanonicalNode[] | undefined) => {
+      if (!nodes) return;
+      for (const node of nodes) {
+        if (node.type === 'image') images += 1;
+        if (node.type === 'embed') embeds += 1;
+        if (node.type === 'table') tables += 1;
+        if (node.type === 'codeBlock') codeBlocks += 1;
+        if (node.content?.length) walk(node.content);
+      }
+    };
+    walk(value.content);
+    return { images, embeds, tables, codeBlocks };
+  }, [value.content]);
 
   const runSlashCommand = (command: SlashCommand) => {
     command.execute();
@@ -1395,144 +603,137 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     setSlashQuery('');
   };
 
+  const setLinkFromSelection = useCallback(() => {
+    if (!editor || readOnly) return;
+    const currentHref = editor.getAttributes('link')?.href as string | undefined;
+    const nextHref = window.prompt('Link URL', currentHref || 'https://');
+    if (nextHref === null) return;
+    if (!nextHref.trim()) { editor.chain().focus().unsetLink().run(); return; }
+    editor.chain().focus().extendMarkRange('link').setLink({ href: nextHref.trim(), target: '_blank', rel: 'noopener noreferrer' }).run();
+  }, [editor, readOnly]);
+
+  const executeSidebarBlockAction = useCallback((execute: () => void) => {
+    execute();
+    if (mobileToolsDrawer) setIsMobileToolsOpen(false);
+  }, [mobileToolsDrawer]);
+
+  const textStyleActions = useMemo<TextStyleAction[]>(() => {
+    if (!editor || readOnly) return [];
+    return [
+      { key: 'bold', label: 'Bold', execute: () => editor.chain().focus().toggleBold().run(), isActive: editor.isActive('bold'), shortcut: 'Cmd/Ctrl+B' },
+      { key: 'italic', label: 'Italic', execute: () => editor.chain().focus().toggleItalic().run(), isActive: editor.isActive('italic'), shortcut: 'Cmd/Ctrl+I' },
+      { key: 'h1', label: 'H1', execute: () => editor.chain().focus().toggleHeading({ level: 1 }).run(), isActive: editor.isActive('heading', { level: 1 }), shortcut: hotkeysProfile === 'extended' ? 'Alt+1' : undefined },
+      { key: 'h2', label: 'H2', execute: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), isActive: editor.isActive('heading', { level: 2 }), shortcut: hotkeysProfile === 'extended' ? 'Alt+2' : undefined },
+      { key: 'link', label: 'Link', execute: setLinkFromSelection, isActive: editor.isActive('link'), shortcut: 'Cmd/Ctrl+K' },
+      { key: 'list', label: 'List', execute: () => editor.chain().focus().toggleBulletList().run(), isActive: editor.isActive('bulletList'), shortcut: hotkeysProfile === 'extended' ? 'Alt+Shift+8' : undefined },
+      { key: 'quote', label: 'Quote', execute: () => editor.chain().focus().toggleBlockquote().run(), isActive: editor.isActive('blockquote'), shortcut: hotkeysProfile === 'extended' ? 'Alt+Shift+Q' : undefined },
+    ];
+  }, [editor, hotkeysProfile, readOnly, setLinkFromSelection]);
+
+  // ── Render ──
+
   if (!editor) {
-    return <div className="p-4 border rounded-lg border-[var(--surface-border)]">Loading editor...</div>;
+    return <div className="p-4 border rounded-lg" style={{ borderColor: 'var(--border-default)' }}>Loading editor...</div>;
   }
 
+  const sidebarProps = {
+    editor,
+    showTabs: showSidebarTabs,
+    sidebarTab,
+    onTabChange: setSidebarTab,
+    blockActions,
+    textStyleActions,
+    headingOutline,
+    assetStats,
+    historyEvents,
+    isUploading,
+    onTriggerImageUpload: triggerImageUpload,
+    onExecuteBlockAction: executeSidebarBlockAction,
+    collapsed: sidebarCollapsed,
+    onToggleCollapse: () => setSidebarCollapsed((prev: boolean) => !prev),
+  };
+
   return (
-    <div className="border rounded-lg border-[var(--surface-border)] bg-[var(--surface-elevated)]">
+    <div className="editor-root">
       {!readOnly && (
-        <>
-          <input
-            ref={imageInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/gif,image/webp"
-            className="hidden"
-            onChange={(event) => {
-              void handleImageUpload(event);
-            }}
-          />
-
-          <div className="flex flex-wrap gap-2 p-3 border-b border-[var(--surface-border)]">
-            <ToolbarButton label="Bold" onClick={() => editor.chain().focus().toggleBold().run()} isActive={editor.isActive('bold')} />
-            <ToolbarButton label="Italic" onClick={() => editor.chain().focus().toggleItalic().run()} isActive={editor.isActive('italic')} />
-            <ToolbarButton label="Inline Code" onClick={() => editor.chain().focus().toggleCode().run()} isActive={editor.isActive('code')} />
-            <ToolbarButton label="Inline Math" onClick={insertInlineMath} />
-            <ToolbarButton label="H1" onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} isActive={editor.isActive('heading', { level: 1 })} />
-            <ToolbarButton label="H2" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} isActive={editor.isActive('heading', { level: 2 })} />
-            <ToolbarButton label="Bullet" onClick={() => editor.chain().focus().toggleBulletList().run()} isActive={editor.isActive('bulletList')} />
-            <ToolbarButton label="Numbered" onClick={() => editor.chain().focus().toggleOrderedList().run()} isActive={editor.isActive('orderedList')} />
-            <ToolbarButton label="Checklist" onClick={() => editor.chain().focus().toggleTaskList().run()} isActive={editor.isActive('taskList')} />
-            <ToolbarButton label="Quote" onClick={() => editor.chain().focus().toggleBlockquote().run()} isActive={editor.isActive('blockquote')} />
-            <ToolbarButton label="Code" onClick={insertCodeBlock} isActive={editor.isActive('codeBlock')} />
-            <ToolbarButton label="Math Block" onClick={insertMathBlock} />
-            <ToolbarButton
-              label="Table"
-              onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
-            />
-            <ToolbarButton label={isUploading ? 'Uploading...' : 'Image'} onClick={triggerImageUpload} disabled={isUploading} />
-            <ToolbarButton label="Duplicate" onClick={duplicateCurrentBlock} />
-            {mode === 'full' && (
-              <>
-                <ToolbarButton label="Callout" onClick={() => insertCallout('info')} />
-                <ToolbarButton label="Citation" onClick={insertCitation} />
-                <ToolbarButton label="Footnote" onClick={insertFootnote} />
-                <ToolbarButton label="Num ¶" onClick={insertNumberedParagraph} />
-                <ToolbarButton label="TestCase" onClick={insertTestCase} />
-                <ToolbarButton label="YouTube" onClick={() => insertEmbed('youtube')} />
-                <ToolbarButton label="PDF" onClick={() => insertEmbed('pdf')} />
-                <ToolbarButton label="Mermaid" onClick={insertMermaid} />
-              </>
-            )}
-            {editor.isActive('table') && (
-              <>
-                <ToolbarButton label="+ Row" onClick={() => editor.chain().focus().addRowAfter().run()} />
-                <ToolbarButton label="- Row" onClick={() => editor.chain().focus().deleteRow().run()} />
-                <ToolbarButton label="+ Col" onClick={() => editor.chain().focus().addColumnAfter().run()} />
-                <ToolbarButton label="- Col" onClick={() => editor.chain().focus().deleteColumn().run()} />
-              </>
-            )}
-          </div>
-        </>
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/gif,image/webp"
+          className="hidden"
+          onChange={(event) => { void handleImageUpload(event); }}
+        />
       )}
 
-      {showSlashCommands && !readOnly && (
-        <div className="m-3 p-3 rounded border border-[var(--surface-border)] bg-[var(--surface-muted)] space-y-2">
-          <div className="text-sm font-medium">Slash commands</div>
-          <input
-            type="text"
-            value={slashQuery}
-            onChange={(event) => setSlashQuery(event.target.value)}
-            placeholder="Filter commands"
-            className="w-full input"
-          />
-          <div className="grid grid-cols-2 gap-2 max-h-64 overflow-auto">
-            {filteredSlashCommands.map((command) => (
-              <button
-                key={command.key}
-                type="button"
-                className="text-left px-2 py-1 rounded hover:bg-[var(--surface-elevated)]"
-                onClick={() => runSlashCommand(command)}
-              >
-                {command.label}
-              </button>
-            ))}
-          </div>
-          {filteredSlashCommands.length === 0 && (
-            <div className="text-xs text-[var(--text-muted)]">No commands match your filter.</div>
+      <div className={readOnly ? 'min-w-0' : `editor-layout ${sidebarCollapsed ? 'editor-layout-collapsed' : ''}`}>
+        {!readOnly && (
+          <aside className={`editor-aside ${mobileToolsDrawer ? 'hidden md:flex' : 'flex'}`}>
+            <EditorSidebar {...sidebarProps} />
+          </aside>
+        )}
+
+        <section className="editor-main">
+          {!readOnly && (
+            <div className="editor-topbar">
+              <div className="flex items-center gap-2">
+                {mobileToolsDrawer && (
+                  <button
+                    type="button"
+                    className="editor-tools-button md:hidden"
+                    onClick={() => setIsMobileToolsOpen(true)}
+                  >
+                    Tools
+                  </button>
+                )}
+                <span style={{ color: 'var(--text-muted)' }}>Type <kbd className="editor-kbd">/</kbd> for command palette</span>
+              </div>
+              <span style={{ color: 'var(--text-faint)' }}>
+                {lastAutoSavedAt ? `Autosaved at ${lastAutoSavedAt}` : 'Draft autosave enabled'}
+              </span>
+            </div>
           )}
-          <button
-            type="button"
-            className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-            onClick={() => setShowSlashCommands(false)}
-          >
-            Close
-          </button>
-        </div>
+
+          {showSlashCommands && !readOnly && (
+            <div className="m-3">
+              <SlashCommandPalette
+                commands={slashCommands}
+                query={slashQuery}
+                onQueryChange={setSlashQuery}
+                onExecute={runSlashCommand}
+                onClose={() => setShowSlashCommands(false)}
+              />
+            </div>
+          )}
+
+          {!readOnly && (
+            <EditorBubbleToolbar
+              editor={editor}
+              hotkeysProfile={hotkeysProfile}
+              onLinkClick={setLinkFromSelection}
+            />
+          )}
+
+          <div className={readOnly ? 'p-2' : 'p-3'}>
+            <EditorContent editor={editor} />
+          </div>
+        </section>
+      </div>
+
+      {!readOnly && mobileToolsDrawer && (
+        <MobileToolsDrawer
+          isOpen={isMobileToolsOpen}
+          onClose={() => setIsMobileToolsOpen(false)}
+        >
+          <EditorSidebar {...sidebarProps} />
+        </MobileToolsDrawer>
       )}
 
-      <CitationModal
-        isOpen={showCitationModal}
-        onClose={() => setShowCitationModal(false)}
-        onInsert={handleCitationInsert}
-      />
-
-      <TestCaseModal
-        isOpen={showTestCaseModal}
-        onClose={() => setShowTestCaseModal(false)}
-        onInsert={handleTestCaseInsert}
-      />
-
-      <MathInputModal
-        isOpen={!!showMathModal}
-        onClose={() => setShowMathModal(false)}
-        onInsert={handleMathInsert}
-        displayMode={showMathModal === 'block'}
-        title={showMathModal === 'block' ? 'Insert Math Block' : 'Insert Inline Math'}
-      />
-
-      <EmbedModal
-        isOpen={!!showEmbedModal}
-        onClose={() => setShowEmbedModal(false)}
-        onInsert={handleEmbedInsert}
-        defaultProvider={showEmbedModal || 'youtube'}
-      />
-
-      <CodeBlockModal
-        isOpen={showCodeBlockModal}
-        onClose={() => setShowCodeBlockModal(false)}
-        onInsert={handleCodeBlockInsert}
-      />
-
-      <FootnoteModal
-        isOpen={showFootnoteModal}
-        onClose={() => setShowFootnoteModal(false)}
-        onInsert={handleFootnoteInsert}
-      />
-
-      <EditorContent editor={editor} />
+      <CitationModal isOpen={showCitationModal} onClose={() => setShowCitationModal(false)} onInsert={handleCitationInsert} />
+      <TestCaseModal isOpen={showTestCaseModal} onClose={() => setShowTestCaseModal(false)} onInsert={handleTestCaseInsert} />
+      <MathInputModal isOpen={!!showMathModal} onClose={() => setShowMathModal(false)} onInsert={handleMathInsert} displayMode={showMathModal === 'block'} title={showMathModal === 'block' ? 'Insert Math Block' : 'Insert Inline Math'} />
+      <EmbedModal isOpen={!!showEmbedModal} onClose={() => setShowEmbedModal(false)} onInsert={handleEmbedInsert} defaultProvider={showEmbedModal || 'youtube'} />
+      <CodeBlockModal isOpen={showCodeBlockModal} onClose={() => setShowCodeBlockModal(false)} onInsert={handleCodeBlockInsert} />
+      <FootnoteModal isOpen={showFootnoteModal} onClose={() => setShowFootnoteModal(false)} onInsert={handleFootnoteInsert} />
     </div>
   );
 };
-
-export default BlockEditor;

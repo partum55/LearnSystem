@@ -36,6 +36,7 @@ public class CourseDto implements Serializable {
 
   private CourseVisibility visibility;
   private String thumbnailUrl;
+  private String themeColor;
 
   @JsonFormat(pattern = "yyyy-MM-dd")
   private LocalDate startDate;

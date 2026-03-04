@@ -51,4 +51,22 @@ public class QuizImportExportController {
     UUID userId = requestUserContext.requireUserId();
     return ResponseEntity.ok(quizImportExportService.importFromCsv(courseId, title, file, userId));
   }
+
+  @PostMapping(value = "/import/excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<QuizDto> importExcel(
+      @RequestParam UUID courseId,
+      @RequestParam String title,
+      @RequestPart MultipartFile file) {
+    UUID userId = requestUserContext.requireUserId();
+    return ResponseEntity.ok(quizImportExportService.importFromExcel(courseId, title, file, userId));
+  }
+
+  @PostMapping(value = "/import/word", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<QuizDto> importWord(
+      @RequestParam UUID courseId,
+      @RequestParam String title,
+      @RequestPart MultipartFile file) {
+    UUID userId = requestUserContext.requireUserId();
+    return ResponseEntity.ok(quizImportExportService.importFromWord(courseId, title, file, userId));
+  }
 }

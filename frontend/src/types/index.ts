@@ -17,6 +17,16 @@ export interface User {
   updated_at: string;
 }
 
+// API Key types
+export interface ApiKeyDto {
+  id: string;
+  provider: string;
+  keyHint: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Course types
 export interface Course {
   id: string;
@@ -29,9 +39,14 @@ export interface Course {
   // Computed/display fields
   title: string;
   description: string;
+  syllabus?: string;
   ownerId?: string;
   ownerName?: string;
+  thumbnailUrl?: string;
+  themeColor?: string;
   visibility: 'PUBLIC' | 'PRIVATE' | 'DRAFT';
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | string;
+  academicYear?: string | null;
   createdAt?: string;
   updatedAt?: string;
   memberCount?: number;
@@ -55,6 +70,8 @@ export interface CourseCreateData {
   maxStudents?: number;
   isPublished?: boolean;
   syllabus?: string;
+  thumbnailUrl?: string;
+  themeColor?: string;
 }
 
 export interface CourseMember {
@@ -166,9 +183,13 @@ export interface ResourceCreateData {
   description?: string;
   resource_type: ResourceType;
   file?: File;
+  file_url?: string;
+  file_size?: number;
+  mime_type?: string;
   external_url?: string;
   text_content?: string;
   is_downloadable?: boolean;
+  metadata?: Record<string, unknown>;
 }
 
 export interface Announcement {
@@ -276,6 +297,7 @@ export interface Question {
   difficulty?: string;
   tags?: string[];
   stem: string;
+  image_url?: string;
   options?: string[];
   correct_answer: string | number | boolean | string[] | number[];
   points: number;

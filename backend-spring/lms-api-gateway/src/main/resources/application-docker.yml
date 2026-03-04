@@ -32,6 +32,20 @@ spring:
           filters:
             - RewritePath=/api/v1/courses(?<segment>/?.*), /api/courses${segment}
 
+        - id: learning-quiz-attempts
+          uri: lb://lms-learning-service
+          predicates:
+            - Path=/api/v1/assessments/quiz-attempts/**, /api/assessments/quiz-attempts/**
+          filters:
+            - RewritePath=/api/assessments/quiz-attempts/(?<segment>.*), /api/quiz-attempts/${segment}
+            - RewritePath=/api/v1/assessments/quiz-attempts/(?<segment>.*), /api/quiz-attempts/${segment}
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: ${gateway.quiz-attempt-rate-limit.replenish-rate:8}
+                redis-rate-limiter.burstCapacity: ${gateway.quiz-attempt-rate-limit.burst-capacity:12}
+                redis-rate-limiter.requestedTokens: ${gateway.quiz-attempt-rate-limit.requested-tokens:1}
+                key-resolver: "#{@userKeyResolver}"
+
         - id: learning-assessments
           uri: lb://lms-learning-service
           predicates:

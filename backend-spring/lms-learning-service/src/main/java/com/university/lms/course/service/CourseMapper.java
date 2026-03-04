@@ -26,6 +26,7 @@ public class CourseMapper {
         .ownerId(course.getOwnerId())
         .visibility(course.getVisibility())
         .thumbnailUrl(course.getThumbnailUrl())
+        .themeColor(course.getThemeColor())
         .startDate(course.getStartDate())
         .endDate(course.getEndDate())
         .academicYear(course.getAcademicYear())
@@ -61,6 +62,7 @@ public class CourseMapper {
                 ? request.getVisibility()
                 : com.university.lms.common.domain.CourseVisibility.DRAFT)
         .thumbnailUrl(request.getThumbnailUrl())
+        .themeColor(request.getThemeColor())
         .startDate(request.getStartDate())
         .endDate(request.getEndDate())
         .academicYear(request.getAcademicYear())
@@ -86,6 +88,7 @@ public class CourseMapper {
     if (request.getSyllabus() != null) course.setSyllabus(request.getSyllabus());
     if (request.getVisibility() != null) course.setVisibility(request.getVisibility());
     if (request.getThumbnailUrl() != null) course.setThumbnailUrl(request.getThumbnailUrl());
+    if (request.getThemeColor() != null) course.setThemeColor(request.getThemeColor());
     if (request.getStartDate() != null) course.setStartDate(request.getStartDate());
     if (request.getEndDate() != null) course.setEndDate(request.getEndDate());
     if (request.getAcademicYear() != null) course.setAcademicYear(request.getAcademicYear());

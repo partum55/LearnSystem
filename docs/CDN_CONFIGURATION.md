@@ -224,8 +224,8 @@ Update `package.json` to include content hashing:
 ```json
 {
   "scripts": {
-    "build": "GENERATE_SOURCEMAP=false react-scripts build",
-    "build:production": "GENERATE_SOURCEMAP=false INLINE_RUNTIME_CHUNK=false react-scripts build"
+    "build": "tsc -b && vite build",
+    "build:production": "tsc -b && vite build --mode production"
   }
 }
 ```
@@ -248,4 +248,3 @@ After CDN deployment, verify:
 2. **Compression**: Check `Content-Encoding: br` or `gzip`
 3. **Cache hit rate**: Monitor CDN dashboard
 4. **TTFB improvement**: Compare with origin directly
-

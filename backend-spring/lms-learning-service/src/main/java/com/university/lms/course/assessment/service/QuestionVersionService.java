@@ -45,6 +45,7 @@ public class QuestionVersionService {
     payload.put("difficulty", question.getDifficulty());
     payload.put("tags", question.getTags() == null ? List.of() : question.getTags());
     payload.put("options", question.getOptions() == null ? Map.of() : question.getOptions());
+    payload.put("imageUrl", question.getImageUrl());
     payload.put("explanation", question.getExplanation());
     payload.put("points", question.getPoints());
 

@@ -6,6 +6,8 @@ import { Card, CardHeader, CardBody } from '../components';
 import { Button } from '../components';
 import { Loading } from '../components';
 import { CreateQuestionModal } from '../components';
+import { Breadcrumbs } from '../components/common/Breadcrumbs';
+import { RichContentRenderer } from '../components/common/RichContentRenderer';
 import apiClient from '../api/client';
 
 interface Question {
@@ -53,6 +55,7 @@ export const QuizDetail: React.FC = () => {
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
   const [hoveredQuestionId, setHoveredQuestionId] = useState<string | null>(null);
+  const [courseName, setCourseName] = useState<string>('');
 
   const fetchQuiz = useCallback(async () => {
     if (!quizId) return;
@@ -161,6 +164,25 @@ export const QuizDetail: React.FC = () => {
     }
   }, [quiz?.course, fetchAvailableQuestions]);
 
+  useEffect(() => {
+    const fetchCourseName = async () => {
+      if (!quiz?.course) {
+        return;
+      }
+      try {
+        const response = await apiClient.get<{ titleUk?: string; titleEn?: string; title?: string; code?: string }>(
+          `/courses/${quiz.course}`
+        );
+        const data = response.data;
+        setCourseName(data.titleEn || data.titleUk || data.title || data.code || '');
+      } catch {
+        setCourseName('');
+      }
+    };
+
+    void fetchCourseName();
+  }, [quiz?.course]);
+
   const handleAddQuestions = async () => {
     try {
       await Promise.all(
@@ -224,6 +246,15 @@ export const QuizDetail: React.FC = () => {
     <Layout>
       <div className="p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
+          <Breadcrumbs
+            className="mb-6"
+            items={[
+              { label: t('courses.title', 'Courses'), to: '/courses' },
+              ...(quiz.course ? [{ label: courseName || t('courses.title', 'Course'), to: `/courses/${quiz.course}` }] : []),
+              { label: quiz.title },
+            ]}
+          />
+
           {/* Quiz Header */}
           <div className="mb-8">
             <div className="flex items-start justify-between gap-4">
@@ -231,9 +262,9 @@ export const QuizDetail: React.FC = () => {
                 <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
                   {quiz.title}
                 </h1>
-                <p className="mt-2" style={{ color: 'var(--text-muted)' }}>
-                  {quiz.description}
-                </p>
+                <div className="mt-2">
+                  <RichContentRenderer content={quiz.description} />
+                </div>
               </div>
               <Button onClick={handleDuplicateQuiz} disabled={isDuplicatingQuiz}>
                 {isDuplicatingQuiz

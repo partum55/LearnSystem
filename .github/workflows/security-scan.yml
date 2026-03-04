@@ -40,7 +40,7 @@ jobs:
           java-version: "21"
           cache: maven
       - name: Run OWASP Dependency Check
-        run: mvn org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=7 -DsuppressionFile=owasp-suppressions.xml || true
+        run: mvn org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=7 -DsuppressionFile=owasp-suppressions.xml
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@v4

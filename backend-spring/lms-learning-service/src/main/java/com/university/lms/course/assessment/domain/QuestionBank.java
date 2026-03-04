@@ -51,6 +51,9 @@ public class QuestionBank {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String stem; // The main question text
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     // Options for multiple choice, matching, etc.
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")

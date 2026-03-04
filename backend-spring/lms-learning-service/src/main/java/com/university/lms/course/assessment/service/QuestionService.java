@@ -107,6 +107,7 @@ public class QuestionService {
             .topic(questionDto.getTopic())
             .difficulty(questionDto.getDifficulty())
             .stem(questionDto.getStem())
+            .imageUrl(questionDto.getImageUrl())
             .options(questionDto.getOptions())
             .correctAnswer(questionDto.getCorrectAnswer())
             .explanation(questionDto.getExplanation())
@@ -144,6 +145,7 @@ public class QuestionService {
         if (updates.getTopic() != null) question.setTopic(updates.getTopic());
         if (updates.getDifficulty() != null) question.setDifficulty(updates.getDifficulty());
         if (updates.getOptions() != null) question.setOptions(updates.getOptions());
+        if (updates.getImageUrl() != null) question.setImageUrl(updates.getImageUrl());
         if (updates.getCorrectAnswer() != null) question.setCorrectAnswer(updates.getCorrectAnswer());
         if (updates.getExplanation() != null) question.setExplanation(updates.getExplanation());
         if (updates.getPoints() != null) question.setPoints(updates.getPoints());
@@ -193,6 +195,7 @@ public class QuestionService {
             .topic(original.getTopic())
             .difficulty(original.getDifficulty())
             .stem(original.getStem() + " (Copy)")
+            .imageUrl(original.getImageUrl())
             .options(original.getOptions())
             .correctAnswer(original.getCorrectAnswer())
             .explanation(original.getExplanation())

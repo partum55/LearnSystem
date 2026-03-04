@@ -1,5 +1,6 @@
 package com.university.lms.gradebook.service;
 
+import com.university.lms.course.adminops.service.AdminAuditTrailService;
 import com.university.lms.course.assessment.domain.Assignment;
 import com.university.lms.course.assessment.repository.AssignmentRepository;
 import com.university.lms.course.repository.CourseMemberRepository;
@@ -26,6 +27,7 @@ public class GradebookEntryService {
     private final GradeHistoryService historyService;
     private final AssignmentRepository assignmentRepository;
     private final CourseMemberRepository courseMemberRepository;
+    private final AdminAuditTrailService adminAuditTrailService;
 
     /**
      * Get all gradebook entries for a course.
@@ -95,6 +97,23 @@ public class GradebookEntryService {
         GradebookEntry saved = entryRepository.save(entry);
         summaryService.recalculateCourseGrade(entry.getCourseId(), entry.getStudentId());
         historyService.recordChange(saved, oldScore, saved.getFinalScore(), overrideBy, reason);
+
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("courseId", saved.getCourseId().toString());
+        details.put("studentId", saved.getStudentId().toString());
+        details.put("assignmentId", saved.getAssignmentId() == null ? null : saved.getAssignmentId().toString());
+        details.put("entryId", saved.getId().toString());
+        details.put("oldScore", oldScore == null ? null : oldScore.toPlainString());
+        details.put("newScore", saved.getFinalScore() == null ? null : saved.getFinalScore().toPlainString());
+        details.put("overrideReason", reason);
+        details.put("status", saved.getStatus() == null ? null : saved.getStatus().name());
+        adminAuditTrailService.log(
+                overrideBy,
+                "GRADE_UPDATED",
+                "GRADEBOOK_ENTRY",
+                saved.getId().toString(),
+                details);
+
         return saved;
     }
 }

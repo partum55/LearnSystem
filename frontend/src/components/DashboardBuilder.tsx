@@ -40,6 +40,7 @@ const AVAILABLE_WIDGET_TYPES = [
   { id: 'stats', name: 'Statistics Overview', icon: ChartBarIcon, description: 'Course and assignment statistics', defaultSize: 'large' as const },
   { id: 'courses', name: 'My Courses', icon: AcademicCapIcon, description: 'List of enrolled courses', defaultSize: 'medium' as const },
   { id: 'deadlines', name: 'Upcoming Deadlines', icon: ClockIcon, description: 'Assignments due soon', defaultSize: 'medium' as const },
+  { id: 'due-today', name: 'Due Today', icon: ClockIcon, description: 'What to submit today', defaultSize: 'medium' as const },
   { id: 'notifications', name: 'Recent Activity', icon: BellIcon, description: 'Latest notifications', defaultSize: 'medium' as const },
   { id: 'calendar', name: 'Calendar', icon: CalendarIcon, description: 'Schedule and events', defaultSize: 'large' as const },
   { id: 'progress', name: 'Course Progress', icon: TrophyIcon, description: 'Your learning progress', defaultSize: 'medium' as const },

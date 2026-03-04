@@ -38,6 +38,13 @@ class GatewayRouteContractTest {
 
     assertLearningRoute(
         routes,
+        "learning-quiz-attempts",
+        Set.of(
+            "/api/v1/assessments/quiz-attempts/**",
+            "/api/assessments/quiz-attempts/**"));
+
+    assertLearningRoute(
+        routes,
         "learning-assignment-documents",
         Set.of(
             "/api/assignments/*/template-document",

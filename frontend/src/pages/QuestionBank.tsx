@@ -23,6 +23,7 @@ interface Question {
   id: string;
   question_type: string;
   stem: string;
+  image_url?: string;
   options?: QuestionOption;
   correct_answer: string | number | boolean | string[] | number[] | Record<string, unknown>; // Dynamic based on question type
   explanation?: string;
@@ -36,6 +37,7 @@ interface ApiQuestion {
   id: string;
   questionType: string;
   stem: string;
+  imageUrl?: string;
   options?: QuestionOption;
   correctAnswer: string | number | boolean | string[] | number[] | Record<string, unknown>;
   explanation?: string;
@@ -87,6 +89,7 @@ export const QuestionBank: React.FC = () => {
         id: q.id,
         question_type: q.questionType,
         stem: q.stem,
+        image_url: q.imageUrl,
         options: q.options,
         correct_answer: q.correctAnswer,
         explanation: q.explanation,
@@ -317,6 +320,17 @@ export const QuestionBank: React.FC = () => {
                         <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                           {question.stem}
                         </h3>
+
+                        {question.image_url && (
+                          <div className="mb-3">
+                            <img
+                              src={question.image_url}
+                              alt="Question illustration"
+                              className="max-h-40 rounded-md border"
+                              style={{ borderColor: 'var(--border-default)' }}
+                            />
+                          </div>
+                        )}
 
                         {/* Multiple Choice Options Preview */}
                         {(question.question_type === 'MULTIPLE_CHOICE' || question.question_type === 'SINGLE_CHOICE') && question.options?.choices && (

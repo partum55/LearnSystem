@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import {
@@ -21,6 +21,7 @@ import { CourseAnnouncementsTab } from './course-detail/CourseAnnouncementsTab';
 import { CourseAssignmentsTab } from './course-detail/CourseAssignmentsTab';
 import { CourseDetailHeader } from './course-detail/CourseDetailHeader';
 import { CourseDetailModals } from './course-detail/CourseDetailModals';
+import { CourseSyllabusTab } from './course-detail/CourseSyllabusTab';
 import { CourseDetailTabs } from './course-detail/CourseDetailTabs';
 import { CourseModulesTab } from './course-detail/CourseModulesTab';
 import {
@@ -33,6 +34,7 @@ import {
 
 export const CourseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation();
   const { user } = useAuthStore();
@@ -53,7 +55,6 @@ export const CourseDetail: React.FC = () => {
     getInitialTab(id, searchParams.get('tab'))
   );
   const [showModuleModal, setShowModuleModal] = useState(false);
-  const [showResourceModal, setShowResourceModal] = useState(false);
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [showAIModuleGenerator, setShowAIModuleGenerator] = useState(false);
   const [showAIAssignmentGenerator, setShowAIAssignmentGenerator] = useState(false);
@@ -64,6 +65,7 @@ export const CourseDetail: React.FC = () => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoadingAnnouncements, setIsLoadingAnnouncements] = useState(false);
   const [isPublishActionLoading, setIsPublishActionLoading] = useState(false);
+  const [isArchiveActionLoading, setIsArchiveActionLoading] = useState(false);
   const [publishChecklist, setPublishChecklist] = useState<CoursePublishChecklist | null>(null);
   const [showPublishChecklistModal, setShowPublishChecklistModal] = useState(false);
   const [overrideReason, setOverrideReason] = useState('');
@@ -72,7 +74,7 @@ export const CourseDetail: React.FC = () => {
   const [publishActionError, setPublishActionError] = useState<string | null>(null);
 
   const courseId = id || '';
-  const isInstructor = user?.role === 'TEACHER' || user?.role === 'SUPERADMIN';
+  const isInstructor = user?.role === 'TEACHER' || user?.role === 'SUPERADMIN' || user?.role === 'TA';
   const isSuperAdmin = user?.role === 'SUPERADMIN';
   const tabs = useMemo(() => getCourseDetailTabs(t), [t]);
 
@@ -138,17 +140,12 @@ export const CourseDetail: React.FC = () => {
     void fetchModules(id);
   }, [fetchModules, id]);
 
-  const handleResourceCreated = useCallback(() => {
+  const handleAddResource = useCallback((moduleId: string) => {
     if (!id) {
       return;
     }
-    void fetchModules(id);
-  }, [fetchModules, id]);
-
-  const handleAddResource = useCallback((moduleId: string) => {
-    setSelectedModuleId(moduleId);
-    setShowResourceModal(true);
-  }, []);
+    navigate(`/courses/${id}/modules/${moduleId}/resources/new`);
+  }, [id, navigate]);
 
   const handleOpenAIAssignmentGenerator = useCallback((moduleId: string, moduleContext: string) => {
     setSelectedModuleId(moduleId);
@@ -401,6 +398,32 @@ export const CourseDetail: React.FC = () => {
     }
   }, [fetchCourseById, id, isSuperAdmin, overrideReason, t]);
 
+  const handleArchiveCourse = useCallback(async () => {
+    if (!id || !currentCourse) {
+      return;
+    }
+    const confirmed = window.confirm(
+      t(
+        'courses.archiveCourseConfirm',
+        'Archive this course and create an immutable student archive snapshot?'
+      )
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setPublishActionError(null);
+    setIsArchiveActionLoading(true);
+    try {
+      await coursesApi.archive(id);
+      await fetchCourseById(id);
+    } catch (error) {
+      setPublishActionError(extractErrorMessage(error));
+    } finally {
+      setIsArchiveActionLoading(false);
+    }
+  }, [currentCourse, fetchCourseById, id, t]);
+
   if (isLoadingCourse || !currentCourse) {
     return <Loading />;
   }
@@ -413,9 +436,13 @@ export const CourseDetail: React.FC = () => {
               course={currentCourse}
               isInstructor={isInstructor}
               isPublishActionLoading={isPublishActionLoading}
+              isArchiveActionLoading={isArchiveActionLoading}
               onOpenEnrollModal={() => setShowEnrollModal(true)}
               onTogglePublish={() => {
                 void handleTogglePublish();
+              }}
+              onArchiveCourse={() => {
+                void handleArchiveCourse();
               }}
               t={t}
             />
@@ -452,6 +479,20 @@ export const CourseDetail: React.FC = () => {
                   onDeleteAssignment={requestDeleteAssignment}
                   onReorderModules={handleReorderModules}
                   onReorderResources={handleReorderResources}
+                  t={t}
+                />
+              )}
+
+              {activeTab === 'syllabus' && (
+                <CourseSyllabusTab
+                  courseId={courseId}
+                  canEdit={isInstructor}
+                  initialSyllabus={currentCourse.syllabus}
+                  onSyllabusUpdated={() => {
+                    if (id) {
+                      void fetchCourseById(id);
+                    }
+                  }}
                   t={t}
                 />
               )}
@@ -495,7 +536,6 @@ export const CourseDetail: React.FC = () => {
         courseId={courseId}
         currentCourse={currentCourse}
         showModuleModal={showModuleModal}
-        showResourceModal={showResourceModal}
         showEnrollModal={showEnrollModal}
         showAIModuleGenerator={showAIModuleGenerator}
         showAIAssignmentGenerator={showAIAssignmentGenerator}
@@ -503,10 +543,6 @@ export const CourseDetail: React.FC = () => {
         selectedModuleContext={selectedModuleContext}
         deleteConfirmation={deleteConfirmation}
         onCloseModuleModal={() => setShowModuleModal(false)}
-        onCloseResourceModal={() => {
-          setShowResourceModal(false);
-          setSelectedModuleId(null);
-        }}
         onCloseEnrollModal={() => setShowEnrollModal(false)}
         onCloseAIModuleGenerator={() => setShowAIModuleGenerator(false)}
         onCloseAIAssignmentGenerator={() => {
@@ -514,7 +550,6 @@ export const CourseDetail: React.FC = () => {
           setSelectedModuleId(null);
         }}
         onModuleCreated={handleModuleCreated}
-        onResourceCreated={handleResourceCreated}
         onEnrolled={handleEnrolled}
         onAIModuleGenerated={handleAIModuleGenerated}
         onAIAssignmentGenerated={handleAIAssignmentGenerated}

@@ -27,6 +27,7 @@ public class QuestionDto {
     private String topic;
     private String difficulty;
     private String stem;
+    private String imageUrl;
     private Map<String, Object> options;
     private Map<String, Object> correctAnswer; // Only for instructors
     private String explanation;

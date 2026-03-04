@@ -5,10 +5,14 @@ import { Layout } from '../components';
 import { Card, CardHeader, CardBody } from '../components/Card';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
+import { Breadcrumbs } from '../components/common/Breadcrumbs';
 import { useCourseStore } from '../store/courseStore';
-import { ArrowLeftIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { TrashIcon } from '@heroicons/react/24/outline';
 import { Loading } from '../components/Loading';
 import { Course, CourseCreateData } from '../types';
+
+const isHexColor = (value: string) =>
+    /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value);
 
 export const CourseEdit: React.FC = () => {
     const { t } = useTranslation();
@@ -46,21 +50,14 @@ export const CourseEdit: React.FC = () => {
         <Layout>
             <div className="p-4 sm:p-6 lg:p-8">
                 <div className="max-w-4xl mx-auto">
-                    {/* Breadcrumb */}
-                    <div className="flex items-center text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-                        <button
-                            onClick={() => navigate(`/courses/${id}`)}
-                            className="flex items-center transition-colors"
-                            style={{ color: 'var(--text-muted)' }}
-                            onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
-                            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
-                        >
-                            <ArrowLeftIcon className="h-4 w-4 mr-1" />
-                            {t('courses.backToCourse')}
-                        </button>
-                        <span className="mx-2">/</span>
-                        <span>{t('common.edit')}</span>
-                    </div>
+                    <Breadcrumbs
+                        className="mb-4"
+                        items={[
+                            { label: t('courses.title'), to: '/courses' },
+                            { label: currentCourse.title || currentCourse.code || t('courses.title'), to: `/courses/${id}` },
+                            { label: t('common.edit') },
+                        ]}
+                    />
 
                     {/* Header */}
                     <div className="mb-8 flex justify-between items-start">
@@ -108,12 +105,15 @@ const CourseEditFormLogic: React.FC<CourseEditFormLogicProps> = ({ course, onSub
         start_date: course.start_date ? new Date(course.start_date).toISOString().split('T')[0] : '',
         end_date: course.end_date ? new Date(course.end_date).toISOString().split('T')[0] : '',
         max_students: course.max_students ? String(course.max_students) : '',
+        thumbnail_url: course.thumbnailUrl || '',
+        theme_color: course.themeColor || '#1f2937',
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
+        const { name } = e.target;
+        const value = name === 'code' ? e.target.value.toUpperCase() : e.target.value;
         setFormData(prev => ({ ...prev, [name]: value }));
         if (errors[name]) {
             setErrors(prev => ({ ...prev, [name]: '' }));
@@ -132,6 +132,9 @@ const CourseEditFormLogic: React.FC<CourseEditFormLogicProps> = ({ course, onSub
         }
         if (formData.max_students && parseInt(formData.max_students) < 1) {
             newErrors.max_students = t('courses.errors.maxStudentsPositive');
+        }
+        if (formData.theme_color && !isHexColor(formData.theme_color)) {
+            newErrors.theme_color = t('courses.invalidThemeColor', 'Use HEX format, for example #1d4ed8');
         }
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -153,6 +156,8 @@ const CourseEditFormLogic: React.FC<CourseEditFormLogicProps> = ({ course, onSub
                 endDate: formData.end_date || undefined,
                 maxStudents: formData.max_students ? parseInt(formData.max_students) : undefined,
                 isPublished: formData.visibility !== 'DRAFT',
+                thumbnailUrl: formData.thumbnail_url.trim() || undefined,
+                themeColor: formData.theme_color.trim() || undefined,
             };
             await onSubmit(courseData);
         } catch (error) {
@@ -241,6 +246,8 @@ interface CourseEditFormProps {
         start_date: string;
         end_date: string;
         max_students: string;
+        thumbnail_url: string;
+        theme_color: string;
     };
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
 }
@@ -301,6 +308,38 @@ const CourseEditForm: React.FC<CourseEditFormProps> = ({ onSubmit, errors, isLoa
                             {errors.description && (
                                 <p className="error-text">{errors.description}</p>
                             )}
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                            <div>
+                                <Input
+                                    label={t('courses.thumbnailUrl', 'Course cover URL')}
+                                    name="thumbnail_url"
+                                    value={formData.thumbnail_url}
+                                    onChange={onChange}
+                                    placeholder="https://..."
+                                />
+                            </div>
+                            <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
+                                <Input
+                                    label={t('courses.themeColor', 'Theme color')}
+                                    name="theme_color"
+                                    value={formData.theme_color}
+                                    onChange={onChange}
+                                    placeholder="#1d4ed8"
+                                    error={errors.theme_color}
+                                />
+                                <div
+                                    className="h-10 w-10 rounded-md border"
+                                    style={{
+                                        borderColor: 'var(--border-default)',
+                                        background: isHexColor(formData.theme_color)
+                                            ? formData.theme_color
+                                            : 'var(--bg-overlay)',
+                                    }}
+                                    aria-hidden="true"
+                                />
+                            </div>
                         </div>
 
                         <div className="input-group">

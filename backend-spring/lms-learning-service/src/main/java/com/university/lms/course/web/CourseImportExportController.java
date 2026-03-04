@@ -108,6 +108,7 @@ public class CourseImportExportController {
             List<QuestionExport> questionExports = questions.getContent().stream().map(q -> QuestionExport.builder()
                     .questionType(q.getQuestionType())
                     .stem(q.getStem())
+                    .imageUrl(q.getImageUrl())
                     .options(q.getOptions())
                     .correctAnswer(q.getCorrectAnswer())
                     .explanation(q.getExplanation())
@@ -291,6 +292,7 @@ public class CourseImportExportController {
                     questionDto.setCourseId(courseId);
                     questionDto.setQuestionType(qExp.getQuestionType());
                     questionDto.setStem(qExp.getStem());
+                    questionDto.setImageUrl(qExp.getImageUrl());
                     if (qExp.getOptions() instanceof Map) {
                         @SuppressWarnings("unchecked")
                         Map<String, Object> opts = (Map<String, Object>) qExp.getOptions();
@@ -464,6 +466,7 @@ public class CourseImportExportController {
                         QuestionExport.builder()
                                 .questionType("MULTIPLE_CHOICE")
                                 .stem("What does CPU stand for?")
+                                .imageUrl("https://example.edu/images/cpu-diagram.png")
                                 .options(List.of("Central Processing Unit", "Computer Personal Unit", "Central Program Unit", "Computer Processing Unit"))
                                 .correctAnswer("Central Processing Unit")
                                 .explanation("CPU = Central Processing Unit")
@@ -676,6 +679,7 @@ public class CourseImportExportController {
     public static class QuestionExport {
         private String questionType;
         private String stem;
+        private String imageUrl;
         private Object options;
         private Object correctAnswer;
         private String explanation;

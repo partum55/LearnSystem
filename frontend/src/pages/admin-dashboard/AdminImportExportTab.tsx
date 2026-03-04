@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
@@ -8,7 +8,18 @@ import {
   ExclamationTriangleIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline';
-import { courseManagementApi, ImportResult, ValidationResult } from '../../api/adminCourseManagement';
+import {
+  courseManagementApi,
+  ImportResult,
+  sisAdminOpsApi,
+  SisAuditLogEntry,
+  SisBulkEnrollmentActionRequest,
+  SisImportApplyResponse,
+  SisImportPreviewResponse,
+  SisImportRunResponse,
+  ValidationResult,
+} from '../../api/adminCourseManagement';
+import { extractErrorMessage } from '../../api/client';
 
 interface Props {
   onFeedback: (type: 'success' | 'error', message: string) => void;
@@ -22,6 +33,30 @@ export const AdminImportExportTab: React.FC<Props> = ({ onFeedback }) => {
   const [validating, setValidating] = useState(false);
   const [templateLoading, setTemplateLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [semesterCode, setSemesterCode] = useState(new Date().getFullYear() + '-Spring');
+  const [studentsFile, setStudentsFile] = useState<File | null>(null);
+  const [coursesFile, setCoursesFile] = useState<File | null>(null);
+  const [groupMapFile, setGroupMapFile] = useState<File | null>(null);
+  const [currentEnrollmentsFile, setCurrentEnrollmentsFile] = useState<File | null>(null);
+  const [sisPreview, setSisPreview] = useState<SisImportPreviewResponse | null>(null);
+  const [sisApplyResult, setSisApplyResult] = useState<SisImportApplyResponse | null>(null);
+  const [sisLoading, setSisLoading] = useState(false);
+  const [sisHistory, setSisHistory] = useState<SisImportRunResponse[]>([]);
+  const [sisAudit, setSisAudit] = useState<SisAuditLogEntry[]>([]);
+  const [bulkAction, setBulkAction] = useState<SisBulkEnrollmentActionRequest>({
+    action: 'CHANGE_STATUS',
+    emails: [],
+    courseCodes: [],
+    enrollmentStatus: 'active',
+  });
+  const [bulkEmailsRaw, setBulkEmailsRaw] = useState('');
+  const [bulkCoursesRaw, setBulkCoursesRaw] = useState('');
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [deanCourseId, setDeanCourseId] = useState('');
+  const [deanSemester, setDeanSemester] = useState(new Date().getFullYear() + '-Spring');
+  const [deanGroupCode, setDeanGroupCode] = useState('');
+  const [deanExportLoading, setDeanExportLoading] = useState(false);
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -38,8 +73,13 @@ export const AdminImportExportTab: React.FC<Props> = ({ onFeedback }) => {
       try {
         const result = await courseManagementApi.validateImport(text);
         setValidation(result);
-      } catch {
-        setValidation({ valid: false, errors: ['Failed to validate'], warnings: [], summary: {} });
+      } catch (error) {
+        setValidation({
+          valid: false,
+          errors: [extractErrorMessage(error)],
+          warnings: [],
+          summary: {},
+        });
       }
       setValidating(false);
     } catch {
@@ -56,8 +96,8 @@ export const AdminImportExportTab: React.FC<Props> = ({ onFeedback }) => {
     try {
       const result = await courseManagementApi.validateImport(jsonText);
       setValidation(result);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Validation failed';
+    } catch (error) {
+      const msg = extractErrorMessage(error);
       setValidation({ valid: false, errors: [msg], warnings: [], summary: {} });
     }
     setValidating(false);
@@ -75,8 +115,8 @@ export const AdminImportExportTab: React.FC<Props> = ({ onFeedback }) => {
       } else {
         onFeedback('error', result.message);
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Import failed';
+    } catch (error) {
+      const msg = extractErrorMessage(error);
       onFeedback('error', msg);
       setImportResult({ success: false, message: msg, coursesCreated: 0, modulesCreated: 0, resourcesCreated: 0, assignmentsCreated: 0, quizzesCreated: 0, questionsCreated: 0, logs: [] });
     }
@@ -109,6 +149,137 @@ export const AdminImportExportTab: React.FC<Props> = ({ onFeedback }) => {
       onFeedback('error', 'Invalid JSON — cannot format');
     }
   };
+
+  const parseListInput = (raw: string): string[] =>
+    raw
+      .split(/[\n,;]/g)
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+
+  const loadSisHistoryAndAudit = useCallback(async () => {
+    try {
+      const [history, audit] = await Promise.all([
+        sisAdminOpsApi.listImports({ page: 0, size: 10 }),
+        sisAdminOpsApi.getAuditLog({ page: 0, size: 20 }),
+      ]);
+      setSisHistory(history.content || []);
+      setSisAudit(audit.content || []);
+    } catch (error) {
+      onFeedback('error', extractErrorMessage(error));
+    }
+  }, [onFeedback]);
+
+  const handleSisPreview = async () => {
+    if (!studentsFile || !coursesFile || !groupMapFile) {
+      onFeedback('error', 'studentsFile, coursesFile and groupCourseMapFile are required');
+      return;
+    }
+
+    setSisLoading(true);
+    setSisApplyResult(null);
+    try {
+      const preview = await sisAdminOpsApi.previewImport({
+        semesterCode,
+        studentsFile,
+        coursesFile,
+        groupCourseMapFile: groupMapFile,
+        currentEnrollmentsFile: currentEnrollmentsFile || undefined,
+      });
+      setSisPreview(preview);
+      await loadSisHistoryAndAudit();
+      if (preview.valid) {
+        onFeedback('success', 'Preview is valid and ready to apply');
+      } else {
+        onFeedback('error', 'Preview has validation errors');
+      }
+    } catch (error) {
+      onFeedback('error', extractErrorMessage(error));
+    } finally {
+      setSisLoading(false);
+    }
+  };
+
+  const handleSisApply = async () => {
+    if (!sisPreview?.importId || !sisPreview.valid) {
+      onFeedback('error', 'Run preview first and fix errors before apply');
+      return;
+    }
+
+    setSisLoading(true);
+    try {
+      const result = await sisAdminOpsApi.applyImport(sisPreview.importId);
+      setSisApplyResult(result);
+      onFeedback('success', result.message);
+      await loadSisHistoryAndAudit();
+    } catch (error) {
+      onFeedback('error', extractErrorMessage(error));
+    } finally {
+      setSisLoading(false);
+    }
+  };
+
+  const handleRollback = async (importId: string) => {
+    setSisLoading(true);
+    try {
+      const result = await sisAdminOpsApi.rollbackImport(importId);
+      setSisApplyResult(result);
+      onFeedback('success', result.message);
+      await loadSisHistoryAndAudit();
+    } catch (error) {
+      onFeedback('error', extractErrorMessage(error));
+    } finally {
+      setSisLoading(false);
+    }
+  };
+
+  const handleBulkAction = async () => {
+    const emails = parseListInput(bulkEmailsRaw);
+    const courseCodes = parseListInput(bulkCoursesRaw);
+    if (emails.length === 0 || courseCodes.length === 0) {
+      onFeedback('error', 'Provide emails and course codes for bulk action');
+      return;
+    }
+
+    setBulkLoading(true);
+    try {
+      const result = await sisAdminOpsApi.bulkEnrollmentAction({
+        ...bulkAction,
+        emails,
+        courseCodes,
+      });
+      onFeedback('success', `${result.message}: ${result.affectedEnrollments} enrollments affected`);
+      await loadSisHistoryAndAudit();
+    } catch (error) {
+      onFeedback('error', extractErrorMessage(error));
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleDeanExport = async () => {
+    if (!deanCourseId.trim()) {
+      onFeedback('error', 'Course ID is required for dean export');
+      return;
+    }
+
+    setDeanExportLoading(true);
+    try {
+      await sisAdminOpsApi.downloadDeanGradebook({
+        courseId: deanCourseId.trim(),
+        semester: deanSemester.trim() || undefined,
+        group: deanGroupCode.trim() || undefined,
+      });
+      onFeedback('success', 'Dean XLSX gradebook exported');
+    } catch (error) {
+      onFeedback('error', extractErrorMessage(error));
+    } finally {
+      setDeanExportLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadSisHistoryAndAudit();
+  }, [loadSisHistoryAndAudit]);
 
   return (
     <div className="space-y-4">
@@ -184,9 +355,19 @@ export const AdminImportExportTab: React.FC<Props> = ({ onFeedback }) => {
               ? <CheckCircleIcon className="h-5 w-5" style={{ color: 'var(--fn-success)' }} />
               : <XCircleIcon className="h-5 w-5" style={{ color: 'var(--fn-error)' }} />
             }
-            <span className="text-sm font-medium" style={{ color: validation.valid ? 'var(--fn-success)' : 'var(--fn-error)' }}>
-              {validation.valid ? 'Valid — ready to import' : 'Invalid JSON'}
-            </span>
+            {(() => {
+              const hasInvalidJsonError = validation.errors.some((err) => /invalid json/i.test(err));
+              const title = validation.valid
+                ? 'Valid — ready to import'
+                : hasInvalidJsonError
+                  ? 'Invalid JSON'
+                  : 'Validation failed';
+              return (
+                <span className="text-sm font-medium" style={{ color: validation.valid ? 'var(--fn-success)' : 'var(--fn-error)' }}>
+                  {title}
+                </span>
+              );
+            })()}
           </div>
 
           {validation.errors.length > 0 && (
@@ -252,6 +433,302 @@ export const AdminImportExportTab: React.FC<Props> = ({ onFeedback }) => {
           )}
         </div>
       )}
+
+      {/* SIS import workflow */}
+      <div className="rounded-lg p-4 space-y-4" style={{ border: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+        <div>
+          <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+            SIS CSV Import (Preview → Apply)
+          </h3>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+            Canonical format: UTF-8 CSV with headers. Required files: students, courses, group-course map.
+          </p>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            Semester code
+            <input
+              className="input mt-1 w-full"
+              value={semesterCode}
+              onChange={(event) => setSemesterCode(event.target.value)}
+              placeholder="2026-Spring"
+            />
+          </label>
+
+          <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            Optional current enrollments
+            <input
+              className="input mt-1 w-full"
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(event) => setCurrentEnrollmentsFile(event.target.files?.[0] || null)}
+            />
+          </div>
+
+          <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            `students.csv`
+            <input
+              className="input mt-1 w-full"
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(event) => setStudentsFile(event.target.files?.[0] || null)}
+            />
+          </div>
+
+          <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            `courses.csv`
+            <input
+              className="input mt-1 w-full"
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(event) => setCoursesFile(event.target.files?.[0] || null)}
+            />
+          </div>
+
+          <div className="text-xs md:col-span-2" style={{ color: 'var(--text-secondary)' }}>
+            `group_course_map.csv`
+            <input
+              className="input mt-1 w-full"
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(event) => setGroupMapFile(event.target.files?.[0] || null)}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button className="btn btn-secondary btn-sm" onClick={handleSisPreview} disabled={sisLoading}>
+            {sisLoading ? 'Previewing...' : 'Preview'}
+          </button>
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={handleSisApply}
+            disabled={sisLoading || !sisPreview?.valid}
+          >
+            Apply
+          </button>
+          <button className="btn btn-ghost btn-sm" onClick={() => void loadSisHistoryAndAudit()} disabled={sisLoading}>
+            Refresh history
+          </button>
+        </div>
+
+        {sisPreview && (
+          <div className="rounded-md p-3 space-y-2" style={{
+            border: `1px solid ${sisPreview.valid ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`,
+            background: sisPreview.valid ? 'rgba(34,197,94,0.05)' : 'rgba(239,68,68,0.05)',
+          }}>
+            <div className="flex items-center gap-2">
+              {sisPreview.valid ? (
+                <CheckCircleIcon className="h-4 w-4" style={{ color: 'var(--fn-success)' }} />
+              ) : (
+                <XCircleIcon className="h-4 w-4" style={{ color: 'var(--fn-error)' }} />
+              )}
+              <span className="text-xs font-medium" style={{ color: sisPreview.valid ? 'var(--fn-success)' : 'var(--fn-error)' }}>
+                {sisPreview.status} · import {sisPreview.importId}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {Object.entries(sisPreview.summary || {}).map(([key, value]) => (
+                <span key={key} className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="font-semibold">{String(value)}</span> {key}
+                </span>
+              ))}
+            </div>
+            {sisPreview.errors.length > 0 && (
+              <details>
+                <summary className="text-xs cursor-pointer" style={{ color: 'var(--fn-error)' }}>
+                  Errors ({sisPreview.errors.length})
+                </summary>
+                <ul className="mt-1 text-xs space-y-1">
+                  {sisPreview.errors.slice(0, 20).map((error, index) => (
+                    <li key={`${error.code}-${index}`} style={{ color: 'var(--fn-error)' }}>
+                      [{error.file}] {error.message}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+        )}
+
+        {sisApplyResult && (
+          <div className="rounded-md p-3 text-xs" style={{ border: '1px solid var(--border-default)', background: 'var(--bg-base)', color: 'var(--text-secondary)' }}>
+            <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
+              {sisApplyResult.message}
+            </div>
+            <div className="mt-1">
+              Courses: {sisApplyResult.createdCourses} · Enrollments: {sisApplyResult.createdEnrollments} · Skipped: {sisApplyResult.skippedEnrollments}
+            </div>
+            {sisApplyResult.rollbackExpiresAt && (
+              <div className="mt-1">
+                Rollback available until: {new Date(sisApplyResult.rollbackExpiresAt).toLocaleString()}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-md p-3" style={{ border: '1px solid var(--border-default)', background: 'var(--bg-base)' }}>
+            <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
+              Import history
+            </h4>
+            <div className="space-y-2 text-xs">
+              {sisHistory.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No SIS imports yet.</p>}
+              {sisHistory.map((run) => (
+                <div key={run.id} className="rounded p-2" style={{ border: '1px solid var(--border-default)' }}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span style={{ color: 'var(--text-primary)' }}>{run.semesterCode}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>{run.status}</span>
+                  </div>
+                  <p style={{ color: 'var(--text-faint)' }}>{new Date(run.createdAt).toLocaleString()}</p>
+                  {run.status === 'APPLIED' && (
+                    <button
+                      className="btn btn-ghost btn-sm mt-1"
+                      onClick={() => void handleRollback(run.id)}
+                      disabled={sisLoading}
+                    >
+                      Rollback
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-md p-3" style={{ border: '1px solid var(--border-default)', background: 'var(--bg-base)' }}>
+            <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
+              Audit log
+            </h4>
+            <div className="space-y-2 text-xs">
+              {sisAudit.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No audit entries yet.</p>}
+              {sisAudit.slice(0, 8).map((entry) => (
+                <div key={entry.id} className="rounded p-2" style={{ border: '1px solid var(--border-default)' }}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span style={{ color: 'var(--text-primary)' }}>{entry.action}</span>
+                    <span style={{ color: 'var(--text-faint)' }}>{new Date(entry.createdAt).toLocaleString()}</span>
+                  </div>
+                  <p style={{ color: 'var(--text-muted)' }}>{entry.entityType} {entry.entityKey ? `· ${entry.entityKey}` : ''}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bulk admin actions */}
+      <div className="rounded-lg p-4 space-y-3" style={{ border: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+        <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+          Bulk enrollment actions
+        </h3>
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            Action
+            <select
+              className="input mt-1 w-full"
+              value={bulkAction.action}
+              onChange={(event) =>
+                setBulkAction((prev) => ({ ...prev, action: event.target.value as SisBulkEnrollmentActionRequest['action'] }))
+              }
+            >
+              <option value="CHANGE_STATUS">CHANGE_STATUS</option>
+              <option value="UNENROLL">UNENROLL</option>
+              <option value="MOVE_STUDENTS">MOVE_STUDENTS</option>
+            </select>
+          </label>
+
+          {bulkAction.action === 'CHANGE_STATUS' && (
+            <label className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+              Enrollment status
+              <select
+                className="input mt-1 w-full"
+                value={bulkAction.enrollmentStatus || 'active'}
+                onChange={(event) => setBulkAction((prev) => ({ ...prev, enrollmentStatus: event.target.value }))}
+              >
+                <option value="active">active</option>
+                <option value="dropped">dropped</option>
+                <option value="completed">completed</option>
+              </select>
+            </label>
+          )}
+
+          {bulkAction.action === 'MOVE_STUDENTS' && (
+            <label className="text-xs md:col-span-2" style={{ color: 'var(--text-secondary)' }}>
+              Target course code
+              <input
+                className="input mt-1 w-full"
+                value={bulkAction.targetCourseCode || ''}
+                onChange={(event) => setBulkAction((prev) => ({ ...prev, targetCourseCode: event.target.value }))}
+                placeholder="CS201"
+              />
+            </label>
+          )}
+
+          <label className="text-xs md:col-span-2" style={{ color: 'var(--text-secondary)' }}>
+            Emails (comma/newline separated)
+            <textarea
+              className="input mt-1 w-full h-20"
+              value={bulkEmailsRaw}
+              onChange={(event) => setBulkEmailsRaw(event.target.value)}
+              placeholder="student1@ucu.edu.ua, student2@ucu.edu.ua"
+            />
+          </label>
+
+          <label className="text-xs md:col-span-2" style={{ color: 'var(--text-secondary)' }}>
+            Source course codes (comma/newline separated)
+            <textarea
+              className="input mt-1 w-full h-20"
+              value={bulkCoursesRaw}
+              onChange={(event) => setBulkCoursesRaw(event.target.value)}
+              placeholder="CS101, PM101"
+            />
+          </label>
+        </div>
+        <button className="btn btn-secondary btn-sm" onClick={handleBulkAction} disabled={bulkLoading}>
+          {bulkLoading ? 'Applying...' : 'Run bulk action'}
+        </button>
+      </div>
+
+      {/* Dean export */}
+      <div className="rounded-lg p-4 space-y-3" style={{ border: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+        <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+          Dean gradebook export (XLSX)
+        </h3>
+        <div className="grid gap-3 md:grid-cols-3">
+          <label className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            Course ID
+            <input
+              className="input mt-1 w-full"
+              value={deanCourseId}
+              onChange={(event) => setDeanCourseId(event.target.value)}
+              placeholder="f8c8e7d4-0fd9-4d8a-b5fe-6f23c49f5157"
+            />
+          </label>
+
+          <label className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            Semester
+            <input
+              className="input mt-1 w-full"
+              value={deanSemester}
+              onChange={(event) => setDeanSemester(event.target.value)}
+              placeholder="2026-Spring"
+            />
+          </label>
+
+          <label className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            Group (optional)
+            <input
+              className="input mt-1 w-full"
+              value={deanGroupCode}
+              onChange={(event) => setDeanGroupCode(event.target.value)}
+              placeholder="PM-31"
+            />
+          </label>
+        </div>
+        <button className="btn btn-secondary btn-sm" onClick={handleDeanExport} disabled={deanExportLoading}>
+          {deanExportLoading ? 'Exporting...' : 'Download Dean XLSX'}
+        </button>
+      </div>
 
       {/* Quick reference */}
       <details className="rounded-lg" style={{ border: '1px solid var(--border-default)' }}>

@@ -9,10 +9,7 @@ import {
   Resource,
   ResourceCreateData,
 } from '../types';
-
-interface PageResponse<T> {
-  content: T[];
-}
+import { PageResponse } from './types';
 
 export interface CoursePublishChecklistItem {
   key: string;
@@ -26,6 +23,214 @@ export interface CoursePublishChecklist {
   courseId: string;
   readyToPublish: boolean;
   items: CoursePublishChecklistItem[];
+}
+
+export interface CourseSyllabusResponse {
+  courseId: string;
+  syllabus: string | null;
+  updatedAt?: string;
+}
+
+export interface CloneCourseStructureRequest {
+  code: string;
+  titleUk?: string;
+  titleEn?: string;
+  descriptionUk?: string;
+  descriptionEn?: string;
+  syllabus?: string;
+  visibility?: 'PUBLIC' | 'PRIVATE' | 'DRAFT';
+  thumbnailUrl?: string;
+  themeColor?: string;
+  startDate?: string;
+  endDate?: string;
+  academicYear?: string;
+  maxStudents?: number;
+  isPublished?: boolean;
+  copyScheduleDates?: boolean;
+}
+
+export interface CloneCourseStructureResult {
+  sourceCourseId: string;
+  courseId: string;
+  modulesCopied: number;
+  resourcesCopied: number;
+  assignmentsCopied: number;
+  quizzesCopied: number;
+}
+
+export interface CoursePreviewModule {
+  moduleId: string;
+  title: string;
+  description?: string;
+  position?: number;
+  resourceTitles: string[];
+  assignmentTitles: string[];
+}
+
+export interface CoursePreviewResponse {
+  courseId: string;
+  code: string;
+  titleUk?: string;
+  titleEn?: string;
+  descriptionUk?: string;
+  descriptionEn?: string;
+  syllabus?: string;
+  ownerId?: string;
+  ownerName?: string;
+  thumbnailUrl?: string;
+  themeColor?: string;
+  academicYear?: string;
+  moduleCount: number;
+  assignmentCount: number;
+  modules: CoursePreviewModule[];
+}
+
+export interface TeacherTodoSubmissionItem {
+  submissionId: string;
+  assignmentId: string;
+  courseId: string;
+  courseCode: string;
+  assignmentTitle: string;
+  studentId: string;
+  studentName: string;
+  submittedAt?: string;
+  dueDate?: string;
+}
+
+export interface TeacherTodoMissingItem {
+  assignmentId: string;
+  courseId: string;
+  courseCode: string;
+  assignmentTitle: string;
+  studentId: string;
+  studentName: string;
+  daysOverdue: number;
+  dueDate?: string;
+}
+
+export interface TeacherTodoDeadlineItem {
+  assignmentId: string;
+  courseId: string;
+  courseCode: string;
+  assignmentTitle: string;
+  submittedCount: number;
+  expectedStudentCount: number;
+  dueDate?: string;
+}
+
+export interface TeacherTodoDashboardResponse {
+  userId: string;
+  generatedAt?: string;
+  pendingGradingCount: number;
+  missingSubmissionCount: number;
+  upcomingDeadlineCount: number;
+  pendingGrading: TeacherTodoSubmissionItem[];
+  missingSubmissions: TeacherTodoMissingItem[];
+  upcomingDeadlines: TeacherTodoDeadlineItem[];
+}
+
+export interface StudentContextReminderItem {
+  assignmentId: string;
+  courseId: string;
+  courseCode: string;
+  assignmentTitle: string;
+  severity: 'OVERDUE' | 'TODAY' | 'SOON' | string;
+  recommendation: string;
+  started: boolean;
+  submitted: boolean;
+  estimatedHours: number;
+  dueDate?: string;
+}
+
+export interface StudentContextReminderFeedResponse {
+  userId: string;
+  generatedAt?: string;
+  reminders: StudentContextReminderItem[];
+}
+
+export interface CourseArchiveResource {
+  resourceId: string;
+  title: string;
+  description?: string;
+  resourceType: string;
+  fileUrl?: string;
+  externalUrl?: string;
+  fileSize?: number;
+  mimeType?: string;
+  position?: number;
+  isDownloadable?: boolean;
+  textContent?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface CourseArchivePage {
+  pageId: string;
+  parentPageId?: string;
+  title: string;
+  slug: string;
+  position?: number;
+  schemaVersion?: number;
+  publishedAt?: string;
+  publishedBy?: string;
+  document: Record<string, unknown>;
+}
+
+export interface CourseArchiveModule {
+  moduleId: string;
+  title: string;
+  description?: string;
+  position?: number;
+  contentMeta?: Record<string, unknown>;
+  resources: CourseArchiveResource[];
+  pages: CourseArchivePage[];
+}
+
+export interface CourseArchiveAssignment {
+  assignmentId: string;
+  moduleId?: string;
+  position?: number;
+  assignmentType: string;
+  title: string;
+  description: string;
+  descriptionFormat?: string;
+  instructions?: string;
+  instructionsFormat?: string;
+  maxPoints?: string;
+  dueDate?: string;
+  availableFrom?: string;
+  availableUntil?: string;
+  allowLateSubmission?: boolean;
+  latePenaltyPercent?: string;
+  submissionTypes?: string[];
+  allowedFileTypes?: string[];
+  rubric?: Record<string, unknown>;
+}
+
+export interface CourseArchivePayload {
+  capturedAt?: string;
+  course: {
+    id: string;
+    code: string;
+    titleUk?: string;
+    titleEn?: string;
+    descriptionUk?: string;
+    descriptionEn?: string;
+    syllabus?: string;
+    academicYear?: string;
+    thumbnailUrl?: string;
+    themeColor?: string;
+  };
+  modules: CourseArchiveModule[];
+  assignments: CourseArchiveAssignment[];
+}
+
+export interface CourseArchiveSnapshotResponse {
+  snapshotId: string;
+  courseId: string;
+  version: number;
+  createdBy: string;
+  createdAt: string;
+  payload: CourseArchivePayload;
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -83,6 +288,44 @@ const normalizeAnnouncement = (raw: any): Announcement => ({
   updated_at: raw.updatedAt ?? raw.updated_at ?? '',
 });
 
+const normalizeCourse = (raw: any): Course => {
+  const titleUk = raw.titleUk ?? raw.title_uk ?? undefined;
+  const titleEn = raw.titleEn ?? raw.title_en ?? undefined;
+  const descriptionUk = raw.descriptionUk ?? raw.description_uk ?? undefined;
+  const descriptionEn = raw.descriptionEn ?? raw.description_en ?? undefined;
+  const visibility = String(raw.visibility ?? 'DRAFT').toUpperCase();
+
+  return {
+    ...raw,
+    id: String(raw.id ?? ''),
+    code: String(raw.code ?? ''),
+    titleUk: titleUk ? String(titleUk) : undefined,
+    titleEn: titleEn ? String(titleEn) : undefined,
+    descriptionUk: descriptionUk ? String(descriptionUk) : undefined,
+    descriptionEn: descriptionEn ? String(descriptionEn) : undefined,
+    title: String(raw.title ?? titleUk ?? titleEn ?? ''),
+    description: String(raw.description ?? descriptionUk ?? descriptionEn ?? ''),
+    syllabus: raw.syllabus == null ? undefined : String(raw.syllabus),
+    ownerId: raw.ownerId ? String(raw.ownerId) : (raw.owner_id ? String(raw.owner_id) : undefined),
+    ownerName: raw.ownerName ?? raw.owner_name ?? undefined,
+    thumbnailUrl: raw.thumbnailUrl ?? raw.thumbnail_url ?? undefined,
+    themeColor: raw.themeColor ?? raw.theme_color ?? undefined,
+    visibility: (visibility === 'PUBLIC' || visibility === 'PRIVATE' || visibility === 'DRAFT'
+      ? visibility
+      : 'DRAFT') as Course['visibility'],
+    status: raw.status ? String(raw.status).toUpperCase() : undefined,
+    academicYear: raw.academicYear ?? raw.academic_year ?? null,
+    createdAt: raw.createdAt ?? raw.created_at ?? undefined,
+    updatedAt: raw.updatedAt ?? raw.updated_at ?? undefined,
+    memberCount: raw.memberCount ?? raw.member_count ?? undefined,
+    moduleCount: raw.moduleCount ?? raw.module_count ?? undefined,
+    isPublished: raw.isPublished ?? raw.is_published ?? undefined,
+    start_date: raw.startDate ?? raw.start_date ?? undefined,
+    end_date: raw.endDate ?? raw.end_date ?? undefined,
+    max_students: raw.maxStudents ?? raw.max_students ?? undefined,
+  };
+};
+
 /**
  * Minimal assignment normalizer for assignments embedded in module responses.
  * Full normalization happens in assessments.ts for standalone assignment fetches.
@@ -107,37 +350,57 @@ export const coursesApi = {
   getAll: async () => {
     const response = await apiClient.get<PageResponse<Course> | Course[]>('/courses/my?size=100');
     const data = response.data;
+    const values = Array.isArray(data) ? data : (data.content || []);
     return {
       ...response,
-      data: Array.isArray(data) ? data : (data.content || []),
+      data: values.map((course) => normalizeCourse(course)),
     };
   },
 
-  getById: (id: string) => apiClient.get<Course>(`/courses/${id}`),
+  getById: async (id: string) => {
+    const response = await apiClient.get<Course>(`/courses/${id}`);
+    return { ...response, data: normalizeCourse(response.data) };
+  },
 
-  create: (data: CourseCreateData) => apiClient.post<Course>('/courses', {
-    code: data.code,
-    titleUk: data.titleUk,
-    titleEn: data.titleEn,
-    descriptionUk: data.descriptionUk,
-    descriptionEn: data.descriptionEn,
-    visibility: data.visibility,
-    startDate: data.startDate,
-    endDate: data.endDate,
-    maxStudents: data.maxStudents,
-    isPublished: data.isPublished,
-    syllabus: data.syllabus,
-  }),
+  create: async (data: CourseCreateData) => {
+    const response = await apiClient.post<Course>('/courses', {
+      code: data.code,
+      titleUk: data.titleUk,
+      titleEn: data.titleEn,
+      descriptionUk: data.descriptionUk,
+      descriptionEn: data.descriptionEn,
+      visibility: data.visibility,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      maxStudents: data.maxStudents,
+      isPublished: data.isPublished,
+      syllabus: data.syllabus,
+      thumbnailUrl: data.thumbnailUrl,
+      themeColor: data.themeColor,
+    });
+    return { ...response, data: normalizeCourse(response.data) };
+  },
 
-  update: (id: string, data: Partial<Course>) =>
-    apiClient.put<Course>(`/courses/${id}`, {
+  update: async (id: string, data: Partial<Course>) => {
+    const response = await apiClient.put<Course>(`/courses/${id}`, {
       titleUk: data.titleUk ?? data.title,
       titleEn: data.titleEn ?? data.title,
       descriptionUk: data.descriptionUk ?? data.description,
       descriptionEn: data.descriptionEn ?? data.description,
+      syllabus: data.syllabus,
       visibility: data.visibility,
       isPublished: data.isPublished,
-    }),
+      thumbnailUrl: data.thumbnailUrl,
+      themeColor: data.themeColor,
+    });
+    return { ...response, data: normalizeCourse(response.data) };
+  },
+
+  getSyllabus: (id: string) =>
+    apiClient.get<CourseSyllabusResponse>(`/courses/${id}/syllabus`),
+
+  updateSyllabus: (id: string, syllabus: string) =>
+    apiClient.put<CourseSyllabusResponse>(`/courses/${id}/syllabus`, { syllabus }),
 
   delete: (id: string) => apiClient.delete(`/courses/${id}`),
 
@@ -158,11 +421,43 @@ export const coursesApi = {
     return response.data;
   },
 
-  publish: (courseId: string, payload?: { forcePublish?: boolean; overrideReason?: string }) =>
-    apiClient.post<Course>(`/courses/${courseId}/publish`, payload || {}),
+  publish: async (courseId: string, payload?: { forcePublish?: boolean; overrideReason?: string }) => {
+    const response = await apiClient.post<Course>(`/courses/${courseId}/publish`, payload || {});
+    return { ...response, data: normalizeCourse(response.data) };
+  },
 
-  unpublish: (courseId: string) =>
-    apiClient.post<Course>(`/courses/${courseId}/unpublish`),
+  unpublish: async (courseId: string) => {
+    const response = await apiClient.post<Course>(`/courses/${courseId}/unpublish`);
+    return { ...response, data: normalizeCourse(response.data) };
+  },
+
+  archive: async (courseId: string) => {
+    const response = await apiClient.post<Course>(`/courses/${courseId}/archive`);
+    return { ...response, data: normalizeCourse(response.data) };
+  },
+
+  getArchive: (courseId: string) =>
+    apiClient.get<CourseArchiveSnapshotResponse>(`/courses/${courseId}/archive`),
+
+  cloneStructure: (
+    sourceCourseId: string,
+    payload: CloneCourseStructureRequest
+  ) =>
+    apiClient.post<CloneCourseStructureResult>(
+      `/courses/${sourceCourseId}/clone-structure`,
+      payload
+    ),
+
+  getPreview: (courseId: string) =>
+    apiClient.get<CoursePreviewResponse>(`/courses/${courseId}/preview`),
+
+  getTeacherTodo: (courseId?: string) =>
+    apiClient.get<TeacherTodoDashboardResponse>(
+      `/courses/teacher/todo${courseId ? `?courseId=${encodeURIComponent(courseId)}` : ''}`
+    ),
+
+  getStudentContextReminders: () =>
+    apiClient.get<StudentContextReminderFeedResponse>('/courses/student/reminders'),
 };
 
 // Module API - Spring REST hierarchical URLs: /courses/{courseId}/modules
@@ -214,6 +509,8 @@ export const modulesApi = {
 };
 
 // Resource API - Spring REST hierarchical URLs: /courses/{courseId}/modules/{moduleId}/resources
+type ResourceUpdatePayload = Partial<ResourceCreateData> & Partial<Omit<Resource, 'file'>>;
+
 export const resourcesApi = {
   getAll: async (courseId: string, moduleId: string) => {
     const response = await apiClient.get<Resource[]>(`/courses/${courseId}/modules/${moduleId}/resources`);
@@ -244,16 +541,37 @@ export const resourcesApi = {
         title: data.title,
         description: data.description,
         resourceType: data.resource_type,
+        fileUrl: data.file_url,
         externalUrl: data.external_url,
+        fileSize: data.file_size,
+        mimeType: data.mime_type,
         textContent: data.text_content,
         isDownloadable: data.is_downloadable,
+        metadata: data.metadata,
       });
     }
     return { ...response, data: normalizeResource(response.data) };
   },
 
-  update: async (courseId: string, moduleId: string, resourceId: string, data: Partial<Resource>) => {
-    const response = await apiClient.put(`/courses/${courseId}/modules/${moduleId}/resources/${resourceId}`, data);
+  update: async (
+    courseId: string,
+    moduleId: string,
+    resourceId: string,
+    data: ResourceUpdatePayload
+  ) => {
+    const response = await apiClient.put(`/courses/${courseId}/modules/${moduleId}/resources/${resourceId}`, {
+      title: data.title,
+      description: data.description,
+      resourceType: data.resource_type,
+      fileUrl: data.file_url,
+      externalUrl: data.external_url,
+      fileSize: data.file_size,
+      mimeType: data.mime_type,
+      position: data.position,
+      isDownloadable: data.is_downloadable,
+      textContent: data.text_content,
+      metadata: data.metadata,
+    });
     return { ...response, data: normalizeResource(response.data) };
   },
 

@@ -69,3 +69,32 @@ export const pageTransition: Variants = {
   hidden: { opacity: 0, y: 6 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease } },
 };
+
+// ── Editor-specific variants ──
+
+export const slashMenu: Variants = {
+  hidden: { opacity: 0, scale: 0.96, y: -4 },
+  visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.15, ease } },
+  exit: { opacity: 0, scale: 0.96, y: -4, transition: { duration: 0.1, ease } },
+};
+
+export const bubbleToolbar: Variants = {
+  hidden: { opacity: 0, y: 4, scale: 0.96 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.15, ease } },
+};
+
+export const sidebarDrawer: Variants = {
+  hidden: { x: '-100%' },
+  visible: { x: 0, transition: { duration: 0.25, ease } },
+  exit: { x: '-100%', transition: { duration: 0.2, ease } },
+};
+
+export const blockInsert: Variants = {
+  hidden: { opacity: 0, y: 8, height: 0 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    height: 'auto',
+    transition: { duration: 0.25, ease },
+  },
+};

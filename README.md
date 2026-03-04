@@ -68,7 +68,7 @@ A full-stack Learning Management System with Spring Boot microservices backend a
 
 ```bash
 # Copy environment template
-cp .env.local .env
+cp .env.example .env
 
 # Edit .env and add your LLAMA_API_KEY (for AI features)
 # Get a free key from: https://console.groq.com/keys
@@ -147,7 +147,7 @@ Key variables:
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Run tests: `cd frontend && npm test`
+4. Validate frontend contracts: `cd frontend && npm run test:contracts`
 5. Build: `cd frontend && npm run build`
 6. Submit a pull request
 

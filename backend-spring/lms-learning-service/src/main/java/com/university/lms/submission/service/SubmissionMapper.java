@@ -68,18 +68,36 @@ public class SubmissionMapper {
                 .submissionUrl(submission.getSubmissionUrl())
                 .programmingLanguage(submission.getProgrammingLanguage())
                 .grade(submission.getGrade())
+                .rawScore(submission.getRawScore())
+                .draftGrade(submission.getDraftGrade())
+                .draftFeedback(submission.getDraftFeedback())
+                .publishedGrade(submission.getPublishedGrade())
+                .publishedFeedback(submission.getPublishedFeedback())
                 .feedback(submission.getFeedback())
                 .rubricEvaluation(submission.getRubricEvaluation())
+                .submissionVersion(submission.getSubmissionVersion())
+                .hasUnpublishedTeacherNotes(StringUtils.hasText(submission.getDraftFeedback()))
+                .isReReviewInProgress(isReReviewInProgress(submission))
+                .version(submission.getVersion())
                 .isLate(submission.getIsLate())
                 .daysLate(submission.getDaysLate())
                 .submittedAt(submission.getSubmittedAt())
                 .gradedAt(submission.getGradedAt())
+                .publishedAt(submission.getPublishedAt())
                 .createdAt(submission.getCreatedAt())
                 .updatedAt(submission.getUpdatedAt())
                 .files(files)
                 .uploadedFiles(files)
                 .comments(comments)
                 .build();
+    }
+
+    private boolean isReReviewInProgress(Submission submission) {
+        if (submission == null || submission.getStatus() == null) {
+            return false;
+        }
+        String status = submission.getStatus().trim().toUpperCase(Locale.ROOT);
+        return "IN_REVIEW".equals(status) && submission.getPublishedGrade() != null;
     }
 
     public String deriveNameFromEmail(String email) {

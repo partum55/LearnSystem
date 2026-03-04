@@ -61,7 +61,11 @@ public class LlamaApiService {
 
   /** Internal method that performs the actual API call. */
   private String doGenerate(String prompt, String systemPrompt) {
-    // Build messages array for OpenAI-compatible API
+    return doGenerate(prompt, systemPrompt, llamaApiProperties.getKey());
+  }
+
+  /** Internal method that performs the actual API call with a specific API key. */
+  private String doGenerate(String prompt, String systemPrompt, String apiKey) {
     var messages = new java.util.ArrayList<Map<String, String>>();
     if (systemPrompt != null && !systemPrompt.isEmpty()) {
       messages.add(Map.of("role", "system", "content", systemPrompt));
@@ -84,11 +88,16 @@ public class LlamaApiService {
             false);
 
     try {
-      String response =
-          llamaWebClient
+      var requestSpec = llamaWebClient
               .post()
               .uri("/chat/completions")
-              .contentType(MediaType.APPLICATION_JSON)
+              .contentType(MediaType.APPLICATION_JSON);
+
+      if (apiKey != null && !apiKey.isEmpty()) {
+        requestSpec = requestSpec.header("Authorization", "Bearer " + apiKey);
+      }
+
+      String response = requestSpec
               .bodyValue(requestBody)
               .retrieve()
               .bodyToMono(String.class)
@@ -170,8 +179,41 @@ public class LlamaApiService {
     return doGenerateWithMaxTokens(prompt, jsonSystemPrompt, 8000);
   }
 
+  /**
+   * Generate text using a specific API key (per-user key support).
+   */
+  public String generateWithKey(String prompt, String systemPrompt, String apiKey) {
+    log.info("Sending generation request with user API key");
+    long startTime = System.currentTimeMillis();
+    boolean success = false;
+    try {
+      String result = doGenerate(prompt, systemPrompt, apiKey);
+      success = true;
+      return result;
+    } finally {
+      long latencyMs = System.currentTimeMillis() - startTime;
+      metricsCollector.recordGeneration("text", PROVIDER_NAME, latencyMs, success);
+    }
+  }
+
+  /**
+   * Generate JSON using a specific API key (per-user key support).
+   */
+  public String generateJsonWithKey(String prompt, String systemPrompt, String apiKey) {
+    String basePrompt = systemPrompt == null ? "" : systemPrompt;
+    String jsonSystemPrompt =
+        basePrompt
+            + "\n\nIMPORTANT: You must respond ONLY with valid JSON. No additional text or explanations.";
+    return doGenerateWithMaxTokens(prompt, jsonSystemPrompt, 8000, apiKey);
+  }
+
   /** Internal method that performs the API call with a custom max_tokens limit. */
   private String doGenerateWithMaxTokens(String prompt, String systemPrompt, int maxTokens) {
+    return doGenerateWithMaxTokens(prompt, systemPrompt, maxTokens, llamaApiProperties.getKey());
+  }
+
+  /** Internal method with custom max_tokens and specific API key. */
+  private String doGenerateWithMaxTokens(String prompt, String systemPrompt, int maxTokens, String apiKey) {
     var messages = new java.util.ArrayList<Map<String, String>>();
     if (systemPrompt != null && !systemPrompt.isEmpty()) {
       messages.add(Map.of("role", "system", "content", systemPrompt));
@@ -194,11 +236,16 @@ public class LlamaApiService {
             false);
 
     try {
-      String response =
-          llamaWebClient
+      var requestSpec = llamaWebClient
               .post()
               .uri("/chat/completions")
-              .contentType(MediaType.APPLICATION_JSON)
+              .contentType(MediaType.APPLICATION_JSON);
+
+      if (apiKey != null && !apiKey.isEmpty()) {
+        requestSpec = requestSpec.header("Authorization", "Bearer " + apiKey);
+      }
+
+      String response = requestSpec
               .bodyValue(requestBody)
               .retrieve()
               .bodyToMono(String.class)

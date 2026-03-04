@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
@@ -25,6 +25,8 @@ export const CourseList: React.FC = () => {
   const { courses, fetchCourses, isLoading } = useCourseStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterVisibility, setFilterVisibility] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<'active' | 'archived' | 'all'>('active');
+  const [filterSemester, setFilterSemester] = useState<string>('all');
   const [showAIGenerator, setShowAIGenerator] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -32,13 +34,33 @@ export const CourseList: React.FC = () => {
     fetchCourses();
   }, [fetchCourses]);
 
+  const semesters = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (courses || [])
+            .map((course: Course) => course.academicYear)
+            .filter((year): year is string => Boolean(year))
+        )
+      ).sort((a, b) => b.localeCompare(a)),
+    [courses]
+  );
+
   const filteredCourses = (courses || []).filter((course: Course) => {
     const matchesSearch =
       (course.title?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
       (course.code?.toLowerCase() || '').includes(searchTerm.toLowerCase());
-    const matchesFilter =
+    const matchesVisibility =
       filterVisibility === 'all' || course.visibility === filterVisibility.toUpperCase();
-    return matchesSearch && matchesFilter;
+    const matchesStatus =
+      filterStatus === 'all'
+        ? true
+        : filterStatus === 'archived'
+          ? course.status === 'ARCHIVED'
+          : course.status !== 'ARCHIVED';
+    const matchesSemester =
+      filterSemester === 'all' || course.academicYear === filterSemester;
+    return matchesSearch && matchesVisibility && matchesStatus && matchesSemester;
   });
 
   const canCreateCourse = user?.role === 'TEACHER' || user?.role === 'SUPERADMIN';
@@ -103,7 +125,7 @@ export const CourseList: React.FC = () => {
                       className="pl-10"
                     />
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {['all', 'public', 'private', 'draft'].map((filter) => (
                       <Button
                         key={filter}
@@ -114,6 +136,39 @@ export const CourseList: React.FC = () => {
                         {t(`courses.${filter}`)}
                       </Button>
                     ))}
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="flex flex-wrap gap-2">
+                    {(['active', 'archived', 'all'] as const).map((status) => (
+                      <Button
+                        key={status}
+                        variant={filterStatus === status ? 'primary' : 'secondary'}
+                        size="sm"
+                        onClick={() => setFilterStatus(status)}
+                      >
+                        {t(`courses.filter_${status}`, status)}
+                      </Button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="course-semester-filter" className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>
+                      {t('courses.semester', 'Semester')}
+                    </label>
+                    <select
+                      id="course-semester-filter"
+                      value={filterSemester}
+                      onChange={(event) => setFilterSemester(event.target.value)}
+                      className="input py-1 text-sm"
+                    >
+                      <option value="all">{t('courses.filter_all', 'All')}</option>
+                      {semesters.map((semester) => (
+                        <option key={semester} value={semester}>
+                          {semester}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </CardBody>
@@ -132,16 +187,38 @@ export const CourseList: React.FC = () => {
               <StaggeredList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredCourses.map((course: Course) => (
                   <StaggeredItem key={course.id}>
-                  <Link to={`/courses/${course.id}`}>
-                    <Card hoverable className="h-full">
+                  <Link to={course.status === 'ARCHIVED' ? `/courses/${course.id}/archive` : `/courses/${course.id}`}>
+                    <Card hoverable className="h-full overflow-hidden">
+                      {course.thumbnailUrl ? (
+                        <div
+                          className="h-28 bg-cover bg-center"
+                          style={{ backgroundImage: `url(${course.thumbnailUrl})` }}
+                        />
+                      ) : (
+                        <div
+                          className="h-1"
+                          style={{ background: course.themeColor || 'var(--border-default)' }}
+                        />
+                      )}
                       <CardHeader>
                         <div className="flex justify-between items-start">
-                          <h3
-                            className="text-lg font-semibold"
-                            style={{ color: 'var(--text-primary)' }}
-                          >
-                            {course.code}
-                          </h3>
+                          <div className="flex items-center gap-2">
+                            <h3
+                              className="text-lg font-semibold"
+                              style={{ color: 'var(--text-primary)' }}
+                            >
+                              {course.code}
+                            </h3>
+                            {course.themeColor && (
+                              <span
+                                className="inline-block h-2.5 w-2.5 rounded-full border"
+                                style={{
+                                  background: course.themeColor,
+                                  borderColor: 'rgba(255,255,255,0.35)',
+                                }}
+                              />
+                            )}
+                          </div>
                           <span
                             className={`badge ${
                               course.visibility === 'PUBLIC'

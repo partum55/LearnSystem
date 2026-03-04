@@ -1,5 +1,6 @@
 import apiClient from './client';
 import { User } from '../types';
+import { PageResponse } from './types';
 
 interface ApiUser {
   id: string;
@@ -15,16 +16,6 @@ interface ApiUser {
   bio?: string;
   createdAt?: string;
   updatedAt?: string;
-}
-
-interface PageResponse<T> {
-  content: T[];
-  pageNumber: number;
-  pageSize: number;
-  totalElements: number;
-  totalPages: number;
-  first: boolean;
-  last: boolean;
 }
 
 const mapApiUserToFrontend = (u: ApiUser): User => ({

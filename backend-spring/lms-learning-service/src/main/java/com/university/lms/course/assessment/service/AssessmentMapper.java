@@ -249,6 +249,7 @@ public class AssessmentMapper {
             .topic(question.getTopic())
             .difficulty(question.getDifficulty())
             .stem(question.getStem())
+            .imageUrl(question.getImageUrl())
             .options(question.getOptions())
             .correctAnswer(question.getCorrectAnswer())
             .explanation(question.getExplanation())

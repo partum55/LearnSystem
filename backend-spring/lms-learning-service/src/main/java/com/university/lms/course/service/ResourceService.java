@@ -2,6 +2,7 @@ package com.university.lms.course.service;
 
 import com.university.lms.common.exception.ResourceNotFoundException;
 import com.university.lms.common.exception.ValidationException;
+import com.university.lms.course.adminops.service.AdminAuditTrailService;
 import com.university.lms.course.domain.Course;
 import com.university.lms.course.domain.Module;
 import com.university.lms.course.domain.Resource;
@@ -11,12 +12,15 @@ import com.university.lms.course.dto.UpdateResourceRequest;
 import com.university.lms.course.repository.CourseMemberRepository;
 import com.university.lms.course.repository.ModuleRepository;
 import com.university.lms.course.repository.ResourceRepository;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +35,8 @@ public class ResourceService {
   private final ModuleRepository moduleRepository;
   private final CourseMemberRepository courseMemberRepository;
   private final CourseMapper courseMapper;
+  private final ModuleUnlockService moduleUnlockService;
+  private final AdminAuditTrailService adminAuditTrailService;
 
   /** Get all resources for a module. */
   @Cacheable(value = "resources", key = "T(String).format('%s:%s', #moduleId, #userId)")
@@ -51,6 +57,9 @@ public class ResourceService {
     // Filter unpublished modules for students
     if (!canManage && !module.getIsPublished()) {
       throw new ValidationException("Module is not published");
+    }
+    if (!canManage && !moduleUnlockService.isUnlocked(module, userId)) {
+      throw new ValidationException("Module is locked until prerequisite module is completed");
     }
 
     return resources.stream().map(courseMapper::toDto).toList();
@@ -73,6 +82,9 @@ public class ResourceService {
     if (!canManage && !module.getIsPublished()) {
       throw new ValidationException("Resource is not available");
     }
+    if (!canManage && !moduleUnlockService.isUnlocked(module, userId)) {
+      throw new ValidationException("Resource is not available yet");
+    }
 
     return courseMapper.toDto(resource);
   }
@@ -92,7 +104,10 @@ public class ResourceService {
 
   /** Create a new resource. */
   @Transactional
-  @CacheEvict(value = "resources", allEntries = true)
+  @Caching(evict = {
+      @CacheEvict(value = "resources", allEntries = true),
+      @CacheEvict(value = "modules", allEntries = true)
+  })
   public ResourceDto createResource(UUID moduleId, CreateResourceRequest request, UUID userId) {
     log.info("Creating resource for module: {}", moduleId);
 
@@ -139,7 +154,10 @@ public class ResourceService {
 
   /** Update a resource. */
   @Transactional
-  @CacheEvict(value = "resources", allEntries = true)
+  @Caching(evict = {
+      @CacheEvict(value = "resources", allEntries = true),
+      @CacheEvict(value = "modules", allEntries = true)
+  })
   public ResourceDto updateResource(UUID id, UpdateResourceRequest request, UUID userId) {
     log.info("Updating resource: {}", id);
 
@@ -181,7 +199,10 @@ public class ResourceService {
 
   /** Delete a resource. */
   @Transactional
-  @CacheEvict(value = "resources", allEntries = true)
+  @Caching(evict = {
+      @CacheEvict(value = "resources", allEntries = true),
+      @CacheEvict(value = "modules", allEntries = true)
+  })
   public void deleteResource(UUID id, UUID userId) {
     log.info("Deleting resource: {}", id);
 
@@ -192,13 +213,29 @@ public class ResourceService {
       throw new ValidationException("User does not have permission to delete this resource");
     }
 
+    Map<String, Object> details = new LinkedHashMap<>();
+    details.put("resourceId", resource.getId().toString());
+    details.put("resourceTitle", resource.getTitle());
+    details.put("resourceType", resource.getResourceType());
+    details.put("moduleId", resource.getModule().getId().toString());
+    details.put("courseId", resource.getModule().getCourse().getId().toString());
+
     resourceRepository.delete(resource);
+    adminAuditTrailService.log(
+        userId,
+        "RESOURCE_DELETED",
+        "RESOURCE",
+        resource.getId().toString(),
+        details);
     log.info("Resource deleted successfully: {}", id);
   }
 
   /** Reorder resources within a module. */
   @Transactional
-  @CacheEvict(value = "resources", allEntries = true)
+  @Caching(evict = {
+      @CacheEvict(value = "resources", allEntries = true),
+      @CacheEvict(value = "modules", allEntries = true)
+  })
   public void reorderResources(UUID moduleId, List<UUID> resourceIds, UUID userId) {
     log.info("Reordering resources for module: {}", moduleId);
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { TFunction } from 'i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -28,6 +28,8 @@ import {
   DropResult,
 } from 'react-beautiful-dnd';
 import { Button, Card, CardBody, CardHeader } from '../../components';
+import { RichContentRenderer } from '../../components/common/RichContentRenderer';
+import { submissionsApi } from '../../api/assessments';
 import { Assignment, Module, Resource } from '../../types';
 
 interface CourseModulesTabProps {
@@ -64,6 +66,9 @@ const extractModuleId = (droppableId: string): string | null => {
   return droppableId.replace('resources-', '');
 };
 
+const isCompletedSubmissionStatus = (status?: string | null): boolean =>
+  status === 'SUBMITTED' || status === 'GRADED';
+
 export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
   courseId,
   modules,
@@ -85,10 +90,96 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
   const [displayModules, setDisplayModules] = useState<Module[]>(modules);
   const [isReorderingModules, setIsReorderingModules] = useState(false);
   const [reorderingResourcesModuleId, setReorderingResourcesModuleId] = useState<string | null>(null);
+  const [assignmentSubmissionStatus, setAssignmentSubmissionStatus] = useState<Record<string, string | null>>({});
 
   useEffect(() => {
     setDisplayModules(modules);
   }, [modules]);
+
+  const assignmentIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (displayModules || [])
+            .flatMap((module) => module.assignments || [])
+            .map((assignment) => assignment.id)
+            .filter((id): id is string => Boolean(id))
+        )
+      ),
+    [displayModules]
+  );
+
+  useEffect(() => {
+    if (isInstructor || assignmentIds.length === 0) {
+      setAssignmentSubmissionStatus({});
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      const results = await Promise.all(
+        assignmentIds.map(async (assignmentId) => {
+          try {
+            const response = await submissionsApi.getMySubmission(assignmentId);
+            const payload = response.data as { status?: string } | null;
+            return [assignmentId, payload?.status ? String(payload.status).toUpperCase() : null] as const;
+          } catch {
+            return [assignmentId, null] as const;
+          }
+        })
+      );
+
+      if (cancelled) {
+        return;
+      }
+
+      setAssignmentSubmissionStatus(
+        results.reduce<Record<string, string | null>>((acc, [assignmentId, status]) => {
+          acc[assignmentId] = status;
+          return acc;
+        }, {})
+      );
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [assignmentIds, isInstructor]);
+
+  const checkpointStats = useMemo(() => {
+    const moduleStats = displayModules.map((module) => {
+      const assignments = module.assignments || [];
+      const requiredAssignments = assignments.filter((assignment) => assignment.requires_submission !== false);
+      const totalAssignments = requiredAssignments.length;
+      const completedAssignments = requiredAssignments.filter((assignment) => {
+        const status = assignmentSubmissionStatus[assignment.id];
+        if (isCompletedSubmissionStatus(status)) {
+          return true;
+        }
+        return Boolean(assignment.submission?.submitted_at || assignment.submission?.graded_at);
+      }).length;
+
+      return {
+        moduleId: module.id,
+        moduleTitle: module.title,
+        totalAssignments,
+        completedAssignments,
+        isComplete:
+          totalAssignments === 0 || completedAssignments >= totalAssignments,
+      };
+    });
+
+    const completedModules = moduleStats.filter((stat) => stat.isComplete).length;
+    const totalModules = moduleStats.length;
+
+    return {
+      moduleStats,
+      completedModules,
+      totalModules,
+      remainingModules: Math.max(totalModules - completedModules, 0),
+    };
+  }, [assignmentSubmissionStatus, displayModules]);
 
   const handleModuleReorder = async (result: DropResult) => {
     if (!result.destination || result.destination.index === result.source.index) {
@@ -232,26 +323,41 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
             </Link>
           )}
           {resource.description && (
-            <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>{resource.description}</p>
+            <RichContentRenderer content={resource.description} className="mt-1 text-sm" />
           )}
         </div>
         <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>
           {resource.resource_type}
         </span>
         {isInstructor && (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.preventDefault();
-              onDeleteResource(module.id, resource);
-            }}
-            className="p-1 transition-colors"
-            style={{ color: 'var(--text-faint)' }}
-            onMouseEnter={(event) => (event.currentTarget.style.color = 'var(--fn-error)')}
-            onMouseLeave={(event) => (event.currentTarget.style.color = 'var(--text-faint)')}
-          >
-            <TrashIcon className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                navigate(`/courses/${courseId}/modules/${module.id}/resources/${resource.id}/edit`);
+              }}
+              className="p-1 transition-colors"
+              style={{ color: 'var(--text-faint)' }}
+              onMouseEnter={(event) => (event.currentTarget.style.color = 'var(--text-primary)')}
+              onMouseLeave={(event) => (event.currentTarget.style.color = 'var(--text-faint)')}
+            >
+              <PencilIcon className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                onDeleteResource(module.id, resource);
+              }}
+              className="p-1 transition-colors"
+              style={{ color: 'var(--text-faint)' }}
+              onMouseEnter={(event) => (event.currentTarget.style.color = 'var(--fn-error)')}
+              onMouseLeave={(event) => (event.currentTarget.style.color = 'var(--text-faint)')}
+            >
+              <TrashIcon className="h-4 w-4" />
+            </button>
+          </div>
         )}
       </div>
     );
@@ -260,7 +366,9 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
   const renderModuleBody = (module: Module) => (
     <CardBody>
       {module.description && (
-        <p className="mb-6" style={{ color: 'var(--text-muted)' }}>{module.description}</p>
+        <div className="mb-6">
+          <RichContentRenderer content={module.description} />
+        </div>
       )}
 
       {isInstructor && (
@@ -493,7 +601,20 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
     module: Module,
     dragHandleProps?: DraggableProvidedDragHandleProps | null,
     isDragging?: boolean
-  ) => (
+  ) => {
+    const moduleCheckpoint = checkpointStats.moduleStats.find((stat) => stat.moduleId === module.id);
+    const totalAssignments = moduleCheckpoint?.totalAssignments ?? 0;
+    const completedAssignments = moduleCheckpoint?.completedAssignments ?? 0;
+    const checkpointLabel =
+      totalAssignments === 0
+        ? t('modules.checkpointNoTasks', 'No required tasks')
+        : completedAssignments >= totalAssignments
+          ? t('modules.checkpointDone', 'Completed')
+          : completedAssignments > 0
+            ? t('modules.checkpointInProgress', 'In progress')
+            : t('modules.checkpointPending', 'Not started');
+
+    return (
     <Card key={module.id}>
       <CardHeader>
         <div
@@ -521,18 +642,46 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
             )}
             <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{module.title}</h3>
           </div>
-          {module.is_published && (
-            <span className="badge badge-success">
-              <CheckCircleIcon className="mr-1 h-4 w-4" />
-              {t('common.published')}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {!isInstructor && (
+              <span
+                className="rounded-full px-2 py-1 text-xs"
+                style={{
+                  background:
+                    totalAssignments === 0
+                      ? 'var(--bg-elevated)'
+                      : completedAssignments >= totalAssignments
+                        ? 'rgba(34,197,94,0.12)'
+                        : completedAssignments > 0
+                          ? 'rgba(245,158,11,0.12)'
+                          : 'var(--bg-elevated)',
+                  color:
+                    totalAssignments === 0
+                      ? 'var(--text-muted)'
+                      : completedAssignments >= totalAssignments
+                        ? 'var(--fn-success)'
+                        : completedAssignments > 0
+                          ? 'var(--fn-warning)'
+                          : 'var(--text-muted)',
+                }}
+              >
+                {checkpointLabel}
+              </span>
+            )}
+            {module.is_published && (
+              <span className="badge badge-success">
+                <CheckCircleIcon className="mr-1 h-4 w-4" />
+                {t('common.published')}
+              </span>
+            )}
+          </div>
         </div>
       </CardHeader>
 
       {expandedModules.has(module.id) && renderModuleBody(module)}
     </Card>
-  );
+    );
+  };
 
   if (!displayModules || displayModules.length === 0) {
     return (
@@ -560,6 +709,53 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
 
   return (
     <div className="space-y-4">
+      {!isInstructor && checkpointStats.totalModules > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                  {t('modules.checkpointsTitle', 'Progress checkpoints')}
+                </h3>
+                <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  {t('modules.checkpointsProgress', {
+                    completed: checkpointStats.completedModules,
+                    total: checkpointStats.totalModules,
+                    defaultValue: '{{completed}} of {{total}} modules completed',
+                  })}
+                </p>
+              </div>
+              <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>
+                {checkpointStats.remainingModules} {t('modules.remaining', 'remaining')}
+              </span>
+            </div>
+          </CardHeader>
+          <CardBody>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {checkpointStats.moduleStats.map((stat, index) => (
+                <div
+                  key={stat.moduleId}
+                  className="rounded-md border px-3 py-2"
+                  style={{ borderColor: 'var(--border-default)', background: 'var(--bg-elevated)' }}
+                >
+                  <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>
+                    {t('modules.module', 'Module')} {index + 1}
+                  </p>
+                  <p className="mt-1 truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    {stat.moduleTitle}
+                  </p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    {stat.totalAssignments === 0
+                      ? t('modules.checkpointNoTasks', 'No required tasks')
+                      : `${stat.completedAssignments}/${stat.totalAssignments}`}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
+      )}
+
       {isInstructor && (
         <div className="mb-4 flex justify-end gap-3">
           <Button variant="secondary" onClick={onOpenAIModuleGenerator}>

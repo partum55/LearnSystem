@@ -1,8 +1,12 @@
 import React from 'react';
-import RichTextEditor from '../../../components/RichTextEditor';
 import { LatexFormat } from '../types';
 import LatexPreview from './LatexPreview';
 import { validateLatex } from '../utils/latex';
+import {
+  BlockEditor,
+  parseCanonicalDocument,
+  serializeCanonicalDocument,
+} from '../../../features/editor-core';
 
 interface LatexEditorProps {
   label: string;
@@ -19,9 +23,9 @@ const LatexEditor: React.FC<LatexEditorProps> = ({
   format = 'MARKDOWN',
   onChange,
   onFormatChange,
-  height,
 }) => {
   const issues = validateLatex(value);
+  const document = parseCanonicalDocument(value, '');
 
   return (
     <div className="space-y-2">
@@ -39,12 +43,11 @@ const LatexEditor: React.FC<LatexEditorProps> = ({
           </select>
         )}
       </div>
-      <RichTextEditor
-        value={value}
-        onChange={onChange}
-        height={height}
-        enableLatex
-        enableCode
+      <BlockEditor
+        value={document}
+        onChange={(nextDocument) => onChange(serializeCanonicalDocument(nextDocument))}
+        mode="full"
+        placeholder={label}
       />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>

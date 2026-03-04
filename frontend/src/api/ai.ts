@@ -351,4 +351,105 @@ export const aiApi = {
       return response.data;
     },
   },
+
+  // API Key Management
+  apiKeys: {
+    getKeys: async () => {
+      const response = await apiClient.get('/users/me/api-keys');
+      return response.data;
+    },
+    saveKey: async (provider: string, apiKey: string) => {
+      const response = await apiClient.post('/users/me/api-keys', { provider, apiKey });
+      return response.data;
+    },
+    deleteKey: async (provider: string) => {
+      await apiClient.delete(`/users/me/api-keys/${provider}`);
+    },
+    validateKey: async (provider: string, apiKey: string) => {
+      const response = await apiClient.post('/users/me/api-keys/validate', { provider, apiKey });
+      return response.data as { valid: boolean };
+    },
+  },
+
+  // Student AI Features
+  explain: async (contentType: string, contentText: string, language: string = 'en') => {
+    const response = await apiClient.post(`${AI_CLIENT_URL}/explain`, {
+      contentType,
+      contentText,
+      language,
+    });
+    return response.data as { explanation: string; language: string; tokensUsed: number };
+  },
+
+  practiceQuiz: async (courseId: string, moduleId: string, questionCount: number = 5, difficulty: string = 'medium', language: string = 'en') => {
+    const response = await apiClient.post(`${AI_CLIENT_URL}/practice-quiz`, {
+      courseId,
+      moduleId,
+      questionCount,
+      difficulty,
+      language,
+    });
+    return response.data as PracticeQuizResponse;
+  },
+
+  // Teacher AI Features
+  gradeSuggestion: async (assignmentId: string, submissionId: string) => {
+    const response = await apiClient.post(`${AI_CLIENT_URL}/grade-suggestion`, {
+      assignmentId,
+      submissionId,
+    });
+    return response.data as GradeSuggestionResponse;
+  },
+
+  plagiarismCheck: async (submissionId: string) => {
+    const response = await apiClient.post(`${AI_CLIENT_URL}/plagiarism-check`, {
+      submissionId,
+    });
+    return response.data as PlagiarismCheckResponse;
+  },
+
+  syllabus: async (courseDescription: string, weekCount: number = 16, language: string = 'en') => {
+    const response = await apiClient.post(`${AI_CLIENT_URL}/syllabus`, {
+      courseDescription,
+      weekCount,
+      language,
+    });
+    return response.data as SyllabusResponseData;
+  },
 };
+
+// New response types
+export interface PracticeQuizResponse {
+  title: string;
+  questions: {
+    questionText: string;
+    questionType: 'MULTIPLE_CHOICE' | 'TRUE_FALSE';
+    options: string[];
+    correctAnswer: string;
+    explanation: string;
+    points: number;
+  }[];
+}
+
+export interface GradeSuggestionResponse {
+  suggestedGrade: number;
+  maxPoints: number;
+  feedback: string;
+  strengths: string[];
+  improvements: string[];
+}
+
+export interface PlagiarismCheckResponse {
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  indicators: string[];
+  summary: string;
+}
+
+export interface SyllabusResponseData {
+  pages: {
+    id: string;
+    title: string;
+    icon: string;
+    content: string;
+  }[];
+}
