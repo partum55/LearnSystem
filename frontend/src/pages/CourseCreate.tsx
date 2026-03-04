@@ -8,6 +8,7 @@ import { Button } from '../components/Button';
 import { Breadcrumbs } from '../components/common/Breadcrumbs';
 import { useCourseStore } from '../store/courseStore';
 import { coursesApi } from '../api/courses';
+import { SyllabusBuilder } from '../components/SyllabusBuilder';
 
 const isHexColor = (value: string) =>
   /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value);
@@ -35,6 +36,7 @@ export const CourseCreate: React.FC = () => {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showSyllabusBuilder, setShowSyllabusBuilder] = useState(false);
 
   useEffect(() => {
     if (formData.is_template) {
@@ -399,6 +401,39 @@ export const CourseCreate: React.FC = () => {
                 </div>
               </CardBody>
             </Card>
+
+            {/* AI Syllabus Builder */}
+            <Card className="mt-6">
+              <CardBody>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                      {t('ai.syllabusBuilder', 'AI Syllabus Builder')}
+                    </h3>
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                      {t('ai.syllabusBuilderDesc', 'Generate a structured syllabus using AI based on your course description')}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setShowSyllabusBuilder(true)}
+                    disabled={!formData.description.trim()}
+                  >
+                    {t('ai.generateSyllabus', 'Generate Syllabus')}
+                  </Button>
+                </div>
+              </CardBody>
+            </Card>
+
+            <SyllabusBuilder
+              isOpen={showSyllabusBuilder}
+              onClose={() => setShowSyllabusBuilder(false)}
+              onApply={(syllabusJson) => {
+                setFormData({ ...formData, ...{ syllabus: syllabusJson } as Record<string, unknown> });
+              }}
+              courseDescription={formData.description}
+            />
 
             <div className="mt-6 flex justify-end gap-4">
               <Button

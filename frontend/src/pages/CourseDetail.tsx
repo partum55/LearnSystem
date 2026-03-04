@@ -24,6 +24,7 @@ import { CourseDetailModals } from './course-detail/CourseDetailModals';
 import { CourseSyllabusTab } from './course-detail/CourseSyllabusTab';
 import { CourseDetailTabs } from './course-detail/CourseDetailTabs';
 import { CourseModulesTab } from './course-detail/CourseModulesTab';
+import { PracticeQuizModal } from '../components/PracticeQuizModal';
 import {
   CourseDetailTabId,
   DeleteConfirmationState,
@@ -58,6 +59,7 @@ export const CourseDetail: React.FC = () => {
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [showAIModuleGenerator, setShowAIModuleGenerator] = useState(false);
   const [showAIAssignmentGenerator, setShowAIAssignmentGenerator] = useState(false);
+  const [showPracticeQuiz, setShowPracticeQuiz] = useState(false);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [selectedModuleContext, setSelectedModuleContext] = useState('');
   const [deleteConfirmation, setDeleteConfirmation] = useState<DeleteConfirmationState | null>(null);
@@ -447,6 +449,22 @@ export const CourseDetail: React.FC = () => {
               t={t}
             />
 
+            {/* Practice Quiz button for students */}
+            {!isInstructor && enrichedModules && enrichedModules.length > 0 && (
+              <div className="mb-4 flex justify-end">
+                <button
+                  onClick={() => setShowPracticeQuiz(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                  style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                  </svg>
+                  {t('ai.practiceQuiz', 'Practice Quiz')}
+                </button>
+              </div>
+            )}
+
             {publishActionError && (
               <div
                 className="mb-4 rounded-md px-3 py-2 text-sm"
@@ -558,6 +576,14 @@ export const CourseDetail: React.FC = () => {
         }}
         onCancelDelete={() => setDeleteConfirmation(null)}
         t={t}
+      />
+
+      {/* Practice Quiz Modal (for students) */}
+      <PracticeQuizModal
+        isOpen={showPracticeQuiz}
+        onClose={() => setShowPracticeQuiz(false)}
+        courseId={courseId}
+        modules={enrichedModules || []}
       />
 
       <Modal

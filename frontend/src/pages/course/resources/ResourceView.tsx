@@ -22,6 +22,7 @@ import {
   ClockIcon,
 } from '@heroicons/react/24/outline';
 import { resourceTypeInfo } from '../../../utils/resourceIcons';
+import { ExplainButton } from '../../../components/ExplainButton';
 
 /* ── Helpers ─────────────────────────────────── */
 
@@ -445,6 +446,14 @@ const ResourceView: React.FC = () => {
                   {'Download'}
                 </a>
               </div>
+            )}
+
+            {/* AI Explain Button */}
+            {resource.text_content && (
+              <ExplainButton
+                contentType="RESOURCE"
+                contentText={typeof resource.text_content === 'string' ? resource.text_content : String(resource.text_content)}
+              />
             )}
           </div>
 

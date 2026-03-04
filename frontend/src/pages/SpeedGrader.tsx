@@ -3,6 +3,8 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { Button, Card, CardBody, CardHeader, Loading } from '../components';
 import apiClient from '../api/client';
 import { submissionsApi } from '../api/assessments';
+import { GradingSuggestionPanel } from '../components/GradingSuggestionPanel';
+import { PlagiarismCheckPanel } from '../components/PlagiarismCheckPanel';
 
 interface Assignment {
   id: string;
@@ -786,6 +788,23 @@ export const SpeedGrader: React.FC = () => {
                       placeholder="Private until published"
                     />
                   </div>
+
+                  {/* AI Grading Assistant */}
+                  {assignmentId && currentSubmission && (
+                    <GradingSuggestionPanel
+                      assignmentId={assignmentId}
+                      submissionId={currentSubmission.id}
+                      onAccept={(grade, fb) => {
+                        setFinalScore(String(grade));
+                        setFeedback(fb);
+                      }}
+                    />
+                  )}
+
+                  {/* AI Plagiarism Check */}
+                  {currentSubmission && (
+                    <PlagiarismCheckPanel submissionId={currentSubmission.id} />
+                  )}
 
                   <div className="space-y-2">
                     <Button onClick={() => void handleSaveDraft(false)} disabled={savingDraft || publishing || !hasFormChanges} className="w-full" variant="secondary">

@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.client.RestClient;
 
 import java.util.List;
 import java.util.UUID;
@@ -68,13 +68,12 @@ public class UserApiKeyService {
 
     public boolean validateApiKey(String rawKey) {
         try {
-            WebClient client = WebClient.create("https://api.groq.com/openai/v1");
+            RestClient client = RestClient.create("https://api.groq.com/openai/v1");
             String response = client.get()
                     .uri("/models")
                     .header("Authorization", "Bearer " + rawKey)
                     .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+                    .body(String.class);
             return response != null;
         } catch (Exception e) {
             log.warn("API key validation failed: {}", e.getMessage());

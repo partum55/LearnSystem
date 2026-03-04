@@ -12,6 +12,7 @@ import { Breadcrumbs } from '../components/common/Breadcrumbs';
 import { parseCanonicalDocument } from '../features/editor-core';
 import { DocumentRenderer } from '../features/editor-core/DocumentRenderer';
 import AssignmentSubmissionPanel from '../components/submission/AssignmentSubmissionPanel';
+import { ExplainButton } from '../components/ExplainButton';
 
 interface Assignment {
   id: string;
@@ -366,6 +367,12 @@ export const AssignmentDetail: React.FC = () => {
                       {renderContent(assignment.instructions, assignment.instructions_format)}
                     </div>
                   )}
+
+                  {/* AI Explain Button */}
+                  <ExplainButton
+                    contentType="ASSIGNMENT"
+                    contentText={`${assignment.description || ''}\n\n${assignment.instructions || ''}`}
+                  />
 
                   <div>
                     <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Submission Types</h3>

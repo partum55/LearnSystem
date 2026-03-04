@@ -113,6 +113,7 @@ services:
       - BOOTSTRAP_ADMIN_ENABLED=${BOOTSTRAP_ADMIN_ENABLED:-true}
       - BOOTSTRAP_ADMIN_EMAIL=${BOOTSTRAP_ADMIN_EMAIL:-admin@ucu.edu.ua}
       - BOOTSTRAP_ADMIN_PASSWORD=${BOOTSTRAP_ADMIN_PASSWORD:-Admin123!}
+      - AES_ENCRYPTION_KEY=${AES_ENCRYPTION_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -198,6 +199,7 @@ services:
       - LLAMA_MODEL=${LLAMA_MODEL:-llama-3.3-70b-versatile}
       - EUREKA_URI=http://eureka-server:8761/eureka
       - LEARNING_SERVICE_URL=http://lms-learning-service:8089
+      - USER_SERVICE_URL=http://lms-user-service:8081
       - JWT_SECRET=${JWT_SECRET:-local-dev-secret-key-for-jwt-must-be-at-least-256-bits-long-for-hs256-algorithm}
       - JAVA_OPTS=-Xmx768m -Xms384m -XX:+UseG1GC
     depends_on:
@@ -206,6 +208,8 @@ services:
       redis:
         condition: service_healthy
       eureka-server:
+        condition: service_healthy
+      user-service:
         condition: service_healthy
     networks:
       - lms-network
