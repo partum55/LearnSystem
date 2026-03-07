@@ -1,7 +1,6 @@
 package com.university.lms.course.assessment.web;
 
 import com.university.lms.course.assessment.dto.PeerReviewDto;
-import com.university.lms.course.assessment.dto.PeerReviewRubricDto;
 import com.university.lms.course.assessment.dto.SubmitPeerReviewRequest;
 import com.university.lms.course.assessment.service.PeerReviewService;
 import jakarta.validation.Valid;
@@ -22,28 +21,6 @@ import java.util.List;
 public class PeerReviewController {
 
     private final PeerReviewService peerReviewService;
-
-    /**
-     * Create rubrics for an assignment
-     */
-    @PostMapping("/assignments/{assignmentId}/rubrics")
-    public ResponseEntity<List<PeerReviewRubricDto>> createRubrics(
-            @PathVariable Long assignmentId,
-            @Valid @RequestBody List<PeerReviewRubricDto> rubrics) {
-        log.info("Creating rubrics for assignment {}", assignmentId);
-        List<PeerReviewRubricDto> created = peerReviewService.createRubrics(assignmentId, rubrics);
-        return ResponseEntity.ok(created);
-    }
-
-    /**
-     * Get rubrics for an assignment
-     */
-    @GetMapping("/assignments/{assignmentId}/rubrics")
-    public ResponseEntity<List<PeerReviewRubricDto>> getRubrics(@PathVariable Long assignmentId) {
-        log.info("Getting rubrics for assignment {}", assignmentId);
-        List<PeerReviewRubricDto> rubrics = peerReviewService.getRubricsByAssignment(assignmentId);
-        return ResponseEntity.ok(rubrics);
-    }
 
     /**
      * Automatically assign peer reviewers

@@ -1,7 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WizardFormData } from '../wizardTypes';
-import RubricEditor from '../../../features/authoring/components/RubricEditor';
 import AIReviewPanel from '../../../features/authoring/components/AIReviewPanel';
 import { QuestionDraft, QuestionOption } from '../../../features/authoring/types';
 import { aiApi } from '../../../api/ai';
@@ -9,7 +8,10 @@ import {
   BlockEditor,
   parseCanonicalDocument,
   serializeCanonicalDocument,
+  extractDocumentText,
 } from '../../../features/editor-core';
+import { Modal } from '../../../components/Modal';
+import { RichContentRenderer } from '../../../components/common/RichContentRenderer';
 import {
   TrashIcon,
   PlusIcon,
@@ -27,6 +29,45 @@ interface GradingStepProps {
   moduleId?: string;
 }
 
+const QUESTION_TYPES: { value: QuestionDraft['type']; label: string; desc: string }[] = [
+  { value: 'MCQ', label: 'Multiple Choice', desc: 'Single correct answer from options' },
+  { value: 'MULTI_SELECT', label: 'Multi-Select', desc: 'Multiple correct answers' },
+  { value: 'NUMERIC', label: 'Numeric', desc: 'Exact numeric answer' },
+  { value: 'OPEN_TEXT', label: 'Open Text', desc: 'Free-form text response' },
+  { value: 'LATEX', label: 'LaTeX Response', desc: 'Math / LaTeX formatted answer' },
+];
+
+const typeLabel = (type: QuestionDraft['type']) =>
+  QUESTION_TYPES.find((t) => t.value === type)?.label ?? type;
+
+const makeEmptyDraft = (type: QuestionDraft['type'] = 'MCQ'): QuestionDraft => ({
+  id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+  type,
+  prompt: '',
+  explanation: '',
+  points: 1,
+  format: 'MARKDOWN',
+  options:
+    type === 'MCQ' || type === 'MULTI_SELECT'
+      ? [
+          { id: `o-${Date.now()}-1`, text: '', isCorrect: false, format: 'MARKDOWN' },
+          { id: `o-${Date.now()}-2`, text: '', isCorrect: false, format: 'MARKDOWN' },
+        ]
+      : [],
+});
+
+/** Get a short plain-text preview of a question prompt */
+const promptPreview = (prompt: string, maxLen = 80): string => {
+  if (!prompt) return '';
+  try {
+    const doc = parseCanonicalDocument(prompt);
+    const text = extractDocumentText(doc);
+    return text.length > maxLen ? text.slice(0, maxLen) + '...' : text;
+  } catch {
+    return prompt.length > maxLen ? prompt.slice(0, maxLen) + '...' : prompt;
+  }
+};
+
 const GradingStep: React.FC<GradingStepProps> = ({
   formData,
   onChange,
@@ -40,6 +81,11 @@ const GradingStep: React.FC<GradingStepProps> = ({
   const [aiLoading, setAiLoading] = useState(false);
   const [quizPreview, setQuizPreview] = useState(false);
 
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [draft, setDraft] = useState<QuestionDraft | null>(null);
+
   const questions = formData.quiz_questions;
 
   /* ── Quiz helpers ── */
@@ -48,31 +94,23 @@ const GradingStep: React.FC<GradingStepProps> = ({
     [questions],
   );
 
-  const addQuizQuestion = (type: QuestionDraft['type'] = 'MCQ') => {
-    const newQ: QuestionDraft = {
-      id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      type,
-      prompt: '',
-      explanation: '',
-      points: 1,
-      format: 'MARKDOWN',
-      options:
-        type === 'MCQ' || type === 'MULTI_SELECT'
-          ? [
-              { id: `o-${Date.now()}-1`, text: '', isCorrect: false, format: 'MARKDOWN' },
-              { id: `o-${Date.now()}-2`, text: '', isCorrect: false, format: 'MARKDOWN' },
-            ]
-          : [],
-    };
-    onChange({ quiz_questions: [...questions, newQ], max_points: totalQuizPoints + newQ.points });
-  };
-
-  const updateQuizQuestion = (index: number, updated: QuestionDraft) => {
-    const next = [...questions];
-    next[index] = updated;
-    const pts = next.reduce((s, q) => s + (q.points || 0), 0);
-    onChange({ quiz_questions: next, max_points: pts });
-  };
+  const commitQuestion = useCallback(
+    (question: QuestionDraft, index: number | null) => {
+      if (index !== null) {
+        // Update existing
+        const next = [...questions];
+        next[index] = question;
+        const pts = next.reduce((s, q) => s + (q.points || 0), 0);
+        onChange({ quiz_questions: next, max_points: pts });
+      } else {
+        // Add new
+        const next = [...questions, question];
+        const pts = next.reduce((s, q) => s + (q.points || 0), 0);
+        onChange({ quiz_questions: next, max_points: pts });
+      }
+    },
+    [questions, onChange],
+  );
 
   const removeQuizQuestion = (index: number) => {
     const next = questions.filter((_, i) => i !== index);
@@ -88,35 +126,73 @@ const GradingStep: React.FC<GradingStepProps> = ({
     onChange({ quiz_questions: next });
   };
 
-  const addOption = (qIndex: number) => {
-    const q = questions[qIndex];
-    const updated: QuestionDraft = {
-      ...q,
-      options: [
-        ...q.options,
-        { id: `o-${Date.now()}`, text: '', isCorrect: false, format: q.format },
-      ],
-    };
-    updateQuizQuestion(qIndex, updated);
+  /* ── Modal open helpers ── */
+  const openAddModal = () => {
+    setEditingIndex(null);
+    setDraft(makeEmptyDraft('MCQ'));
+    setModalOpen(true);
   };
 
-  const updateOption = (qIndex: number, oIndex: number, partial: Partial<QuestionOption>) => {
-    const q = questions[qIndex];
-    const opts = q.options.map((o, i) => (i === oIndex ? { ...o, ...partial } : o));
-    // For MCQ single-select, only one can be correct
-    if (partial.isCorrect && q.type === 'MCQ') {
-      opts.forEach((o, i) => { if (i !== oIndex) o.isCorrect = false; });
+  const openEditModal = (index: number) => {
+    setEditingIndex(index);
+    setDraft({ ...questions[index], options: questions[index].options.map((o) => ({ ...o })) });
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setDraft(null);
+    setEditingIndex(null);
+  };
+
+  const handleModalSave = () => {
+    if (!draft) return;
+    commitQuestion(draft, editingIndex);
+    closeModal();
+  };
+
+  /* ── Draft mutation helpers (inside modal) ── */
+  const updateDraft = (partial: Partial<QuestionDraft>) => {
+    if (!draft) return;
+    const next = { ...draft, ...partial };
+    // If type changed, ensure options array is correct
+    if (partial.type && partial.type !== draft.type) {
+      const needsOptions = partial.type === 'MCQ' || partial.type === 'MULTI_SELECT';
+      if (needsOptions && next.options.length === 0) {
+        next.options = [
+          { id: `o-${Date.now()}-1`, text: '', isCorrect: false, format: 'MARKDOWN' },
+          { id: `o-${Date.now()}-2`, text: '', isCorrect: false, format: 'MARKDOWN' },
+        ];
+      }
     }
-    updateQuizQuestion(qIndex, { ...q, options: opts });
+    setDraft(next);
   };
 
-  const removeOption = (qIndex: number, oIndex: number) => {
-    const q = questions[qIndex];
-    if (q.options.length <= 2) return;
-    updateQuizQuestion(qIndex, {
-      ...q,
-      options: q.options.filter((_, i) => i !== oIndex),
+  const addDraftOption = () => {
+    if (!draft) return;
+    setDraft({
+      ...draft,
+      options: [
+        ...draft.options,
+        { id: `o-${Date.now()}`, text: '', isCorrect: false, format: draft.format },
+      ],
     });
+  };
+
+  const updateDraftOption = (oIndex: number, partial: Partial<QuestionOption>) => {
+    if (!draft) return;
+    const opts = draft.options.map((o, i) => (i === oIndex ? { ...o, ...partial } : o));
+    if (partial.isCorrect && draft.type === 'MCQ') {
+      opts.forEach((o, i) => {
+        if (i !== oIndex) o.isCorrect = false;
+      });
+    }
+    setDraft({ ...draft, options: opts });
+  };
+
+  const removeDraftOption = (oIndex: number) => {
+    if (!draft || draft.options.length <= 2) return;
+    setDraft({ ...draft, options: draft.options.filter((_, i) => i !== oIndex) });
   };
 
   const addTestCase = () => {
@@ -135,44 +211,10 @@ const GradingStep: React.FC<GradingStepProps> = ({
     onChange({ test_cases: formData.test_cases.filter((_, i) => i !== index) });
   };
 
-  const handleGenerateRubric = async () => {
-    setAiLoading(true);
-    try {
-      // editContent returns a string directly
-      const content = await aiApi.editContent({
-        entity_type: 'ASSIGNMENT',
-        entity_id: '',
-        current_content: JSON.stringify(formData.rubric_draft),
-        prompt: `Generate a rubric for an assignment titled "${formData.title}" with description: ${formData.description}. Max points: ${formData.max_points}`,
-        language: 'en',
-      });
-      if (typeof content === 'string' && content.trim()) {
-        onChange({
-          ai_drafts: [
-            ...formData.ai_drafts,
-            {
-              id: `ai-${Date.now()}`,
-              summary: 'AI-generated rubric',
-              content,
-              format: 'MARKDOWN' as const,
-              status: 'PENDING_REVIEW' as const,
-              createdAt: new Date().toISOString(),
-            },
-          ],
-        });
-      }
-    } catch {
-      // silently fail
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
   const handleGenerateQuiz = async () => {
     if (!courseId || !moduleId) return;
     setAiLoading(true);
     try {
-      // generateQuiz returns { moduleId, quizzes: GeneratedQuiz[] }
       const response = await aiApi.generateQuiz({
         moduleId,
         topic: formData.title || formData.description,
@@ -201,6 +243,16 @@ const GradingStep: React.FC<GradingStepProps> = ({
       setAiLoading(false);
     }
   };
+
+  const draftPromptIsEmpty = draft
+    ? !draft.prompt || (() => {
+        try {
+          return extractDocumentText(parseCanonicalDocument(draft.prompt)).trim().length === 0;
+        } catch {
+          return draft.prompt.trim().length === 0;
+        }
+      })()
+    : true;
 
   return (
     <div className="space-y-6">
@@ -232,10 +284,129 @@ const GradingStep: React.FC<GradingStepProps> = ({
       )}
 
       {/* ══════════════════════════════════════ */}
-      {/* Quiz Builder — dedicated question creation flow */}
+      {/* Quiz Builder                           */}
       {/* ══════════════════════════════════════ */}
       {isQuiz && (
         <div className="space-y-4">
+          <div
+            className="rounded-lg p-4 space-y-4"
+            style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
+          >
+            <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+              {t('quiz.timingAndSecurity', 'Timing, attempts, and secure session')}
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.quiz_timer_enabled}
+                    onChange={(event) => onChange({
+                      quiz_timer_enabled: event.target.checked,
+                      quiz_time_limit: event.target.checked ? (formData.quiz_time_limit ?? 20) : null,
+                    })}
+                    className="rounded"
+                  />
+                  {t('quiz.enableTimer', 'Enable timer')}
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={1440}
+                  className="input w-full"
+                  disabled={!formData.quiz_timer_enabled}
+                  value={formData.quiz_time_limit ?? ''}
+                  onChange={(event) =>
+                    onChange({
+                      quiz_time_limit: event.target.value ? Number(event.target.value) : null,
+                    })
+                  }
+                  placeholder={t('quiz.timeLimitMinutes', 'Time limit (minutes)')}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.quiz_attempt_limit_enabled}
+                    onChange={(event) => onChange({
+                      quiz_attempt_limit_enabled: event.target.checked,
+                      quiz_attempts_allowed: event.target.checked ? (formData.quiz_attempts_allowed ?? 1) : null,
+                    })}
+                    className="rounded"
+                  />
+                  {t('quiz.limitAttempts', 'Limit attempts')}
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  className="input w-full"
+                  disabled={!formData.quiz_attempt_limit_enabled}
+                  value={formData.quiz_attempts_allowed ?? ''}
+                  onChange={(event) =>
+                    onChange({
+                      quiz_attempts_allowed: event.target.value ? Number(event.target.value) : null,
+                    })
+                  }
+                  placeholder={t('quiz.attemptsAllowed', 'Attempts allowed')}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="label text-xs mb-1 block">{t('quiz.attemptScorePolicy', 'Attempt score policy')}</label>
+                <select
+                  className="input w-full"
+                  value={formData.quiz_attempt_score_policy}
+                  onChange={(event) =>
+                    onChange({
+                      quiz_attempt_score_policy: event.target.value as WizardFormData['quiz_attempt_score_policy'],
+                    })
+                  }
+                >
+                  <option value="HIGHEST">{t('quiz.policyHighest', 'Highest score')}</option>
+                  <option value="LATEST">{t('quiz.policyLatest', 'Latest attempt')}</option>
+                  <option value="FIRST">{t('quiz.policyFirst', 'First attempt')}</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.quiz_secure_session_enabled}
+                    onChange={(event) =>
+                      onChange({
+                        quiz_secure_session_enabled: event.target.checked,
+                        quiz_secure_require_fullscreen: event.target.checked ? formData.quiz_secure_require_fullscreen : true,
+                      })
+                    }
+                    className="rounded"
+                  />
+                  {t('quiz.secureSession', 'Enable secure session monitoring')}
+                </label>
+                <label className="flex items-center gap-2 text-sm ml-6" style={{ color: 'var(--text-secondary)' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.quiz_secure_require_fullscreen}
+                    disabled={!formData.quiz_secure_session_enabled}
+                    onChange={(event) =>
+                      onChange({
+                        quiz_secure_require_fullscreen: event.target.checked,
+                      })
+                    }
+                    className="rounded"
+                  />
+                  {t('quiz.requireFullscreen', 'Require fullscreen before start')}
+                </label>
+              </div>
+            </div>
+          </div>
+
           {/* Toolbar */}
           <div
             className="flex flex-wrap items-center justify-between gap-3 rounded-lg p-4"
@@ -273,24 +444,14 @@ const GradingStep: React.FC<GradingStepProps> = ({
                 {aiLoading ? t('ai.generating', 'Generating...') : t('ai.generateQuiz', 'AI Generate')}
               </button>
               {!quizPreview && (
-                <select
-                  onChange={(e) => {
-                    if (e.target.value) addQuizQuestion(e.target.value as QuestionDraft['type']);
-                    e.target.value = '';
-                  }}
-                  className="input text-sm py-1.5"
-                  defaultValue=""
+                <button
+                  type="button"
+                  onClick={openAddModal}
+                  className="btn btn-primary text-sm px-3 py-1.5 flex items-center gap-1.5"
                 >
-                  <option value="" disabled>
-                    <PlusIcon className="h-4 w-4 inline mr-1" />
-                    {t('quiz.addQuestion', 'Add Question')}...
-                  </option>
-                  <option value="MCQ">{t('quiz.types.mcq', 'Multiple Choice')}</option>
-                  <option value="MULTI_SELECT">{t('quiz.types.multiSelect', 'Multi-Select')}</option>
-                  <option value="NUMERIC">{t('quiz.types.numeric', 'Numeric')}</option>
-                  <option value="OPEN_TEXT">{t('quiz.types.openText', 'Open Text')}</option>
-                  <option value="LATEX">{t('quiz.types.latex', 'LaTeX Response')}</option>
-                </select>
+                  <PlusIcon className="h-4 w-4" />
+                  {t('quiz.addQuestion', 'Add Question')}
+                </button>
               )}
             </div>
           </div>
@@ -323,14 +484,11 @@ const GradingStep: React.FC<GradingStepProps> = ({
                         {idx + 1}
                       </span>
                       <span className="text-xs font-medium uppercase" style={{ color: 'var(--text-muted)' }}>
-                        {q.type === 'MCQ' ? 'Multiple Choice' :
-                         q.type === 'MULTI_SELECT' ? 'Multi-Select' :
-                         q.type === 'NUMERIC' ? 'Numeric' :
-                         q.type === 'OPEN_TEXT' ? 'Open Text' : 'LaTeX'}
+                        {typeLabel(q.type)}
                       </span>
                     </span>
                     <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                      {q.points} {t('quiz.points', 'pts')}
+                      {q.points} / {totalQuizPoints} {t('quiz.points', 'pts')}
                     </span>
                   </div>
                   {q.prompt && (
@@ -361,9 +519,12 @@ const GradingStep: React.FC<GradingStepProps> = ({
                             disabled
                             className="h-4 w-4"
                           />
-                          {opt.text || <em style={{ color: 'var(--text-faint)' }}>Empty option</em>}
+                          <span className="flex-1">
+                            <RichContentRenderer content={opt.text || undefined} />
+                            {!opt.text && <em style={{ color: 'var(--text-faint)' }}>Empty option</em>}
+                          </span>
                           {opt.isCorrect && (
-                            <span className="ml-auto text-xs" style={{ color: 'var(--fn-success)' }}>✓ Correct</span>
+                            <span className="ml-auto text-xs" style={{ color: 'var(--fn-success)' }}>&#10003; Correct</span>
                           )}
                         </label>
                       ))}
@@ -394,168 +555,87 @@ const GradingStep: React.FC<GradingStepProps> = ({
               ))}
             </div>
           ) : (
-            /* ── Edit Mode ── */
-            <div className="space-y-4">
+            /* ── Compact Edit Mode — question cards ── */
+            <div className="space-y-2">
               {questions.map((q, idx) => (
                 <div
                   key={q.id}
-                  className="rounded-lg p-4"
+                  className="flex items-center gap-3 rounded-lg px-4 py-3"
                   style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}
                 >
-                  {/* Question header */}
-                  <div className="flex items-center justify-between mb-3">
+                  <span
+                    className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                    style={{ background: 'var(--bg-active)', color: 'var(--text-primary)' }}
+                  >
+                    {idx + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span
-                        className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold"
-                        style={{ background: 'var(--bg-active)', color: 'var(--text-primary)' }}
-                      >
-                        {idx + 1}
+                      <span className="text-xs font-medium uppercase" style={{ color: 'var(--text-muted)' }}>
+                        {typeLabel(q.type)}
                       </span>
-                      <select
-                        value={q.type}
-                        onChange={(e) =>
-                          updateQuizQuestion(idx, { ...q, type: e.target.value as QuestionDraft['type'] })
-                        }
-                        className="input text-sm py-1"
-                      >
-                        <option value="MCQ">Multiple Choice</option>
-                        <option value="MULTI_SELECT">Multi-Select</option>
-                        <option value="NUMERIC">Numeric</option>
-                        <option value="OPEN_TEXT">Open Text</option>
-                        <option value="LATEX">LaTeX Response</option>
-                      </select>
-                      <input
-                        type="number"
-                        min={0}
-                        value={q.points}
-                        onChange={(e) =>
-                          updateQuizQuestion(idx, { ...q, points: Number(e.target.value) || 0 })
-                        }
-                        className="input w-16 text-sm py-1"
-                        title={t('quiz.points', 'Points')}
-                      />
-                      <span className="text-xs" style={{ color: 'var(--text-faint)' }}>
-                        {t('quiz.points', 'pts')}
+                      <span className="inline-flex items-center gap-1 text-xs" style={{ color: 'var(--text-faint)' }}>
+                        <input
+                          type="number"
+                          min={0}
+                          value={q.points}
+                          onChange={(e) => {
+                            const next = [...questions];
+                            next[idx] = { ...next[idx], points: Number(e.target.value) || 0 };
+                            const pts = next.reduce((s, qq) => s + (qq.points || 0), 0);
+                            onChange({ quiz_questions: next, max_points: pts });
+                          }}
+                          className="input w-12 text-xs text-center px-1 py-0.5"
+                          style={{ height: '22px' }}
+                        />
+                        / {totalQuizPoints} {t('quiz.points', 'pts')}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        disabled={idx === 0}
-                        onClick={() => moveQuizQuestion(idx, 'up')}
-                        className="p-1 disabled:opacity-30"
-                        style={{ color: 'var(--text-faint)' }}
-                      >
-                        <ArrowUpIcon className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        disabled={idx === questions.length - 1}
-                        onClick={() => moveQuizQuestion(idx, 'down')}
-                        className="p-1 disabled:opacity-30"
-                        style={{ color: 'var(--text-faint)' }}
-                      >
-                        <ArrowDownIcon className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeQuizQuestion(idx)}
-                        className="p-1"
-                        style={{ color: 'var(--fn-error)' }}
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
-                    </div>
+                    <p
+                      className="text-sm truncate mt-0.5"
+                      style={{ color: 'var(--text-secondary)' }}
+                      title={promptPreview(q.prompt, 200)}
+                    >
+                      {promptPreview(q.prompt) || <em style={{ color: 'var(--text-faint)' }}>No prompt</em>}
+                    </p>
                   </div>
-
-                  {/* Question prompt — RTE */}
-                  <div className="mb-3">
-                    <label className="label text-xs mb-1">{t('quiz.prompt', 'Question')}</label>
-                    <BlockEditor
-                      value={parseCanonicalDocument(q.prompt)}
-                      onChange={(doc) =>
-                        updateQuizQuestion(idx, { ...q, prompt: serializeCanonicalDocument(doc) })
-                      }
-                      mode="lite"
-                      showSidebarTabs={false}
-                      mobileToolsDrawer={false}
-                      placeholder={t('quiz.questionTextPlaceholder', 'Enter your question')}
-                    />
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(idx)}
+                      className="p-1.5 rounded hover:bg-white/5"
+                      style={{ color: 'var(--text-secondary)' }}
+                      title={t('common.edit', 'Edit')}
+                    >
+                      <PencilSquareIcon className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={idx === 0}
+                      onClick={() => moveQuizQuestion(idx, 'up')}
+                      className="p-1.5 rounded hover:bg-white/5 disabled:opacity-30"
+                      style={{ color: 'var(--text-faint)' }}
+                    >
+                      <ArrowUpIcon className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={idx === questions.length - 1}
+                      onClick={() => moveQuizQuestion(idx, 'down')}
+                      className="p-1.5 rounded hover:bg-white/5 disabled:opacity-30"
+                      style={{ color: 'var(--text-faint)' }}
+                    >
+                      <ArrowDownIcon className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeQuizQuestion(idx)}
+                      className="p-1.5 rounded hover:bg-white/5"
+                      style={{ color: 'var(--fn-error)' }}
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
                   </div>
-
-                  {/* Options for MCQ / Multi-Select */}
-                  {(q.type === 'MCQ' || q.type === 'MULTI_SELECT') && (
-                    <div className="space-y-2 mb-3">
-                      <div className="flex items-center justify-between">
-                        <label className="label text-xs">{t('quiz.answerChoices', 'Answer Choices')}</label>
-                        <button
-                          type="button"
-                          onClick={() => addOption(idx)}
-                          className="text-xs flex items-center gap-1"
-                          style={{ color: 'var(--text-secondary)' }}
-                        >
-                          <PlusIcon className="h-3.5 w-3.5" /> {t('quiz.addChoice', 'Add')}
-                        </button>
-                      </div>
-                      {q.options.map((opt, oIdx) => (
-                        <div key={opt.id} className="flex items-center gap-2">
-                          <input
-                            type={q.type === 'MCQ' ? 'radio' : 'checkbox'}
-                            checked={opt.isCorrect}
-                            onChange={(e) => updateOption(idx, oIdx, { isCorrect: e.target.checked })}
-                            className="h-4 w-4 flex-shrink-0"
-                            style={{ accentColor: 'var(--text-primary)' }}
-                            title={t('quiz.markCorrect', 'Mark as correct')}
-                          />
-                          <input
-                            type="text"
-                            value={opt.text}
-                            onChange={(e) => updateOption(idx, oIdx, { text: e.target.value })}
-                            className="input flex-1 text-sm py-1.5"
-                            placeholder={`${t('quiz.option', 'Option')} ${oIdx + 1}`}
-                          />
-                          {q.options.length > 2 && (
-                            <button
-                              type="button"
-                              onClick={() => removeOption(idx, oIdx)}
-                              className="p-1"
-                              style={{ color: 'var(--fn-error)' }}
-                            >
-                              <TrashIcon className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Correct answer for numeric */}
-                  {q.type === 'NUMERIC' && (
-                    <div className="mb-3">
-                      <label className="label text-xs mb-1">{t('quiz.correctAnswer', 'Correct Answer')}</label>
-                      <input
-                        type="text"
-                        value={q.correctAnswer || ''}
-                        onChange={(e) => updateQuizQuestion(idx, { ...q, correctAnswer: e.target.value })}
-                        className="input w-48 text-sm"
-                        placeholder="42"
-                      />
-                    </div>
-                  )}
-
-                  {/* Explanation */}
-                  <details>
-                    <summary className="cursor-pointer text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
-                      {t('quiz.explanation', 'Explanation')} ({t('common.optional', 'optional')})
-                    </summary>
-                    <textarea
-                      value={q.explanation || ''}
-                      onChange={(e) => updateQuizQuestion(idx, { ...q, explanation: e.target.value })}
-                      rows={2}
-                      className="input w-full text-sm mt-1"
-                      placeholder={t('quiz.explanationPlaceholder', 'Explain the correct answer')}
-                    />
-                  </details>
                 </div>
               ))}
             </div>
@@ -563,31 +643,181 @@ const GradingStep: React.FC<GradingStepProps> = ({
         </div>
       )}
 
-      {/* Non-quiz: Rubric Editor */}
-      {!isQuiz && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium" style={{ color: 'var(--text-primary)' }}>
-              {t('wizard.rubric', 'Rubric')}
-            </h3>
-            <button
-              type="button"
-              onClick={() => void handleGenerateRubric()}
-              disabled={aiLoading}
-              className="btn btn-ghost text-sm px-3 py-1.5 flex items-center gap-1.5"
+      {/* ══════════════════════════════════════ */}
+      {/* Question Add/Edit Modal               */}
+      {/* ══════════════════════════════════════ */}
+      <Modal
+        isOpen={modalOpen}
+        onClose={closeModal}
+        title={editingIndex !== null
+          ? t('quiz.editQuestion', 'Edit Question')
+          : t('quiz.addQuestion', 'Add Question')}
+        size="large"
+      >
+        {draft && (
+          <div className="space-y-5">
+            {/* Question type selector */}
+            <div>
+              <label className="label text-xs mb-2">{t('quiz.questionType', 'Question Type')}</label>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {QUESTION_TYPES.map((qt) => (
+                  <button
+                    key={qt.value}
+                    type="button"
+                    onClick={() => updateDraft({ type: qt.value })}
+                    className="rounded-lg p-3 text-left transition-colors"
+                    style={{
+                      background: draft.type === qt.value ? 'var(--bg-active)' : 'var(--bg-surface)',
+                      border: draft.type === qt.value
+                        ? '1px solid var(--border-strong)'
+                        : '1px solid var(--border-default)',
+                    }}
+                  >
+                    <span className="text-sm font-medium block" style={{ color: 'var(--text-primary)' }}>
+                      {qt.label}
+                    </span>
+                    <span className="text-xs block mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                      {qt.desc}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Question prompt */}
+            <div>
+              <label className="label text-xs mb-1">{t('quiz.prompt', 'Question')}</label>
+              <BlockEditor
+                value={parseCanonicalDocument(draft.prompt)}
+                onChange={(doc) => updateDraft({ prompt: serializeCanonicalDocument(doc) })}
+                mode="lite"
+                showSidebarTabs={false}
+                mobileToolsDrawer={false}
+                placeholder={t('quiz.questionTextPlaceholder', 'Enter your question')}
+              />
+            </div>
+
+            {/* Options for MCQ / Multi-Select */}
+            {(draft.type === 'MCQ' || draft.type === 'MULTI_SELECT') && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="label text-xs">{t('quiz.answerChoices', 'Answer Choices')}</label>
+                  <button
+                    type="button"
+                    onClick={addDraftOption}
+                    className="text-xs flex items-center gap-1"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    <PlusIcon className="h-3.5 w-3.5" /> {t('quiz.addChoice', 'Add')}
+                  </button>
+                </div>
+                {draft.options.map((opt, oIdx) => (
+                  <div key={opt.id} className="flex items-start gap-2">
+                    <input
+                      type={draft.type === 'MCQ' ? 'radio' : 'checkbox'}
+                      checked={opt.isCorrect}
+                      onChange={(e) => updateDraftOption(oIdx, { isCorrect: e.target.checked })}
+                      className="h-4 w-4 flex-shrink-0 mt-2.5"
+                      style={{ accentColor: 'var(--text-primary)' }}
+                      title={t('quiz.markCorrect', 'Mark as correct')}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <BlockEditor
+                        value={parseCanonicalDocument(opt.text)}
+                        onChange={(doc) =>
+                          updateDraftOption(oIdx, { text: serializeCanonicalDocument(doc) })
+                        }
+                        mode="lite"
+                        showSidebarTabs={false}
+                        mobileToolsDrawer={false}
+                        placeholder={`${t('quiz.option', 'Option')} ${oIdx + 1}`}
+                      />
+                    </div>
+                    {draft.options.length > 2 && (
+                      <button
+                        type="button"
+                        onClick={() => removeDraftOption(oIdx)}
+                        className="p-1 mt-2 flex-shrink-0"
+                        style={{ color: 'var(--fn-error)' }}
+                      >
+                        <TrashIcon className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Correct answer for numeric */}
+            {draft.type === 'NUMERIC' && (
+              <div>
+                <label className="label text-xs mb-1">{t('quiz.correctAnswer', 'Correct Answer')}</label>
+                <input
+                  type="text"
+                  value={draft.correctAnswer || ''}
+                  onChange={(e) => updateDraft({ correctAnswer: e.target.value })}
+                  className="input w-48 text-sm"
+                  placeholder="42"
+                />
+              </div>
+            )}
+
+            {/* Points */}
+            <div>
+              <label className="label text-xs mb-1">{t('quiz.points', 'Points')}</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  value={draft.points}
+                  onChange={(e) => updateDraft({ points: Number(e.target.value) || 0 })}
+                  className="input w-24 text-sm"
+                />
+                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                  / {editingIndex !== null
+                    ? totalQuizPoints
+                    : totalQuizPoints + (draft.points || 0)
+                  } {t('quiz.points', 'pts')}
+                </span>
+              </div>
+            </div>
+
+            {/* Explanation (collapsible) */}
+            <details>
+              <summary className="cursor-pointer text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+                {t('quiz.explanation', 'Explanation')} ({t('common.optional', 'optional')})
+              </summary>
+              <textarea
+                value={draft.explanation || ''}
+                onChange={(e) => updateDraft({ explanation: e.target.value })}
+                rows={2}
+                className="input w-full text-sm mt-1"
+                placeholder={t('quiz.explanationPlaceholder', 'Explain the correct answer')}
+              />
+            </details>
+
+            {/* Footer */}
+            <div
+              className="flex items-center justify-end gap-3 pt-4"
+              style={{ borderTop: '1px solid var(--border-subtle)' }}
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-              </svg>
-              {aiLoading ? t('ai.generating', 'Generating...') : t('ai.generateRubric', 'AI Generate Rubric')}
-            </button>
+              <button type="button" onClick={closeModal} className="btn btn-ghost text-sm px-4 py-2">
+                {t('common.cancel', 'Cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={handleModalSave}
+                disabled={draftPromptIsEmpty}
+                className="btn btn-primary text-sm px-4 py-2 disabled:opacity-50"
+              >
+                {editingIndex !== null
+                  ? t('common.save', 'Save')
+                  : t('quiz.addQuestion', 'Add Question')}
+              </button>
+            </div>
           </div>
-          <RubricEditor
-            rubric={formData.rubric_draft}
-            onChange={(rubric) => onChange({ rubric_draft: rubric })}
-          />
-        </div>
-      )}
+        )}
+      </Modal>
 
       {/* Code auto-grading */}
       {isCode && (

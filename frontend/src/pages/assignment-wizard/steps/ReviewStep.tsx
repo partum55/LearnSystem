@@ -33,6 +33,33 @@ const ReviewStep: React.FC<ReviewStepProps> = ({
     { label: t('assignment.enable_auto_grading', 'Auto-grading'), value: formData.auto_grading_enabled ? `${t('common.yes', 'Yes')} (${formData.test_cases.length} tests)` : t('common.no', 'No') },
   ];
 
+  if (formData.assignment_type === 'QUIZ') {
+    fieldSummary.push(
+      {
+        label: t('quiz.timeLimit', 'Time limit'),
+        value: formData.quiz_timer_enabled
+          ? `${formData.quiz_time_limit ?? '-'} ${t('quiz.minutes', 'minutes')}`
+          : t('common.disabled', 'Disabled'),
+      },
+      {
+        label: t('quiz.attemptsAllowed', 'Attempts'),
+        value: formData.quiz_attempt_limit_enabled
+          ? String(formData.quiz_attempts_allowed ?? '-')
+          : t('quiz.unlimitedAttempts', 'Unlimited'),
+      },
+      {
+        label: t('quiz.attemptScorePolicy', 'Score policy'),
+        value: formData.quiz_attempt_score_policy,
+      },
+      {
+        label: t('quiz.secureSession', 'Secure session'),
+        value: formData.quiz_secure_session_enabled
+          ? t('common.enabled', 'Enabled')
+          : t('common.disabled', 'Disabled'),
+      }
+    );
+  }
+
   return (
     <div className="space-y-6">
       <h2

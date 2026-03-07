@@ -165,18 +165,12 @@ interface AssignmentGenerationRequest {
   topic: string;
   type?: 'ESSAY' | 'PROJECT' | 'CODING' | 'RESEARCH';
   difficulty?: 'EASY' | 'MEDIUM' | 'HARD';
-  rubricIncluded?: boolean;
 }
 
 interface GeneratedAssignment {
   title: string;
   description: string;
   instructions: string;
-  rubric?: Array<{
-    criterion: string;
-    points: number;
-    description: string;
-  }>;
 }
 
 /**
@@ -205,7 +199,6 @@ export function useGenerateAssignmentMutation() {
 interface FeedbackGenerationRequest {
   submissionId: string;
   submissionContent: string;
-  rubric?: string;
   assignmentDescription?: string;
 }
 

@@ -102,7 +102,12 @@ public class QuizImportExportService {
 
     QuizDto updates = QuizDto.builder()
         .timeLimit(request.getTimeLimit())
+        .timerEnabled(request.getTimerEnabled())
         .attemptsAllowed(request.getAttemptsAllowed())
+        .attemptLimitEnabled(request.getAttemptLimitEnabled())
+        .attemptScorePolicy(request.getAttemptScorePolicy())
+        .secureSessionEnabled(request.getSecureSessionEnabled())
+        .secureRequireFullscreen(request.getSecureRequireFullscreen())
         .shuffleQuestions(request.getShuffleQuestions())
         .shuffleAnswers(request.getShuffleAnswers())
         .build();

@@ -11,7 +11,6 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -44,7 +43,6 @@ public class SubmissionResponse {
     private BigDecimal publishedGrade;
     private String publishedFeedback;
     private String feedback;
-    private Map<String, Object> rubricEvaluation;
     private Integer submissionVersion;
     private Boolean hasUnpublishedTeacherNotes;
     private Boolean isReReviewInProgress;
@@ -130,11 +128,6 @@ public class SubmissionResponse {
     @JsonProperty("published_feedback")
     public String getPublishedFeedbackSnake() {
         return publishedFeedback;
-    }
-
-    @JsonProperty("rubric_evaluation")
-    public Map<String, Object> getRubricEvaluationSnake() {
-        return rubricEvaluation;
     }
 
     @JsonProperty("submission_version")

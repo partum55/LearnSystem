@@ -40,7 +40,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
   if (user?.role === 'TEACHER' || user?.role === 'TA' || user?.role === 'SUPERADMIN') {
     navigation.splice(3, 0,
       { name: t('nav.questionBank', 'Question Bank'), href: '/question-bank', icon: ClipboardDocumentListIcon },
-      { name: t('nav.quizBuilder', 'Quiz Builder'), href: '/quiz-builder', icon: BeakerIcon },
       { name: t('nav.teacherTodo', 'Teacher To-do'), href: '/teacher/todo', icon: ClipboardIcon }
     );
   }

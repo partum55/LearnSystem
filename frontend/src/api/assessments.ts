@@ -82,7 +82,6 @@ const mapAssignmentToApi = (raw: Partial<Assignment> & UnknownRecord): UnknownRe
     autoGradingEnabled: raw.autoGradingEnabled ?? raw.auto_grading_enabled,
     testCases: raw.testCases ?? raw.test_cases,
     maxPoints: raw.maxPoints ?? raw.max_points,
-    rubric: raw.rubric,
     dueDate: raw.dueDate ?? raw.due_date,
     availableFrom: raw.availableFrom ?? raw.available_from,
     availableUntil: raw.availableUntil ?? raw.available_until,
@@ -114,7 +113,18 @@ const mapQuizFromApi = (raw: UnknownRecord): Quiz => ({
   title: String(raw.title ?? ''),
   description: (raw.description as string | undefined) || '',
   time_limit: (raw.timeLimit as number | undefined) ?? (raw.time_limit as number | undefined),
-  attempts_allowed: asNumber(raw.attemptsAllowed ?? raw.attempts_allowed, 1),
+  timer_enabled: Boolean(raw.timerEnabled ?? raw.timer_enabled),
+  attempts_allowed:
+    (raw.attemptsAllowed ?? raw.attempts_allowed) === null || (raw.attemptsAllowed ?? raw.attempts_allowed) === undefined
+      ? null
+      : asNumber(raw.attemptsAllowed ?? raw.attempts_allowed, 1),
+  attempt_limit_enabled: Boolean(raw.attemptLimitEnabled ?? raw.attempt_limit_enabled),
+  attempt_score_policy: String(raw.attemptScorePolicy ?? raw.attempt_score_policy ?? 'HIGHEST') as Quiz['attempt_score_policy'],
+  secure_session_enabled: Boolean(raw.secureSessionEnabled ?? raw.secure_session_enabled),
+  secure_require_fullscreen:
+    raw.secureRequireFullscreen === undefined && raw.secure_require_fullscreen === undefined
+      ? undefined
+      : Boolean(raw.secureRequireFullscreen ?? raw.secure_require_fullscreen),
   randomize_questions: Boolean(raw.shuffleQuestions ?? raw.randomize_questions ?? raw.shuffle_questions),
   randomize_answers: Boolean(raw.shuffleAnswers ?? raw.randomize_answers ?? raw.shuffle_answers),
   questions: (raw.questions as Question[] | undefined) || [],
@@ -177,6 +187,16 @@ const mapAttemptFromApi = (raw: UnknownRecord): QuizAttempt => ({
   auto_score: (raw.autoScore ?? raw.auto_score) !== undefined ? asNumber(raw.autoScore ?? raw.auto_score) : undefined,
   final_score: (raw.finalScore ?? raw.final_score) !== undefined ? asNumber(raw.finalScore ?? raw.final_score) : undefined,
   graded_by: (raw.gradedBy ?? raw.graded_by) ? String(raw.gradedBy ?? raw.graded_by) : undefined,
+  expires_at: (raw.expiresAt as string | undefined) || (raw.expires_at as string | undefined),
+  remaining_seconds:
+    (raw.remainingSeconds ?? raw.remaining_seconds) !== undefined
+      ? asNumber(raw.remainingSeconds ?? raw.remaining_seconds)
+      : undefined,
+  timed_out:
+    raw.timedOut === undefined && raw.timed_out === undefined
+      ? undefined
+      : Boolean(raw.timedOut ?? raw.timed_out),
+  proctoring_data: (raw.proctoringData as Record<string, unknown> | undefined) || (raw.proctoring_data as Record<string, unknown> | undefined),
 });
 
 // Assignment API - Spring backend URLs
@@ -607,8 +627,12 @@ export const attemptsApi = {
     apiClient.get(`/assessments/quiz-attempts/quiz/${quizId}/user`),
   getLatestForQuiz: (quizId: string) =>
     apiClient.get(`/assessments/quiz-attempts/quiz/${quizId}/user/latest`),
+  getOfficialForQuiz: (quizId: string) =>
+    apiClient.get(`/assessments/quiz-attempts/quiz/${quizId}/user/official`),
   getInProgressForQuiz: (quizId: string) =>
     apiClient.get(`/assessments/quiz-attempts/quiz/${quizId}/user/in-progress`),
+  recordViolation: (attemptId: string, payload: { type: string; details?: Record<string, unknown> }) =>
+    apiClient.post(`/assessments/quiz-attempts/${attemptId}/violations`, payload),
 };
 
 // Submissions API - Spring backend URLs

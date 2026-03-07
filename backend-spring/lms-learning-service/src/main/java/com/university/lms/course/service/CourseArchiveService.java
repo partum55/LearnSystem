@@ -204,7 +204,6 @@ public class CourseArchiveService {
       assignmentData.put("latePenaltyPercent", asString(assignment.getLatePenaltyPercent()));
       assignmentData.put("submissionTypes", assignment.getSubmissionTypes());
       assignmentData.put("allowedFileTypes", assignment.getAllowedFileTypes());
-      assignmentData.put("rubric", assignment.getRubric());
       assignmentPayload.add(assignmentData);
     }
     payload.put("assignments", assignmentPayload);

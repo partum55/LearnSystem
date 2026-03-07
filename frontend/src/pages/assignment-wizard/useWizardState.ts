@@ -41,6 +41,18 @@ function validateStep(step: WizardStep, data: WizardFormData): WizardStepValidat
       break;
     case 'grading':
       if (data.max_points <= 0) errors.max_points = 'must_be_positive';
+      if (data.assignment_type === 'QUIZ') {
+        if (data.quiz_timer_enabled) {
+          if (!data.quiz_time_limit || data.quiz_time_limit < 1 || data.quiz_time_limit > 1440) {
+            errors.quiz_time_limit = 'must_be_between_1_and_1440';
+          }
+        }
+        if (data.quiz_attempt_limit_enabled) {
+          if (!data.quiz_attempts_allowed || data.quiz_attempts_allowed < 1 || data.quiz_attempts_allowed > 20) {
+            errors.quiz_attempts_allowed = 'must_be_between_1_and_20';
+          }
+        }
+      }
       break;
     case 'review':
       break;

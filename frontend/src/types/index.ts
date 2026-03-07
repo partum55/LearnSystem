@@ -229,7 +229,6 @@ export interface Assignment {
   available_from?: string;
   available_until?: string;
   max_points: number;
-  rubric?: Rubric;
   submission_types?: string[];
   allowed_file_types?: string[];
   max_file_size?: number;
@@ -253,17 +252,6 @@ export interface Assignment {
   created_by_name?: string;
   submission?: Submission;
   requires_submission?: boolean;
-}
-
-export interface Rubric {
-  criteria: RubricCriterion[];
-}
-
-export interface RubricCriterion {
-  id: string;
-  name: string;
-  description: string;
-  max_points: number;
 }
 
 export interface Submission {
@@ -312,7 +300,12 @@ export interface Quiz {
   title: string;
   description?: string;
   time_limit?: number;
-  attempts_allowed: number;
+  timer_enabled?: boolean;
+  attempts_allowed: number | null;
+  attempt_limit_enabled?: boolean;
+  attempt_score_policy?: 'HIGHEST' | 'LATEST' | 'FIRST';
+  secure_session_enabled?: boolean;
+  secure_require_fullscreen?: boolean;
   randomize_questions: boolean;
   randomize_answers: boolean;
   questions: Question[];
@@ -359,6 +352,10 @@ export interface QuizAttempt {
   auto_score?: number;
   final_score?: number;
   graded_by?: string;
+  expires_at?: string;
+  remaining_seconds?: number;
+  timed_out?: boolean;
+  proctoring_data?: Record<string, unknown>;
 }
 
 // Gradebook types

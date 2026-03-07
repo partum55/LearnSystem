@@ -289,27 +289,6 @@ public class AiGeneratedContentValidator {
     payload.setMaxPoints(payload.getMaxPoints() == null ? 100 : payload.getMaxPoints());
     payload.setLearningObjectives(sanitizeStringList(payload.getLearningObjectives()));
     payload.setResources(sanitizeStringList(payload.getResources()));
-    if (payload.getRubric() != null && payload.getRubric().getCriteria() != null) {
-      payload.getRubric().setCriteria(sanitizeList(payload.getRubric().getCriteria()));
-      for (GeneratedAssignmentResponse.RubricCriterion criterion :
-          payload.getRubric().getCriteria()) {
-        if (criterion == null) {
-          continue;
-        }
-        criterion.setName(sanitizeText(criterion.getName()));
-        criterion.setDescription(sanitizeText(criterion.getDescription()));
-        criterion.setLevels(sanitizeList(criterion.getLevels()));
-        if (criterion.getLevels() != null) {
-          for (GeneratedAssignmentResponse.RubricLevel level : criterion.getLevels()) {
-            if (level == null) {
-              continue;
-            }
-            level.setName(sanitizeText(level.getName()));
-            level.setDescription(sanitizeText(level.getDescription()));
-          }
-        }
-      }
-    }
     return payload;
   }
 

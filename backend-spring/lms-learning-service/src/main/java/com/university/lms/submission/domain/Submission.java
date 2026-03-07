@@ -5,15 +5,11 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
-import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -101,11 +97,6 @@ public class Submission {
 
         @Column(name = "feedback", columnDefinition = "TEXT")
         private String feedback;
-
-        @JdbcTypeCode(SqlTypes.JSON)
-        @Column(name = "rubric_evaluation", columnDefinition = "jsonb")
-        @Builder.Default
-        private Map<String, Object> rubricEvaluation = new HashMap<>();
 
         @Column(name = "is_late", nullable = false)
         @Builder.Default

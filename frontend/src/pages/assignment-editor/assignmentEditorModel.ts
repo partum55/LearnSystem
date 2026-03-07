@@ -1,5 +1,3 @@
-import { Rubric } from '../../types';
-
 export type AssignmentEditorTab = 'basic' | 'content' | 'settings' | 'grading' | 'advanced';
 
 export interface AssignmentFormData {
@@ -22,7 +20,6 @@ export interface AssignmentFormData {
   max_file_size: number;
   test_cases: Array<{ input: string; expected_output: string; points: number }>;
   auto_grading_enabled: boolean;
-  rubric: Rubric | Record<string, unknown>;
   allow_late_submission: boolean;
   late_penalty_percent: number;
   tags: string[];
@@ -52,13 +49,37 @@ export interface AssignmentRequestPayload {
   maxFileSize: number;
   testCases: Array<{ input: string; expected_output: string; points: number }>;
   autoGradingEnabled: boolean;
-  rubric: Rubric | Record<string, unknown>;
   allowLateSubmission: boolean;
   latePenaltyPercent: number;
   tags: string[];
   estimatedDuration: number | null;
   isTemplate: boolean;
   isPublished: boolean;
+  quiz?: {
+    title?: string;
+    description?: string;
+    timerEnabled?: boolean;
+    timeLimit?: number | null;
+    attemptLimitEnabled?: boolean;
+    attemptsAllowed?: number | null;
+    attemptScorePolicy?: 'HIGHEST' | 'LATEST' | 'FIRST';
+    secureSessionEnabled?: boolean;
+    secureRequireFullscreen?: boolean;
+    shuffleQuestions?: boolean;
+    shuffleAnswers?: boolean;
+    showCorrectAnswers?: boolean;
+    passPercentage?: number;
+    questions?: Array<{
+      questionType: string;
+      stem: string;
+      promptDocument?: Record<string, unknown>;
+      options?: Record<string, unknown>;
+      correctAnswer?: Record<string, unknown>;
+      explanation?: string;
+      points: number;
+      metadata?: Record<string, unknown>;
+    }>;
+  };
 }
 
 export const initialAssignmentFormData: AssignmentFormData = {
@@ -81,7 +102,6 @@ export const initialAssignmentFormData: AssignmentFormData = {
   max_file_size: 10485760,
   test_cases: [],
   auto_grading_enabled: false,
-  rubric: {},
   allow_late_submission: true,
   late_penalty_percent: 10,
   tags: [],
@@ -112,7 +132,6 @@ export const mapAssignmentResponseToFormData = (
   max_file_size: Number(data.maxFileSize || 10485760),
   test_cases: (data.testCases as Array<{ input: string; expected_output: string; points: number }>) || [],
   auto_grading_enabled: Boolean(data.autoGradingEnabled),
-  rubric: (data.rubric as Rubric | Record<string, unknown>) || {},
   allow_late_submission: Boolean(data.allowLateSubmission),
   late_penalty_percent: Number(data.latePenaltyPercent || 10),
   tags: (data.tags as string[]) || [],
@@ -144,7 +163,6 @@ export const buildAssignmentPayload = (
   maxFileSize: formData.max_file_size,
   testCases: formData.test_cases,
   autoGradingEnabled: formData.auto_grading_enabled,
-  rubric: formData.rubric,
   allowLateSubmission: formData.allow_late_submission,
   latePenaltyPercent: formData.late_penalty_percent,
   tags: formData.tags,

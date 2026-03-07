@@ -1,7 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import apiClient from '../../api/client';
 import { Button, Card, CardBody, CardHeader } from '..';
+import { BlockEditor, parseCanonicalDocument, serializeCanonicalDocument } from '../../features/editor-core';
+import type { CanonicalDocument } from '../../types';
 
 interface SubmissionFile {
   id: string;
@@ -289,6 +291,10 @@ export const AssignmentSubmissionPanel: React.FC<AssignmentSubmissionPanelProps>
     }
   };
 
+  const handleEditorChange = useCallback((doc: CanonicalDocument) => {
+    setTextAnswer(serializeCanonicalDocument(doc));
+  }, []);
+
   const renderInput = () => {
     if (normalizedType === 'URL') {
       return (
@@ -330,11 +336,10 @@ export const AssignmentSubmissionPanel: React.FC<AssignmentSubmissionPanelProps>
     }
 
     return (
-      <textarea
-        className="input w-full"
-        rows={8}
-        value={textAnswer}
-        onChange={(event) => setTextAnswer(event.target.value)}
+      <BlockEditor
+        value={parseCanonicalDocument(textAnswer)}
+        onChange={handleEditorChange}
+        mode="full"
         placeholder={t('submission.text_placeholder', 'Write your answer')}
       />
     );

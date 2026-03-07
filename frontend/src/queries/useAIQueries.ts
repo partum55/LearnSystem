@@ -54,11 +54,6 @@ export interface GeneratedAssignment {
   title: string;
   description: string;
   instructions: string;
-  rubric?: Array<{
-    criterion: string;
-    points: number;
-    description: string;
-  }>;
 }
 
 export interface GeneratedModule {

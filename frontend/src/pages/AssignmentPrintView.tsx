@@ -21,7 +21,6 @@ interface AssignmentPrintData {
   submissionTypes: string[];
   allowLateSubmission: boolean;
   latePenaltyPercent: number;
-  rubric?: Record<string, unknown>;
 }
 
 export const AssignmentPrintView: React.FC = () => {
@@ -93,10 +92,6 @@ export const AssignmentPrintView: React.FC = () => {
           latePenaltyPercent: Number(
             data.latePenaltyPercent ?? data.late_penalty_percent ?? 0
           ),
-          rubric:
-            typeof data.rubric === 'object' && data.rubric !== null
-              ? (data.rubric as Record<string, unknown>)
-              : undefined,
         });
       } catch (err) {
         if (!mounted) return;
@@ -238,24 +233,6 @@ export const AssignmentPrintView: React.FC = () => {
               </section>
             )}
 
-            {assignment.rubric && Object.keys(assignment.rubric).length > 0 && (
-              <section>
-                <h2 className="mb-2 text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  {t('assignment.rubric', 'Rubric')}
-                </h2>
-                <pre
-                  className="overflow-x-auto whitespace-pre-wrap rounded-md border p-3 text-xs"
-                  style={{
-                    borderColor: 'var(--border-subtle)',
-                    background: 'var(--bg-elevated)',
-                    color: 'var(--text-secondary)',
-                    fontFamily: 'var(--font-mono)',
-                  }}
-                >
-                  {JSON.stringify(assignment.rubric, null, 2)}
-                </pre>
-              </section>
-            )}
           </article>
         )}
       </div>

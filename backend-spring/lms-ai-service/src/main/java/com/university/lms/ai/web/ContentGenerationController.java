@@ -63,7 +63,6 @@ public class ContentGenerationController {
     request.setAssignmentType(defaultIfBlank(request.getAssignmentType(), "FILE_UPLOAD"));
     request.setDifficulty(defaultIfBlank(request.getDifficulty(), "medium"));
     request.setMaxPoints(defaultIfNull(request.getMaxPoints(), 100));
-    request.setIncludeRubric(defaultIfNull(request.getIncludeRubric(), true));
   }
 
   private void applyModuleDefaults(ModuleGenerationRequest request) {

@@ -49,7 +49,6 @@ public class AssignmentDto implements Serializable {
 
     // Grading
     private BigDecimal maxPoints;
-    private Map<String, Object> rubric;
 
     // Dates
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")

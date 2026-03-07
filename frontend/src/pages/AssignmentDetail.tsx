@@ -25,7 +25,6 @@ interface Assignment {
   due_date: string;
   available_from: string | null;
   max_points: number;
-  rubric: Record<string, unknown> | null;
   allow_late_submission: boolean;
   late_penalty_percent: number;
   submission_types: string[];
@@ -110,7 +109,6 @@ export const AssignmentDetail: React.FC = () => {
         due_date: String(data.dueDate || ''),
         available_from: (data.availableFrom as string | null) || null,
         max_points: Number(data.maxPoints || 0),
-        rubric: (data.rubric as Record<string, unknown> | null) || null,
         allow_late_submission: Boolean(data.allowLateSubmission),
         late_penalty_percent: Number(data.latePenaltyPercent || 0),
         submission_types: (data.submissionTypes as string[]) || [],
@@ -261,7 +259,7 @@ export const AssignmentDetail: React.FC = () => {
           </div>
 
           {/* Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className={`grid grid-cols-1 ${isTeacher ? 'md:grid-cols-4' : ''} gap-6 mb-8`}>
             <Card>
               <CardBody>
                 <div className="text-center">
@@ -275,44 +273,48 @@ export const AssignmentDetail: React.FC = () => {
               </CardBody>
             </Card>
 
-            <Card>
-              <CardBody>
-                <div className="text-center">
-                  <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                    {assignment.submissions_count}
-                  </p>
-                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-                    Submissions
-                  </p>
-                </div>
-              </CardBody>
-            </Card>
+            {isTeacher && (
+              <>
+                <Card>
+                  <CardBody>
+                    <div className="text-center">
+                      <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                        {assignment.submissions_count}
+                      </p>
+                      <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+                        Submissions
+                      </p>
+                    </div>
+                  </CardBody>
+                </Card>
 
-            <Card>
-              <CardBody>
-                <div className="text-center">
-                  <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                    {assignment.graded_count}
-                  </p>
-                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-                    Graded
-                  </p>
-                </div>
-              </CardBody>
-            </Card>
+                <Card>
+                  <CardBody>
+                    <div className="text-center">
+                      <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                        {assignment.graded_count}
+                      </p>
+                      <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+                        Graded
+                      </p>
+                    </div>
+                  </CardBody>
+                </Card>
 
-            <Card>
-              <CardBody>
-                <div className="text-center">
-                  <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                    {assignment.submissions_count - assignment.graded_count}
-                  </p>
-                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-                    To Grade
-                  </p>
-                </div>
-              </CardBody>
-            </Card>
+                <Card>
+                  <CardBody>
+                    <div className="text-center">
+                      <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                        {assignment.submissions_count - assignment.graded_count}
+                      </p>
+                      <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+                        To Grade
+                      </p>
+                    </div>
+                  </CardBody>
+                </Card>
+              </>
+            )}
           </div>
 
           {/* Tabs */}
@@ -394,22 +396,6 @@ export const AssignmentDetail: React.FC = () => {
                     </div>
                   )}
 
-                  {assignment.rubric && Object.keys(assignment.rubric).length > 0 && (
-                    <div>
-                      <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Rubric</h3>
-                      <div
-                        className="p-4 rounded-lg"
-                        style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
-                      >
-                        <pre
-                          className="text-sm"
-                          style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}
-                        >
-                          {JSON.stringify(assignment.rubric, null, 2)}
-                        </pre>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </CardBody>
             </Card>

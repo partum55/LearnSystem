@@ -5,6 +5,7 @@ import apiClient from '../api/client';
 import { submissionsApi } from '../api/assessments';
 import { GradingSuggestionPanel } from '../components/GradingSuggestionPanel';
 import { PlagiarismCheckPanel } from '../components/PlagiarismCheckPanel';
+import { RichContentRenderer } from '../components/common/RichContentRenderer';
 
 interface Assignment {
   id: string;
@@ -652,9 +653,10 @@ export const SpeedGrader: React.FC = () => {
                       </h3>
                     </CardHeader>
                     <CardBody>
-                      <p className="whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>
-                        {currentSubmission.textAnswer}
-                      </p>
+                      <RichContentRenderer
+                        content={currentSubmission.textAnswer}
+                        className="whitespace-pre-wrap"
+                      />
                     </CardBody>
                   </Card>
                 )}

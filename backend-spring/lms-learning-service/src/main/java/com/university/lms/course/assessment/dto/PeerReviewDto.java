@@ -17,7 +17,7 @@ public class PeerReviewDto {
     private String status;
     private Double overallScore;
     private String overallFeedback;
-    private List<PeerReviewRatingDto> ratings;
+    private List<?> ratings;
     private LocalDateTime submittedAt;
     private LocalDateTime createdAt;
 }

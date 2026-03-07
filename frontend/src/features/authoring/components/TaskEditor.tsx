@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import TaskMetadataForm from './TaskMetadataForm';
 import TaskSettingsForm from './TaskSettingsForm';
-import RubricEditor from './RubricEditor';
 import QuizBuilder from './QuizBuilder';
 import AIReviewPanel from './AIReviewPanel';
 import ValidationSummary from './ValidationSummary';
@@ -147,12 +146,6 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
       <TaskSettingsForm
         settings={draft.settings}
         onChange={(settings) => updateDraft({ settings })}
-        readOnly={readOnly}
-      />
-
-      <RubricEditor
-        rubric={draft.rubric}
-        onChange={(rubric) => updateDraft({ rubric })}
         readOnly={readOnly}
       />
 

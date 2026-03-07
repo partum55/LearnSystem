@@ -41,7 +41,6 @@ const Profile = lazy(() => import('./pages/Profile'));
 const QuizTaking = lazy(() => import('./pages/QuizTaking'));
 const QuizResults = lazy(() => import('./pages/QuizResults'));
 const QuizDetail = lazy(() => import('./pages/QuizDetail'));
-const QuizBuilder = lazy(() => import('./pages/QuizBuilder'));
 const DashboardCustomize = lazy(() => import('./pages/DashboardCustomize'));
 const TodaySubmissions = lazy(() => import('./pages/TodaySubmissions'));
 const TeacherTodoDashboard = lazy(() => import('./pages/TeacherTodoDashboard'));
@@ -261,13 +260,6 @@ const AppOptimized: React.FC = () => {
             <Route path="/quiz/:id" element={<LazyRoute isPrivate><QuizDetail /></LazyRoute>} />
             <Route path="/quiz/:id/take" element={<LazyRoute isPrivate><QuizTaking /></LazyRoute>} />
             <Route path="/quiz/:id/results" element={<LazyRoute isPrivate><QuizResults /></LazyRoute>} />
-            <Route path="/quiz-builder" element={
-              <LazyRoute isPrivate>
-                <RoleRoute allowedRoles={['TEACHER', 'TA', 'SUPERADMIN']}>
-                  <QuizBuilder />
-                </RoleRoute>
-              </LazyRoute>
-            } />
 
             <Route path="/profile" element={<LazyRoute isPrivate><Profile /></LazyRoute>} />
             <Route path="/profile/settings" element={<LazyRoute isPrivate><ProfileSettings /></LazyRoute>} />

@@ -97,11 +97,6 @@ public class Assignment {
     @Builder.Default
     private BigDecimal maxPoints = BigDecimal.valueOf(100.00);
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
-    @Builder.Default
-    private Map<String, Object> rubric = new HashMap<>();
-
     // Dates
     @Column(name = "due_date")
     private LocalDateTime dueDate;

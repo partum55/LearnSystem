@@ -203,7 +203,6 @@ export interface CourseArchiveAssignment {
   latePenaltyPercent?: string;
   submissionTypes?: string[];
   allowedFileTypes?: string[];
-  rubric?: Record<string, unknown>;
 }
 
 export interface CourseArchivePayload {

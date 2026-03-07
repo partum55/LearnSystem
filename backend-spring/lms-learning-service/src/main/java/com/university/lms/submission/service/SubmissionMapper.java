@@ -74,7 +74,6 @@ public class SubmissionMapper {
                 .publishedGrade(submission.getPublishedGrade())
                 .publishedFeedback(submission.getPublishedFeedback())
                 .feedback(submission.getFeedback())
-                .rubricEvaluation(submission.getRubricEvaluation())
                 .submissionVersion(submission.getSubmissionVersion())
                 .hasUnpublishedTeacherNotes(StringUtils.hasText(submission.getDraftFeedback()))
                 .isReReviewInProgress(isReReviewInProgress(submission))

@@ -6,6 +6,7 @@ import api, { extractErrorMessage } from '../../api/client';
 import { assignmentDocumentsApi } from '../../api/pages';
 import { useWizardState } from './useWizardState';
 import { apiResponseToWizardData, wizardDataToApiPayload } from './wizardMapper';
+import { WizardFormData } from './wizardTypes';
 import { wizardSlide } from '../../components/animation/variants';
 import WizardStepIndicator from './WizardStepIndicator';
 import TypeStep from './steps/TypeStep';
@@ -17,7 +18,87 @@ import ReviewStep from './steps/ReviewStep';
 import { UnsavedChangesPrompt } from '../../components/common/UnsavedChangesPrompt';
 import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 import { CanonicalDocument } from '../../types';
-import { createEmptyDocument, parseCanonicalDocument } from '../../features/editor-core/documentUtils';
+import { createEmptyDocument, createParagraphDocument, parseCanonicalDocument, serializeCanonicalDocument } from '../../features/editor-core/documentUtils';
+import { QuestionDraft } from '../../features/authoring/types';
+
+type UnknownRecord = Record<string, unknown>;
+
+const normalizeDraftType = (value: unknown): QuestionDraft['type'] => {
+  const normalized = String(value ?? '').toUpperCase();
+  switch (normalized) {
+    case 'SINGLE_CHOICE':
+    case 'MULTIPLE_CHOICE':
+      return 'MCQ';
+    case 'MULTIPLE_RESPONSE':
+    case 'MULTI_SELECT':
+      return 'MULTI_SELECT';
+    case 'NUMERIC':
+    case 'NUMERICAL':
+      return 'NUMERIC';
+    case 'LATEX':
+      return 'LATEX';
+    default:
+      return 'OPEN_TEXT';
+  }
+};
+
+const mapQuizToDraftQuestions = (quizRaw: UnknownRecord): QuestionDraft[] => {
+  const quizQuestions = Array.isArray(quizRaw.questions) ? quizRaw.questions : [];
+
+  return quizQuestions.map((entry, index) => {
+    const row = (entry || {}) as UnknownRecord;
+    const question = (row.question && typeof row.question === 'object' ? row.question : {}) as UnknownRecord;
+    const type = normalizeDraftType(question.questionType);
+    const stem = String(question.stem ?? '');
+    const points = Number(question.points ?? 1);
+    const optionsMap = (question.options && typeof question.options === 'object'
+      ? question.options
+      : {}) as UnknownRecord;
+    const correctAnswer = (question.correctAnswer && typeof question.correctAnswer === 'object'
+      ? question.correctAnswer
+      : {}) as UnknownRecord;
+    const choices = Array.isArray(optionsMap.choices)
+      ? optionsMap.choices.map((item) => String(item ?? ''))
+      : [];
+
+    const base: QuestionDraft = {
+      id: String(question.id ?? row.id ?? `q-${index + 1}`),
+      type,
+      prompt: serializeCanonicalDocument(createParagraphDocument(stem)),
+      explanation: String(question.explanation ?? ''),
+      points: Number.isFinite(points) && points > 0 ? points : 1,
+      format: 'MARKDOWN',
+      options: [],
+      correctAnswer: undefined,
+    };
+
+    if (type === 'MCQ') {
+      const correctChoice = String(correctAnswer.choice ?? correctAnswer.answer ?? '');
+      base.options = choices.map((text, choiceIndex) => ({
+        id: `${base.id}-o-${choiceIndex + 1}`,
+        text: serializeCanonicalDocument(createParagraphDocument(text)),
+        isCorrect: text === correctChoice,
+        format: 'MARKDOWN',
+      }));
+    } else if (type === 'MULTI_SELECT') {
+      const correctChoices = Array.isArray(correctAnswer.choices)
+        ? correctAnswer.choices.map((item) => String(item ?? ''))
+        : [];
+      base.options = choices.map((text, choiceIndex) => ({
+        id: `${base.id}-o-${choiceIndex + 1}`,
+        text: serializeCanonicalDocument(createParagraphDocument(text)),
+        isCorrect: correctChoices.includes(text),
+        format: 'MARKDOWN',
+      }));
+    } else if (type === 'NUMERIC') {
+      base.correctAnswer = String(correctAnswer.value ?? correctAnswer.answer ?? '');
+    } else if (type === 'LATEX' || type === 'OPEN_TEXT') {
+      base.correctAnswer = String(correctAnswer.answer ?? '');
+    }
+
+    return base;
+  });
+};
 
 const AssignmentWizard: React.FC = () => {
   const params = useParams<{ id?: string; assignmentId?: string; courseId?: string; moduleId?: string }>();
@@ -67,7 +148,34 @@ const AssignmentWizard: React.FC = () => {
           api.get<Record<string, unknown>>(`/assessments/assignments/${assignmentId}`),
           assignmentDocumentsApi.getTemplate(assignmentId).catch(() => null),
         ]);
-        const wizardData = apiResponseToWizardData(assignmentResponse.data);
+        let wizardData = apiResponseToWizardData(assignmentResponse.data);
+
+        const raw = assignmentResponse.data as UnknownRecord;
+        const assignmentType = String(raw.assignmentType ?? raw.assignment_type ?? '');
+        const rawQuizId = raw.quizId ?? raw.quiz_id ?? raw.quiz;
+        if (assignmentType === 'QUIZ' && typeof rawQuizId === 'string' && rawQuizId) {
+          try {
+            const quizResponse = await api.get<UnknownRecord>(`/assessments/quizzes/${rawQuizId}`);
+            const quizRaw = (quizResponse.data || {}) as UnknownRecord;
+            const timerEnabled = Boolean(quizRaw.timerEnabled ?? (quizRaw.timeLimit !== null && quizRaw.timeLimit !== undefined));
+            const attemptLimitEnabled = Boolean(quizRaw.attemptLimitEnabled ?? (quizRaw.attemptsAllowed !== null && quizRaw.attemptsAllowed !== undefined));
+
+            wizardData = {
+              ...wizardData,
+              quiz_timer_enabled: timerEnabled,
+              quiz_time_limit: timerEnabled ? Number(quizRaw.timeLimit ?? 20) : null,
+              quiz_attempt_limit_enabled: attemptLimitEnabled,
+              quiz_attempts_allowed: attemptLimitEnabled ? Number(quizRaw.attemptsAllowed ?? 1) : null,
+              quiz_attempt_score_policy: String(quizRaw.attemptScorePolicy ?? 'HIGHEST') as WizardFormData['quiz_attempt_score_policy'],
+              quiz_secure_session_enabled: Boolean(quizRaw.secureSessionEnabled),
+              quiz_secure_require_fullscreen: quizRaw.secureRequireFullscreen === undefined ? true : Boolean(quizRaw.secureRequireFullscreen),
+              quiz_questions: mapQuizToDraftQuestions(quizRaw),
+            };
+          } catch {
+            // Keep base wizard data if quiz details fail to load.
+          }
+        }
+
         wizard.loadExisting(wizardData);
         if (templateResponse?.data?.document) {
           const parsedTemplate = parseCanonicalDocument(templateResponse.data.document);

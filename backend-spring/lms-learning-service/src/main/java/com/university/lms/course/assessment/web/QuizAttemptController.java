@@ -4,7 +4,10 @@ import com.university.lms.course.assessment.domain.QuizAttempt;
 import com.university.lms.course.assessment.dto.QuizAttemptDto;
 import com.university.lms.course.assessment.dto.QuizAttemptQuestionDto;
 import com.university.lms.course.assessment.dto.QuizAttemptResultDto;
+import com.university.lms.course.assessment.dto.QuizAttemptViolationRequest;
+import com.university.lms.course.assessment.dto.StartQuizAttemptRequest;
 import com.university.lms.course.assessment.service.QuizAttemptService;
+import com.university.lms.course.assessment.service.AssessmentMapper;
 import com.university.lms.course.web.RequestUserContext;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -27,48 +30,63 @@ import java.util.UUID;
 public class QuizAttemptController {
 
     private final QuizAttemptService quizAttemptService;
+    private final AssessmentMapper assessmentMapper;
     private final RequestUserContext requestUserContext;
 
     /**
      * Start a new quiz attempt.
      */
     @PostMapping("/quiz/{quizId}/start")
-    public ResponseEntity<QuizAttempt> startQuizAttempt(
+    public ResponseEntity<QuizAttemptDto> startQuizAttempt(
             @PathVariable UUID quizId,
+            @RequestBody(required = false) StartQuizAttemptRequest startRequest,
             HttpServletRequest request) {
 
         UUID userId = requestUserContext.requireUserId();
         String ipAddress = request.getRemoteAddr();
         String browserFingerprint = request.getHeader("User-Agent");
 
-        QuizAttempt attempt = quizAttemptService.startQuizAttempt(quizId, userId, ipAddress, browserFingerprint);
-        return ResponseEntity.status(HttpStatus.CREATED).body(attempt);
+        QuizAttempt attempt = quizAttemptService.startQuizAttempt(quizId, userId, ipAddress, browserFingerprint, startRequest);
+        return ResponseEntity.status(HttpStatus.CREATED).body(assessmentMapper.toDto(attempt));
     }
 
     /**
      * Save in-progress answers without submitting attempt.
      */
     @PostMapping("/{attemptId}/save")
-    public ResponseEntity<QuizAttempt> saveQuizAttemptProgress(
+    public ResponseEntity<QuizAttemptDto> saveQuizAttemptProgress(
             @PathVariable UUID attemptId,
             @RequestBody Map<String, Object> answers) {
 
         UUID userId = requestUserContext.requireUserId();
         QuizAttempt attempt = quizAttemptService.saveProgress(attemptId, answers, userId);
-        return ResponseEntity.ok(attempt);
+        return ResponseEntity.ok(assessmentMapper.toDto(attempt));
     }
 
     /**
      * Submit quiz attempt.
      */
     @PostMapping("/{attemptId}/submit")
-    public ResponseEntity<QuizAttempt> submitQuizAttempt(
+    public ResponseEntity<QuizAttemptDto> submitQuizAttempt(
             @PathVariable UUID attemptId,
             @RequestBody Map<String, Object> answers) {
 
         UUID userId = requestUserContext.requireUserId();
         QuizAttempt attempt = quizAttemptService.submitQuizAttempt(attemptId, answers, userId);
-        return ResponseEntity.ok(attempt);
+        return ResponseEntity.ok(assessmentMapper.toDto(attempt));
+    }
+
+    @PostMapping("/{attemptId}/violations")
+    public ResponseEntity<QuizAttemptDto> recordViolation(
+            @PathVariable UUID attemptId,
+            @RequestBody(required = false) QuizAttemptViolationRequest violationRequest) {
+        UUID userId = requestUserContext.requireUserId();
+        QuizAttemptViolationRequest safeRequest =
+            violationRequest != null
+                ? violationRequest
+                : QuizAttemptViolationRequest.builder().type("UNKNOWN").build();
+        QuizAttempt attempt = quizAttemptService.recordViolation(attemptId, safeRequest, userId);
+        return ResponseEntity.ok(assessmentMapper.toDto(attempt));
     }
 
     /**
@@ -120,31 +138,43 @@ public class QuizAttemptController {
      * Get user's attempts for a quiz.
      */
     @GetMapping("/quiz/{quizId}/user")
-    public ResponseEntity<List<QuizAttempt>> getUserAttempts(
+    public ResponseEntity<List<QuizAttemptDto>> getUserAttempts(
             @PathVariable UUID quizId) {
 
         UUID userId = requestUserContext.requireUserId();
         List<QuizAttempt> attempts = quizAttemptService.getUserAttempts(quizId, userId);
-        return ResponseEntity.ok(attempts);
+        return ResponseEntity.ok(attempts.stream().map(assessmentMapper::toDto).toList());
     }
 
     /**
      * Get latest attempt.
      */
     @GetMapping("/quiz/{quizId}/user/latest")
-    public ResponseEntity<QuizAttempt> getLatestAttempt(
+    public ResponseEntity<QuizAttemptDto> getLatestAttempt(
             @PathVariable UUID quizId) {
 
         UUID userId = requestUserContext.requireUserId();
         QuizAttempt attempt = quizAttemptService.getLatestAttempt(quizId, userId);
-        return ResponseEntity.ok(attempt);
+        return ResponseEntity.ok(assessmentMapper.toDto(attempt));
+    }
+
+    /**
+     * Get official attempt according to quiz score policy.
+     */
+    @GetMapping("/quiz/{quizId}/user/official")
+    public ResponseEntity<QuizAttemptDto> getOfficialAttempt(
+            @PathVariable UUID quizId) {
+
+        UUID userId = requestUserContext.requireUserId();
+        QuizAttempt attempt = quizAttemptService.getOfficialAttempt(quizId, userId);
+        return ResponseEntity.ok(assessmentMapper.toDto(attempt));
     }
 
     /**
      * Get in-progress attempt.
      */
     @GetMapping("/quiz/{quizId}/user/in-progress")
-    public ResponseEntity<QuizAttempt> getInProgressAttempt(
+    public ResponseEntity<QuizAttemptDto> getInProgressAttempt(
             @PathVariable UUID quizId) {
 
         UUID userId = requestUserContext.requireUserId();
@@ -154,7 +184,7 @@ public class QuizAttemptController {
             return ResponseEntity.noContent().build();
         }
 
-        return ResponseEntity.ok(attempt);
+        return ResponseEntity.ok(assessmentMapper.toDto(attempt));
     }
 
     /**
@@ -162,8 +192,8 @@ public class QuizAttemptController {
      */
     @GetMapping("/quiz/{quizId}/ungraded")
     @PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
-    public ResponseEntity<List<QuizAttempt>> getUngradedAttempts(@PathVariable UUID quizId) {
+    public ResponseEntity<List<QuizAttemptDto>> getUngradedAttempts(@PathVariable UUID quizId) {
         List<QuizAttempt> attempts = quizAttemptService.getUngradedAttempts(quizId);
-        return ResponseEntity.ok(attempts);
+        return ResponseEntity.ok(attempts.stream().map(assessmentMapper::toDto).toList());
     }
 }

@@ -1,15 +1,9 @@
 package com.university.lms.course.assessment.service;
 
 import com.university.lms.course.assessment.domain.PeerReview;
-import com.university.lms.course.assessment.domain.PeerReviewRating;
-import com.university.lms.course.assessment.domain.PeerReviewRubric;
 import com.university.lms.course.assessment.dto.PeerReviewDto;
-import com.university.lms.course.assessment.dto.PeerReviewRatingDto;
-import com.university.lms.course.assessment.dto.PeerReviewRubricDto;
 import com.university.lms.course.assessment.dto.SubmitPeerReviewRequest;
 import com.university.lms.course.assessment.repository.PeerReviewRepository;
-import com.university.lms.course.assessment.repository.PeerReviewRatingRepository;
-import com.university.lms.course.assessment.repository.PeerReviewRubricRepository;
 import com.university.lms.common.exception.ResourceNotFoundException;
 import com.university.lms.common.exception.ValidationException;
 import lombok.RequiredArgsConstructor;
@@ -33,41 +27,6 @@ import java.util.stream.Collectors;
 public class PeerReviewService {
 
     private final PeerReviewRepository peerReviewRepository;
-    private final PeerReviewRubricRepository rubricRepository;
-    private final PeerReviewRatingRepository ratingRepository;
-
-    /**
-     * Create rubrics for an assignment
-     */
-    @Transactional
-    public List<PeerReviewRubricDto> createRubrics(Long assignmentId, List<PeerReviewRubricDto> rubricDtos) {
-        if (rubricDtos == null || rubricDtos.isEmpty()) {
-            throw new ValidationException("At least one rubric is required");
-        }
-
-        log.info("Creating {} rubrics for assignment {}", rubricDtos.size(), assignmentId);
-
-        // Delete existing rubrics
-        rubricRepository.deleteByAssignmentId(assignmentId);
-
-        List<PeerReviewRubric> rubrics = new ArrayList<>();
-        for (int i = 0; i < rubricDtos.size(); i++) {
-            PeerReviewRubricDto dto = rubricDtos.get(i);
-            PeerReviewRubric rubric = PeerReviewRubric.builder()
-                    .assignmentId(assignmentId)
-                    .criterionName(dto.getCriterionName())
-                    .criterionDescription(dto.getCriterionDescription())
-                    .maxPoints(dto.getMaxPoints())
-                    .position(i)
-                    .build();
-            rubrics.add(rubric);
-        }
-
-        rubrics = rubricRepository.saveAll(rubrics);
-        return rubrics.stream()
-                .map(this::toRubricDto)
-                .collect(Collectors.toList());
-    }
 
     /**
      * Automatically assign peer reviewers for submitted assignments
@@ -158,7 +117,7 @@ public class PeerReviewService {
     }
 
     /**
-     * Submit a peer review with ratings
+     * Submit a peer review
      */
     @Transactional
     public PeerReviewDto submitPeerReview(SubmitPeerReviewRequest request) {
@@ -174,34 +133,8 @@ public class PeerReviewService {
         peerReview.setSubmittedAt(LocalDateTime.now());
         PeerReview savedPeerReview = peerReviewRepository.save(peerReview);
 
-        // Delete existing ratings
-        ratingRepository.deleteByPeerReviewId(savedPeerReview.getId());
-
-        // Save new ratings
-        if (request.getRatings() != null && !request.getRatings().isEmpty()) {
-            final Long peerReviewId = savedPeerReview.getId();
-            List<PeerReviewRating> ratings = request.getRatings().stream()
-                    .map(rating -> PeerReviewRating.builder()
-                            .peerReviewId(peerReviewId)
-                            .rubricId(rating.getRubricId())
-                            .score(rating.getScore() != null ? BigDecimal.valueOf(rating.getScore()) : null)
-                            .feedback(rating.getFeedback())
-                            .build())
-                    .collect(Collectors.toList());
-            ratingRepository.saveAll(ratings);
-        }
-
         log.info("Peer review {} submitted successfully", savedPeerReview.getId());
         return toPeerReviewDto(savedPeerReview);
-    }
-
-    /**
-     * Get rubrics for an assignment
-     */
-    public List<PeerReviewRubricDto> getRubricsByAssignment(Long assignmentId) {
-        return rubricRepository.findByAssignmentIdOrderByPosition(assignmentId).stream()
-                .map(this::toRubricDto)
-                .collect(Collectors.toList());
     }
 
     /**
@@ -242,38 +175,7 @@ public class PeerReviewService {
         dto.setOverallFeedback(peerReview.getOverallFeedback());
         dto.setSubmittedAt(peerReview.getSubmittedAt());
         dto.setCreatedAt(peerReview.getCreatedAt());
-
-        // Load ratings
-        List<PeerReviewRating> ratings = ratingRepository.findByPeerReviewId(peerReview.getId());
-        dto.setRatings(ratings.stream()
-                .map(this::toRatingDto)
-                .collect(Collectors.toList()));
-
-        return dto;
-    }
-
-    private PeerReviewRubricDto toRubricDto(PeerReviewRubric rubric) {
-        PeerReviewRubricDto dto = new PeerReviewRubricDto();
-        dto.setId(rubric.getId());
-        dto.setAssignmentId(rubric.getAssignmentId());
-        dto.setCriterionName(rubric.getCriterionName());
-        dto.setCriterionDescription(rubric.getCriterionDescription());
-        dto.setMaxPoints(rubric.getMaxPoints());
-        dto.setPosition(rubric.getPosition());
-        return dto;
-    }
-
-    private PeerReviewRatingDto toRatingDto(PeerReviewRating rating) {
-        PeerReviewRatingDto dto = new PeerReviewRatingDto();
-        dto.setId(rating.getId());
-        dto.setPeerReviewId(rating.getPeerReviewId());
-        dto.setRubricId(rating.getRubricId());
-        dto.setScore(rating.getScore() != null ? rating.getScore().doubleValue() : null);
-        dto.setFeedback(rating.getFeedback());
-
-        // Load rubric name
-        rubricRepository.findById(rating.getRubricId())
-                .ifPresent(rubric -> dto.setCriterionName(rubric.getCriterionName()));
+        dto.setRatings(Collections.emptyList());
 
         return dto;
     }

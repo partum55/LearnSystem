@@ -22,6 +22,11 @@ import {
   mapQuizMeta,
 } from './quiz-taking/quizTakingModel';
 
+const isMobileBrowser = (): boolean =>
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
+
 export const QuizTaking: React.FC = () => {
   const { id: quizId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -40,6 +45,7 @@ export const QuizTaking: React.FC = () => {
   const [showTimeWarning, setShowTimeWarning] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const hasPlayedWarningRef = useRef(false);
+  const violationThrottleRef = useRef<Record<string, number>>({});
 
   const hasUnsavedAnswers = attempt !== null && Object.keys(answers).length > 0 && !submitting;
 
@@ -119,6 +125,31 @@ export const QuizTaking: React.FC = () => {
     }
   }, [attempt?.id, getStorageKey, quizId]);
 
+  const recordViolation = useCallback(
+    async (type: string, details?: Record<string, unknown>) => {
+      if (!attempt?.id || !quiz?.secure_session_enabled) {
+        return;
+      }
+
+      const now = Date.now();
+      const lastSentAt = violationThrottleRef.current[type] || 0;
+      if (now - lastSentAt < 3000) {
+        return;
+      }
+      violationThrottleRef.current[type] = now;
+
+      try {
+        await apiClient.post(`/assessments/quiz-attempts/${attempt.id}/violations`, {
+          type,
+          details: details || {},
+        });
+      } catch {
+        // Ignore telemetry errors.
+      }
+    },
+    [attempt?.id, quiz?.secure_session_enabled]
+  );
+
   useEffect(() => {
     if (!attempt || Object.keys(answers).length === 0) {
       return;
@@ -127,7 +158,17 @@ export const QuizTaking: React.FC = () => {
     const saveInterval = setInterval(() => {
       setIsSaving(true);
       saveAnswersToStorage(answers);
-      void apiClient.post(`/assessments/quiz-attempts/${attempt.id}/save`, buildQuizSubmitPayload(quiz?.questions || [], answers))
+      void apiClient
+        .post<ApiQuizAttempt>(
+          `/assessments/quiz-attempts/${attempt.id}/save`,
+          buildQuizSubmitPayload(quiz?.questions || [], answers)
+        )
+        .then((response) => {
+          if (response.data?.submittedAt) {
+            clearStoredAnswers();
+            navigate(`/quiz/${quizId}/results`);
+          }
+        })
         .catch(() => undefined)
         .finally(() => {
           setTimeout(() => setIsSaving(false), 500);
@@ -135,7 +176,7 @@ export const QuizTaking: React.FC = () => {
     }, 30000);
 
     return () => clearInterval(saveInterval);
-  }, [answers, attempt, quiz?.questions, saveAnswersToStorage]);
+  }, [answers, attempt, clearStoredAnswers, navigate, quiz?.questions, quizId, saveAnswersToStorage]);
 
   useEffect(() => {
     if (!attempt?.id) {
@@ -169,10 +210,63 @@ export const QuizTaking: React.FC = () => {
       if (inProgressResponse.status === 200 && inProgressResponse.data?.id) {
         attemptData = inProgressResponse.data;
       } else {
+        let startPayload: {
+          secureConsent?: boolean;
+          startedInFullscreen?: boolean;
+          reducedSecurityMode?: boolean;
+        } = {};
+
+        if (quizData.secure_session_enabled) {
+          const consent = window.confirm(
+            t(
+              'quiz.secureConsentPrompt',
+              'This quiz uses secure-session monitoring (tab/focus/fullscreen checks). Continue?'
+            )
+          );
+          if (!consent) {
+            setError(t('quiz.secureConsentRequired', 'Secure-session consent is required to start this quiz.'));
+            setLoading(false);
+            return;
+          }
+
+          const mobile = isMobileBrowser();
+          let startedInFullscreen = false;
+          if (quizData.secure_require_fullscreen && !mobile) {
+            try {
+              await document.documentElement.requestFullscreen();
+              startedInFullscreen = Boolean(document.fullscreenElement);
+            } catch {
+              startedInFullscreen = false;
+            }
+            if (!startedInFullscreen) {
+              setError(
+                t(
+                  'quiz.fullscreenRequired',
+                  'Fullscreen is required for this secure quiz. Please enable fullscreen and try again.'
+                )
+              );
+              setLoading(false);
+              return;
+            }
+          }
+
+          startPayload = {
+            secureConsent: true,
+            startedInFullscreen,
+            reducedSecurityMode: mobile,
+          };
+        }
+
         const startedAttempt = await apiClient.post<ApiQuizAttempt>(
-          `/assessments/quiz-attempts/quiz/${quizId}/start`
+          `/assessments/quiz-attempts/quiz/${quizId}/start`,
+          startPayload
         );
         attemptData = startedAttempt.data;
+      }
+
+      if (attemptData.submittedAt) {
+        navigate(`/quiz/${quizId}/results`);
+        return;
       }
 
       const attemptQuestionsResponse = await apiClient.get<ApiAttemptQuestion[]>(
@@ -192,11 +286,20 @@ export const QuizTaking: React.FC = () => {
         id: attemptData.id,
         attempt_number: attemptData.attemptNumber,
         started_at: attemptData.startedAt,
+        submitted_at: attemptData.submittedAt,
+        expires_at: attemptData.expiresAt,
+        remaining_seconds: attemptData.remainingSeconds,
+        timed_out: attemptData.timedOut,
+        proctoring_data: attemptData.proctoringData,
         answers: {},
       });
 
-      if (completeQuiz.time_limit) {
+      if (typeof attemptData.remainingSeconds === 'number') {
+        setTimeRemaining(Math.max(0, Math.floor(attemptData.remainingSeconds)));
+      } else if (completeQuiz.timer_enabled && completeQuiz.time_limit) {
         setTimeRemaining(completeQuiz.time_limit * 60);
+      } else {
+        setTimeRemaining(null);
       }
 
       const restoredAnswers = mapAttemptAnswersFromApi(completeQuiz, attemptData.answers);
@@ -208,13 +311,45 @@ export const QuizTaking: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [quizId, t]);
+  }, [navigate, quizId, t]);
 
   useEffect(() => {
     if (quizId) {
       void startQuiz();
     }
   }, [quizId, startQuiz]);
+
+  useEffect(() => {
+    if (!quiz?.secure_session_enabled || !attempt?.id) {
+      return;
+    }
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        void recordViolation('tab_hidden', { visibilityState: document.visibilityState });
+      }
+    };
+
+    const onWindowBlur = () => {
+      void recordViolation('focus_lost', { hasFocus: document.hasFocus() });
+    };
+
+    const onFullscreenChange = () => {
+      if (quiz.secure_require_fullscreen && !isMobileBrowser() && !document.fullscreenElement) {
+        void recordViolation('fullscreen_exit', { fullscreenElement: false });
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('blur', onWindowBlur);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('blur', onWindowBlur);
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+    };
+  }, [attempt?.id, quiz?.secure_require_fullscreen, quiz?.secure_session_enabled, recordViolation]);
 
   const handleAnswerChange = (questionId: string, answer: StudentAnswer) => {
     const nextAnswers = {
@@ -252,7 +387,7 @@ export const QuizTaking: React.FC = () => {
   }, [answers, attempt, clearStoredAnswers, navigate, quiz?.questions, quizId, submitting, t, timeRemaining]);
 
   useEffect(() => {
-    if (!quiz?.time_limit || timeRemaining === null) {
+    if (!quiz?.timer_enabled || timeRemaining === null) {
       return;
     }
 
@@ -281,7 +416,7 @@ export const QuizTaking: React.FC = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [quiz?.time_limit, timeRemaining]);
+  }, [quiz?.timer_enabled, timeRemaining]);
 
   useEffect(() => {
     if (timeRemaining === 0 && !submitting && attempt) {
@@ -337,6 +472,18 @@ export const QuizTaking: React.FC = () => {
             isSaving={isSaving}
             t={t}
           />
+
+          {quiz.secure_session_enabled && (
+            <div
+              className="mb-4 rounded-md p-3 text-sm"
+              style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', color: 'var(--text-secondary)' }}
+            >
+              {t(
+                'quiz.secureSessionActive',
+                'Secure session is active: tab changes and focus/fullscreen exits are logged for instructors.'
+              )}
+            </div>
+          )}
 
           <QuizTakingProgress
             currentQuestionIndex={currentQuestionIndex}

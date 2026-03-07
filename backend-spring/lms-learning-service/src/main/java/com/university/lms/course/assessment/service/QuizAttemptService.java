@@ -7,6 +7,8 @@ import com.university.lms.course.assessment.dto.QuizAttemptDto;
 import com.university.lms.course.assessment.dto.QuizAttemptQuestionDto;
 import com.university.lms.course.assessment.dto.QuizAttemptResultDto;
 import com.university.lms.course.assessment.dto.QuizAttemptResultQuestionDto;
+import com.university.lms.course.assessment.dto.QuizAttemptViolationRequest;
+import com.university.lms.course.assessment.dto.StartQuizAttemptRequest;
 import com.university.lms.course.assessment.repository.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -36,20 +38,28 @@ public class QuizAttemptService {
 
   @Transactional
   public QuizAttempt startQuizAttempt(
-      UUID quizId, UUID userId, String ipAddress, String browserFingerprint) {
+      UUID quizId,
+      UUID userId,
+      String ipAddress,
+      String browserFingerprint,
+      StartQuizAttemptRequest startRequest) {
     log.info("Starting quiz attempt for user {} on quiz {}", userId, quizId);
 
     Quiz quiz = findQuizById(quizId);
+    validateSecureSessionStart(quiz, startRequest);
 
-    quizAttemptRepository
-        .findInProgressAttempt(quizId, userId)
-        .ifPresent(
-            attempt -> {
-              throw new ValidationException("You already have an in-progress attempt for this quiz");
-            });
+    QuizAttempt existingInProgress = quizAttemptRepository.findInProgressAttempt(quizId, userId).orElse(null);
+    if (existingInProgress != null) {
+      QuizAttempt normalized = autoSubmitIfTimedOut(existingInProgress);
+      if (!normalized.isSubmitted()) {
+        throw new ValidationException("You already have an in-progress attempt for this quiz");
+      }
+    }
 
     long attemptCount = quizAttemptRepository.countByQuizIdAndUserId(quizId, userId);
-    if (attemptCount >= quiz.getAttemptsAllowed()) {
+    if (Boolean.TRUE.equals(quiz.getAttemptLimitEnabled())
+        && quiz.getAttemptsAllowed() != null
+        && attemptCount >= quiz.getAttemptsAllowed()) {
       throw new ValidationException("You have reached the maximum number of attempts for this quiz");
     }
 
@@ -62,6 +72,7 @@ public class QuizAttemptService {
             .attemptNumber(attemptNumber)
             .ipAddress(ipAddress)
             .browserFingerprint(browserFingerprint)
+            .proctoringData(buildInitialProctoringData(startRequest))
             .build();
 
     QuizAttempt savedAttempt = quizAttemptRepository.save(attempt);
@@ -80,7 +91,12 @@ public class QuizAttemptService {
       throw new ValidationException("Cannot save progress for a submitted attempt");
     }
 
-    attempt.setAnswers(answers == null ? Map.of() : answers);
+    Map<String, Object> safeAnswers = answers == null ? Map.of() : answers;
+    if (isAttemptTimedOut(attempt, LocalDateTime.now())) {
+      return autoSubmitAttempt(attempt, safeAnswers, true);
+    }
+
+    attempt.setAnswers(safeAnswers);
     return quizAttemptRepository.save(attempt);
   }
 
@@ -95,24 +111,8 @@ public class QuizAttemptService {
       throw new ValidationException("This attempt has already been submitted");
     }
 
-    Quiz quiz = attempt.getQuiz();
-    if (quiz.getTimeLimit() != null) {
-      long minutesElapsed =
-          java.time.Duration.between(attempt.getStartedAt(), LocalDateTime.now()).toMinutes();
-      if (minutesElapsed > quiz.getTimeLimit()) {
-        log.warn("Time limit exceeded for attempt: {}", attemptId);
-      }
-    }
-
     Map<String, Object> safeAnswers = answers == null ? Map.of() : answers;
-    attempt.setAnswers(safeAnswers);
-    attempt.setSubmittedAt(LocalDateTime.now());
-
-    BigDecimal autoScore = calculateAndPersistAutoScore(attempt, safeAnswers);
-    attempt.setAutoScore(autoScore);
-    attempt.setFinalScore(autoScore);
-
-    QuizAttempt submittedAttempt = quizAttemptRepository.save(attempt);
+    QuizAttempt submittedAttempt = autoSubmitAttempt(attempt, safeAnswers, isAttemptTimedOut(attempt, LocalDateTime.now()));
     log.info("Quiz attempt submitted successfully: {}", attemptId);
 
     return submittedAttempt;
@@ -138,13 +138,13 @@ public class QuizAttemptService {
   }
 
   public QuizAttemptDto getAttemptById(UUID attemptId, UUID userId, String userRole) {
-    QuizAttempt attempt = findAttemptById(attemptId);
+    QuizAttempt attempt = autoSubmitIfTimedOut(findAttemptById(attemptId));
     ensureAttemptAccessible(attempt, userId, userRole);
     return assessmentMapper.toDto(attempt);
   }
 
   public List<QuizAttemptQuestionDto> getAttemptQuestions(UUID attemptId, UUID userId, String userRole) {
-    QuizAttempt attempt = findAttemptById(attemptId);
+    QuizAttempt attempt = autoSubmitIfTimedOut(findAttemptById(attemptId));
     ensureAttemptAccessible(attempt, userId, userRole);
 
     return quizAttemptQuestionRepository.findByAttempt_IdOrderByPositionAsc(attemptId).stream()
@@ -153,7 +153,7 @@ public class QuizAttemptService {
   }
 
   public QuizAttemptResultDto getAttemptResults(UUID attemptId, UUID userId, String userRole) {
-    QuizAttempt attempt = findAttemptById(attemptId);
+    QuizAttempt attempt = autoSubmitIfTimedOut(findAttemptById(attemptId));
     ensureAttemptAccessible(attempt, userId, userRole);
 
     List<QuizAttemptQuestion> attemptQuestions =
@@ -212,21 +212,102 @@ public class QuizAttemptService {
   }
 
   public List<QuizAttempt> getUserAttempts(UUID quizId, UUID userId) {
-    return quizAttemptRepository.findByQuizIdAndUserIdOrderByAttemptNumberAsc(quizId, userId);
+    return quizAttemptRepository.findByQuizIdAndUserIdOrderByAttemptNumberAsc(quizId, userId).stream()
+        .map(this::autoSubmitIfTimedOut)
+        .toList();
   }
 
   public QuizAttempt getLatestAttempt(UUID quizId, UUID userId) {
-    return quizAttemptRepository
+    QuizAttempt latest = quizAttemptRepository
         .findFirstByQuizIdAndUserIdOrderByAttemptNumberDesc(quizId, userId)
         .orElseThrow(() -> new ResourceNotFoundException("No attempts found for this quiz"));
+    return autoSubmitIfTimedOut(latest);
+  }
+
+  public QuizAttempt getOfficialAttempt(UUID quizId, UUID userId) {
+    List<QuizAttempt> attempts = getUserAttempts(quizId, userId);
+    if (attempts.isEmpty()) {
+      throw new ResourceNotFoundException("No attempts found for this quiz");
+    }
+
+    Quiz quiz = attempts.get(0).getQuiz();
+    AttemptScorePolicy policy =
+        quiz != null && quiz.getAttemptScorePolicy() != null
+            ? quiz.getAttemptScorePolicy()
+            : AttemptScorePolicy.HIGHEST;
+
+    List<QuizAttempt> submitted =
+        attempts.stream().filter(QuizAttempt::isSubmitted).toList();
+    List<QuizAttempt> candidates = submitted.isEmpty() ? attempts : submitted;
+
+    return switch (policy) {
+      case FIRST ->
+          candidates.stream()
+              .min(Comparator.comparingInt(QuizAttempt::getAttemptNumber))
+              .orElse(candidates.get(0));
+      case LATEST ->
+          candidates.stream()
+              .max(Comparator.comparingInt(QuizAttempt::getAttemptNumber))
+              .orElse(candidates.get(0));
+      case HIGHEST ->
+          candidates.stream()
+              .max(
+                  Comparator.comparing(
+                          (QuizAttempt attempt) ->
+                              attempt.getFinalScore() != null
+                                  ? attempt.getFinalScore()
+                                  : (attempt.getAutoScore() != null ? attempt.getAutoScore() : BigDecimal.ZERO))
+                      .thenComparing(QuizAttempt::getAttemptNumber))
+              .orElse(candidates.get(0));
+    };
   }
 
   public QuizAttempt getInProgressAttempt(UUID quizId, UUID userId) {
-    return quizAttemptRepository.findInProgressAttempt(quizId, userId).orElse(null);
+    return quizAttemptRepository
+        .findInProgressAttempt(quizId, userId)
+        .map(this::autoSubmitIfTimedOut)
+        .orElse(null);
   }
 
   public List<QuizAttempt> getUngradedAttempts(UUID quizId) {
-    return quizAttemptRepository.findUngradedAttempts(quizId);
+    return quizAttemptRepository.findUngradedAttempts(quizId).stream()
+        .map(this::autoSubmitIfTimedOut)
+        .toList();
+  }
+
+  @Transactional
+  public QuizAttempt recordViolation(
+      UUID attemptId, QuizAttemptViolationRequest violation, UUID userId) {
+    QuizAttempt attempt = findAttemptById(attemptId);
+    ensureAttemptOwner(attempt, userId);
+
+    Map<String, Object> proctoring =
+        attempt.getProctoringData() == null
+            ? new HashMap<>()
+            : new HashMap<>(attempt.getProctoringData());
+
+    List<Map<String, Object>> violations = new ArrayList<>();
+    Object existing = proctoring.get("violations");
+    if (existing instanceof List<?> existingList) {
+      for (Object item : existingList) {
+        if (item instanceof Map<?, ?> mapItem) {
+          Map<String, Object> converted = new LinkedHashMap<>();
+          mapItem.forEach((k, v) -> converted.put(String.valueOf(k), v));
+          violations.add(converted);
+        }
+      }
+    }
+
+    Map<String, Object> event = new LinkedHashMap<>();
+    event.put("type", violation.getType() == null ? "UNKNOWN" : violation.getType());
+    event.put("timestamp", LocalDateTime.now().toString());
+    event.put("details", violation.getDetails() == null ? Map.of() : violation.getDetails());
+    violations.add(event);
+
+    proctoring.put("violations", violations);
+    proctoring.put("lastViolationAt", LocalDateTime.now().toString());
+    attempt.setProctoringData(proctoring);
+    return quizAttemptRepository.save(attempt);
   }
 
   @Transactional
@@ -682,6 +763,81 @@ public class QuizAttemptService {
       return converted;
     }
     return Map.of("value", userAnswer);
+  }
+
+  private boolean isAttemptTimedOut(QuizAttempt attempt, LocalDateTime now) {
+    Quiz quiz = attempt.getQuiz();
+    if (attempt.isSubmitted()
+        || quiz == null
+        || !Boolean.TRUE.equals(quiz.getTimerEnabled())
+        || quiz.getTimeLimit() == null
+        || attempt.getStartedAt() == null) {
+      return false;
+    }
+    LocalDateTime expiresAt = attempt.getStartedAt().plusMinutes(quiz.getTimeLimit());
+    return !now.isBefore(expiresAt);
+  }
+
+  @Transactional
+  protected QuizAttempt autoSubmitAttempt(
+      QuizAttempt attempt, Map<String, Object> answers, boolean timedOutByTimer) {
+    if (attempt.isSubmitted()) {
+      return attempt;
+    }
+    Map<String, Object> safeAnswers = answers == null ? Map.of() : answers;
+    attempt.setAnswers(safeAnswers);
+    attempt.setSubmittedAt(LocalDateTime.now());
+
+    if (timedOutByTimer) {
+      Map<String, Object> proctoring =
+          attempt.getProctoringData() == null
+              ? new HashMap<>()
+              : new HashMap<>(attempt.getProctoringData());
+      proctoring.put("timedOut", true);
+      proctoring.put("timedOutAt", LocalDateTime.now().toString());
+      attempt.setProctoringData(proctoring);
+    }
+
+    BigDecimal autoScore = calculateAndPersistAutoScore(attempt, safeAnswers);
+    attempt.setAutoScore(autoScore);
+    attempt.setFinalScore(autoScore);
+    return quizAttemptRepository.save(attempt);
+  }
+
+  private QuizAttempt autoSubmitIfTimedOut(QuizAttempt attempt) {
+    if (!isAttemptTimedOut(attempt, LocalDateTime.now())) {
+      return attempt;
+    }
+    return autoSubmitAttempt(attempt, attempt.getAnswers(), true);
+  }
+
+  private Map<String, Object> buildInitialProctoringData(StartQuizAttemptRequest request) {
+    Map<String, Object> proctoring = new HashMap<>();
+    if (request == null) {
+      return proctoring;
+    }
+    proctoring.put("secureConsent", Boolean.TRUE.equals(request.getSecureConsent()));
+    proctoring.put("startedInFullscreen", Boolean.TRUE.equals(request.getStartedInFullscreen()));
+    proctoring.put("reducedSecurityMode", Boolean.TRUE.equals(request.getReducedSecurityMode()));
+    proctoring.put("sessionStartedAt", LocalDateTime.now().toString());
+    return proctoring;
+  }
+
+  private void validateSecureSessionStart(Quiz quiz, StartQuizAttemptRequest request) {
+    if (!Boolean.TRUE.equals(quiz.getSecureSessionEnabled())) {
+      return;
+    }
+
+    if (request == null || !Boolean.TRUE.equals(request.getSecureConsent())) {
+      throw new ValidationException("Secure quiz session requires consent before starting");
+    }
+
+    boolean reducedSecurity = request != null && Boolean.TRUE.equals(request.getReducedSecurityMode());
+    if (Boolean.TRUE.equals(quiz.getSecureRequireFullscreen())
+        && !reducedSecurity
+        && (request == null || !Boolean.TRUE.equals(request.getStartedInFullscreen()))) {
+      throw new ValidationException("Secure quiz session requires fullscreen mode to start");
+    }
   }
 
   private QuizAttempt findAttemptById(UUID attemptId) {

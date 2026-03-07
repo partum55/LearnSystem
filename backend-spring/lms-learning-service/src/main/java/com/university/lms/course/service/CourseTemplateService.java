@@ -253,10 +253,6 @@ public class CourseTemplateService {
                       ? List.of()
                       : new ArrayList<>(sourceAssignment.getTestCases()))
               .maxPoints(sourceAssignment.getMaxPoints())
-              .rubric(
-                  sourceAssignment.getRubric() == null
-                      ? Map.of()
-                      : new HashMap<>(sourceAssignment.getRubric()))
               .dueDate(copyScheduleDates ? sourceAssignment.getDueDate() : null)
               .availableFrom(copyScheduleDates ? sourceAssignment.getAvailableFrom() : null)
               .availableUntil(copyScheduleDates ? sourceAssignment.getAvailableUntil() : null)

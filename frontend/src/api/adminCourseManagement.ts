@@ -59,7 +59,6 @@ export interface AssignmentExport {
   instructions?: string;
   instructionsFormat?: string;
   maxPoints?: number;
-  rubric?: Record<string, unknown>;
   dueDate?: string;
   availableFrom?: string;
   availableUntil?: string;

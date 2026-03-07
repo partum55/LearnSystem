@@ -6,6 +6,12 @@ import {
   PencilSquareIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  AcademicCapIcon,
+  CalendarDaysIcon,
+  ChartBarIcon,
+  BookOpenIcon,
+  ClipboardDocumentListIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 import { Button, Card, CardBody, Loading } from '../../components';
 import { coursesApi } from '../../api/courses';
@@ -32,12 +38,28 @@ interface SyllabusData {
   pages: SyllabusPage[];
 }
 
+const PAGE_ICON_MAP: Record<string, React.FC<React.SVGProps<SVGSVGElement>>> = {
+  aim: AcademicCapIcon,
+  target: AcademicCapIcon,
+  schedule: CalendarDaysIcon,
+  calendar: CalendarDaysIcon,
+  grading: ChartBarIcon,
+  'chart-bar': ChartBarIcon,
+  materials: BookOpenIcon,
+  'book-open': BookOpenIcon,
+  policies: ClipboardDocumentListIcon,
+  'clipboard-list': ClipboardDocumentListIcon,
+};
+
+const resolvePageIcon = (page: SyllabusPage): React.FC<React.SVGProps<SVGSVGElement>> =>
+  PAGE_ICON_MAP[page.id] ?? PAGE_ICON_MAP[page.icon] ?? DocumentTextIcon;
+
 const DEFAULT_PAGES: SyllabusPage[] = [
-  { id: 'aim', title: 'Aim & Objectives', icon: '🎯', content: '' },
-  { id: 'schedule', title: 'Schedule', icon: '📅', content: '' },
-  { id: 'grading', title: 'Grading', icon: '📊', content: '' },
-  { id: 'materials', title: 'Materials', icon: '📚', content: '' },
-  { id: 'policies', title: 'Policies', icon: '📋', content: '' },
+  { id: 'aim', title: 'Aim & Objectives', icon: '', content: '' },
+  { id: 'schedule', title: 'Schedule', icon: '', content: '' },
+  { id: 'grading', title: 'Grading', icon: '', content: '' },
+  { id: 'materials', title: 'Materials', icon: '', content: '' },
+  { id: 'policies', title: 'Policies', icon: '', content: '' },
 ];
 
 const createSyllabusData = (): SyllabusData => ({
@@ -95,6 +117,7 @@ export const CourseSyllabusTab: React.FC<CourseSyllabusTabProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [editingPageTitle, setEditingPageTitle] = useState<number | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -154,7 +177,7 @@ export const CourseSyllabusTab: React.FC<CourseSyllabusTabProps> = ({
     const newPage: SyllabusPage = {
       id: `page-${++pageIdCounter}`,
       title: `Page ${syllabusData.pages.length + 1}`,
-      icon: '📄',
+      icon: '',
       content: '',
     };
     setSyllabusData((prev) => ({
@@ -215,7 +238,7 @@ export const CourseSyllabusTab: React.FC<CourseSyllabusTabProps> = ({
               border: isActive ? '1px solid var(--border-strong)' : '1px solid transparent',
             }}
           >
-            <span>{page.icon}</span>
+            {React.createElement(resolvePageIcon(page), { className: 'h-4 w-4 shrink-0' })}
             {editingPageTitle === idx && isEditable ? (
               <input
                 type="text"
@@ -325,23 +348,37 @@ export const CourseSyllabusTab: React.FC<CourseSyllabusTabProps> = ({
         className="rounded-lg p-1"
         style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
       >
-        {renderPageTabs(canEdit)}
+        {renderPageTabs(canEdit && isEditing)}
       </div>
 
       {/* Active page content */}
       <Card>
         <CardBody>
           <div className="mb-3 flex items-center gap-2">
-            <span className="text-xl">{currentPage.icon}</span>
+            {React.createElement(resolvePageIcon(currentPage), {
+              className: 'h-5 w-5 shrink-0',
+              style: { color: 'var(--text-secondary)' },
+            })}
             <h2
-              className="text-lg font-semibold"
+              className="text-lg font-semibold flex-1"
               style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}
             >
               {currentPage.title}
             </h2>
+            {canEdit && !isEditing && (
+              <button
+                type="button"
+                onClick={() => setIsEditing(true)}
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors hover:bg-[var(--bg-hover)]"
+                style={{ color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}
+              >
+                <PencilSquareIcon className="h-4 w-4" />
+                {t('common.edit', 'Edit')}
+              </button>
+            )}
           </div>
 
-          {canEdit ? (
+          {canEdit && isEditing ? (
             <>
               <BlockEditor
                 key={currentPage.id}
@@ -358,13 +395,23 @@ export const CourseSyllabusTab: React.FC<CourseSyllabusTabProps> = ({
                     ? t('common.unsavedChanges', 'Unsaved changes')
                     : t('common.allSaved', 'All changes saved')}
                 </span>
-                <Button
-                  onClick={handleSave}
-                  isLoading={isSaving}
-                  disabled={isSaving || !isDirty}
-                >
-                  {t('common.save', 'Save')}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(false)}
+                    className="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors hover:bg-[var(--bg-hover)]"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    {t('common.done', 'Done')}
+                  </button>
+                  <Button
+                    onClick={handleSave}
+                    isLoading={isSaving}
+                    disabled={isSaving || !isDirty}
+                  >
+                    {t('common.save', 'Save')}
+                  </Button>
+                </div>
               </div>
             </>
           ) : currentPage.content ? (

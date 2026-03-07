@@ -37,8 +37,8 @@ public class GradingSuggestionService {
         String submissionData = fetchData("/submissions/" + request.getSubmissionId(), authToken);
 
         String systemPrompt =
-                "You are an educational grading assistant. Analyze the student submission against the assignment requirements " +
-                "and rubric. Provide a fair and constructive grade suggestion.\n\n" +
+                "You are an educational grading assistant. Analyze the student submission against the assignment requirements. " +
+                "Provide a fair and constructive grade suggestion.\n\n" +
                 "Respond ONLY with valid JSON:\n" +
                 "{\"suggestedGrade\": 85.0, \"maxPoints\": 100, \"feedback\": \"Overall assessment...\", " +
                 "\"strengths\": [\"Good point 1\", \"Good point 2\"], " +

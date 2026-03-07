@@ -9,7 +9,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.util.Map;
 
 /**
  * Request for grading submission.
@@ -31,9 +30,6 @@ public class GradeSubmissionRequest {
     private BigDecimal grade;
 
     private String feedback;
-
-    @JsonAlias({"rubric_evaluation"})
-    private Map<String, Object> rubricEvaluation;
 
     public BigDecimal resolvedGrade() {
         if (grade != null) {
