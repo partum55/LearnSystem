@@ -217,6 +217,7 @@ export const Login: React.FC = () => {
                 type="button"
                 className="text-sm transition-colors"
                 style={{ color: 'var(--text-muted)' }}
+                onClick={() => navigate('/auth/forgot-password')}
               >
                 {t('auth.forgotPassword')}
               </button>

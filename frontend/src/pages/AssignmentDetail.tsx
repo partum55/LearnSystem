@@ -13,6 +13,7 @@ import { parseCanonicalDocument } from '../features/editor-core';
 import { DocumentRenderer } from '../features/editor-core/DocumentRenderer';
 import AssignmentSubmissionPanel from '../components/submission/AssignmentSubmissionPanel';
 import { ExplainButton } from '../components/ExplainButton';
+import { peerReviewsApi, PeerReview } from '../api/peerReviews';
 
 interface Assignment {
   id: string;
@@ -59,6 +60,8 @@ export const AssignmentDetail: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'details' | 'submissions'>('details');
   const [courseName, setCourseName] = useState<string>('');
   const [moduleName, setModuleName] = useState<string>('');
+  const [peerReviews, setPeerReviews] = useState<PeerReview[]>([]);
+  const [peerReviewLoading, setPeerReviewLoading] = useState(false);
 
   const isStudent = user?.role === 'STUDENT';
   const isTeacher = user?.role === 'TEACHER' || user?.role === 'SUPERADMIN' || user?.role === 'TA';
@@ -71,6 +74,7 @@ export const AssignmentDetail: React.FC = () => {
   useEffect(() => {
     fetchAssignment();
     fetchSubmissions();
+    void fetchPeerReviews();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignmentId]);
 
@@ -137,8 +141,75 @@ export const AssignmentDetail: React.FC = () => {
     }
   };
 
+  const fetchPeerReviews = async () => {
+    if (!assignmentId) return;
+    setPeerReviewLoading(true);
+    try {
+      const reviews = await peerReviewsApi.getAssignmentReviews(assignmentId);
+      setPeerReviews(reviews);
+    } catch (error) {
+      console.error('Failed to fetch peer reviews:', error);
+    } finally {
+      setPeerReviewLoading(false);
+    }
+  };
+
+  const assignPeerReviews = async () => {
+    const submitterUserIds = Array.from(
+      new Set(
+        submissions
+          .map((submission) => Number(submission.user))
+          .filter((value) => Number.isFinite(value))
+      )
+    );
+
+    if (submitterUserIds.length === 0) {
+      alert('No submissions available to assign peer reviews.');
+      return;
+    }
+
+    try {
+      setPeerReviewLoading(true);
+      await peerReviewsApi.assignReviewers({
+        assignmentId: assignmentId || '',
+        submitterUserIds,
+        reviewsPerSubmission: 2,
+      });
+      await fetchPeerReviews();
+      alert('Peer reviews assigned.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to assign peer reviews';
+      alert(message);
+    } finally {
+      setPeerReviewLoading(false);
+    }
+  };
+
+  const submitPeerReview = async (review: PeerReview) => {
+    const scoreRaw = window.prompt('Overall score (0-100):', review.overallScore?.toString() || '0');
+    if (scoreRaw == null) return;
+    const score = Number(scoreRaw);
+    const feedback = window.prompt('Feedback:', review.overallFeedback || '') || undefined;
+    if (!Number.isFinite(score)) {
+      alert('Invalid score');
+      return;
+    }
+
+    try {
+      await peerReviewsApi.submitReview({
+        peerReviewId: review.id,
+        overallScore: score,
+        overallFeedback: feedback,
+      });
+      await fetchPeerReviews();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to submit peer review';
+      alert(message);
+    }
+  };
+
   const openVirtualLab = () => {
-    navigate(`/virtual-lab?assignmentId=${assignmentId}`);
+    navigate(`/virtual-lab/${assignmentId}`);
   };
 
   const scrollToSubmissionPanel = () => {
@@ -199,6 +270,7 @@ export const AssignmentDetail: React.FC = () => {
   }
 
   const Wrapper = courseId ? ({ children }: { children: React.ReactNode }) => <CourseLayout courseId={courseId}>{children}</CourseLayout> : Layout;
+  const myPeerReviews = peerReviews.filter((review) => String(review.reviewerUserId) === String(user?.id));
 
   const renderContent = (content: string, format: string) => {
     if (format === 'RICH') {
@@ -347,58 +419,98 @@ export const AssignmentDetail: React.FC = () => {
 
           {/* Details Tab */}
           {activeTab === 'details' && (
-            <Card>
-              <CardHeader>
-                <h2
-                  className="text-xl font-semibold"
-                  style={{ color: 'var(--text-primary)' }}
-                >
-                  {t('assignment.description')}
-                </h2>
-              </CardHeader>
-              <CardBody>
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Description</h3>
-                    {renderContent(assignment.description, assignment.description_format)}
-                  </div>
-
-                  {assignment.instructions && (
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <h2
+                    className="text-xl font-semibold"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    {t('assignment.description')}
+                  </h2>
+                </CardHeader>
+                <CardBody>
+                  <div className="space-y-4">
                     <div>
-                      <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Instructions</h3>
-                      {renderContent(assignment.instructions, assignment.instructions_format)}
+                      <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Description</h3>
+                      {renderContent(assignment.description, assignment.description_format)}
                     </div>
-                  )}
 
-                  {/* AI Explain Button */}
-                  <ExplainButton
-                    contentType="ASSIGNMENT"
-                    contentText={`${assignment.description || ''}\n\n${assignment.instructions || ''}`}
-                  />
+                    {assignment.instructions && (
+                      <div>
+                        <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Instructions</h3>
+                        {renderContent(assignment.instructions, assignment.instructions_format)}
+                      </div>
+                    )}
 
-                  <div>
-                    <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Submission Types</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {assignment.submission_types.map((type) => (
-                        <span key={type} className="badge">
-                          {type}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                    {/* AI Explain Button */}
+                    <ExplainButton
+                      contentType="ASSIGNMENT"
+                      contentText={`${assignment.description || ''}\n\n${assignment.instructions || ''}`}
+                    />
 
-                  {assignment.allow_late_submission && (
                     <div>
-                      <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Late Policy</h3>
-                      <p style={{ color: 'var(--text-muted)' }}>
-                        {assignment.late_penalty_percent}% penalty per day
-                      </p>
+                      <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Submission Types</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {assignment.submission_types.map((type) => (
+                          <span key={type} className="badge">
+                            {type}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  )}
 
-                </div>
-              </CardBody>
-            </Card>
+                    {assignment.allow_late_submission && (
+                      <div>
+                        <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Late Policy</h3>
+                        <p style={{ color: 'var(--text-muted)' }}>
+                          {assignment.late_penalty_percent}% penalty per day
+                        </p>
+                      </div>
+                    )}
+
+                  </div>
+                </CardBody>
+              </Card>
+
+              {isStudent && (
+                <Card>
+                  <CardHeader>
+                    <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+                      Peer Reviews Assigned to You
+                    </h2>
+                  </CardHeader>
+                  <CardBody>
+                    {peerReviewLoading ? (
+                      <p style={{ color: 'var(--text-muted)' }}>Loading peer reviews...</p>
+                    ) : myPeerReviews.length === 0 ? (
+                      <p style={{ color: 'var(--text-muted)' }}>No assigned peer reviews yet.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {myPeerReviews.map((review) => (
+                          <div key={review.id} className="rounded-md p-3" style={{ background: 'var(--bg-base)' }}>
+                            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                              Review for {review.revieweeName || `User ${review.revieweeUserId}`}
+                            </p>
+                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                              Status: {review.status}
+                            </p>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="mt-2"
+                              onClick={() => void submitPeerReview(review)}
+                            >
+                              Submit Review
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardBody>
+                </Card>
+              )}
+            </div>
           )}
 
           {/* Submissions Tab - Only for Teachers */}
@@ -412,12 +524,22 @@ export const AssignmentDetail: React.FC = () => {
                   >
                     {t('submission.review_tab', 'Submission Review')}
                   </h2>
-                  <Button onClick={openSpeedGrader}>
-                    {t('submission.open_reviewer', 'Open Reviewer')}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="secondary" onClick={() => void assignPeerReviews()} disabled={peerReviewLoading}>
+                      {peerReviewLoading ? 'Assigning…' : 'Assign Peer Reviews'}
+                    </Button>
+                    <Button onClick={openSpeedGrader}>
+                      {t('submission.open_reviewer', 'Open Reviewer')}
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardBody>
+                <div className="mb-4 p-3 rounded-lg" style={{ background: 'var(--bg-base)' }}>
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    Peer reviews: {peerReviews.length}
+                  </p>
+                </div>
                 {submissions.length === 0 ? (
                   <p className="text-center py-12" style={{ color: 'var(--text-muted)' }}>
                     No submissions yet

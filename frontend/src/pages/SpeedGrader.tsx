@@ -141,6 +141,7 @@ export const SpeedGrader: React.FC = () => {
   const { assignmentId: routeAssignmentId } = useParams<{ assignmentId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const assignmentId = routeAssignmentId || searchParams.get('assignmentId') || undefined;
+  const quizId = searchParams.get('quizId') || undefined;
 
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [queue, setQueue] = useState<ReviewQueueResponse | null>(null);
@@ -166,6 +167,7 @@ export const SpeedGrader: React.FC = () => {
   const [comment, setComment] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [conflictError, setConflictError] = useState<string | null>(null);
+  const [ungradedQuizAttempts, setUngradedQuizAttempts] = useState<number | null>(null);
 
   const currentSubmission = useMemo(() => {
     if (!queue?.content || queue.content.length === 0) return null;
@@ -257,6 +259,22 @@ export const SpeedGrader: React.FC = () => {
   useEffect(() => {
     void fetchQueue();
   }, [fetchQueue]);
+
+  useEffect(() => {
+    if (!quizId) {
+      setUngradedQuizAttempts(null);
+      return;
+    }
+
+    void apiClient.get<unknown[]>(`/assessments/quiz-attempts/quiz/${quizId}/ungraded`)
+      .then((response) => {
+        const attempts = Array.isArray(response.data) ? response.data : [];
+        setUngradedQuizAttempts(attempts.length);
+      })
+      .catch(() => {
+        setUngradedQuizAttempts(null);
+      });
+  }, [quizId]);
 
   useEffect(() => {
     hydrateForm(currentSubmission);
@@ -467,6 +485,11 @@ export const SpeedGrader: React.FC = () => {
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
               Reviewer workspace · {queue?.totalElements || 0} submissions
             </p>
+            {ungradedQuizAttempts !== null && (
+              <p className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>
+                Ungraded quiz attempts: {ungradedQuizAttempts}
+              </p>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

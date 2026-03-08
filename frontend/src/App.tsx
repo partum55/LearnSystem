@@ -20,6 +20,9 @@ const PageLoader: React.FC = () => (
 const Login = lazy(() => import('./pages/Login'));
 const GoogleAuthCallback = lazy(() => import('./pages/GoogleAuthCallback'));
 const Register = lazy(() => import('./pages/Register'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const CourseList = lazy(() => import('./pages/CourseList'));
 const CoursePreview = lazy(() => import('./pages/CoursePreview'));
@@ -150,6 +153,9 @@ const AppOptimized: React.FC = () => {
             <Route path="/login" element={<LazyRoute><Login /></LazyRoute>} />
             <Route path="/auth/google/callback" element={<LazyRoute><GoogleAuthCallback /></LazyRoute>} />
             <Route path="/register" element={<LazyRoute><Register /></LazyRoute>} />
+            <Route path="/auth/forgot-password" element={<LazyRoute><ForgotPassword /></LazyRoute>} />
+            <Route path="/auth/reset-password" element={<LazyRoute><ResetPassword /></LazyRoute>} />
+            <Route path="/auth/verify-email" element={<LazyRoute><VerifyEmail /></LazyRoute>} />
 
             <Route path="/dashboard" element={<LazyRoute isPrivate><Dashboard /></LazyRoute>} />
             <Route path="/dashboard/customize" element={<LazyRoute isPrivate><DashboardCustomize /></LazyRoute>} />
@@ -265,6 +271,7 @@ const AppOptimized: React.FC = () => {
             <Route path="/profile/settings" element={<LazyRoute isPrivate><ProfileSettings /></LazyRoute>} />
 
             <Route path="/virtual-lab" element={<LazyRoute isPrivate><VirtualLab /></LazyRoute>} />
+            <Route path="/virtual-lab/:assignmentId" element={<LazyRoute isPrivate><VirtualLab /></LazyRoute>} />
 
             <Route path="/admin" element={
               <LazyRoute isPrivate>

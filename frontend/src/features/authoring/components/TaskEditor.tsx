@@ -14,6 +14,8 @@ import DOMPurify from 'dompurify';
 interface TaskEditorProps {
   taskType: TaskType;
   initialDraft?: Partial<TaskDraft>;
+  courseId?: string;
+  moduleId?: string;
   mode?: 'EDIT' | 'READ_ONLY';
   role?: 'ADMIN' | 'INSTRUCTOR' | 'STUDENT';
   lockedBy?: string | null;
@@ -22,6 +24,8 @@ interface TaskEditorProps {
 const TaskEditor: React.FC<TaskEditorProps> = ({
   taskType,
   initialDraft,
+  courseId,
+  moduleId,
   mode = 'EDIT',
   role = 'INSTRUCTOR',
   lockedBy = null,
@@ -35,7 +39,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
 
   const readOnly = mode === 'READ_ONLY' || role === 'STUDENT' || Boolean(lockedBy);
 
-  const api = useMemo(() => createAuthoringApi(), []);
+  const api = useMemo(() => createAuthoringApi({ courseId, moduleId }), [courseId, moduleId]);
 
   const handleSave = async () => {
     if (readOnly) return;
@@ -53,6 +57,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
         ? await api.updateTask(draft.id, draft)
         : await api.createTask(draft);
 
+      setDraft(response.data.data);
       if (response.data.warnings?.length) {
         setErrorMessage(response.data.warnings.join(' '));
       }

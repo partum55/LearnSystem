@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import apiClient, { extractErrorMessage } from '../api/client';
+import { gradebookApi, GradebookCategory, GradeHistoryItem } from '../api/gradebook';
 import { Card, CardBody } from './Card';
 import { Loading } from './Loading';
 import { Button } from './Button';
@@ -13,7 +14,10 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   FunnelIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  ClockIcon,
+  PlusIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 
 interface GradeEntry {
@@ -100,9 +104,16 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
   const [expandedStudents, setExpandedStudents] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
   const [gradeFilter, setGradeFilter] = useState<'all' | 'graded' | 'pending' | 'missing'>('all');
+  const [categories, setCategories] = useState<GradebookCategory[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [historyByEntry, setHistoryByEntry] = useState<Record<string, GradeHistoryItem[]>>({});
+  const [loadingHistoryFor, setLoadingHistoryFor] = useState<string | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryWeight, setNewCategoryWeight] = useState('10');
 
   useEffect(() => {
     fetchGradebook();
+    void fetchCategories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId]);
 
@@ -224,6 +235,66 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
       setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    setCategoriesLoading(true);
+    try {
+      const data = await gradebookApi.getCategories(courseId);
+      setCategories(data);
+    } catch (err) {
+      console.error('Failed to fetch gradebook categories:', err);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
+  const createCategory = async () => {
+    const name = newCategoryName.trim();
+    const weightPercent = Number(newCategoryWeight);
+    if (!name || Number.isNaN(weightPercent)) return;
+
+    try {
+      await gradebookApi.createCategory({ courseId, name, weight: weightPercent });
+      setNewCategoryName('');
+      setNewCategoryWeight('10');
+      await fetchCategories();
+    } catch (err) {
+      alert(extractErrorMessage(err));
+    }
+  };
+
+  const deleteCategory = async (categoryId: string) => {
+    if (!window.confirm(t('gradebook.delete_category_confirm', 'Delete category?'))) return;
+
+    try {
+      await gradebookApi.deleteCategory(categoryId);
+      await fetchCategories();
+    } catch (err) {
+      alert(extractErrorMessage(err));
+    }
+  };
+
+  const loadEntryHistory = async (entryId?: string) => {
+    if (!entryId) return;
+    if (historyByEntry[entryId]) {
+      setHistoryByEntry((prev) => {
+        const next = { ...prev };
+        delete next[entryId];
+        return next;
+      });
+      return;
+    }
+
+    setLoadingHistoryFor(entryId);
+    try {
+      const history = await gradebookApi.getEntryHistory(entryId);
+      setHistoryByEntry((prev) => ({ ...prev, [entryId]: history }));
+    } catch (err) {
+      alert(extractErrorMessage(err));
+    } finally {
+      setLoadingHistoryFor(null);
     }
   };
 
@@ -476,6 +547,59 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
         </Card>
       )}
 
+      {/* Gradebook Categories */}
+      <Card>
+        <CardBody>
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {t('gradebook.categories', 'Categories')}
+              </h3>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                {t('gradebook.categories_help', 'Use categories to structure weighted grading.')}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-end gap-2">
+              <div>
+                <label className="label block mb-1">{t('gradebook.category_name', 'Name')}</label>
+                <Input value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} />
+              </div>
+              <div>
+                <label className="label block mb-1">{t('gradebook.category_weight', 'Weight %')}</label>
+                <Input type="number" value={newCategoryWeight} onChange={(e) => setNewCategoryWeight(e.target.value)} />
+              </div>
+              <Button onClick={() => void createCategory()}>
+                <PlusIcon className="h-4 w-4 mr-1" />
+                {t('gradebook.add_category', 'Add')}
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-2">
+            {categoriesLoading ? (
+              <p style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</p>
+            ) : categories.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)' }}>{t('gradebook.no_categories', 'No categories yet.')}</p>
+            ) : (
+              categories.map((category) => (
+                <div key={category.id} className="rounded-md px-3 py-2 flex items-center justify-between" style={{ background: 'var(--bg-base)' }}>
+                  <div>
+                    <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{category.name}</p>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      {category.weight}% · drop lowest {category.dropLowest || 0}
+                    </p>
+                  </div>
+                  <Button variant="secondary" size="sm" onClick={() => void deleteCategory(category.id)}>
+                    <TrashIcon className="h-4 w-4 mr-1" />
+                    {t('common.delete')}
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </CardBody>
+      </Card>
+
       {/* Students List */}
       <div className="space-y-4">
         {filteredStudents.map((student) => {
@@ -656,6 +780,17 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
                                         >
                                           <PencilSquareIcon className="h-5 w-5" />
                                         </button>
+                                        {grade?.entry_id && (
+                                          <button
+                                            onClick={() => void loadEntryHistory(grade.entry_id)}
+                                            className="p-2 rounded transition-colors"
+                                            style={{ color: 'var(--text-faint)' }}
+                                            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                                            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-faint)'; e.currentTarget.style.background = ''; }}
+                                          >
+                                            <ClockIcon className="h-5 w-5" />
+                                          </button>
+                                        )}
                                       </>
                                     )}
                                   </div>
@@ -663,6 +798,41 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
                               );
                             })}
                           </div>
+                          {module.assignments.some((assignment) => {
+                            const grade = student.grades[assignment.id];
+                            return Boolean(grade?.entry_id && historyByEntry[grade.entry_id]?.length);
+                          }) && (
+                            <div className="mt-3 space-y-2">
+                              {module.assignments.map((assignment) => {
+                                const grade = student.grades[assignment.id];
+                                if (!grade?.entry_id) return null;
+                                const history = historyByEntry[grade.entry_id];
+                                if (!history) return null;
+                                return (
+                                  <div key={`${assignment.id}-history`} className="rounded-md p-3" style={{ background: 'var(--bg-overlay)' }}>
+                                    <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                                      {assignment.title} · {t('gradebook.history', 'History')}
+                                    </p>
+                                    {loadingHistoryFor === grade.entry_id ? (
+                                      <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</p>
+                                    ) : history.length === 0 ? (
+                                      <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                                        {t('gradebook.no_history', 'No history entries')}
+                                      </p>
+                                    ) : (
+                                      <div className="mt-1 space-y-1">
+                                        {history.map((item) => (
+                                          <p key={item.id} className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                            {item.changedAt ? new Date(item.changedAt).toLocaleString() : '—'}: {item.previousScore ?? '-'} → {item.newScore ?? '-'} {item.reason ? `(${item.reason})` : ''}
+                                          </p>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       ))}
                   </div>

@@ -1,4 +1,5 @@
 import apiClient from './client';
+import { getAccessToken } from './token';
 
 // Use API gateway for AI calls - the gateway routes /api/ai/** to the AI service
 // The gateway rewrites /api/ai/** to /api/v1/ai/** before forwarding to AI service
@@ -152,37 +153,74 @@ export const aiApi = {
     onComplete: (course: GeneratedCourse) => void,
     onError: (error: string) => void
   ) => {
-    const params = new URLSearchParams(request as unknown as Record<string, string>);
-    const eventSource = new EventSource(
-      `${AI_ABSOLUTE_URL}/courses/generate-stream?${params}`
-    );
-    // ...
+    const controller = new AbortController();
 
-    eventSource.onmessage = (event) => {
+    const consumeStream = async () => {
       try {
-        const data: AIProgressEvent = JSON.parse(event.data);
+        const response = await fetch(`${AI_ABSOLUTE_URL}/courses/generate-stream`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {}),
+          },
+          body: JSON.stringify(request),
+          signal: controller.signal,
+        });
 
-        if (data.eventType === 'complete' && data.data) {
-          onComplete(data.data as GeneratedCourse);
-          eventSource.close();
-        } else if (data.eventType === 'error') {
-          onError(data.error || 'Unknown error');
-          eventSource.close();
-        } else {
-          onProgress(data);
+        if (!response.ok || !response.body) {
+          onError(`Streaming request failed (${response.status})`);
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const chunks = buffer.split('\n\n');
+          buffer = chunks.pop() || '';
+
+          for (const chunk of chunks) {
+            const dataLine = chunk
+              .split('\n')
+              .find((line) => line.startsWith('data:'));
+            if (!dataLine) continue;
+
+            const payload = dataLine.slice(5).trim();
+            if (!payload) continue;
+
+            try {
+              const event = JSON.parse(payload) as AIProgressEvent;
+              if (event.eventType === 'complete' && event.data) {
+                onComplete(event.data as GeneratedCourse);
+                controller.abort();
+                return;
+              }
+              if (event.eventType === 'error') {
+                onError(event.error || 'Generation failed');
+                controller.abort();
+                return;
+              }
+              onProgress(event);
+            } catch (parseError) {
+              console.error('Failed to parse streaming event:', parseError);
+            }
+          }
         }
       } catch (error) {
-        console.error('Error parsing SSE:', error);
+        if ((error as DOMException)?.name !== 'AbortError') {
+          onError('Connection error');
+        }
       }
     };
 
-    eventSource.onerror = (error) => {
-      console.error('SSE error:', error);
-      onError('Connection error');
-      eventSource.close();
-    };
+    void consumeStream();
 
-    return () => eventSource.close();
+    return () => controller.abort();
   },
 
   /**
@@ -416,6 +454,37 @@ export const aiApi = {
     });
     return response.data as SyllabusResponseData;
   },
+
+  abTests: {
+    list: async () => {
+      const response = await apiClient.get<string[]>(`${AI_CLIENT_URL}/ab-tests/experiments`);
+      return response.data || [];
+    },
+
+    listActive: async () => {
+      const response = await apiClient.get<string[]>(`${AI_CLIENT_URL}/ab-tests/experiments/active`);
+      return response.data || [];
+    },
+
+    getResults: async (experimentName: string) => {
+      const response = await apiClient.get<ABTestResultsResponse>(
+        `${AI_CLIENT_URL}/ab-tests/experiments/${encodeURIComponent(experimentName)}/results`
+      );
+      return response.data;
+    },
+
+    createExperiment: async (payload: {
+      experimentName: string;
+      variants: Record<string, string>;
+      weights: Record<string, number>;
+    }) => {
+      await apiClient.post(`${AI_CLIENT_URL}/ab-tests/experiments`, payload);
+    },
+
+    stopExperiment: async (experimentName: string) => {
+      await apiClient.delete(`${AI_CLIENT_URL}/ab-tests/experiments/${encodeURIComponent(experimentName)}`);
+    },
+  },
 };
 
 // New response types
@@ -452,4 +521,23 @@ export interface SyllabusResponseData {
     icon: string;
     content: string;
   }[];
+}
+
+export interface ABTestVariantStats {
+  variantName: string;
+  sampleSize: number;
+  successCount: number;
+  successRate: number;
+  averageLatencyMs: number;
+  averageQualityScore: number;
+  averageUserRating: number;
+  totalTokens: number;
+}
+
+export interface ABTestResultsResponse {
+  experimentName: string;
+  totalSamples: number;
+  variants: ABTestVariantStats[];
+  winningVariant: string;
+  statisticallySignificant: boolean;
 }

@@ -36,6 +36,7 @@ import { AdminUsersTab } from './admin-dashboard/AdminUsersTab';
 import { AdminCourseManagerTab } from './admin-dashboard/AdminCourseManagerTab';
 import { AdminImportExportTab } from './admin-dashboard/AdminImportExportTab';
 import { AdminTestLabTab } from './admin-dashboard/AdminTestLabTab';
+import { AdminAnalyticsTab } from './admin-dashboard/AdminAnalyticsTab';
 import { Button, Modal } from '../components';
 import {
   AdminTab,
@@ -400,6 +401,7 @@ export const AdminDashboard: React.FC = () => {
     { key: 'courses', label: 'Courses', icon: BookOpenIcon },
     { key: 'course-manager', label: 'Course Manager', icon: WrenchScrewdriverIcon },
     { key: 'import-export', label: 'Import / Export', icon: ArrowUpTrayIcon },
+    { key: 'analytics', label: 'Analytics', icon: ServerIcon },
     { key: 'services', label: 'Services', icon: ServerIcon },
     { key: 'test-lab', label: 'Test Lab', icon: BeakerIcon },
   ];
@@ -509,6 +511,10 @@ export const AdminDashboard: React.FC = () => {
 
           {activeTab === 'services' && (
             <AdminServicesTab servicesLoading={servicesLoading} systemHealth={systemHealth} />
+          )}
+
+          {activeTab === 'analytics' && (
+            <AdminAnalyticsTab onFeedback={showFeedback} />
           )}
 
           {activeTab === 'test-lab' && (

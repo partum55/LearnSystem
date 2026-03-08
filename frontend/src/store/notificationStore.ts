@@ -1,10 +1,10 @@
 import { create } from 'zustand';
 import { Notification } from '../types';
-import apiClient from '../api/client';
+import { notificationsApi } from '../api/notifications';
 
 interface NotificationDto {
-  deadlineId: number;
-  studentId: number;
+  id: string;
+  userId: string;
   sendAt: string;
   channel: string;
   message: string;
@@ -15,13 +15,14 @@ interface NotificationState {
   unreadCount: number;
   isLoading: boolean;
   fetchNotifications: () => Promise<void>;
+  fetchUnreadCount: () => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
 }
 
 const mapNotification = (n: NotificationDto): Notification => ({
-  id: String(n.deadlineId),
-  user_id: String(n.studentId),
+  id: n.id,
+  user_id: n.userId,
   type: 'assignment_due',
   title: 'Upcoming deadline',
   message: n.message,
@@ -37,11 +38,20 @@ export const useNotificationStore = create<NotificationState>((set) => ({
   fetchNotifications: async () => {
     set({ isLoading: true });
     try {
-      const response = await apiClient.get<NotificationDto[]>('/notifications');
+      const response = await notificationsApi.getAll();
       const notifications = (response.data || []).map(mapNotification);
       set({ notifications, unreadCount: notifications.length, isLoading: false });
     } catch {
       set({ isLoading: false });
+    }
+  },
+
+  fetchUnreadCount: async () => {
+    try {
+      const count = await notificationsApi.getCount();
+      set({ unreadCount: count });
+    } catch {
+      // Keep last known unread count
     }
   },
 

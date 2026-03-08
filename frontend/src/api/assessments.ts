@@ -631,6 +631,8 @@ export const attemptsApi = {
     apiClient.get(`/assessments/quiz-attempts/quiz/${quizId}/user/official`),
   getInProgressForQuiz: (quizId: string) =>
     apiClient.get(`/assessments/quiz-attempts/quiz/${quizId}/user/in-progress`),
+  getUngradedForQuiz: (quizId: string) =>
+    apiClient.get(`/assessments/quiz-attempts/quiz/${quizId}/ungraded`),
   recordViolation: (attemptId: string, payload: { type: string; details?: Record<string, unknown> }) =>
     apiClient.post(`/assessments/quiz-attempts/${attemptId}/violations`, payload),
 };

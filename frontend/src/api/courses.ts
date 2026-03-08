@@ -457,6 +457,32 @@ export const coursesApi = {
 
   getStudentContextReminders: () =>
     apiClient.get<StudentContextReminderFeedResponse>('/courses/student/reminders'),
+
+  getPublished: async () => {
+    const response = await apiClient.get<Course[]>('/courses/published');
+    const data = Array.isArray(response.data) ? response.data : [];
+    return { ...response, data: data.map((course) => normalizeCourse(course)) };
+  },
+
+  search: async (query: string) => {
+    const response = await apiClient.get<Course[]>('/courses/search', { params: { q: query } });
+    const data = Array.isArray(response.data) ? response.data : [];
+    return { ...response, data: data.map((course) => normalizeCourse(course)) };
+  },
+
+  getByCode: async (code: string) => {
+    const response = await apiClient.get<Course>(`/courses/code/${encodeURIComponent(code)}`);
+    return { ...response, data: normalizeCourse(response.data) };
+  },
+
+  getMyEnrollment: (courseId: string) =>
+    apiClient.get(`/courses/${courseId}/enrollment`),
+
+  checkEnrollment: (courseId: string) =>
+    apiClient.get<boolean>(`/courses/${courseId}/enrollment/check`),
+
+  dropEnrollment: (courseId: string) =>
+    apiClient.post(`/courses/${courseId}/drop`),
 };
 
 // Module API - Spring REST hierarchical URLs: /courses/{courseId}/modules
