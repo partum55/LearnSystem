@@ -8,7 +8,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
@@ -21,7 +20,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @Configuration
 @ComponentScan(basePackages = "com.university.lms.plugin.runtime")
 @EntityScan(basePackages = "com.university.lms.plugin.runtime.entity")
-@EnableJpaRepositories(basePackages = "com.university.lms.plugin.runtime.repository")
 @EnableConfigurationProperties(PythonPluginProperties.class)
 @EnableScheduling
 public class PluginAutoConfiguration {
