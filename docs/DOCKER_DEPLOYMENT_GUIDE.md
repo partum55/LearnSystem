@@ -611,7 +611,7 @@ docker run --rm \
 
 ```bash
 # Start only database and backend services
-docker-compose up -d postgres redis eureka-server user-service learning-service ai-service analytics-service api-gateway
+docker-compose up -d postgres redis eureka-server user-service learning-service marketplace-service ai-service analytics-service api-gateway
 
 # Start frontend in development mode
 cd frontend

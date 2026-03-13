@@ -143,7 +143,10 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker,supabase
       - SERVER_PORT=8089
-      # Learning service supabase profile uses DATABASE_URL / DB_USERNAME / DB_PASSWORD
+      # Provide both datasource env styles because docker and supabase profiles can be active together.
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://${SUPABASE_DB_HOST:-postgres}:${SUPABASE_DB_PORT:-5432}/${SUPABASE_DB_NAME:-lms_db}
+      - SPRING_DATASOURCE_USERNAME=${SUPABASE_DB_USER:-lms_user}
+      - SPRING_DATASOURCE_PASSWORD=${SUPABASE_DB_PASSWORD:-lms_password_local}
       - DATABASE_URL=jdbc:postgresql://${SUPABASE_DB_HOST:-postgres}:${SUPABASE_DB_PORT:-5432}/${SUPABASE_DB_NAME:-lms_db}
       - DB_USERNAME=${SUPABASE_DB_USER:-lms_user}
       - DB_PASSWORD=${SUPABASE_DB_PASSWORD:-lms_password_local}
@@ -291,7 +294,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8086/actuator/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:8086/api/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 5

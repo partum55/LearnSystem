@@ -1624,9 +1624,9 @@ docker compose --env-file .env.production logs -f user-service
 docker compose --env-file .env.production down
 ```
 
-### Restart a single service
+### Restart learning and marketplace services
 ```bash
-docker compose --env-file .env.production restart learning-service
+docker compose --env-file .env.production restart learning-service marketplace-service
 ```
 
 ### Update backend (DigitalOcean)
