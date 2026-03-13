@@ -23,6 +23,7 @@ import java.util.UUID;
 public class UpdateAssignmentRequest {
 
     private UUID moduleId;
+    private UUID topicId;
     private UUID categoryId;
     private Integer position;
 

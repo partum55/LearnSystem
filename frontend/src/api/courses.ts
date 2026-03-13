@@ -8,6 +8,7 @@ import {
   Module,
   Resource,
   ResourceCreateData,
+  Topic,
 } from '../types';
 import { PageResponse } from './types';
 
@@ -258,6 +259,7 @@ const normalizeModule = (raw: any): Module => ({
 const normalizeResource = (raw: any): Resource => ({
   id: String(raw.id ?? ''),
   module: String(raw.moduleId ?? raw.module ?? ''),
+  topic_id: (raw.topicId ?? raw.topic_id) ? String(raw.topicId ?? raw.topic_id) : undefined,
   title: String(raw.title ?? ''),
   description: raw.description ?? undefined,
   resource_type: String(raw.resourceType ?? raw.resource_type ?? 'OTHER') as Resource['resource_type'],
@@ -329,10 +331,23 @@ const normalizeCourse = (raw: any): Course => {
  * Minimal assignment normalizer for assignments embedded in module responses.
  * Full normalization happens in assessments.ts for standalone assignment fetches.
  */
+const normalizeTopic = (raw: any): Topic => ({
+  id: String(raw.id ?? ''),
+  module_id: String(raw.moduleId ?? raw.module_id ?? ''),
+  title: String(raw.title ?? ''),
+  description: raw.description ?? undefined,
+  position: Number(raw.position ?? 0),
+  created_at: raw.createdAt ?? raw.created_at ?? '',
+  updated_at: raw.updatedAt ?? raw.updated_at ?? '',
+});
+
 const normalizeAssignment = (raw: any): Assignment => ({
   ...raw,
   id: String(raw.id ?? ''),
   course_id: String(raw.courseId ?? raw.course_id ?? ''),
+  module_id: (raw.moduleId ?? raw.module_id) ? String(raw.moduleId ?? raw.module_id) : undefined,
+  topic_id: (raw.topicId ?? raw.topic_id) ? String(raw.topicId ?? raw.topic_id) : undefined,
+  category_id: (raw.categoryId ?? raw.category_id) ? String(raw.categoryId ?? raw.category_id) : undefined,
   assignment_type: String(raw.assignmentType ?? raw.assignment_type ?? 'FILE_UPLOAD') as Assignment['assignment_type'],
   title: String(raw.title ?? ''),
   description: String(raw.description ?? ''),
@@ -499,17 +514,31 @@ export const modulesApi = {
     return { ...response, data: normalizeModule(response.data) };
   },
 
-  create: async (data: { course: string; title: string; description?: string; is_published?: boolean }) => {
+  create: async (data: {
+    course: string;
+    title: string;
+    description?: string;
+    is_published?: boolean;
+    content_meta?: Record<string, unknown>;
+  }) => {
     const response = await apiClient.post(`/courses/${data.course}/modules`, {
       title: data.title,
       description: data.description,
       isPublished: data.is_published,
+      contentMeta: data.content_meta,
     });
     return { ...response, data: normalizeModule(response.data) };
   },
 
   update: async (courseId: string, moduleId: string, data: Partial<Module>) => {
-    const response = await apiClient.put(`/courses/${courseId}/modules/${moduleId}`, data);
+    const response = await apiClient.put(`/courses/${courseId}/modules/${moduleId}`, {
+      title: data.title,
+      description: data.description,
+      position: data.position,
+      contentMeta: data.content_meta,
+      isPublished: data.is_published,
+      publishDate: data.publish_date,
+    });
     return { ...response, data: normalizeModule(response.data) };
   },
 
@@ -531,6 +560,45 @@ export const modulesApi = {
 
   reorder: (courseId: string, moduleIds: string[]) =>
     apiClient.put(`/courses/${courseId}/modules/reorder`, moduleIds),
+};
+
+// Topic API - Spring REST hierarchical URLs: /courses/{courseId}/modules/{moduleId}/topics
+export const topicsApi = {
+  getAll: async (courseId: string, moduleId: string) => {
+    const response = await apiClient.get<Topic[]>(`/courses/${courseId}/modules/${moduleId}/topics`);
+    const data = response.data as unknown;
+    const topics = Array.isArray(data) ? data.map(normalizeTopic) : [];
+    return { ...response, data: topics };
+  },
+
+  getById: async (courseId: string, moduleId: string, topicId: string) => {
+    const response = await apiClient.get(`/courses/${courseId}/modules/${moduleId}/topics/${topicId}`);
+    return { ...response, data: normalizeTopic(response.data) };
+  },
+
+  create: async (courseId: string, moduleId: string, data: { title: string; description?: string; position?: number }) => {
+    const response = await apiClient.post(`/courses/${courseId}/modules/${moduleId}/topics`, {
+      title: data.title,
+      description: data.description,
+      position: data.position,
+    });
+    return { ...response, data: normalizeTopic(response.data) };
+  },
+
+  update: async (courseId: string, moduleId: string, topicId: string, data: Partial<Topic>) => {
+    const response = await apiClient.put(`/courses/${courseId}/modules/${moduleId}/topics/${topicId}`, {
+      title: data.title,
+      description: data.description,
+      position: data.position,
+    });
+    return { ...response, data: normalizeTopic(response.data) };
+  },
+
+  delete: (courseId: string, moduleId: string, topicId: string) =>
+    apiClient.delete(`/courses/${courseId}/modules/${moduleId}/topics/${topicId}`),
+
+  reorder: (courseId: string, moduleId: string, topicIds: string[]) =>
+    apiClient.put(`/courses/${courseId}/modules/${moduleId}/topics/reorder`, topicIds),
 };
 
 // Resource API - Spring REST hierarchical URLs: /courses/{courseId}/modules/{moduleId}/resources
@@ -573,6 +641,7 @@ export const resourcesApi = {
         textContent: data.text_content,
         isDownloadable: data.is_downloadable,
         metadata: data.metadata,
+        topicId: data.topic_id,
       });
     }
     return { ...response, data: normalizeResource(response.data) };
@@ -596,6 +665,7 @@ export const resourcesApi = {
       isDownloadable: data.is_downloadable,
       textContent: data.text_content,
       metadata: data.metadata,
+      topicId: data.topic_id,
     });
     return { ...response, data: normalizeResource(response.data) };
   },

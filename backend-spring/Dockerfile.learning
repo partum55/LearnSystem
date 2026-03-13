@@ -1,0 +1,67 @@
+# Multi-stage build for Learning Service with Python sidecar support
+# Based on the standard Dockerfile but adds Python runtime for plugin support
+
+# Stage 1: Build
+FROM maven:3.9-eclipse-temurin-21-alpine AS build
+
+WORKDIR /build
+
+# Copy parent POM and module POMs for dependency caching
+COPY pom.xml .
+COPY lms-common/pom.xml ./lms-common/
+COPY lms-plugin-sdk/pom.xml ./lms-plugin-sdk/
+COPY lms-plugin-runtime/pom.xml ./lms-plugin-runtime/
+COPY lms-user-service/pom.xml ./lms-user-service/
+COPY lms-learning-service/pom.xml ./lms-learning-service/
+COPY lms-ai-service/pom.xml ./lms-ai-service/
+COPY lms-analytics-service/pom.xml ./lms-analytics-service/
+COPY lms-api-gateway/pom.xml ./lms-api-gateway/
+COPY lms-eureka-server/pom.xml ./lms-eureka-server/
+COPY lms-marketplace-service/pom.xml ./lms-marketplace-service/
+
+# Download dependencies (cached if POMs don't change)
+RUN mvn dependency:go-offline -B || true
+
+# Copy source code
+COPY lms-common/src ./lms-common/src
+COPY lms-plugin-sdk/src ./lms-plugin-sdk/src
+COPY lms-plugin-runtime/src ./lms-plugin-runtime/src
+COPY lms-learning-service/src ./lms-learning-service/src
+# Other modules needed for parent reactor
+COPY lms-user-service/src ./lms-user-service/src
+COPY lms-ai-service/src ./lms-ai-service/src
+COPY lms-analytics-service/src ./lms-analytics-service/src
+COPY lms-api-gateway/src ./lms-api-gateway/src
+COPY lms-eureka-server/src ./lms-eureka-server/src
+COPY lms-marketplace-service/src ./lms-marketplace-service/src
+
+# Build the learning service
+RUN mvn clean package -pl lms-learning-service -am -DskipTests -B
+
+# Stage 2: Runtime (with Python for sidecar plugins)
+FROM eclipse-temurin:21-jre-alpine
+
+WORKDIR /app
+
+# Install curl (healthchecks) + Python3 + pip
+RUN apk add --no-cache curl python3 py3-pip
+
+# Create directories for plugin storage and submissions
+RUN mkdir -p /data/plugins/python /data/submissions
+
+# Create non-root user
+RUN addgroup -S spring && adduser -S spring -G spring
+
+# Copy the JAR file
+COPY --from=build /build/lms-learning-service/target/*.jar app.jar
+
+# Change ownership of app and data directories
+RUN chown -R spring:spring app.jar /data
+
+USER spring:spring
+
+EXPOSE 8089
+
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0 -Djava.security.egd=file:/dev/./urandom"
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

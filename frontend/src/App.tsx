@@ -54,6 +54,8 @@ const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const DesignSystemDemo = lazy(() => import('./pages/DesignSystemDemo'));
 const Landing = lazy(() => import('./pages/Landing'));
 const ModulePageEditor = lazy(() => import('./pages/ModulePageEditor'));
+const MarketplaceBrowse = lazy(() => import('./pages/marketplace/MarketplaceBrowse'));
+const MarketplacePluginDetail = lazy(() => import('./pages/marketplace/MarketplacePluginDetail'));
 
 // Wrapper to key ResourceEditor by resourceId so it remounts on route changes
 const ResourceEditorKeyed: React.FC = () => {
@@ -280,6 +282,10 @@ const AppOptimized: React.FC = () => {
                 </RoleRoute>
               </LazyRoute>
             } />
+
+            {/* Plugin Marketplace */}
+            <Route path="/marketplace" element={<LazyRoute isPrivate><MarketplaceBrowse /></LazyRoute>} />
+            <Route path="/marketplace/:pluginId" element={<LazyRoute isPrivate><MarketplacePluginDetail /></LazyRoute>} />
 
             {/* Design System Demo Route - Only accessible in development or by admins */}
             <Route path="/design-system" element={

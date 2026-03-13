@@ -66,6 +66,17 @@ const typeOptions: TypeOption[] = [
     descKey: 'wizard.typeDesc.url',
   },
   {
+    type: 'SEMINAR',
+    icon: (
+      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 14.25l-8.25-4.125L12 6l8.25 4.125L12 14.25z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 12.75v2.625A8.25 8.25 0 0012 18a8.25 8.25 0 006.75-2.625V12.75" />
+      </svg>
+    ),
+    labelKey: 'assignment.types.seminar',
+    descKey: 'wizard.typeDesc.seminar',
+  },
+  {
     type: 'VIRTUAL_LAB',
     icon: (
       <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

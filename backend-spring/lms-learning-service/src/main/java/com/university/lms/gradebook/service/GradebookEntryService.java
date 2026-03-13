@@ -6,11 +6,14 @@ import com.university.lms.course.assessment.repository.AssignmentRepository;
 import com.university.lms.course.repository.CourseMemberRepository;
 import com.university.lms.gradebook.domain.GradeStatus;
 import com.university.lms.gradebook.domain.GradebookEntry;
+import com.university.lms.gradebook.dto.UpdateGradeRequest;
 import com.university.lms.gradebook.repository.GradebookEntryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.university.lms.common.exception.ValidationException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -34,7 +37,8 @@ public class GradebookEntryService {
      * Auto-initializes missing entries for all (student × assignment) pairs.
      */
     @Transactional
-    public List<GradebookEntry> getEntriesForCourse(UUID courseId) {
+    public List<GradebookEntry> getEntriesForCourse(UUID courseId, UUID requestingUserId) {
+        validateCourseManagement(courseId, requestingUserId);
         List<GradebookEntry> existing = entryRepository.findAllByCourseId(courseId);
 
         // Get all assignments and students for this course
@@ -82,21 +86,57 @@ public class GradebookEntryService {
     }
 
     @Transactional
-    public GradebookEntry updateScore(UUID entryId, BigDecimal score, UUID overrideBy, String reason) {
+    public GradebookEntry updateEntry(UUID entryId, UpdateGradeRequest request, UUID overrideBy) {
         GradebookEntry entry = entryRepository.findById(entryId)
                 .orElseThrow(() -> new IllegalArgumentException("Gradebook entry not found"));
 
+        validateCourseManagement(entry.getCourseId(), overrideBy);
+
+        LocalDateTime now = LocalDateTime.now();
         BigDecimal oldScore = entry.getFinalScore();
-        entry.setOverrideScore(score);
-        entry.setOverrideBy(overrideBy);
-        entry.setOverrideAt(LocalDateTime.now());
-        entry.setOverrideReason(reason);
-        entry.setStatus(GradeStatus.GRADED);
+
+        if (request.getOverrideScore() != null || request.getOverrideReason() != null) {
+            entry.setOverrideScore(request.getOverrideScore());
+            entry.setOverrideBy(overrideBy);
+            entry.setOverrideAt(now);
+            entry.setOverrideReason(request.getOverrideReason());
+            if (request.getStatus() == null && request.getOverrideScore() != null) {
+                entry.setStatus(GradeStatus.GRADED);
+            }
+        }
+
+        if (request.getStatus() != null) {
+            entry.setStatus(request.getStatus());
+            if (request.getStatus() == GradeStatus.EXCUSED && request.getIsExcused() == null) {
+                entry.setExcused(true);
+            }
+        }
+
+        if (request.getIsExcused() != null) {
+            entry.setExcused(request.getIsExcused());
+            if (Boolean.TRUE.equals(request.getIsExcused()) && request.getStatus() == null) {
+                entry.setStatus(GradeStatus.EXCUSED);
+            }
+        }
+
+        if (request.getNotes() != null) {
+            entry.setNotes(request.getNotes());
+        }
+
+        if (entry.getStatus() == GradeStatus.GRADED || entry.getStatus() == GradeStatus.EXCUSED) {
+            entry.setGradedAt(now);
+        }
+
         entry.calculatePercentage();
 
         GradebookEntry saved = entryRepository.save(entry);
         summaryService.recalculateCourseGrade(entry.getCourseId(), entry.getStudentId());
-        historyService.recordChange(saved, oldScore, saved.getFinalScore(), overrideBy, reason);
+        historyService.recordChange(
+                saved,
+                oldScore,
+                saved.getFinalScore(),
+                overrideBy,
+                request.getOverrideReason());
 
         Map<String, Object> details = new LinkedHashMap<>();
         details.put("courseId", saved.getCourseId().toString());
@@ -105,8 +145,10 @@ public class GradebookEntryService {
         details.put("entryId", saved.getId().toString());
         details.put("oldScore", oldScore == null ? null : oldScore.toPlainString());
         details.put("newScore", saved.getFinalScore() == null ? null : saved.getFinalScore().toPlainString());
-        details.put("overrideReason", reason);
+        details.put("overrideReason", request.getOverrideReason());
         details.put("status", saved.getStatus() == null ? null : saved.getStatus().name());
+        details.put("isExcused", saved.isExcused());
+        details.put("notes", saved.getNotes());
         adminAuditTrailService.log(
                 overrideBy,
                 "GRADE_UPDATED",
@@ -115,5 +157,11 @@ public class GradebookEntryService {
                 details);
 
         return saved;
+    }
+
+    private void validateCourseManagement(UUID courseId, UUID userId) {
+        if (!courseMemberRepository.canUserManageCourse(courseId, userId)) {
+            throw new ValidationException("User does not have permission to manage grades for this course");
+        }
     }
 }

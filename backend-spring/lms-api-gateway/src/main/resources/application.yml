@@ -137,6 +137,22 @@ spring:
                 name: aiServiceCircuitBreaker
                 fallbackUri: forward:/fallback/ai
 
+        - id: plugin-management
+          uri: lb://lms-learning-service
+          predicates:
+            - Path=/api/plugins/**
+          filters:
+            - name: Retry
+              args:
+                retries: 1
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+                methods: GET
+
+        - id: marketplace-service
+          uri: lb://lms-marketplace-service
+          predicates:
+            - Path=/api/marketplace/**
+
         - id: learning-risk-analytics
           uri: lb://lms-learning-service
           predicates:

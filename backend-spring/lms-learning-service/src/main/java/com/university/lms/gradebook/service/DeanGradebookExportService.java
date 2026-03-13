@@ -65,7 +65,7 @@ public class DeanGradebookExportService {
       throw new ValidationException("Course has no assignments to export");
     }
 
-    List<GradebookEntry> entries = gradebookEntryService.getEntriesForCourse(courseId);
+    List<GradebookEntry> entries = gradebookEntryService.getEntriesForCourse(courseId, actorId);
     Set<UUID> studentIds =
         entries.stream().map(GradebookEntry::getStudentId).filter(Objects::nonNull).collect(LinkedHashSet::new, Set::add, Set::addAll);
 

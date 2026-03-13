@@ -130,9 +130,14 @@ export const AssignmentSubmissionPanel: React.FC<AssignmentSubmissionPanelProps>
   }, [hasChanges, submission]);
 
   useEffect(() => {
+    if (normalizedType === 'SEMINAR') {
+      setLoading(false);
+      setSubmission(null);
+      return;
+    }
     void loadOrCreateSubmission();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assignmentId]);
+  }, [assignmentId, normalizedType]);
 
   useEffect(() => {
     if (!submission || submission.status !== 'DRAFT' || !hasChanges || submitting) {
@@ -371,6 +376,23 @@ export const AssignmentSubmissionPanel: React.FC<AssignmentSubmissionPanelProps>
               {t('assignment.virtualLabSubmissionHint', 'Complete your task in the virtual lab workspace.')}
             </p>
             <Button onClick={onOpenVirtualLab}>{t('assignment.open_virtual_lab', 'Open Virtual Lab')}</Button>
+          </CardBody>
+        </Card>
+      </div>
+    );
+  }
+
+  if (normalizedType === 'SEMINAR') {
+    return (
+      <div id="assignment-submission-panel">
+        <Card className="mt-8">
+          <CardBody>
+            <p style={{ color: 'var(--text-secondary)' }}>
+              {t(
+                'assignment.seminar_grade_info',
+                'This is a seminar task. No student submission is needed; your teacher will assign a grade in the gradebook.'
+              )}
+            </p>
           </CardBody>
         </Card>
       </div>

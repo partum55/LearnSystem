@@ -52,6 +52,10 @@ export const gradebookApi = {
     await apiClient.delete(`/gradebook/categories/${categoryId}`);
   },
 
+  reorderCategories: async (courseId: string, categoryIds: string[]) => {
+    await apiClient.put(`/gradebook/categories/course/${courseId}/reorder`, categoryIds);
+  },
+
   getEntryHistory: async (entryId: string) => {
     const response = await apiClient.get<GradeHistoryItem[]>(`/gradebook/entries/${entryId}/history`);
     return response.data || [];

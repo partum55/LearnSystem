@@ -30,7 +30,8 @@ import {
 import { Button, Card, CardBody, CardHeader } from '../../components';
 import { RichContentRenderer } from '../../components/common/RichContentRenderer';
 import { submissionsApi } from '../../api/assessments';
-import { Assignment, Module, Resource } from '../../types';
+import { topicsApi } from '../../api/courses';
+import { Assignment, Module, Resource, Topic } from '../../types';
 
 interface CourseModulesTabProps {
   courseId: string;
@@ -47,6 +48,7 @@ interface CourseModulesTabProps {
   onDeleteAssignment: (assignment: Assignment) => void;
   onReorderModules: (moduleIds: string[]) => Promise<void>;
   onReorderResources: (moduleId: string, resourceIds: string[]) => Promise<void>;
+  onEditModuleStructure: (module: Module, patch: { topic?: string; tags?: string[] }) => Promise<void>;
   t: TFunction;
 }
 
@@ -69,6 +71,18 @@ const extractModuleId = (droppableId: string): string | null => {
 const isCompletedSubmissionStatus = (status?: string | null): boolean =>
   status === 'SUBMITTED' || status === 'GRADED';
 
+const parseModuleMeta = (module: Module): { topic: string; tags: string[] } => {
+  const meta = (module.content_meta || {}) as Record<string, unknown>;
+  const topic = typeof meta.topic === 'string' ? meta.topic.trim() : '';
+  const tags =
+    Array.isArray(meta.tags)
+      ? meta.tags.filter((item): item is string => typeof item === 'string').map((tag) => tag.trim()).filter(Boolean)
+      : typeof meta.tags === 'string'
+        ? meta.tags.split(',').map((tag) => tag.trim()).filter(Boolean)
+        : [];
+  return { topic, tags };
+};
+
 export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
   courseId,
   modules,
@@ -84,6 +98,7 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
   onDeleteAssignment,
   onReorderModules,
   onReorderResources,
+  onEditModuleStructure,
   t,
 }) => {
   const navigate = useNavigate();
@@ -91,6 +106,8 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
   const [isReorderingModules, setIsReorderingModules] = useState(false);
   const [reorderingResourcesModuleId, setReorderingResourcesModuleId] = useState<string | null>(null);
   const [assignmentSubmissionStatus, setAssignmentSubmissionStatus] = useState<Record<string, string | null>>({});
+  const [moduleTopics, setModuleTopics] = useState<Record<string, Topic[]>>({});
+  const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setDisplayModules(modules);
@@ -146,6 +163,107 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
       cancelled = true;
     };
   }, [assignmentIds, isInstructor]);
+
+  // Fetch topics for expanded modules
+  useEffect(() => {
+    const expandedIds = Array.from(expandedModules);
+    const missingIds = expandedIds.filter((id) => !(id in moduleTopics));
+    if (missingIds.length === 0) return;
+
+    let cancelled = false;
+    void (async () => {
+      const results = await Promise.all(
+        missingIds.map(async (moduleId) => {
+          try {
+            const response = await topicsApi.getAll(courseId, moduleId);
+            return [moduleId, response.data] as const;
+          } catch {
+            return [moduleId, [] as Topic[]] as const;
+          }
+        })
+      );
+      if (cancelled) return;
+      setModuleTopics((prev) => {
+        const next = { ...prev };
+        for (const [moduleId, topics] of results) {
+          next[moduleId] = topics;
+        }
+        return next;
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [expandedModules, courseId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleTopic = (topicId: string) => {
+    setExpandedTopics((prev) => {
+      const next = new Set(prev);
+      if (next.has(topicId)) next.delete(topicId);
+      else next.add(topicId);
+      return next;
+    });
+  };
+
+  const handleCreateTopic = async (moduleId: string) => {
+    const title = window.prompt(t('modules.topicTitlePlaceholder', 'Enter topic title'));
+    if (!title?.trim()) return;
+    try {
+      const response = await topicsApi.create(courseId, moduleId, { title: title.trim() });
+      setModuleTopics((prev) => ({
+        ...prev,
+        [moduleId]: [...(prev[moduleId] || []), response.data],
+      }));
+    } catch {
+      window.alert(t('modules.topicCreateFailed', 'Failed to create topic.'));
+    }
+  };
+
+  const handleEditTopic = async (moduleId: string, topic: Topic) => {
+    const title = window.prompt(t('modules.topicTitlePlaceholder', 'Enter topic title'), topic.title);
+    if (title === null) return;
+    const description = window.prompt(
+      t('modules.topicDescriptionPlaceholder', 'Enter topic description (optional)'),
+      topic.description || ''
+    );
+    if (description === null) return;
+    try {
+      const response = await topicsApi.update(courseId, moduleId, topic.id, {
+        title: title.trim() || topic.title,
+        description: description.trim() || undefined,
+      });
+      setModuleTopics((prev) => ({
+        ...prev,
+        [moduleId]: (prev[moduleId] || []).map((t) => (t.id === topic.id ? response.data : t)),
+      }));
+    } catch {
+      window.alert(t('modules.topicUpdateFailed', 'Failed to update topic.'));
+    }
+  };
+
+  const handleDeleteTopic = async (moduleId: string, topic: Topic) => {
+    if (!window.confirm(t('modules.deleteTopicConfirm', { title: topic.title }))) return;
+    try {
+      await topicsApi.delete(courseId, moduleId, topic.id);
+      setModuleTopics((prev) => ({
+        ...prev,
+        [moduleId]: (prev[moduleId] || []).filter((t) => t.id !== topic.id),
+      }));
+    } catch {
+      window.alert(t('modules.topicDeleteFailed', 'Failed to delete topic.'));
+    }
+  };
+
+  const handleReorderTopics = async (moduleId: string, result: DropResult) => {
+    if (!result.destination || result.destination.index === result.source.index) return;
+    const topics = moduleTopics[moduleId] || [];
+    const reordered = reorderList(topics, result.source.index, result.destination.index);
+    setModuleTopics((prev) => ({ ...prev, [moduleId]: reordered }));
+    try {
+      await topicsApi.reorder(courseId, moduleId, reordered.map((t) => t.id));
+    } catch {
+      setModuleTopics((prev) => ({ ...prev, [moduleId]: topics }));
+      window.alert(t('modules.topicReorderFailed', 'Failed to reorder topics.'));
+    }
+  };
 
   const checkpointStats = useMemo(() => {
     const moduleStats = displayModules.map((module) => {
@@ -259,6 +377,12 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
 
     if (result.type === 'RESOURCE') {
       await handleResourceReorder(result);
+      return;
+    }
+
+    if (result.type === 'TOPIC') {
+      const moduleId = result.source.droppableId.replace('topics-', '');
+      await handleReorderTopics(moduleId, result);
     }
   };
 
@@ -363,6 +487,243 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
     );
   };
 
+  const renderAssignmentRow = (module: Module, assignment: Assignment) => (
+    <Link key={assignment.id} to={`/courses/${courseId}/modules/${module.id}/assignments/${assignment.id}`} className="block">
+      <div
+        className="group flex items-center gap-3 rounded-lg border p-3 transition-colors"
+        style={{ borderColor: 'transparent' }}
+        onMouseEnter={(event) => {
+          event.currentTarget.style.background = 'var(--bg-hover)';
+          event.currentTarget.style.borderColor = 'var(--border-default)';
+        }}
+        onMouseLeave={(event) => {
+          event.currentTarget.style.background = 'transparent';
+          event.currentTarget.style.borderColor = 'transparent';
+        }}
+      >
+        <CheckCircleIcon className="h-5 w-5 flex-shrink-0" style={{ color: 'var(--fn-success)' }} />
+        <div className="min-w-0 flex-1">
+          <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
+            {assignment.title}
+          </div>
+          <div className="mt-1 flex items-center gap-3 text-sm" style={{ color: 'var(--text-muted)' }}>
+            {assignment.due_date && (
+              <span className="flex items-center gap-1">
+                <ClockIcon className="h-4 w-4" />
+                {new Date(assignment.due_date).toLocaleDateString()}
+              </span>
+            )}
+            <span>
+              {assignment.max_points} {t('assignments.points')}
+            </span>
+          </div>
+        </div>
+        <span className="badge badge-success">
+          {t('common.published')}
+        </span>
+        {isInstructor && (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                navigate(`/courses/${courseId}/modules/${module.id}/assignments/${assignment.id}/edit`);
+              }}
+              className="p-1 transition-colors"
+              style={{ color: 'var(--text-faint)' }}
+              onMouseEnter={(event) => (event.currentTarget.style.color = 'var(--text-primary)')}
+              onMouseLeave={(event) => (event.currentTarget.style.color = 'var(--text-faint)')}
+            >
+              <PencilIcon className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                onDeleteAssignment(assignment);
+              }}
+              className="p-1 transition-colors"
+              style={{ color: 'var(--text-faint)' }}
+              onMouseEnter={(event) => (event.currentTarget.style.color = 'var(--fn-error)')}
+              onMouseLeave={(event) => (event.currentTarget.style.color = 'var(--text-faint)')}
+            >
+              <TrashIcon className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </div>
+    </Link>
+  );
+
+  const renderTopicsAndAssignments = (module: Module) => {
+    const topics = moduleTopics[module.id] || [];
+    const assignments = module.assignments || [];
+
+    // No topics — show flat assignment list (original behavior)
+    if (topics.length === 0) {
+      if (assignments.length === 0) return null;
+      return (
+        <div>
+          <div className="mb-3 flex items-center gap-2">
+            <DocumentTextIcon className="h-5 w-5" style={{ color: 'var(--fn-success)' }} />
+            <h4 className="text-sm font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+              {t('assignments.title')}
+            </h4>
+          </div>
+          <div className="space-y-2 pl-2">
+            {assignments.map((a) => renderAssignmentRow(module, a))}
+          </div>
+        </div>
+      );
+    }
+
+    // Topics exist — group assignments and resources by topic
+    const resources = module.resources || [];
+    const uncategorized = assignments.filter((a) => !a.topic_id || !topics.some((tp) => tp.id === a.topic_id));
+    const uncategorizedResources = resources.filter((r) => !r.topic_id || !topics.some((tp) => tp.id === r.topic_id));
+    const assignmentsByTopic = new Map<string, Assignment[]>();
+    const resourcesByTopic = new Map<string, Resource[]>();
+    for (const topic of topics) {
+      assignmentsByTopic.set(topic.id, assignments.filter((a) => a.topic_id === topic.id));
+      resourcesByTopic.set(topic.id, resources.filter((r) => r.topic_id === topic.id));
+    }
+
+    return (
+      <div>
+        <div className="mb-3 flex items-center gap-2">
+          <FolderIcon className="h-5 w-5" style={{ color: 'var(--text-secondary)' }} />
+          <h4 className="text-sm font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+            {t('modules.topics')}
+          </h4>
+        </div>
+
+        {/* Uncategorized items (no topic) */}
+        {(uncategorized.length > 0 || uncategorizedResources.length > 0) && (
+          <div className="mb-4 pl-2">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>
+              {t('modules.uncategorized', 'General')}
+            </p>
+            <div className="space-y-2 pl-2">
+              {uncategorizedResources.map((r) => renderResource(module, r))}
+              {uncategorized.map((a) => renderAssignmentRow(module, a))}
+            </div>
+          </div>
+        )}
+
+        {/* Topics with their assignments */}
+        <Droppable droppableId={`topics-${module.id}`} type="TOPIC" isDropDisabled={!isInstructor}>
+          {(provided) => (
+            <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-3 pl-2">
+              {topics.map((topic, index) => {
+                const topicAssignments = assignmentsByTopic.get(topic.id) || [];
+                const topicResources = resourcesByTopic.get(topic.id) || [];
+                const topicItemCount = topicAssignments.length + topicResources.length;
+                const isExpanded = expandedTopics.has(topic.id);
+
+                return (
+                  <Draggable
+                    key={topic.id}
+                    draggableId={`topic-${topic.id}`}
+                    index={index}
+                    isDragDisabled={!isInstructor}
+                  >
+                    {(dragProvided) => (
+                      <div
+                        ref={dragProvided.innerRef}
+                        {...dragProvided.draggableProps}
+                        style={dragProvided.draggableProps.style}
+                        className="rounded-lg"
+                      >
+                        <div
+                          className="flex cursor-pointer items-center gap-2 rounded-lg p-2 transition-colors"
+                          style={{ background: 'var(--bg-elevated)' }}
+                          onClick={() => toggleTopic(topic.id)}
+                        >
+                          {isInstructor && (
+                            <button
+                              type="button"
+                              {...dragProvided.dragHandleProps}
+                              onClick={(e) => e.stopPropagation()}
+                              className="cursor-grab rounded p-0.5 active:cursor-grabbing"
+                              style={{ color: 'var(--text-faint)' }}
+                            >
+                              <Bars3Icon className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          {isExpanded ? (
+                            <ChevronDownIcon className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
+                          ) : (
+                            <ChevronRightIcon className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
+                          )}
+                          <span className="flex-1 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                            {topic.title}
+                          </span>
+                          <span className="text-xs" style={{ color: 'var(--text-faint)' }}>
+                            {topicItemCount} {topicItemCount === 1 ? 'item' : 'items'}
+                          </span>
+                          {isInstructor && (
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void handleEditTopic(module.id, topic);
+                                }}
+                                className="p-0.5 transition-colors"
+                                style={{ color: 'var(--text-faint)' }}
+                                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-faint)')}
+                              >
+                                <PencilIcon className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void handleDeleteTopic(module.id, topic);
+                                }}
+                                className="p-0.5 transition-colors"
+                                style={{ color: 'var(--text-faint)' }}
+                                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--fn-error)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-faint)')}
+                              >
+                                <TrashIcon className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        {isExpanded && (
+                          <div className="mt-1 pl-6">
+                            {topic.description && (
+                              <p className="mb-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                                {topic.description}
+                              </p>
+                            )}
+                            {topicItemCount > 0 ? (
+                              <div className="space-y-2">
+                                {topicResources.map((r) => renderResource(module, r))}
+                                {topicAssignments.map((a) => renderAssignmentRow(module, a))}
+                              </div>
+                            ) : (
+                              <p className="py-2 text-xs italic" style={{ color: 'var(--text-faint)' }}>
+                                {t('modules.noContent')}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Draggable>
+                );
+              })}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
+      </div>
+    );
+  };
+
   const renderModuleBody = (module: Module) => (
     <CardBody>
       {module.description && (
@@ -373,7 +734,7 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
 
       {isInstructor && (
         <div
-          className="mb-4 flex gap-2 pb-4"
+          className="mb-4 flex flex-wrap gap-2 pb-4"
           style={{ borderBottom: '1px solid var(--border-subtle)' }}
         >
           <Button
@@ -421,6 +782,17 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
             {t('assignments.addAssignment')}
           </Button>
           <Button
+            variant="secondary"
+            size="sm"
+            onClick={(event) => {
+              event.stopPropagation();
+              void handleCreateTopic(module.id);
+            }}
+          >
+            <PlusIcon className="mr-1 h-4 w-4" />
+            {t('modules.addTopic')}
+          </Button>
+          <Button
             variant="danger"
             size="sm"
             onClick={(event) => {
@@ -433,160 +805,85 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
         </div>
       )}
 
-      {module.resources && module.resources.length > 0 && (
-        <div>
-          <div className="mb-3 flex items-center gap-2">
-            <FolderIcon className="h-5 w-5" style={{ color: 'var(--text-secondary)' }} />
-            <h4
-              className="text-sm font-semibold uppercase tracking-wider"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              {t('modules.resources')}
-            </h4>
-            {isInstructor && (
-              <span className="text-xs" style={{ color: 'var(--text-faint)' }}>
-                {reorderingResourcesModuleId === module.id
-                  ? t('common.saving', 'Saving...')
-                  : t('modules.dragHint', 'Drag to reorder')}
-              </span>
+      {(() => {
+        const topics = moduleTopics[module.id] || [];
+        const moduleLevelResources = topics.length > 0
+          ? (module.resources || []).filter((r) => !r.topic_id || !topics.some((tp) => tp.id === r.topic_id))
+          : (module.resources || []);
+        if (moduleLevelResources.length === 0) return null;
+        return (
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <FolderIcon className="h-5 w-5" style={{ color: 'var(--text-secondary)' }} />
+              <h4
+                className="text-sm font-semibold uppercase tracking-wider"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                {t('modules.resources')}
+              </h4>
+              {isInstructor && (
+                <span className="text-xs" style={{ color: 'var(--text-faint)' }}>
+                  {reorderingResourcesModuleId === module.id
+                    ? t('common.saving', 'Saving...')
+                    : t('modules.dragHint', 'Drag to reorder')}
+                </span>
+              )}
+            </div>
+
+            {isInstructor ? (
+              <Droppable droppableId={resourceDroppableId(module.id)} type="RESOURCE">
+                {(provided, snapshot) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className="space-y-2 rounded-lg pl-2"
+                    style={{
+                      background: snapshot.isDraggingOver ? 'var(--bg-hover)' : 'transparent',
+                      opacity: reorderingResourcesModuleId === module.id ? 0.7 : 1,
+                    }}
+                  >
+                    {moduleLevelResources.map((resource, index) => (
+                      <Draggable
+                        key={resource.id}
+                        draggableId={`resource-${resource.id}`}
+                        index={index}
+                        isDragDisabled={Boolean(reorderingResourcesModuleId)}
+                      >
+                        {(dragProvided) => (
+                          <div
+                            ref={dragProvided.innerRef}
+                            {...dragProvided.draggableProps}
+                            style={dragProvided.draggableProps.style}
+                          >
+                            {renderResource(module, resource, dragProvided.dragHandleProps)}
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            ) : (
+              <div className="space-y-2 pl-2">
+                {moduleLevelResources.map((resource) => renderResource(module, resource))}
+              </div>
             )}
           </div>
-
-          {isInstructor ? (
-            <Droppable droppableId={resourceDroppableId(module.id)} type="RESOURCE">
-              {(provided, snapshot) => (
-                <div
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                  className="space-y-2 rounded-lg pl-2"
-                  style={{
-                    background: snapshot.isDraggingOver ? 'var(--bg-hover)' : 'transparent',
-                    opacity: reorderingResourcesModuleId === module.id ? 0.7 : 1,
-                  }}
-                >
-                  {(module.resources || []).map((resource, index) => (
-                    <Draggable
-                      key={resource.id}
-                      draggableId={`resource-${resource.id}`}
-                      index={index}
-                      isDragDisabled={Boolean(reorderingResourcesModuleId)}
-                    >
-                      {(dragProvided) => (
-                        <div
-                          ref={dragProvided.innerRef}
-                          {...dragProvided.draggableProps}
-                          style={dragProvided.draggableProps.style}
-                        >
-                          {renderResource(module, resource, dragProvided.dragHandleProps)}
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          ) : (
-            <div className="space-y-2 pl-2">
-              {(module.resources || []).map((resource) => renderResource(module, resource))}
-            </div>
-          )}
-        </div>
-      )}
+        );
+      })()}
 
       {module.resources &&
         module.resources.length > 0 &&
-        module.assignments &&
-        module.assignments.length > 0 && (
+        ((module.assignments && module.assignments.length > 0) || (moduleTopics[module.id] && moduleTopics[module.id].length > 0)) && (
           <div className="my-6" style={{ borderTop: '1px solid var(--border-subtle)' }} />
         )}
 
-      {module.assignments && module.assignments.length > 0 && (
-        <div>
-          <div className="mb-3 flex items-center gap-2">
-            <DocumentTextIcon className="h-5 w-5" style={{ color: 'var(--fn-success)' }} />
-            <h4
-              className="text-sm font-semibold uppercase tracking-wider"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              {t('assignments.title')}
-            </h4>
-          </div>
-          <div className="space-y-2 pl-2">
-            {module.assignments.map((assignment) => (
-              <Link key={assignment.id} to={`/courses/${courseId}/modules/${module.id}/assignments/${assignment.id}`} className="block">
-                <div
-                  className="group flex items-center gap-3 rounded-lg border p-3 transition-colors"
-                  style={{ borderColor: 'transparent' }}
-                  onMouseEnter={(event) => {
-                    event.currentTarget.style.background = 'var(--bg-hover)';
-                    event.currentTarget.style.borderColor = 'var(--border-default)';
-                  }}
-                  onMouseLeave={(event) => {
-                    event.currentTarget.style.background = 'transparent';
-                    event.currentTarget.style.borderColor = 'transparent';
-                  }}
-                >
-                  <CheckCircleIcon className="h-5 w-5 flex-shrink-0" style={{ color: 'var(--fn-success)' }} />
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                      {assignment.title}
-                    </div>
-                    <div className="mt-1 flex items-center gap-3 text-sm" style={{ color: 'var(--text-muted)' }}>
-                      {assignment.due_date && (
-                        <span className="flex items-center gap-1">
-                          <ClockIcon className="h-4 w-4" />
-                          {new Date(assignment.due_date).toLocaleDateString()}
-                        </span>
-                      )}
-                      <span>
-                        {assignment.max_points} {t('assignments.points')}
-                      </span>
-                    </div>
-                  </div>
-                  <span className="badge badge-success">
-                    {t('common.published')}
-                  </span>
-
-                  {isInstructor && (
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          navigate(`/courses/${courseId}/modules/${module.id}/assignments/${assignment.id}/edit`);
-                        }}
-                        className="p-1 transition-colors"
-                        style={{ color: 'var(--text-faint)' }}
-                        onMouseEnter={(event) => (event.currentTarget.style.color = 'var(--text-primary)')}
-                        onMouseLeave={(event) => (event.currentTarget.style.color = 'var(--text-faint)')}
-                      >
-                        <PencilIcon className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          onDeleteAssignment(assignment);
-                        }}
-                        className="p-1 transition-colors"
-                        style={{ color: 'var(--text-faint)' }}
-                        onMouseEnter={(event) => (event.currentTarget.style.color = 'var(--fn-error)')}
-                        onMouseLeave={(event) => (event.currentTarget.style.color = 'var(--text-faint)')}
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
+      {renderTopicsAndAssignments(module)}
 
       {(!module.resources || module.resources.length === 0) &&
-        (!module.assignments || module.assignments.length === 0) && (
+        (!module.assignments || module.assignments.length === 0) &&
+        (!moduleTopics[module.id] || moduleTopics[module.id].length === 0) && (
           <p
             className="py-8 text-center text-sm italic"
             style={{ color: 'var(--text-muted)' }}
@@ -602,6 +899,7 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
     dragHandleProps?: DraggableProvidedDragHandleProps | null,
     isDragging?: boolean
   ) => {
+    const moduleMeta = parseModuleMeta(module);
     const moduleCheckpoint = checkpointStats.moduleStats.find((stat) => stat.moduleId === module.id);
     const totalAssignments = moduleCheckpoint?.totalAssignments ?? 0;
     const completedAssignments = moduleCheckpoint?.completedAssignments ?? 0;
@@ -640,9 +938,48 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
             ) : (
               <ChevronRightIcon className="h-5 w-5" style={{ color: 'var(--text-muted)' }} />
             )}
-            <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{module.title}</h3>
+            <div>
+              <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{module.title}</h3>
+              {(moduleMeta.topic || moduleMeta.tags.length > 0) && (
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {moduleMeta.topic && `${t('modules.moduleTopic', 'Topic')}: ${moduleMeta.topic}`}
+                  {moduleMeta.topic && moduleMeta.tags.length > 0 ? ' · ' : ''}
+                  {moduleMeta.tags.length > 0 && `${t('modules.moduleTags', 'Tags')}: ${moduleMeta.tags.join(', ')}`}
+                </p>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
+            {isInstructor && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  const nextTopic = window.prompt(
+                    t('modules.moduleTopicPlaceholder', 'Enter module topic'),
+                    moduleMeta.topic
+                  );
+                  if (nextTopic === null) return;
+                  const nextTags = window.prompt(
+                    t('modules.moduleTagsPlaceholder', 'Comma-separated tags'),
+                    moduleMeta.tags.join(', ')
+                  );
+                  if (nextTags === null) return;
+
+                  void onEditModuleStructure(module, {
+                    topic: nextTopic.trim(),
+                    tags: nextTags
+                      .split(',')
+                      .map((tag) => tag.trim())
+                      .filter(Boolean),
+                  });
+                }}
+              >
+                <PencilIcon className="h-4 w-4 mr-1" />
+                {t('modules.editStructure', 'Edit topic')}
+              </Button>
+            )}
             {!isInstructor && (
               <span
                 className="rounded-full px-2 py-1 text-xs"

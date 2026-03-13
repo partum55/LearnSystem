@@ -86,6 +86,16 @@ export interface CourseMember {
 }
 
 // Module and Resource types
+export interface Topic {
+  id: string;
+  module_id: string;
+  title: string;
+  description?: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Module {
   id: string;
   course: string;
@@ -100,6 +110,7 @@ export interface Module {
   content_meta?: Record<string, unknown>;
   resources?: Resource[];
   assignments?: Assignment[];
+  topics?: Topic[];
 }
 
 export interface ModulePage {
@@ -158,6 +169,7 @@ export type ResourceType = 'VIDEO' | 'PDF' | 'SLIDE' | 'LINK' | 'TEXT' | 'CODE' 
 export interface Resource {
   id: string;
   module: string;
+  topic_id?: string;
   title: string;
   description?: string;
   resource_type: ResourceType;
@@ -179,6 +191,7 @@ export interface Resource {
 export interface ResourceCreateData {
   courseId: string;
   module: string;
+  topic_id?: string;
   title: string;
   description?: string;
   resource_type: ResourceType;
@@ -213,12 +226,15 @@ export type AssignmentType =
   | 'URL'
   | 'MANUAL_GRADE'
   | 'EXTERNAL'
-  | 'VIRTUAL_LAB';
+  | 'VIRTUAL_LAB'
+  | 'SEMINAR';
 
 export interface Assignment {
   id: string;
   course_id: string;
   module_id?: string;
+  topic_id?: string;
+  category_id?: string;
   assignment_type: AssignmentType;
   title: string;
   description: string;
@@ -405,6 +421,23 @@ export interface EngagementStats {
   daily_active_users: number;
   weekly_active_users: number;
   avg_time_spent: number;
+}
+
+// Plugin types
+export type PluginType = 'ACTIVITY' | 'REPORT' | 'BLOCK' | 'INTEGRATION' | 'THEME';
+export type PluginStatus = 'ENABLED' | 'DISABLED' | 'ERROR';
+
+export interface InstalledPlugin {
+  pluginId: string;
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  type: PluginType;
+  status: PluginStatus;
+  permissions: string[];
+  config: Record<string, string>;
+  installedAt: string;
 }
 
 // API Response types

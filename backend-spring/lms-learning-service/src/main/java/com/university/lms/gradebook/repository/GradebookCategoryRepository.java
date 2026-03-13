@@ -9,4 +9,3 @@ import java.util.UUID;
 public interface GradebookCategoryRepository extends JpaRepository<GradebookCategory, UUID> {
     List<GradebookCategory> findByCourseIdOrderByPosition(UUID courseId);
 }
-

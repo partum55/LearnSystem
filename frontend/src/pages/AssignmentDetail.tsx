@@ -319,6 +319,10 @@ export const AssignmentDetail: React.FC = () => {
                       <Button onClick={openVirtualLab}>
                         {t('assignment.open_virtual_lab')}
                       </Button>
+                    ) : assignment.assignment_type === 'SEMINAR' ? (
+                      <span className="badge">
+                        {t('assignment.seminar_no_submission', 'Seminar task: no submission required')}
+                      </span>
                     ) : (
                       <Button onClick={scrollToSubmissionPanel}>
                         {t('submission.open_submission', 'Open Submission')}
@@ -606,7 +610,20 @@ export const AssignmentDetail: React.FC = () => {
             </Card>
           )}
 
-          {activeTab === 'details' && isStudent && (
+          {activeTab === 'details' && isStudent && assignment.assignment_type === 'SEMINAR' && (
+            <Card>
+              <CardBody>
+                <p style={{ color: 'var(--text-secondary)' }}>
+                  {t(
+                    'assignment.seminar_grade_info',
+                    'This is a seminar task. No student submission is needed; your teacher will assign a grade in the gradebook.'
+                  )}
+                </p>
+              </CardBody>
+            </Card>
+          )}
+
+          {activeTab === 'details' && isStudent && assignment.assignment_type !== 'SEMINAR' && (
             <AssignmentSubmissionPanel
               assignmentId={assignment.id}
               assignmentType={assignment.assignment_type}

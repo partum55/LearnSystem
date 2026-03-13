@@ -185,13 +185,44 @@ export const adminCourseDeepApi = {
     return response.data;
   },
 
-  createModule: async (courseId: string, data: { title: string; description?: string; isPublished?: boolean }) => {
-    const response = await apiClient.post(`/courses/${courseId}/modules`, data);
+  createModule: async (
+    courseId: string,
+    data: {
+      title: string;
+      description?: string;
+      isPublished?: boolean;
+      contentMeta?: Record<string, unknown>;
+    }
+  ) => {
+    const response = await apiClient.post(`/courses/${courseId}/modules`, {
+      title: data.title,
+      description: data.description,
+      isPublished: data.isPublished,
+      contentMeta: data.contentMeta,
+    });
     return response.data;
   },
 
-  updateModule: async (courseId: string, moduleId: string, data: Partial<Module>) => {
-    const response = await apiClient.put(`/courses/${courseId}/modules/${moduleId}`, data);
+  updateModule: async (
+    courseId: string,
+    moduleId: string,
+    data: {
+      title?: string;
+      description?: string;
+      position?: number;
+      isPublished?: boolean;
+      publishDate?: string;
+      contentMeta?: Record<string, unknown>;
+    }
+  ) => {
+    const response = await apiClient.put(`/courses/${courseId}/modules/${moduleId}`, {
+      title: data.title,
+      description: data.description,
+      position: data.position,
+      isPublished: data.isPublished,
+      publishDate: data.publishDate,
+      contentMeta: data.contentMeta,
+    });
     return response.data;
   },
 

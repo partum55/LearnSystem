@@ -40,6 +40,9 @@ public class Assignment {
     @Column(name = "module_id")
     private UUID moduleId;
 
+    @Column(name = "topic_id")
+    private UUID topicId;
+
     @Column(name = "category_id")
     private UUID categoryId; // Gradebook category
 
@@ -48,7 +51,7 @@ public class Assignment {
     private Integer position = 0;
 
     @Column(name = "assignment_type", nullable = false, length = 20)
-    private String assignmentType; // QUIZ, FILE_UPLOAD, TEXT, CODE, URL, MANUAL_GRADE, EXTERNAL, VIRTUAL_LAB
+    private String assignmentType; // QUIZ, FILE_UPLOAD, TEXT, CODE, URL, MANUAL_GRADE, EXTERNAL, VIRTUAL_LAB, SEMINAR
 
     @Column(nullable = false, length = 255)
     private String title;
@@ -200,7 +203,9 @@ public class Assignment {
 
     // Helper methods
     public boolean requiresSubmission() {
-        return !"MANUAL_GRADE".equals(assignmentType) && !"QUIZ".equals(assignmentType);
+        return !"MANUAL_GRADE".equals(assignmentType)
+                && !"QUIZ".equals(assignmentType)
+                && !"SEMINAR".equals(assignmentType);
     }
 
     public boolean isAvailable() {
@@ -225,4 +230,3 @@ public class Assignment {
         return allowLateSubmission || !isOverdue();
     }
 }
-

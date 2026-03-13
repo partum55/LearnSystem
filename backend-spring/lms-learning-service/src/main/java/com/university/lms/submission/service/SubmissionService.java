@@ -60,6 +60,7 @@ public class SubmissionService {
   private static final String STATUS_IN_REVIEW = "IN_REVIEW";
   private static final String STATUS_GRADED_DRAFT = "GRADED_DRAFT";
   private static final String STATUS_GRADED_PUBLISHED = "GRADED_PUBLISHED";
+  private static final String ASSIGNMENT_TYPE_SEMINAR = "SEMINAR";
 
   private final SubmissionRepository submissionRepository;
   private final SubmissionFileRepository submissionFileRepository;
@@ -533,6 +534,7 @@ public class SubmissionService {
   }
 
   private Submission findOrCreateSubmission(UUID assignmentId, UUID userId, String userEmail) {
+    assertSubmissionAllowed(assignmentId);
     return submissionRepository
         .findByAssignmentIdAndUserId(assignmentId, userId)
         .orElseGet(
@@ -545,6 +547,15 @@ public class SubmissionService {
                     .status(STATUS_DRAFT)
                     .submissionVersion(1)
                     .build());
+  }
+
+  private void assertSubmissionAllowed(UUID assignmentId) {
+    Assignment assignment = findAssignment(assignmentId);
+    String assignmentType = normalize(assignment.getAssignmentType(), "");
+    if (ASSIGNMENT_TYPE_SEMINAR.equals(assignmentType)) {
+      throw new ValidationException(
+          "submission", "Seminar assignments do not accept student submissions");
+    }
   }
 
   private void ensureStudentIdentity(Submission submission, String userEmail) {

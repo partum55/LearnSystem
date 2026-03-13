@@ -21,6 +21,11 @@
             <artifactId>lms-common</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.university</groupId>
+            <artifactId>lms-plugin-runtime</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <!-- Spring Boot Starters -->
         <dependency>

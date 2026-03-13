@@ -137,9 +137,7 @@ services:
   learning-service:
     build:
       context: ./backend-spring
-      dockerfile: Dockerfile
-      args:
-        SERVICE_NAME: lms-learning-service
+      dockerfile: Dockerfile.learning
     container_name: lms-learning-service
     restart: always
     environment:
@@ -154,9 +152,13 @@ services:
       - JWT_SECRET=${JWT_SECRET:-local-dev-secret-key-for-jwt-must-be-at-least-256-bits-long-for-hs256-algorithm}
       - EUREKA_URI=http://eureka-server:8761/eureka
       - SUBMISSION_STORAGE_PATH=/data/submissions
+      - PLUGIN_STORAGE_PATH=/data/plugins
+      - PLUGIN_PYTHON_ENABLED=true
+      - PLUGIN_PYTHON_EXECUTABLE=python3
       - JAVA_OPTS=-Xmx512m -Xms256m
     volumes:
       - submission_data:/data/submissions
+      - plugin_data:/data/plugins
     depends_on:
       postgres:
         condition: service_healthy
@@ -175,7 +177,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 768M
+          memory: 1024M
 
   ai-service:
     build:
@@ -263,6 +265,42 @@ services:
         limits:
           memory: 512M
 
+  marketplace-service:
+    build:
+      context: ./backend-spring
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: lms-marketplace-service
+    container_name: lms-marketplace-service
+    restart: always
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8086
+      - DB_HOST=${SUPABASE_DB_HOST:-postgres}
+      - DB_PORT=${SUPABASE_DB_PORT:-5432}
+      - DB_NAME=${SUPABASE_DB_NAME:-lms_db}
+      - DB_USERNAME=${SUPABASE_DB_USER:-lms_user}
+      - DB_PASSWORD=${SUPABASE_DB_PASSWORD:-lms_password_local}
+      - EUREKA_URI=http://eureka-server:8761/eureka
+      - JAVA_OPTS=-Xmx256m -Xms128m
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - lms-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8086/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
   # ==========================================
   # API GATEWAY
   # ==========================================
@@ -335,6 +373,8 @@ volumes:
   redis_data:
     driver: local
   submission_data:
+    driver: local
+  plugin_data:
     driver: local
 
 # ==========================================

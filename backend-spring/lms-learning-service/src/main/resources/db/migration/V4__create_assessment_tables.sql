@@ -146,8 +146,7 @@ COMMENT ON TABLE question_bank IS 'Reusable question bank for quizzes';
 COMMENT ON TABLE quiz_questions IS 'Association between quizzes and questions';
 COMMENT ON TABLE quiz_attempts IS 'Student attempts at quizzes with answers and scoring';
 
-COMMENT ON COLUMN assignments.assignment_type IS 'QUIZ, FILE_UPLOAD, TEXT, CODE, URL, MANUAL_GRADE, EXTERNAL';
+COMMENT ON COLUMN assignments.assignment_type IS 'QUIZ, FILE_UPLOAD, TEXT, CODE, URL, MANUAL_GRADE, EXTERNAL, SEMINAR';
 COMMENT ON COLUMN assignments.description_format IS 'PLAIN, MARKDOWN, HTML, RICH';
 COMMENT ON COLUMN assignments.auto_grading_enabled IS 'Enable automatic grading for code submissions';
 COMMENT ON COLUMN question_bank.question_type IS 'MULTIPLE_CHOICE, TRUE_FALSE, FILL_BLANK, MATCHING, NUMERICAL, FORMULA, SHORT_ANSWER, ESSAY, CODE, FILE_UPLOAD, ORDERING, HOTSPOT, DRAG_DROP';
-

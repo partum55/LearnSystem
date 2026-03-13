@@ -22,6 +22,8 @@ const mapAssignmentFromApi = (raw: UnknownRecord): Assignment => ({
   id: String(raw.id ?? ''),
   course_id: String(raw.courseId ?? raw.course_id ?? raw.course ?? ''),
   module_id: (raw.moduleId ?? raw.module_id) ? String(raw.moduleId ?? raw.module_id) : undefined,
+  topic_id: (raw.topicId ?? raw.topic_id) ? String(raw.topicId ?? raw.topic_id) : undefined,
+  category_id: (raw.categoryId ?? raw.category_id) ? String(raw.categoryId ?? raw.category_id) : undefined,
   assignment_type: String(raw.assignmentType ?? raw.assignment_type ?? 'FILE_UPLOAD') as Assignment['assignment_type'],
   title: String(raw.title ?? ''),
   description: String(raw.description ?? ''),
@@ -68,6 +70,7 @@ const mapAssignmentToApi = (raw: Partial<Assignment> & UnknownRecord): UnknownRe
   return compact({
     courseId: raw.courseId ?? raw.course_id ?? raw.course,
     moduleId: raw.moduleId ?? raw.module_id ?? raw.module,
+    topicId: raw.topicId ?? raw.topic_id,
     categoryId: raw.categoryId ?? raw.category_id ?? raw.category,
     position: raw.position,
     assignmentType: raw.assignmentType ?? raw.assignment_type,

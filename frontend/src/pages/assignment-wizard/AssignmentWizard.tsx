@@ -112,6 +112,7 @@ const AssignmentWizard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedTopicId, setSelectedTopicId] = useState<string | undefined>(undefined);
   const [templateDocument, setTemplateDocument] = useState<CanonicalDocument>(createEmptyDocument());
   const [initialTemplateSnapshot, setInitialTemplateSnapshot] = useState<string>(
     JSON.stringify(createEmptyDocument()),
@@ -176,6 +177,11 @@ const AssignmentWizard: React.FC = () => {
           }
         }
 
+        const rawTopicId = raw.topicId ?? raw.topic_id;
+        if (typeof rawTopicId === 'string' && rawTopicId) {
+          setSelectedTopicId(rawTopicId);
+        }
+
         wizard.loadExisting(wizardData);
         if (templateResponse?.data?.document) {
           const parsedTemplate = parseCanonicalDocument(templateResponse.data.document);
@@ -205,6 +211,9 @@ const AssignmentWizard: React.FC = () => {
         courseId,
         moduleId,
       );
+      if (selectedTopicId) {
+        payload.topicId = selectedTopicId;
+      }
 
       let savedAssignmentId = assignmentId;
       if (assignmentId) {
@@ -293,6 +302,9 @@ const AssignmentWizard: React.FC = () => {
             onChange={wizard.updateFormData}
             validationErrors={wizard.validationErrors}
             courseId={courseId}
+            moduleId={moduleId}
+            topicId={selectedTopicId}
+            onTopicChange={setSelectedTopicId}
           />
         );
       case 'grading':

@@ -14,7 +14,9 @@ import {
   ClockIcon,
   Cog6ToothIcon,
   ClipboardIcon,
+  PuzzlePieceIcon,
 } from '@heroicons/react/24/outline';
+import { pluginRegistry } from '../plugins/pluginRegistry';
 import { useAuthStore } from '../store/authStore';
 import clsx from 'clsx';
 
@@ -42,6 +44,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
       { name: t('nav.questionBank', 'Question Bank'), href: '/question-bank', icon: ClipboardDocumentListIcon },
       { name: t('nav.teacherTodo', 'Teacher To-do'), href: '/teacher/todo', icon: ClipboardIcon }
     );
+  }
+
+  navigation.push(
+    { name: t('nav.marketplace', 'Marketplace'), href: '/marketplace', icon: PuzzlePieceIcon }
+  );
+
+  // Add plugin-registered nav items
+  if (user?.role) {
+    const pluginNavItems = pluginRegistry.getNavItems(user.role);
+    pluginNavItems.forEach(item => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      navigation.push({ name: item.label, href: item.href, icon: item.icon as any });
+    });
   }
 
   if (user?.role === 'SUPERADMIN') {

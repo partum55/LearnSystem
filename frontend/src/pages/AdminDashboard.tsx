@@ -26,6 +26,7 @@ import {
   ArrowUpTrayIcon,
   BeakerIcon,
   BookOpenIcon,
+  PuzzlePieceIcon,
   ServerIcon,
   UserGroupIcon,
   WrenchScrewdriverIcon,
@@ -37,6 +38,7 @@ import { AdminCourseManagerTab } from './admin-dashboard/AdminCourseManagerTab';
 import { AdminImportExportTab } from './admin-dashboard/AdminImportExportTab';
 import { AdminTestLabTab } from './admin-dashboard/AdminTestLabTab';
 import { AdminAnalyticsTab } from './admin-dashboard/AdminAnalyticsTab';
+import { AdminPluginsTab } from './admin-dashboard/AdminPluginsTab';
 import { Button, Modal } from '../components';
 import {
   AdminTab,
@@ -403,6 +405,7 @@ export const AdminDashboard: React.FC = () => {
     { key: 'import-export', label: 'Import / Export', icon: ArrowUpTrayIcon },
     { key: 'analytics', label: 'Analytics', icon: ServerIcon },
     { key: 'services', label: 'Services', icon: ServerIcon },
+    { key: 'plugins', label: 'Plugins', icon: PuzzlePieceIcon },
     { key: 'test-lab', label: 'Test Lab', icon: BeakerIcon },
   ];
 
@@ -515,6 +518,10 @@ export const AdminDashboard: React.FC = () => {
 
           {activeTab === 'analytics' && (
             <AdminAnalyticsTab onFeedback={showFeedback} />
+          )}
+
+          {activeTab === 'plugins' && (
+            <AdminPluginsTab onFeedback={showFeedback} />
           )}
 
           {activeTab === 'test-lab' && (

@@ -27,11 +27,12 @@ public class CreateAssignmentRequest {
     private UUID courseId;
 
     private UUID moduleId;
+    private UUID topicId;
     private UUID categoryId;
     private Integer position;
 
     @NotBlank(message = "Assignment type is required")
-    @Pattern(regexp = "^(QUIZ|FILE_UPLOAD|TEXT|CODE|URL|MANUAL_GRADE|EXTERNAL)$")
+    @Pattern(regexp = "^(QUIZ|FILE_UPLOAD|TEXT|CODE|URL|MANUAL_GRADE|EXTERNAL|SEMINAR)$")
     private String assignmentType;
 
     @NotBlank(message = "Title is required")

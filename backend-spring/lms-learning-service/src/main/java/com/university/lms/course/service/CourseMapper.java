@@ -156,6 +156,7 @@ public class CourseMapper {
     return ResourceDto.builder()
         .id(resource.getId())
         .moduleId(resource.getModule().getId())
+        .topicId(resource.getTopicId())
         .title(resource.getTitle())
         .description(resource.getDescription())
         .resourceType(resource.getResourceType())

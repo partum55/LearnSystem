@@ -870,6 +870,7 @@ export const AdminTestLabTab: React.FC<Props> = ({ onFeedback }) => {
                   { value: 'CODE', label: 'Code' },
                   { value: 'URL', label: 'URL' },
                   { value: 'QUIZ', label: 'Quiz' },
+                  { value: 'SEMINAR', label: 'Seminar' },
                 ]}
               />
               <Field label="Max Points" value={s.assignmentMaxPoints} onChange={v => set('assignmentMaxPoints', Number(v) || 100)} type="number" />

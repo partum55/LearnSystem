@@ -763,7 +763,7 @@ export const AdminImportExportTab: React.FC<Props> = ({ onFeedback }) => {
       "isDownloadable": false
     }],
     "assignments": [{
-      "assignmentType": "FILE_UPLOAD|TEXT|CODE|URL|QUIZ|MANUAL_GRADE|EXTERNAL",
+      "assignmentType": "FILE_UPLOAD|TEXT|CODE|URL|QUIZ|MANUAL_GRADE|EXTERNAL|SEMINAR",
       "title": "Assignment",       // Required
       "description": "...",        // Required
       "maxPoints": 100,

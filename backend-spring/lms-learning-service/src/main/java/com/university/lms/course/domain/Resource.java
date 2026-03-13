@@ -58,6 +58,9 @@ public class Resource {
   @Column(name = "mime_type", length = 100)
   private String mimeType;
 
+  @Column(name = "topic_id")
+  private UUID topicId;
+
   @Column(nullable = false)
   @Builder.Default
   private Integer position = 0;

@@ -14,6 +14,7 @@ import com.university.lms.course.assessment.repository.AssignmentRepository;
 import com.university.lms.submission.domain.Submission;
 import com.university.lms.submission.dto.GradeDraftRequest;
 import com.university.lms.submission.dto.PublishGradeRequest;
+import com.university.lms.submission.dto.CreateSubmissionRequest;
 import com.university.lms.submission.dto.SubmissionResponse;
 import com.university.lms.submission.dto.UpdateSubmissionDraftRequest;
 import com.university.lms.submission.repository.SubmissionCommentRepository;
@@ -213,5 +214,23 @@ class SubmissionServiceTest {
     assertThat(submission.getPublishedGrade()).isEqualTo(new java.math.BigDecimal("75.00"));
     assertThat(response.getGrade()).isEqualTo(new java.math.BigDecimal("75.00"));
     verify(eventPublisher, times(1)).publishEvent(any());
+  }
+
+  @Test
+  void createOrGetDraftShouldRejectSeminarAssignment() {
+    UUID assignmentId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+
+    Assignment seminarAssignment = Assignment.builder().id(assignmentId).assignmentType("SEMINAR").build();
+    when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(seminarAssignment));
+
+    assertThatThrownBy(
+            () ->
+                submissionService.createOrGetDraft(
+                    CreateSubmissionRequest.builder().assignmentId(assignmentId).build(),
+                    userId,
+                    "student@ucu.edu.ua"))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("do not accept student submissions");
   }
 }

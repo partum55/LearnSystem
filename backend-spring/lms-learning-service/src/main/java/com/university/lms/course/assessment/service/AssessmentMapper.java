@@ -23,6 +23,7 @@ public class AssessmentMapper {
             .id(assignment.getId())
             .courseId(assignment.getCourseId())
             .moduleId(assignment.getModuleId())
+            .topicId(assignment.getTopicId())
             .categoryId(assignment.getCategoryId())
             .position(assignment.getPosition())
             .assignmentType(assignment.getAssignmentType())
@@ -74,6 +75,7 @@ public class AssessmentMapper {
         return Assignment.builder()
             .courseId(request.getCourseId())
             .moduleId(request.getModuleId())
+            .topicId(request.getTopicId())
             .categoryId(request.getCategoryId())
             .position(request.getPosition() != null ? request.getPosition() : 0)
             .assignmentType(request.getAssignmentType())
@@ -117,6 +119,7 @@ public class AssessmentMapper {
         }
 
         if (request.getModuleId() != null) assignment.setModuleId(request.getModuleId());
+        if (request.getTopicId() != null) assignment.setTopicId(request.getTopicId());
         if (request.getCategoryId() != null) assignment.setCategoryId(request.getCategoryId());
         if (request.getPosition() != null) assignment.setPosition(request.getPosition());
         if (request.getTitle() != null) assignment.setTitle(request.getTitle());

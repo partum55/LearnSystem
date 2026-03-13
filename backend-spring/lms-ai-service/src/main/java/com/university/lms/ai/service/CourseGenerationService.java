@@ -226,7 +226,7 @@ public class CourseGenerationService {
     sb.append(
         "6. Resource types: TEXT, VIDEO, PDF, SLIDE, LINK, CODE, OTHER. Use TEXT for brief lecture content (2-3 sentences to stay within token limits), LINK for external references.\n");
     sb.append(
-        "7. Assignment types: FILE_UPLOAD, TEXT, CODE, URL, QUIZ, MANUAL_GRADE, EXTERNAL. Match submissionTypes to assignmentType (e.g., CODE→[\"CODE\"], FILE_UPLOAD→[\"FILE_UPLOAD\"]).\n");
+        "7. Assignment types: FILE_UPLOAD, TEXT, CODE, URL, QUIZ, MANUAL_GRADE, EXTERNAL, SEMINAR. Match submissionTypes to assignmentType (e.g., CODE→[\"CODE\"], FILE_UPLOAD→[\"FILE_UPLOAD\"], SEMINAR→[]).\n");
     sb.append(
         "8. For CODE assignments, include programmingLanguage and optionally starterCode. For FILE_UPLOAD, include allowedFileTypes (e.g., [\".pdf\", \".docx\"]).\n");
     sb.append(

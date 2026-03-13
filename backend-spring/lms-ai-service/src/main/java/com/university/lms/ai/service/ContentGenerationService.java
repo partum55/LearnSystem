@@ -177,7 +177,7 @@ public class ContentGenerationService {
               "resources": ["Recommended resource 1", "Recommended resource 2"]
             }
 
-            Assignment types: FILE_UPLOAD, TEXT, CODE, QUIZ
+            Assignment types: FILE_UPLOAD, TEXT, CODE, QUIZ, SEMINAR
             Do not include additional fields. Respect required fields and size limits.
             Create clear, achievable assignments with detailed instructions.
             Align with learning objectives and provide helpful resources.

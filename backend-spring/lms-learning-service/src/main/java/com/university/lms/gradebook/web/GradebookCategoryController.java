@@ -26,24 +26,32 @@ public class GradebookCategoryController {
     private final GradebookCategoryService categoryService;
 
     @GetMapping("/course/{courseId}")
-    public ResponseEntity<List<GradebookCategoryDto>> getCourseCategories(@PathVariable UUID courseId) {
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<GradebookCategoryDto>> getCourseCategories(
+            @PathVariable UUID courseId,
+            @RequestAttribute("userId") UUID userId) {
         log.info("Fetching categories for course: {}", courseId);
-        List<GradebookCategoryDto> categories = categoryService.getCategoriesForCourse(courseId);
+        List<GradebookCategoryDto> categories = categoryService.getCategoriesForCourse(courseId, userId);
         return ResponseEntity.ok(categories);
     }
 
     @GetMapping("/{categoryId}")
-    public ResponseEntity<GradebookCategoryDto> getCategory(@PathVariable UUID categoryId) {
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<GradebookCategoryDto> getCategory(
+            @PathVariable UUID categoryId,
+            @RequestAttribute("userId") UUID userId) {
         log.info("Fetching category: {}", categoryId);
-        GradebookCategoryDto category = categoryService.getCategoryById(categoryId);
+        GradebookCategoryDto category = categoryService.getCategoryById(categoryId, userId);
         return ResponseEntity.ok(category);
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('TEACHER', 'SUPERADMIN')")
-    public ResponseEntity<GradebookCategoryDto> createCategory(@Valid @RequestBody CreateCategoryRequest request) {
+    public ResponseEntity<GradebookCategoryDto> createCategory(
+            @Valid @RequestBody CreateCategoryRequest request,
+            @RequestAttribute("userId") UUID userId) {
         log.info("Creating category for course: {}", request.getCourseId());
-        GradebookCategoryDto created = categoryService.createCategory(request);
+        GradebookCategoryDto created = categoryService.createCategory(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -51,17 +59,31 @@ public class GradebookCategoryController {
     @PreAuthorize("hasAnyRole('TEACHER', 'SUPERADMIN')")
     public ResponseEntity<GradebookCategoryDto> updateCategory(
             @PathVariable UUID categoryId,
-            @Valid @RequestBody CreateCategoryRequest request) {
+            @Valid @RequestBody CreateCategoryRequest request,
+            @RequestAttribute("userId") UUID userId) {
         log.info("Updating category: {}", categoryId);
-        GradebookCategoryDto updated = categoryService.updateCategory(categoryId, request);
+        GradebookCategoryDto updated = categoryService.updateCategory(categoryId, request, userId);
         return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{categoryId}")
     @PreAuthorize("hasAnyRole('TEACHER', 'SUPERADMIN')")
-    public ResponseEntity<Void> deleteCategory(@PathVariable UUID categoryId) {
+    public ResponseEntity<Void> deleteCategory(
+            @PathVariable UUID categoryId,
+            @RequestAttribute("userId") UUID userId) {
         log.info("Deleting category: {}", categoryId);
-        categoryService.deleteCategory(categoryId);
+        categoryService.deleteCategory(categoryId, userId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/course/{courseId}/reorder")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SUPERADMIN')")
+    public ResponseEntity<Void> reorderCategories(
+            @PathVariable UUID courseId,
+            @RequestBody List<UUID> categoryIds,
+            @RequestAttribute("userId") UUID userId) {
+        log.info("Reordering categories for course: {}", courseId);
+        categoryService.reorderCategories(courseId, categoryIds, userId);
+        return ResponseEntity.ok().build();
     }
 }

@@ -29,6 +29,7 @@ public class AssignmentDto implements Serializable {
     private UUID id;
     private UUID courseId;
     private UUID moduleId;
+    private UUID topicId;
     private UUID categoryId;
     private Integer position;
 

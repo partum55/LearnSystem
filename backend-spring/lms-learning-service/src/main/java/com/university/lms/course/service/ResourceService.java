@@ -134,6 +134,7 @@ public class ResourceService {
             .module(module)
             .title(request.getTitle())
             .description(request.getDescription())
+            .topicId(request.getTopicId())
             .resourceType(request.getResourceType())
             .fileUrl(request.getFileUrl())
             .externalUrl(request.getExternalUrl())
@@ -190,6 +191,7 @@ public class ResourceService {
       resource.setIsDownloadable(request.getIsDownloadable());
     if (request.getTextContent() != null) resource.setTextContent(request.getTextContent());
     if (request.getMetadata() != null) resource.setMetadata(request.getMetadata());
+    resource.setTopicId(request.getTopicId());
 
     Resource updatedResource = resourceRepository.save(resource);
     log.info("Resource updated successfully: {}", id);

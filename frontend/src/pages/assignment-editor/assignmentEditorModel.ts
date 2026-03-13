@@ -31,6 +31,7 @@ export interface AssignmentFormData {
 export interface AssignmentRequestPayload {
   courseId?: string;
   moduleId?: string;
+  topicId?: string;
   assignmentType: string;
   title: string;
   description: string;

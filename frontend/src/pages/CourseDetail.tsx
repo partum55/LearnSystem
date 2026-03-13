@@ -308,6 +308,39 @@ export const CourseDetail: React.FC = () => {
     [fetchModules, id]
   );
 
+  const handleEditModuleStructure = useCallback(
+    async (module: Module, patch: { topic?: string; tags?: string[] }) => {
+      if (!id) {
+        return;
+      }
+
+      const currentMeta = (module.content_meta || {}) as Record<string, unknown>;
+      const nextMeta: Record<string, unknown> = { ...currentMeta };
+
+      if (patch.topic !== undefined) {
+        if (patch.topic.trim()) {
+          nextMeta.topic = patch.topic.trim();
+        } else {
+          delete nextMeta.topic;
+        }
+      }
+
+      if (patch.tags !== undefined) {
+        if (patch.tags.length > 0) {
+          nextMeta.tags = patch.tags;
+        } else {
+          delete nextMeta.tags;
+        }
+      }
+
+      await modulesApi.update(id, module.id, {
+        content_meta: nextMeta,
+      } as Partial<Module>);
+      await fetchModules(id);
+    },
+    [fetchModules, id]
+  );
+
   const openChecklistModal = useCallback((checklist: CoursePublishChecklist) => {
     setPublishChecklist(checklist);
     setOverrideReason('');
@@ -497,6 +530,7 @@ export const CourseDetail: React.FC = () => {
                   onDeleteAssignment={requestDeleteAssignment}
                   onReorderModules={handleReorderModules}
                   onReorderResources={handleReorderResources}
+                  onEditModuleStructure={handleEditModuleStructure}
                   t={t}
                 />
               )}
