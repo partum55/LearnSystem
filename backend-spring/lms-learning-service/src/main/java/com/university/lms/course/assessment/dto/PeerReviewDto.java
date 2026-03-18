@@ -3,6 +3,7 @@ package com.university.lms.course.assessment.dto;
 import lombok.Data;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Data
 public class PeerReviewDto {
@@ -17,7 +18,7 @@ public class PeerReviewDto {
     private String status;
     private Double overallScore;
     private String overallFeedback;
-    private List<?> ratings;
+    private List<Map<String, Object>> ratings;
     private LocalDateTime submittedAt;
     private LocalDateTime createdAt;
 }
