@@ -14,7 +14,6 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -64,6 +63,5 @@ public class InlineQuizRequest {
     private BigDecimal passPercentage;
 
     @Valid
-    @Builder.Default
-    private List<InlineQuizQuestionRequest> questions = new ArrayList<>();
+    private List<InlineQuizQuestionRequest> questions;
 }
