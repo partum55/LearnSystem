@@ -6,8 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.time.Instant;
 import java.util.Map;
 
 /**
@@ -23,14 +22,14 @@ public class ErrorResponse {
     private String code;
     private String error;
     private String message;
-    private String timestamp;
+    private Instant timestamp;
     private String path;
     private Integer status;
     private Object details;
     private Map<String, String> errors;
 
-    private static String now() {
-        return LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+    private static Instant now() {
+        return Instant.now();
     }
 
     public static ErrorResponse of(String code, String message, String path, Integer status) {
