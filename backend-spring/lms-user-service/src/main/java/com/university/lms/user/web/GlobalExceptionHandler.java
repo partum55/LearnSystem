@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -67,7 +67,7 @@ public class GlobalExceptionHandler {
         ErrorResponse error = ErrorResponse.builder()
                 .code("VALIDATION_ERROR")
                 .message("Validation failed")
-                .timestamp(LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+                .timestamp(Instant.now())
                 .path(request.getRequestURI())
                 .status(HttpStatus.BAD_REQUEST.value())
                 .details(validationErrors)
@@ -88,7 +88,7 @@ public class GlobalExceptionHandler {
         ErrorResponse error = ErrorResponse.builder()
                 .code("VALIDATION_ERROR")
                 .message("Validation failed")
-                .timestamp(LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+                .timestamp(Instant.now())
                 .path(request.getRequestURI())
                 .status(HttpStatus.BAD_REQUEST.value())
                 .details(validationErrors)
