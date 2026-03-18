@@ -26,10 +26,12 @@ public interface PluginEventLogRepository extends JpaRepository<PluginEventLog, 
     Page<PluginEventLog> findByPluginIdOrderByOccurredAtDesc(String pluginId, Pageable pageable);
 
     /**
-     * Returns all log entries for a plugin since a specific timestamp, ordered by time ascending.
+     * Returns all log entries for a plugin strictly after a specific timestamp, ordered by time
+     * ascending.
      *
      * @param pluginId  the plugin identifier
-     * @param since     inclusive lower bound timestamp
+     * @param since     exclusive lower bound timestamp; entries with {@code occurredAt > since}
+     *                  are returned
      * @return ordered list of log entries
      */
     List<PluginEventLog> findByPluginIdAndOccurredAtAfterOrderByOccurredAtAsc(
