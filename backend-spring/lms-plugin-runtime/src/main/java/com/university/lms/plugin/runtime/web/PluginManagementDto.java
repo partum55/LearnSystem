@@ -29,6 +29,8 @@ public final class PluginManagementDto {
      * @param status      current lifecycle status
      * @param permissions permissions declared in the manifest
      * @param installedAt UTC timestamp of first installation
+     * @param jarFileName filename of the plugin JAR as stored on the server, when available
+     * @param runtime     identifier of the runtime/environment the plugin is loaded into
      */
     public record PluginDto(
             String pluginId,
