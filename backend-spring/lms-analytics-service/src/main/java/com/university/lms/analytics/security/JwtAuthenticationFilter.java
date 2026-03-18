@@ -21,7 +21,7 @@ public class JwtAuthenticationFilter extends com.university.lms.common.security.
     }
 
     @Override
-    protected com.university.lms.common.security.JwtAuthenticationFilter.UserDetails getUserDetails(UUID userId, String email) {
+    protected com.university.lms.common.security.JwtAuthenticationFilter.UserDetails getUserDetails(UUID userId, String email, String roleFromToken) {
         // Analytics service trusts the JWT token claims
         // User details come from the token itself
         return new com.university.lms.common.security.JwtAuthenticationFilter.UserDetails() {

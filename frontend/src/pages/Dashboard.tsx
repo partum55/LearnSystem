@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { formatDistanceToNowStrict, isToday } from 'date-fns';
 import { Layout } from '../components';
 import { Loading } from '../components';
 import { Button } from '../components';
@@ -9,24 +10,33 @@ import { WidgetRenderer } from '../components';
 import { useAuthStore } from '../store/authStore';
 import { useCourseStore } from '../store/courseStore';
 import { useNotificationStore } from '../store/notificationStore';
-import { Course, Assignment } from '../types';
+import { Course } from '../types';
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { useCourseDeadlines } from '../hooks/useCourseDeadlines';
+import {
+  coursesApi,
+  StudentContextReminderItem,
+  TeacherTodoDashboardResponse,
+} from '../api/courses';
+import { extractErrorMessage } from '../api/client';
 
 interface DashboardCourse extends Course {
-  assignments?: Assignment[];
   completion_percentage?: number;
 }
+
+type DashboardStatusFilter = 'active' | 'archived' | 'all';
 
 const DEFAULT_WIDGETS: DashboardWidgetConfig[] = [
   { id: 'stats-1', type: 'stats', title: 'Statistics', visible: true, order: 0, size: 'full' },
   { id: 'courses-1', type: 'courses', title: 'My Courses', visible: true, order: 1, size: 'medium' },
-  { id: 'deadlines-1', type: 'deadlines', title: 'Upcoming Deadlines', visible: true, order: 2, size: 'medium' },
-  { id: 'notifications-1', type: 'notifications', title: 'Recent Activity', visible: true, order: 3, size: 'medium' },
-  { id: 'progress-1', type: 'progress', title: 'Course Progress', visible: true, order: 4, size: 'medium' },
-  { id: 'streak-1', type: 'streak', title: 'Learning Streak', visible: true, order: 5, size: 'small' },
-  { id: 'completed-1', type: 'completed-today', title: 'Completed Today', visible: true, order: 6, size: 'small' },
-  { id: 'calendar-1', type: 'calendar', title: 'Calendar', visible: true, order: 7, size: 'medium' },
-  { id: 'grades-1', type: 'grade-distribution', title: 'Grade Distribution', visible: true, order: 8, size: 'medium' },
+  { id: 'due-today-1', type: 'due-today', title: 'Due Today', visible: true, order: 2, size: 'medium' },
+  { id: 'deadlines-1', type: 'deadlines', title: 'Upcoming Deadlines', visible: true, order: 3, size: 'medium' },
+  { id: 'notifications-1', type: 'notifications', title: 'Recent Activity', visible: true, order: 4, size: 'medium' },
+  { id: 'progress-1', type: 'progress', title: 'Course Progress', visible: true, order: 5, size: 'medium' },
+  { id: 'streak-1', type: 'streak', title: 'Learning Streak', visible: true, order: 6, size: 'small' },
+  { id: 'completed-1', type: 'completed-today', title: 'Completed Today', visible: true, order: 7, size: 'small' },
+  { id: 'calendar-1', type: 'calendar', title: 'Calendar', visible: true, order: 8, size: 'medium' },
+  { id: 'grades-1', type: 'grade-distribution', title: 'Grade Distribution', visible: true, order: 9, size: 'medium' },
 ];
 
 const getGreeting = (): string => {
@@ -42,6 +52,11 @@ export const Dashboard: React.FC = () => {
   const { user } = useAuthStore();
   const { courses, fetchCourses, isLoading: coursesLoading } = useCourseStore();
   const { notifications, fetchNotifications } = useNotificationStore();
+  const [statusFilter, setStatusFilter] = useState<DashboardStatusFilter>('active');
+  const [semesterFilter, setSemesterFilter] = useState<string>('all');
+  const [teacherTodo, setTeacherTodo] = useState<TeacherTodoDashboardResponse | null>(null);
+  const [studentReminders, setStudentReminders] = useState<StudentContextReminderItem[]>([]);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
   const [widgets, setWidgets] = useState<DashboardWidgetConfig[]>(() => {
     const saved = localStorage.getItem('dashboardWidgets');
     return saved ? JSON.parse(saved) : DEFAULT_WIDGETS;
@@ -62,32 +77,108 @@ export const Dashboard: React.FC = () => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  if (coursesLoading) return <Loading />;
+  const isInstructorRole =
+    user?.role === 'TEACHER' || user?.role === 'TA' || user?.role === 'SUPERADMIN';
+  const isStudentRole = user?.role === 'STUDENT';
 
-  const upcomingDeadlines = ((courses || []) as DashboardCourse[])
-    .flatMap((course) =>
-      course.assignments?.map((assignment) => {
-        const dueDate = assignment.due_date ? new Date(assignment.due_date) : new Date();
-        return {
-          course: course.title,
-          courseCode: course.code,
-          title: assignment.title,
-          deadline: dueDate.toISOString(),
-          deadlineDate: dueDate,
-          id: assignment.id,
-        };
-      }) || []
+  useEffect(() => {
+    let isMounted = true;
+    const loadInsights = async () => {
+      setInsightsError(null);
+      try {
+        if (isInstructorRole) {
+          const response = await coursesApi.getTeacherTodo();
+          if (!isMounted) return;
+          setTeacherTodo(response.data);
+          setStudentReminders([]);
+          return;
+        }
+        if (isStudentRole) {
+          const response = await coursesApi.getStudentContextReminders();
+          if (!isMounted) return;
+          setStudentReminders(response.data.reminders || []);
+          setTeacherTodo(null);
+          return;
+        }
+        if (!isMounted) return;
+        setTeacherTodo(null);
+        setStudentReminders([]);
+      } catch (err) {
+        if (!isMounted) return;
+        setInsightsError(extractErrorMessage(err));
+      }
+    };
+
+    void loadInsights();
+    return () => {
+      isMounted = false;
+    };
+  }, [isInstructorRole, isStudentRole]);
+
+  const dashboardCourses = (courses || []) as DashboardCourse[];
+  const semesters = Array.from(
+    new Set(
+      dashboardCourses
+        .map((course) => course.academicYear)
+        .filter((year): year is string => Boolean(year))
     )
-    .filter((item) => item.deadlineDate > new Date())
-    .sort((a, b) => a.deadlineDate.getTime() - b.deadlineDate.getTime())
-    .slice(0, 6);
+  ).sort((a, b) => b.localeCompare(a));
+
+  const filteredCourses = dashboardCourses.filter((course) => {
+    const matchesStatus =
+      statusFilter === 'all'
+        ? true
+        : statusFilter === 'archived'
+          ? course.status === 'ARCHIVED'
+          : course.status !== 'ARCHIVED';
+
+    const matchesSemester =
+      semesterFilter === 'all' || course.academicYear === semesterFilter;
+
+    return matchesStatus && matchesSemester;
+  });
+
+  const { deadlines: courseDeadlines, isLoading: deadlinesLoading } = useCourseDeadlines(filteredCourses, {
+    enabled: filteredCourses.length > 0,
+  });
+
+  if (coursesLoading) return <Loading />;
+  const now = new Date();
+
+  const upcomingDeadlines = courseDeadlines
+    .filter((item) => item.status === 'upcoming' && new Date(item.dueDate) > now)
+    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+    .slice(0, 6)
+    .map((item) => ({
+      course: item.courseTitle,
+      courseCode: item.courseCode,
+      title: item.title,
+      deadline: item.dueDate,
+      id: item.assignmentId,
+    }));
+
+  const todayDeadlines = courseDeadlines
+    .filter((item) => isToday(new Date(item.dueDate)))
+    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+    .slice(0, 6)
+    .map((item) => ({
+      course: item.courseTitle,
+      courseCode: item.courseCode,
+      title: item.title,
+      deadline: item.dueDate,
+      id: item.assignmentId,
+      path: item.moduleId
+        ? `/courses/${item.courseId}/modules/${item.moduleId}/assignments/${item.assignmentId}`
+        : `/assignments/${item.assignmentId}`,
+    }));
 
   const widgetData = {
-    courses: ((courses || []) as DashboardCourse[]).map((course) => ({
+    courses: filteredCourses.map((course) => ({
       ...course,
       progress: course.completion_percentage || 0,
     })),
     deadlines: upcomingDeadlines,
+    todayDeadlines,
     notifications: (notifications || []).slice(0, 10),
   };
 
@@ -120,6 +211,150 @@ export const Dashboard: React.FC = () => {
           </Button>
         </div>
 
+        <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex gap-2">
+            {(['active', 'archived', 'all'] as DashboardStatusFilter[]).map((filter) => (
+              <button
+                key={filter}
+                type="button"
+                onClick={() => setStatusFilter(filter)}
+                className="rounded-md px-3 py-1.5 text-xs font-medium transition-colors"
+                style={{
+                  background: statusFilter === filter ? 'var(--bg-active)' : 'transparent',
+                  color: statusFilter === filter ? 'var(--text-primary)' : 'var(--text-muted)',
+                  border: '1px solid var(--border-default)',
+                }}
+              >
+                {t(`courses.filter_${filter}`, filter)}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="dashboard-semester-filter" className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>
+              {t('courses.semester', 'Semester')}
+            </label>
+            <select
+              id="dashboard-semester-filter"
+              value={semesterFilter}
+              onChange={(event) => setSemesterFilter(event.target.value)}
+              className="input py-1 text-sm"
+            >
+              <option value="all">{t('courses.filter_all', 'All')}</option>
+              {semesters.map((semester) => (
+                <option key={semester} value={semester}>
+                  {semester}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {isInstructorRole && teacherTodo && (
+          <section
+            className="mb-6 rounded-lg border p-4"
+            style={{ borderColor: 'var(--border-default)', background: 'var(--bg-surface)' }}
+          >
+            <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2
+                  className="text-sm font-semibold uppercase tracking-wider"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  {t('dashboard.teacherTodo', 'Teacher to-do')}
+                </h2>
+                <p className="text-xs" style={{ color: 'var(--text-faint)' }}>
+                  {t('dashboard.teacherTodoHint', 'Ungraded submissions, missing work, and nearest deadlines')}
+                </p>
+              </div>
+              <Button size="sm" variant="secondary" onClick={() => navigate('/teacher/todo')}>
+                {t('dashboard.openTeacherTodo', 'Open full view')}
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-md border px-3 py-2" style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-elevated)' }}>
+                <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>
+                  {t('dashboard.pendingGrading', 'Pending grading')}
+                </p>
+                <p className="mt-1 text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  {teacherTodo.pendingGradingCount}
+                </p>
+              </div>
+              <div className="rounded-md border px-3 py-2" style={{ borderColor: 'rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.08)' }}>
+                <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>
+                  {t('dashboard.missingSubmissions', 'Missing submissions')}
+                </p>
+                <p className="mt-1 text-xl font-semibold" style={{ color: 'var(--fn-error)' }}>
+                  {teacherTodo.missingSubmissionCount}
+                </p>
+              </div>
+              <div className="rounded-md border px-3 py-2" style={{ borderColor: 'rgba(245,158,11,0.25)', background: 'rgba(245,158,11,0.08)' }}>
+                <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>
+                  {t('dashboard.upcomingDeadlines7d', 'Deadlines in 7 days')}
+                </p>
+                <p className="mt-1 text-xl font-semibold" style={{ color: 'var(--fn-warning)' }}>
+                  {teacherTodo.upcomingDeadlineCount}
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {isStudentRole && studentReminders.length > 0 && (
+          <section
+            className="mb-6 rounded-lg border p-4"
+            style={{ borderColor: 'var(--border-default)', background: 'var(--bg-surface)' }}
+          >
+            <h2
+              className="mb-1 text-sm font-semibold uppercase tracking-wider"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              {t('dashboard.contextReminders', 'Context reminders')}
+            </h2>
+            <p className="mb-3 text-xs" style={{ color: 'var(--text-faint)' }}>
+              {t('dashboard.contextRemindersHint', 'Priority recommendations based on your progress and due dates')}
+            </p>
+            <div className="space-y-2">
+              {studentReminders.slice(0, 5).map((item) => {
+                const severityColor =
+                  item.severity === 'OVERDUE'
+                    ? 'var(--fn-error)'
+                    : item.severity === 'TODAY'
+                      ? 'var(--fn-warning)'
+                      : 'var(--text-faint)';
+                return (
+                  <Link
+                    key={`${item.assignmentId}-${item.dueDate}`}
+                    to={`/assignments/${item.assignmentId}`}
+                    className="block rounded-md border px-3 py-2 transition-colors"
+                    style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-elevated)' }}
+                    onMouseEnter={(event) => (event.currentTarget.style.background = 'var(--bg-hover)')}
+                    onMouseLeave={(event) => (event.currentTarget.style.background = 'var(--bg-elevated)')}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                        {item.assignmentTitle}
+                      </p>
+                      <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: severityColor }}>
+                        {item.severity}
+                      </span>
+                    </div>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      {item.courseCode} · {item.recommendation}
+                    </p>
+                    {item.dueDate && (
+                      <p className="mt-1 text-xs" style={{ color: 'var(--text-faint)' }}>
+                        Due {formatDistanceToNowStrict(new Date(item.dueDate), { addSuffix: true })}
+                      </p>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* Widgets */}
         {widgets.filter(w => w.visible).length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-fade-in-up">
@@ -146,6 +381,18 @@ export const Dashboard: React.FC = () => {
               {t('dashboard.customize', 'Customize')}
             </Button>
           </div>
+        )}
+
+        {deadlinesLoading && (
+          <p className="mt-4 text-xs" style={{ color: 'var(--text-faint)' }}>
+            {t('dashboard.loadingDeadlines', 'Refreshing deadlines...')}
+          </p>
+        )}
+
+        {insightsError && (
+          <p className="mt-2 text-xs" style={{ color: 'var(--fn-error)' }}>
+            {insightsError}
+          </p>
         )}
       </div>
     </Layout>

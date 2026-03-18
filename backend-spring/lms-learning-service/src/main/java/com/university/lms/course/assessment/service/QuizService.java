@@ -1,11 +1,13 @@
 package com.university.lms.course.assessment.service;
 
+import com.university.lms.course.assessment.domain.AttemptScorePolicy;
 import com.university.lms.course.assessment.domain.Quiz;
 import com.university.lms.course.assessment.domain.QuizQuestion;
 import com.university.lms.course.assessment.domain.QuestionBank;
 import com.university.lms.course.assessment.domain.QuizSection;
 import com.university.lms.course.assessment.domain.QuizSectionRule;
 import com.university.lms.course.assessment.dto.InlineQuizRequest;
+import com.university.lms.course.assessment.dto.InlineQuizQuestionRequest;
 import com.university.lms.course.assessment.dto.QuizDto;
 import com.university.lms.course.assessment.repository.AssignmentRepository;
 import com.university.lms.course.assessment.repository.QuizRepository;
@@ -95,7 +97,12 @@ public class QuizService {
                 .title(title)
                 .description(description)
                 .timeLimit(null)
-                .attemptsAllowed(1)
+                .timerEnabled(false)
+                .attemptsAllowed(null)
+                .attemptLimitEnabled(false)
+                .attemptScorePolicy(AttemptScorePolicy.HIGHEST)
+                .secureSessionEnabled(false)
+                .secureRequireFullscreen(true)
                 .shuffleQuestions(false)
                 .shuffleAnswers(false)
                 .showCorrectAnswers(true)
@@ -128,12 +135,26 @@ public class QuizService {
             throw new ValidationException("Quiz title is required");
         }
 
+        boolean timerEnabled =
+            request.getTimerEnabled() != null
+                ? request.getTimerEnabled()
+                : request.getTimeLimit() != null;
+        boolean attemptLimitEnabled =
+            request.getAttemptLimitEnabled() != null
+                ? request.getAttemptLimitEnabled()
+                : request.getAttemptsAllowed() != null;
+
         Quiz quiz = Quiz.builder()
                 .courseId(courseId)
                 .title(resolvedTitle)
                 .description(request.getDescription())
-                .timeLimit(request.getTimeLimit())
-                .attemptsAllowed(request.getAttemptsAllowed() != null ? request.getAttemptsAllowed() : 1)
+                .timeLimit(timerEnabled ? (request.getTimeLimit() != null ? request.getTimeLimit() : 20) : null)
+                .timerEnabled(timerEnabled)
+                .attemptsAllowed(attemptLimitEnabled ? (request.getAttemptsAllowed() != null ? request.getAttemptsAllowed() : 1) : null)
+                .attemptLimitEnabled(attemptLimitEnabled)
+                .attemptScorePolicy(request.getAttemptScorePolicy() != null ? request.getAttemptScorePolicy() : AttemptScorePolicy.HIGHEST)
+                .secureSessionEnabled(request.getSecureSessionEnabled() != null ? request.getSecureSessionEnabled() : false)
+                .secureRequireFullscreen(request.getSecureRequireFullscreen() != null ? request.getSecureRequireFullscreen() : true)
                 .shuffleQuestions(request.getShuffleQuestions() != null ? request.getShuffleQuestions() : false)
                 .shuffleAnswers(request.getShuffleAnswers() != null ? request.getShuffleAnswers() : false)
                 .showCorrectAnswers(request.getShowCorrectAnswers() != null ? request.getShowCorrectAnswers() : true)
@@ -159,15 +180,7 @@ public class QuizService {
             throw new ValidationException("You don't have permission to update this quiz");
         }
 
-        if (updates.getTitle() != null && !updates.getTitle().isBlank()) quiz.setTitle(updates.getTitle());
-        if (updates.getDescription() != null) quiz.setDescription(updates.getDescription());
-        if (updates.getTimeLimit() != null) quiz.setTimeLimit(updates.getTimeLimit());
-        if (updates.getAttemptsAllowed() != null) quiz.setAttemptsAllowed(updates.getAttemptsAllowed());
-        if (updates.getShuffleQuestions() != null) quiz.setShuffleQuestions(updates.getShuffleQuestions());
-        if (updates.getShuffleAnswers() != null) quiz.setShuffleAnswers(updates.getShuffleAnswers());
-        if (updates.getShowCorrectAnswers() != null) quiz.setShowCorrectAnswers(updates.getShowCorrectAnswers());
-        if (updates.getShowCorrectAnswersAt() != null) quiz.setShowCorrectAnswersAt(updates.getShowCorrectAnswersAt());
-        if (updates.getPassPercentage() != null) quiz.setPassPercentage(updates.getPassPercentage());
+        applyInlineQuizUpdates(quiz, updates);
 
         Quiz updatedQuiz = quizRepository.save(quiz);
         return mapAndEnrich(updatedQuiz);
@@ -196,7 +209,12 @@ public class QuizService {
                 .title(buildCopyTitle(original.getTitle()))
                 .description(original.getDescription())
                 .timeLimit(original.getTimeLimit())
+                .timerEnabled(original.getTimerEnabled())
                 .attemptsAllowed(original.getAttemptsAllowed())
+                .attemptLimitEnabled(original.getAttemptLimitEnabled())
+                .attemptScorePolicy(original.getAttemptScorePolicy())
+                .secureSessionEnabled(original.getSecureSessionEnabled())
+                .secureRequireFullscreen(original.getSecureRequireFullscreen())
                 .shuffleQuestions(original.getShuffleQuestions())
                 .shuffleAnswers(original.getShuffleAnswers())
                 .showCorrectAnswers(original.getShowCorrectAnswers())
@@ -279,8 +297,35 @@ public class QuizService {
 
         if (updates.getTitle() != null) quiz.setTitle(updates.getTitle());
         if (updates.getDescription() != null) quiz.setDescription(updates.getDescription());
-        if (updates.getTimeLimit() != null) quiz.setTimeLimit(updates.getTimeLimit());
-        if (updates.getAttemptsAllowed() != null) quiz.setAttemptsAllowed(updates.getAttemptsAllowed());
+        if (updates.getTimerEnabled() != null) {
+            quiz.setTimerEnabled(updates.getTimerEnabled());
+            if (!updates.getTimerEnabled()) {
+                quiz.setTimeLimit(null);
+            }
+        }
+        if (updates.getTimeLimit() != null && Boolean.TRUE.equals(quiz.getTimerEnabled())) {
+            quiz.setTimeLimit(updates.getTimeLimit());
+        }
+        if (updates.getTimeLimit() != null && updates.getTimerEnabled() == null) {
+            quiz.setTimerEnabled(true);
+            quiz.setTimeLimit(updates.getTimeLimit());
+        }
+        if (updates.getAttemptLimitEnabled() != null) {
+            quiz.setAttemptLimitEnabled(updates.getAttemptLimitEnabled());
+            if (!updates.getAttemptLimitEnabled()) {
+                quiz.setAttemptsAllowed(null);
+            }
+        }
+        if (updates.getAttemptsAllowed() != null && Boolean.TRUE.equals(quiz.getAttemptLimitEnabled())) {
+            quiz.setAttemptsAllowed(updates.getAttemptsAllowed());
+        }
+        if (updates.getAttemptsAllowed() != null && updates.getAttemptLimitEnabled() == null) {
+            quiz.setAttemptLimitEnabled(true);
+            quiz.setAttemptsAllowed(updates.getAttemptsAllowed());
+        }
+        if (updates.getAttemptScorePolicy() != null) quiz.setAttemptScorePolicy(updates.getAttemptScorePolicy());
+        if (updates.getSecureSessionEnabled() != null) quiz.setSecureSessionEnabled(updates.getSecureSessionEnabled());
+        if (updates.getSecureRequireFullscreen() != null) quiz.setSecureRequireFullscreen(updates.getSecureRequireFullscreen());
         if (updates.getShuffleQuestions() != null) quiz.setShuffleQuestions(updates.getShuffleQuestions());
         if (updates.getShuffleAnswers() != null) quiz.setShuffleAnswers(updates.getShuffleAnswers());
         if (updates.getShowCorrectAnswers() != null) quiz.setShowCorrectAnswers(updates.getShowCorrectAnswers());
@@ -403,7 +448,108 @@ public class QuizService {
         log.info("Questions reordered successfully");
     }
 
+    /**
+     * Replace quiz questions from inline authoring payload.
+     */
+    @Transactional
+    @CacheEvict(value = "quizzes", key = "#quizId")
+    public QuizDto replaceQuizQuestionsFromInline(
+        UUID quizId, List<InlineQuizQuestionRequest> questions, UUID userId) {
+        Quiz quiz = findQuizById(quizId);
+        if (!hasQuizAccess(quiz, userId)) {
+            throw new ValidationException("You don't have permission to modify this quiz");
+        }
+
+        quiz.getQuizQuestions().clear();
+        quizRepository.save(quiz);
+
+        if (questions == null || questions.isEmpty()) {
+            return mapAndEnrich(quiz);
+        }
+
+        int position = 0;
+        for (InlineQuizQuestionRequest inline : questions) {
+            if (inline.getQuestionType() == null || inline.getQuestionType().isBlank()) {
+                throw new ValidationException("Inline quiz question type is required");
+            }
+            if (inline.getStem() == null || inline.getStem().isBlank()) {
+                throw new ValidationException("Inline quiz question stem is required");
+            }
+
+            Map<String, Object> metadata = inline.getMetadata() == null
+                ? new HashMap<>()
+                : new HashMap<>(inline.getMetadata());
+            if (inline.getPromptDocument() != null && !inline.getPromptDocument().isEmpty()) {
+                metadata.put("promptDocument", inline.getPromptDocument());
+            }
+
+            QuestionBank question = QuestionBank.builder()
+                .courseId(quiz.getCourseId())
+                .questionType(inline.getQuestionType().trim().toUpperCase())
+                .stem(inline.getStem())
+                .options(inline.getOptions() == null ? Map.of() : new HashMap<>(inline.getOptions()))
+                .correctAnswer(inline.getCorrectAnswer() == null ? Map.of() : new HashMap<>(inline.getCorrectAnswer()))
+                .explanation(inline.getExplanation())
+                .points(inline.getPoints())
+                .metadata(metadata)
+                .createdBy(userId)
+                .build();
+
+            QuestionBank savedQuestion = questionBankRepository.save(question);
+            questionVersionService.createVersionFromQuestion(savedQuestion, userId);
+
+            QuizQuestion quizQuestion = QuizQuestion.builder()
+                .quiz(quiz)
+                .question(savedQuestion)
+                .position(position++)
+                .build();
+            quiz.getQuizQuestions().add(quizQuestion);
+        }
+
+        Quiz saved = quizRepository.save(quiz);
+        return mapAndEnrich(saved);
+    }
+
     // Helper methods
+
+    private void applyInlineQuizUpdates(Quiz quiz, InlineQuizRequest updates) {
+        if (updates.getTitle() != null && !updates.getTitle().isBlank()) quiz.setTitle(updates.getTitle());
+        if (updates.getDescription() != null) quiz.setDescription(updates.getDescription());
+        if (updates.getTimerEnabled() != null) {
+            quiz.setTimerEnabled(updates.getTimerEnabled());
+            if (!updates.getTimerEnabled()) {
+                quiz.setTimeLimit(null);
+            }
+        }
+        if (updates.getTimeLimit() != null && Boolean.TRUE.equals(quiz.getTimerEnabled())) {
+            quiz.setTimeLimit(updates.getTimeLimit());
+        }
+        if (updates.getTimeLimit() != null && updates.getTimerEnabled() == null) {
+            quiz.setTimerEnabled(true);
+            quiz.setTimeLimit(updates.getTimeLimit());
+        }
+        if (updates.getAttemptLimitEnabled() != null) {
+            quiz.setAttemptLimitEnabled(updates.getAttemptLimitEnabled());
+            if (!updates.getAttemptLimitEnabled()) {
+                quiz.setAttemptsAllowed(null);
+            }
+        }
+        if (updates.getAttemptsAllowed() != null && Boolean.TRUE.equals(quiz.getAttemptLimitEnabled())) {
+            quiz.setAttemptsAllowed(updates.getAttemptsAllowed());
+        }
+        if (updates.getAttemptsAllowed() != null && updates.getAttemptLimitEnabled() == null) {
+            quiz.setAttemptLimitEnabled(true);
+            quiz.setAttemptsAllowed(updates.getAttemptsAllowed());
+        }
+        if (updates.getAttemptScorePolicy() != null) quiz.setAttemptScorePolicy(updates.getAttemptScorePolicy());
+        if (updates.getSecureSessionEnabled() != null) quiz.setSecureSessionEnabled(updates.getSecureSessionEnabled());
+        if (updates.getSecureRequireFullscreen() != null) quiz.setSecureRequireFullscreen(updates.getSecureRequireFullscreen());
+        if (updates.getShuffleQuestions() != null) quiz.setShuffleQuestions(updates.getShuffleQuestions());
+        if (updates.getShuffleAnswers() != null) quiz.setShuffleAnswers(updates.getShuffleAnswers());
+        if (updates.getShowCorrectAnswers() != null) quiz.setShowCorrectAnswers(updates.getShowCorrectAnswers());
+        if (updates.getShowCorrectAnswersAt() != null) quiz.setShowCorrectAnswersAt(updates.getShowCorrectAnswersAt());
+        if (updates.getPassPercentage() != null) quiz.setPassPercentage(updates.getPassPercentage());
+    }
 
     private Quiz findQuizById(UUID id) {
         return quizRepository.findById(id)

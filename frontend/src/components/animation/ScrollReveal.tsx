@@ -12,15 +12,17 @@ export const ScrollReveal: React.FC<ScrollRevealProps> = ({
   threshold = 0.1,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
+  const prefersReducedMotion =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const [isVisible, setIsVisible] = useState(prefersReducedMotion);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
 
     // Respect reduced motion
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setIsVisible(true);
+    if (prefersReducedMotion) {
       return;
     }
 
@@ -36,7 +38,7 @@ export const ScrollReveal: React.FC<ScrollRevealProps> = ({
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [threshold]);
+  }, [threshold, prefersReducedMotion]);
 
   return (
     <div

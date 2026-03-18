@@ -22,7 +22,12 @@ export interface Quiz {
   title: string;
   description: string;
   time_limit: number | null;
-  attempts_allowed: number;
+  timer_enabled: boolean;
+  attempts_allowed: number | null;
+  attempt_limit_enabled: boolean;
+  attempt_score_policy: 'HIGHEST' | 'LATEST' | 'FIRST';
+  secure_session_enabled: boolean;
+  secure_require_fullscreen: boolean;
   shuffle_questions: boolean;
   shuffle_answers: boolean;
   questions: AttemptQuestion[];
@@ -42,6 +47,11 @@ export interface QuizAttempt {
   id: string;
   attempt_number: number;
   started_at: string;
+  submitted_at?: string;
+  expires_at?: string;
+  remaining_seconds?: number;
+  timed_out?: boolean;
+  proctoring_data?: Record<string, unknown>;
   answers: Record<string, StudentAnswer>;
 }
 
@@ -50,7 +60,12 @@ export interface ApiQuiz {
   title: string;
   description: string;
   timeLimit?: number | null;
+  timerEnabled?: boolean;
   attemptsAllowed?: number;
+  attemptLimitEnabled?: boolean;
+  attemptScorePolicy?: 'HIGHEST' | 'LATEST' | 'FIRST';
+  secureSessionEnabled?: boolean;
+  secureRequireFullscreen?: boolean;
   shuffleQuestions?: boolean;
   shuffleAnswers?: boolean;
 }
@@ -59,6 +74,11 @@ export interface ApiQuizAttempt {
   id: string;
   attemptNumber: number;
   startedAt: string;
+  submittedAt?: string;
+  expiresAt?: string;
+  remainingSeconds?: number;
+  timedOut?: boolean;
+  proctoringData?: Record<string, unknown>;
   answers?: Record<string, unknown>;
 }
 
@@ -131,7 +151,16 @@ export const mapQuizMeta = (apiQuiz: ApiQuiz): Quiz => ({
   title: apiQuiz.title,
   description: apiQuiz.description,
   time_limit: apiQuiz.timeLimit ?? null,
-  attempts_allowed: apiQuiz.attemptsAllowed ?? 1,
+  timer_enabled: Boolean(apiQuiz.timerEnabled ?? (apiQuiz.timeLimit !== null && apiQuiz.timeLimit !== undefined)),
+  attempts_allowed:
+    apiQuiz.attemptsAllowed === null || apiQuiz.attemptsAllowed === undefined
+      ? null
+      : apiQuiz.attemptsAllowed,
+  attempt_limit_enabled: Boolean(apiQuiz.attemptLimitEnabled ?? (apiQuiz.attemptsAllowed !== null && apiQuiz.attemptsAllowed !== undefined)),
+  attempt_score_policy: apiQuiz.attemptScorePolicy ?? 'HIGHEST',
+  secure_session_enabled: Boolean(apiQuiz.secureSessionEnabled),
+  secure_require_fullscreen:
+    apiQuiz.secureRequireFullscreen === undefined ? true : Boolean(apiQuiz.secureRequireFullscreen),
   shuffle_questions: Boolean(apiQuiz.shuffleQuestions),
   shuffle_answers: Boolean(apiQuiz.shuffleAnswers),
   questions: [],

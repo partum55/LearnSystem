@@ -11,5 +11,4 @@ public class AssignmentGenerationRequest {
   private String difficulty; // "easy", "medium", "hard"
   private Integer maxPoints;
   private String context; // Additional context about the course/module
-  private Boolean includeRubric; // Whether to generate grading rubric
 }

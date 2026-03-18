@@ -1,9 +1,9 @@
 package com.university.lms.course.web;
 
 import com.university.lms.common.dto.ErrorResponse;
+import com.university.lms.common.exception.ConflictException;
 import com.university.lms.common.exception.ResourceNotFoundException;
 import com.university.lms.common.exception.ValidationException;
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -28,17 +28,7 @@ public class GlobalExceptionHandler {
       ResourceNotFoundException ex, WebRequest request) {
 
     log.error("Resource not found: {}", ex.getMessage());
-
-    ErrorResponse error =
-        ErrorResponse.builder()
-            .timestamp(LocalDateTime.now())
-            .status(HttpStatus.NOT_FOUND.value())
-            .error("Not Found")
-            .message(ex.getMessage())
-            .path(request.getDescription(false).replace("uri=", ""))
-            .build();
-
-    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    return buildErrorResponse("NOT_FOUND", ex.getMessage(), HttpStatus.NOT_FOUND, request);
   }
 
   @ExceptionHandler(ValidationException.class)
@@ -46,17 +36,15 @@ public class GlobalExceptionHandler {
       ValidationException ex, WebRequest request) {
 
     log.error("Validation error: {}", ex.getMessage());
+    return buildErrorResponse("VALIDATION_ERROR", ex.getMessage(), HttpStatus.BAD_REQUEST, request);
+  }
 
-    ErrorResponse error =
-        ErrorResponse.builder()
-            .timestamp(LocalDateTime.now())
-            .status(HttpStatus.BAD_REQUEST.value())
-            .error("Validation Error")
-            .message(ex.getMessage())
-            .path(request.getDescription(false).replace("uri=", ""))
-            .build();
+  @ExceptionHandler(ConflictException.class)
+  public ResponseEntity<ErrorResponse> handleConflictException(
+      ConflictException ex, WebRequest request) {
 
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    log.warn("Conflict error: {}", ex.getMessage());
+    return buildErrorResponse("CONFLICT", ex.getMessage(), HttpStatus.CONFLICT, request);
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -68,17 +56,8 @@ public class GlobalExceptionHandler {
     Map<String, String> errors = new HashMap<>();
     ex.getBindingResult().getAllErrors().forEach(error -> addValidationError(errors, error));
 
-    ErrorResponse error =
-        ErrorResponse.builder()
-            .timestamp(LocalDateTime.now())
-            .status(HttpStatus.BAD_REQUEST.value())
-            .error("Validation Error")
-            .message("Invalid input parameters")
-            .path(request.getDescription(false).replace("uri=", ""))
-            .errors(errors)
-            .build();
-
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    return buildErrorResponse(
+        "VALIDATION_ERROR", "Invalid input parameters", HttpStatus.BAD_REQUEST, request, errors);
   }
 
   @ExceptionHandler(AuthenticationCredentialsNotFoundException.class)
@@ -86,17 +65,7 @@ public class GlobalExceptionHandler {
       AuthenticationCredentialsNotFoundException ex, WebRequest request) {
 
     log.warn("Authentication required: {}", ex.getMessage());
-
-    ErrorResponse error =
-        ErrorResponse.builder()
-            .timestamp(LocalDateTime.now())
-            .status(HttpStatus.UNAUTHORIZED.value())
-            .error("Unauthorized")
-            .message(ex.getMessage())
-            .path(request.getDescription(false).replace("uri=", ""))
-            .build();
-
-    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    return buildErrorResponse("AUTHENTICATION_REQUIRED", ex.getMessage(), HttpStatus.UNAUTHORIZED, request);
   }
 
   @ExceptionHandler(AccessDeniedException.class)
@@ -104,17 +73,7 @@ public class GlobalExceptionHandler {
       AccessDeniedException ex, WebRequest request) {
 
     log.warn("Access denied: {}", ex.getMessage());
-
-    ErrorResponse error =
-        ErrorResponse.builder()
-            .timestamp(LocalDateTime.now())
-            .status(HttpStatus.FORBIDDEN.value())
-            .error("Forbidden")
-            .message(ex.getMessage())
-            .path(request.getDescription(false).replace("uri=", ""))
-            .build();
-
-    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    return buildErrorResponse("ACCESS_DENIED", ex.getMessage(), HttpStatus.FORBIDDEN, request);
   }
 
   @ExceptionHandler(IllegalArgumentException.class)
@@ -122,34 +81,18 @@ public class GlobalExceptionHandler {
       IllegalArgumentException ex, WebRequest request) {
 
     log.error("Illegal argument: {}", ex.getMessage());
-
-    ErrorResponse error =
-        ErrorResponse.builder()
-            .timestamp(LocalDateTime.now())
-            .status(HttpStatus.BAD_REQUEST.value())
-            .error("Bad Request")
-            .message(ex.getMessage())
-            .path(request.getDescription(false).replace("uri=", ""))
-            .build();
-
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    return buildErrorResponse("BAD_REQUEST", ex.getMessage(), HttpStatus.BAD_REQUEST, request);
   }
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ErrorResponse> handleGlobalException(Exception ex, WebRequest request) {
 
     log.error("Unexpected error occurred", ex);
-
-    ErrorResponse error =
-        ErrorResponse.builder()
-            .timestamp(LocalDateTime.now())
-            .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-            .error("Internal Server Error")
-            .message("An unexpected error occurred. Please try again later.")
-            .path(request.getDescription(false).replace("uri=", ""))
-            .build();
-
-    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    return buildErrorResponse(
+        "INTERNAL_SERVER_ERROR",
+        "An unexpected error occurred. Please try again later.",
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        request);
   }
 
   private void addValidationError(Map<String, String> errors, ObjectError error) {
@@ -160,5 +103,24 @@ public class GlobalExceptionHandler {
       fieldName = error.getObjectName();
     }
     errors.put(fieldName, error.getDefaultMessage());
+  }
+
+  private ResponseEntity<ErrorResponse> buildErrorResponse(
+      String code, String message, HttpStatus status, WebRequest request) {
+    ErrorResponse error =
+        ErrorResponse.of(code, message, request.getDescription(false).replace("uri=", ""), status.value());
+    return ResponseEntity.status(status).body(error);
+  }
+
+  private ResponseEntity<ErrorResponse> buildErrorResponse(
+      String code, String message, HttpStatus status, WebRequest request, Object details) {
+    ErrorResponse error =
+        ErrorResponse.of(
+            code,
+            message,
+            request.getDescription(false).replace("uri=", ""),
+            status.value(),
+            details);
+    return ResponseEntity.status(status).body(error);
   }
 }

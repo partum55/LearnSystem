@@ -1,19 +1,10 @@
 import { useMemo, useState } from 'react';
-import { QuestionDraft, RubricCriterion, TaskDraft, TaskType } from '../types';
+import { QuestionDraft, TaskDraft, TaskType } from '../types';
 
 const createId = () =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
     : `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
-const createDefaultCriterion = (): RubricCriterion => ({
-  id: createId(),
-  title: 'New Criterion',
-  description: '',
-  weight: 0,
-  explanation: '',
-  format: 'MARKDOWN',
-});
 
 const createDefaultQuestion = (): QuestionDraft => ({
   id: createId(),
@@ -45,10 +36,6 @@ export const useTaskDraft = (taskType: TaskType, initial?: Partial<TaskDraft>) =
         gradingMode: 'MANUAL',
         draftState: 'DRAFT',
         allowLateSubmission: false,
-      },
-      rubric: {
-        criteria: [createDefaultCriterion()],
-        totalPoints: 100,
       },
       questions: [createDefaultQuestion()],
       aiDrafts: [],

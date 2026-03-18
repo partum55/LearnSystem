@@ -56,13 +56,6 @@ spring:
       use-key-prefix: true
       key-prefix: "course:cache:"
 
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8080}
-          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8080/.well-known/jwks.json}
-
 # Security Configuration
 security:
   cors:
@@ -152,3 +145,15 @@ eureka:
   instance:
     prefer-ip-address: true
     instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+
+plugin:
+  storage:
+    path: ${PLUGIN_STORAGE_PATH:/data/plugins}
+  python:
+    enabled: ${PLUGIN_PYTHON_ENABLED:true}
+    executable: ${PLUGIN_PYTHON_EXECUTABLE:python3}
+    port-range-start: ${PLUGIN_PYTHON_PORT_RANGE_START:9100}
+    port-range-end: ${PLUGIN_PYTHON_PORT_RANGE_END:9200}
+    health-check-timeout-seconds: ${PLUGIN_PYTHON_HEALTH_CHECK_TIMEOUT:30}
+    venv-enabled: ${PLUGIN_PYTHON_VENV_ENABLED:true}
+    install-timeout-seconds: ${PLUGIN_PYTHON_INSTALL_TIMEOUT:120}

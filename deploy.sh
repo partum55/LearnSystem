@@ -142,7 +142,7 @@ build_and_start() {
 wait_for_health() {
     log "Waiting for services to become healthy..."
 
-    local services=("lms-eureka-server" "lms-user-service" "lms-learning-service" "lms-ai-service" "lms-analytics-service" "lms-api-gateway" "lms-frontend")
+    local services=("lms-eureka-server" "lms-user-service" "lms-learning-service" "lms-marketplace-service" "lms-ai-service" "lms-analytics-service" "lms-api-gateway" "lms-frontend")
     local max_wait=300
     local elapsed=0
     local interval=10

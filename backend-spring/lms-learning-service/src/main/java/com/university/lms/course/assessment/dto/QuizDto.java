@@ -1,6 +1,7 @@
 package com.university.lms.course.assessment.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.university.lms.course.assessment.domain.AttemptScorePolicy;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -27,7 +28,12 @@ public class QuizDto {
     private String description;
 
     private Integer timeLimit;
+    private Boolean timerEnabled;
     private Integer attemptsAllowed;
+    private Boolean attemptLimitEnabled;
+    private AttemptScorePolicy attemptScorePolicy;
+    private Boolean secureSessionEnabled;
+    private Boolean secureRequireFullscreen;
 
     private Boolean shuffleQuestions;
     private Boolean shuffleAnswers;

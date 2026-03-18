@@ -32,6 +32,7 @@ const ContentStep: React.FC<ContentStepProps> = ({
 }) => {
   const { t } = useTranslation();
   const isCode = formData.assignment_type === 'CODE' || formData.assignment_type === 'VIRTUAL_LAB';
+  const isQuiz = formData.assignment_type === 'QUIZ';
 
   const descriptionDocument = parseCanonicalDocument(formData.description, '');
   const instructionsDocument = parseCanonicalDocument(formData.instructions, '');
@@ -155,18 +156,29 @@ const ContentStep: React.FC<ContentStepProps> = ({
         </>
       )}
 
-      <div>
-        <label className="label mb-2 block">
-          {t('assignment.answer_template', 'Student answer template (optional)')}
-        </label>
-        <BlockEditor
-          value={templateDocument}
-          onChange={onTemplateChange}
-          mode="lite"
-          placeholder={t('assignment.answer_template_placeholder', 'Prefill starter worksheet content for students')}
-          onUploadMedia={handleUploadMedia}
-        />
-      </div>
+      {!isQuiz && (
+        <div>
+          <label className="label mb-2 block">
+            {t('assignment.answer_template', 'Student answer template (optional)')}
+          </label>
+          <BlockEditor
+            value={templateDocument}
+            onChange={onTemplateChange}
+            mode="lite"
+            placeholder={t('assignment.answer_template_placeholder', 'Prefill starter worksheet content for students')}
+            onUploadMedia={handleUploadMedia}
+          />
+        </div>
+      )}
+
+      {isQuiz && (
+        <div
+          className="rounded-lg p-4 text-sm"
+          style={{ background: 'rgba(161, 161, 170, 0.06)', border: '1px solid var(--border-default)', color: 'var(--text-muted)' }}
+        >
+          {t('wizard.quizContentHint', 'Quiz questions are configured in the Grading step. Add description and instructions above.')}
+        </div>
+      )}
     </div>
   );
 };

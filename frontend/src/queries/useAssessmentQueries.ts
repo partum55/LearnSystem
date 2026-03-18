@@ -219,34 +219,6 @@ export function useMySubmissionQuery(assignmentId: string | undefined) {
 // ==================== SUBMISSION MUTATIONS ====================
 
 /**
- * Submit assignment (create submission)
- */
-export function useSubmitAssignmentMutation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      assignmentId,
-      content,
-      files,
-    }: {
-      assignmentId: string;
-      content?: string;
-      files?: File[];
-    }) => {
-      const response = await submissionsApi.submit(assignmentId, content, files);
-      return response.data;
-    },
-    onSuccess: (_, { assignmentId }) => {
-      // Invalidate submissions for this assignment
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.assessments.submissions(assignmentId),
-      });
-    },
-  });
-}
-
-/**
  * Grade a submission (optimistic update)
  */
 export function useGradeSubmissionMutation() {
@@ -309,4 +281,3 @@ export function useGradeSubmissionMutation() {
     },
   });
 }
-

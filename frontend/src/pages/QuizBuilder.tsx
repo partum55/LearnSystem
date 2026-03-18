@@ -24,6 +24,7 @@ interface ApiQuestionDetails {
   id: string;
   questionType: string;
   stem: string;
+  imageUrl?: string;
   options?: Record<string, unknown>;
   correctAnswer?: Record<string, unknown>;
   explanation?: string;
@@ -156,6 +157,7 @@ const mapApiQuestionToBuilder = (apiQuestion: ApiQuestionDetails): Question => {
 
   question.id = apiQuestion.id;
   question.question_text = apiQuestion.stem || '';
+  question.image_url = apiQuestion.imageUrl || '';
   question.points = toNumber(apiQuestion.points, 1);
   question.explanation = apiQuestion.explanation || '';
 
@@ -283,6 +285,7 @@ const buildQuestionPayload = (question: Question, courseId: string) => {
     courseId,
     questionType,
     stem: question.question_text,
+    imageUrl: question.image_url || undefined,
     options,
     correctAnswer,
     explanation: question.explanation || '',

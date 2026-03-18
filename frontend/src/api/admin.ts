@@ -1,4 +1,7 @@
 import apiClient from './client';
+import { PageResponse } from './types';
+
+export type { PageResponse } from './types';
 
 export interface ServiceStatus {
   serviceName: string;
@@ -27,16 +30,6 @@ export interface SystemHealth {
     maxMemoryMB: number;
   };
   timestamp: string;
-}
-
-export interface PageResponse<T> {
-  content: T[];
-  pageNumber: number;
-  pageSize: number;
-  totalElements: number;
-  totalPages: number;
-  first: boolean;
-  last: boolean;
 }
 
 export type AdminUserRole = 'SUPERADMIN' | 'TEACHER' | 'STUDENT' | 'TA';

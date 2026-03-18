@@ -1,5 +1,6 @@
 package com.university.lms.course.assessment.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,6 +23,7 @@ import java.util.UUID;
 public class UpdateAssignmentRequest {
 
     private UUID moduleId;
+    private UUID topicId;
     private UUID categoryId;
     private Integer position;
 
@@ -49,8 +51,6 @@ public class UpdateAssignmentRequest {
     @DecimalMax("10000.00")
     private BigDecimal maxPoints;
 
-    private Map<String, Object> rubric;
-
     private LocalDateTime dueDate;
     private LocalDateTime availableFrom;
     private LocalDateTime availableUntil;
@@ -66,6 +66,7 @@ public class UpdateAssignmentRequest {
     private Integer maxFiles;
 
     private UUID quizId;
+    @Valid
     private InlineQuizRequest quiz;
     private String externalToolUrl;
 

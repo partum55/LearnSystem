@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Layout, Card, CardHeader, CardBody, Button, Loading } from '../components';
 import apiClient from '../api/client';
+import { useAuthStore } from '../store/authStore';
 import { CheckCircleIcon, XCircleIcon, ClockIcon, TrophyIcon } from '@heroicons/react/24/outline';
 
 interface Question {
@@ -43,6 +44,7 @@ interface QuizAttemptResult {
   final_score: number;
   feedback?: string;
   graded_by?: string;
+  proctoring_data?: Record<string, unknown>;
   questions: Array<{
     id: string;
     question: Question;
@@ -91,6 +93,7 @@ interface ApiAttempt {
   attemptNumber: number;
   startedAt: string;
   submittedAt: string;
+  proctoringData?: Record<string, unknown>;
   answers?: Record<string, unknown>;
   autoScore?: number;
   manualScore?: number | null;
@@ -108,6 +111,7 @@ export const QuizResults: React.FC = () => {
   const { id: quizId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { user } = useAuthStore();
 
   const [result, setResult] = useState<QuizAttemptResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -202,7 +206,7 @@ export const QuizResults: React.FC = () => {
     try {
       const [quizResponse, attemptResponse] = await Promise.all([
         apiClient.get<ApiQuiz>(`/assessments/quizzes/${quizId}`),
-        apiClient.get<ApiAttempt>(`/assessments/quiz-attempts/quiz/${quizId}/user/latest`),
+        apiClient.get<ApiAttempt>(`/assessments/quiz-attempts/quiz/${quizId}/user/official`),
       ]);
 
       const quizData = quizResponse.data;
@@ -277,6 +281,7 @@ export const QuizResults: React.FC = () => {
         final_score: Number(attemptData.finalScore ?? attemptData.autoScore ?? 0),
         feedback: attemptData.feedback,
         graded_by: attemptData.gradedBy,
+        proctoring_data: attemptData.proctoringData,
         questions,
       };
 
@@ -431,6 +436,11 @@ export const QuizResults: React.FC = () => {
   const passed = percentage >= result.quiz.pass_percentage;
   const needsManualGrading = result.manual_score === null &&
     result.questions.some(q => ['SHORT_ANSWER', 'ESSAY'].includes(q.question.question_type.toUpperCase()));
+  const violationEvents = Array.isArray(result.proctoring_data?.violations)
+    ? (result.proctoring_data?.violations as Array<Record<string, unknown>>)
+    : [];
+  const canViewViolationEvents =
+    user?.role === 'TEACHER' || user?.role === 'TA' || user?.role === 'SUPERADMIN';
 
   return (
     <Layout>
@@ -518,6 +528,39 @@ export const QuizResults: React.FC = () => {
               </div>
             </CardBody>
           </Card>
+
+          {canViewViolationEvents && violationEvents.length > 0 && (
+            <Card className="mb-6">
+              <CardHeader>
+                <h2
+                  className="text-lg font-semibold"
+                  style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}
+                >
+                  {t('quiz.secureSessionViolations', 'Secure session events')}
+                </h2>
+              </CardHeader>
+              <CardBody>
+                <div className="space-y-2">
+                  {violationEvents.map((event, index) => (
+                    <div
+                      key={`${String(event.timestamp ?? index)}-${index}`}
+                      className="rounded-md px-3 py-2 text-sm"
+                      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                          {String(event.type ?? 'UNKNOWN')}
+                        </span>
+                        <span style={{ color: 'var(--text-muted)' }}>
+                          {event.timestamp ? new Date(String(event.timestamp)).toLocaleString() : '\u2014'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardBody>
+            </Card>
+          )}
 
           {/* Instructor Feedback */}
           {result.feedback && (

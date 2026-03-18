@@ -6,7 +6,7 @@
 
 ```bash
 # First time setup
-cp .env.local .env
+cp .env.example .env
 # Edit .env and add your LLAMA_API_KEY (get from https://console.groq.com/keys)
 
 # Start everything
@@ -46,7 +46,7 @@ docker-compose up -d
              ▼         ▼         ▼         ▼         ▼
         ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
         │  User  │ │Learning│ │   AI   │ │Analytics│ │  Redis │
-        │ :8081  │ │ :8089  │ │ :8085  │ │ :8088  │ │ :6380  │
+        │ :8081  │ │ :8089  │ │ :8085  │ │ :8088  │ │ :6379* │
         └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘
             │          │          │          │          │
             └──────────┴──────────┴──────────┴──────────┘
@@ -73,7 +73,7 @@ docker-compose up -d
 | AI Service | 8085 | http://localhost:8085 |
 | Analytics Service | 8088 | http://localhost:8088 |
 | PostgreSQL | 5432 | localhost:5432 |
-| Redis | 6380 | localhost:6380 |
+| Redis | 6379 (internal) | not exposed on host by default |
 
 ---
 
@@ -150,7 +150,7 @@ curl http://localhost:8080/actuator/health
 # Check User Service
 curl http://localhost:8081/api/actuator/health
 
-# Check AI Service
+# Check Learning + AI Service
 curl http://localhost:8089/api/actuator/health
 curl http://localhost:8085/api/actuator/health
 
@@ -165,10 +165,10 @@ open http://localhost:8761
 
 ## Environment Variables
 
-Copy `.env.local` to `.env` and configure:
+Copy `.env.example` to `.env` and configure:
 
 ```bash
-cp .env.local .env
+cp .env.example .env
 ```
 
 ### Required Variables
@@ -282,7 +282,7 @@ Migrations run automatically on service startup via Flyway.
 ```
 LearnSystemUCU/
 ├── docker-compose.yml          # All services
-├── .env.local                  # Env template
+├── .env.example                # Env template
 ├── .env                        # Your local config
 ├── run-local.sh                # Helper script
 │

@@ -42,9 +42,29 @@ public class Quiz {
     @Column(name = "time_limit")
     private Integer timeLimit; // in minutes
 
-    @Column(name = "attempts_allowed")
+    @Column(name = "timer_enabled", nullable = false)
     @Builder.Default
-    private Integer attemptsAllowed = 1;
+    private Boolean timerEnabled = false;
+
+    @Column(name = "attempts_allowed")
+    private Integer attemptsAllowed;
+
+    @Column(name = "attempt_limit_enabled", nullable = false)
+    @Builder.Default
+    private Boolean attemptLimitEnabled = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "attempt_score_policy", nullable = false, length = 16)
+    @Builder.Default
+    private AttemptScorePolicy attemptScorePolicy = AttemptScorePolicy.HIGHEST;
+
+    @Column(name = "secure_session_enabled", nullable = false)
+    @Builder.Default
+    private Boolean secureSessionEnabled = false;
+
+    @Column(name = "secure_require_fullscreen", nullable = false)
+    @Builder.Default
+    private Boolean secureRequireFullscreen = true;
 
     // Question settings
     @Column(name = "shuffle_questions")

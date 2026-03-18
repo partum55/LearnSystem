@@ -1,7 +1,6 @@
 // Common UI Components
 export * from './Button';
 export * from './Card';
-export * from './CreateAssignmentModal';
 export * from './CreateModuleModal';
 export * from './Header';
 export * from './Input';
@@ -12,7 +11,6 @@ export * from './Modal';
 export * from './Sidebar';
 export * from './CourseSidebar';
 export * from './CourseLayout';
-export * from './AddResourceModal';
 export * from './ResourceItem';
 export * from './EnrollStudentsModal';
 export * from './CourseMembersTab';
@@ -30,4 +28,4 @@ export * from './ai';
 // Common Components
 export * from './common/ErrorBoundary';
 export * from './common/ConfirmModal';
-
+export * from './common/Breadcrumbs';

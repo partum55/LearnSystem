@@ -1,6 +1,4 @@
 import React from 'react';
-import { motion, useReducedMotion } from 'motion/react';
-import { staggerContainer, staggerItem } from './variants';
 
 interface StaggeredListProps {
   children: React.ReactNode;
@@ -8,21 +6,10 @@ interface StaggeredListProps {
 }
 
 export const StaggeredList: React.FC<StaggeredListProps> = ({ children, className }) => {
-  const reduced = useReducedMotion();
-
-  if (reduced) {
-    return <div className={className}>{children}</div>;
-  }
-
   return (
-    <motion.div
-      className={className}
-      variants={staggerContainer}
-      initial="hidden"
-      animate="visible"
-    >
+    <div className={`anim-stagger ${className ?? ''}`}>
       {children}
-    </motion.div>
+    </div>
   );
 };
 
@@ -32,15 +19,9 @@ interface StaggeredItemProps {
 }
 
 export const StaggeredItem: React.FC<StaggeredItemProps> = ({ children, className }) => {
-  const reduced = useReducedMotion();
-
-  if (reduced) {
-    return <div className={className}>{children}</div>;
-  }
-
   return (
-    <motion.div className={className} variants={staggerItem}>
+    <div className={`anim-stagger-item ${className ?? ''}`}>
       {children}
-    </motion.div>
+    </div>
   );
 };

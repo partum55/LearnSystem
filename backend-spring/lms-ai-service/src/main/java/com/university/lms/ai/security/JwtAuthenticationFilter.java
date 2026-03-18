@@ -21,7 +21,7 @@ public class JwtAuthenticationFilter
   }
 
   @Override
-  protected UserDetails getUserDetails(UUID userId, String email) {
+  protected UserDetails getUserDetails(UUID userId, String email, String roleFromToken) {
     return new UserDetails() {
       @Override
       public UUID getId() {

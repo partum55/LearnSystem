@@ -48,4 +48,7 @@ public class QuizAttemptDto {
     private Boolean graded;
     private Boolean inProgress;
     private Long durationInMinutes;
+    private LocalDateTime expiresAt;
+    private Long remainingSeconds;
+    private Boolean timedOut;
 }

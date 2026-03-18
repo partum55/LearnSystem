@@ -23,6 +23,7 @@ import { DashboardWidgetConfig } from './DashboardBuilder';
 interface DashboardData {
   courses?: Array<{ id: string; code: string; title: string; progress?: number }>;
   deadlines?: Array<{ course: string; courseCode?: string; title?: string; deadline: string; id?: string }>;
+  todayDeadlines?: Array<{ course: string; courseCode?: string; title?: string; deadline: string; id?: string; path?: string }>;
   notifications?: Array<{ id: string; title: string; message: string; created_at: string; read: boolean }>;
   [key: string]: unknown;
 }
@@ -44,6 +45,7 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widget, data }) 
     stats: <StatsWidget data={data} />,
     courses: <CoursesWidget data={data} />,
     deadlines: <DeadlinesWidget data={data} />,
+    'due-today': <DueTodayWidget data={data} />,
     notifications: <NotificationsWidget data={data} />,
     calendar: <CalendarWidget />,
     progress: <ProgressWidget data={data} />,
@@ -278,6 +280,56 @@ const DeadlinesWidget: React.FC<{ data?: DashboardData }> = ({ data }) => {
               </div>
             );
           })}
+        </div>
+      )}
+    </WidgetShell>
+  );
+};
+
+/* ─────────────────────────── Due Today ─────────────────────────── */
+
+const DueTodayWidget: React.FC<{ data?: DashboardData }> = ({ data }) => {
+  const { t } = useTranslation();
+  const todayDeadlines = data?.todayDeadlines || [];
+
+  return (
+    <WidgetShell>
+      <WidgetHeader
+        icon={ClockIcon}
+        title={t('dashboard.widgets.dueToday', 'Due today')}
+        action={
+          <Link to="/today" className="text-xs transition-colors" style={{ color: 'var(--text-faint)' }}>
+            {t('common.view', 'View')} <ChevronRightIcon className="inline h-3 w-3" />
+          </Link>
+        }
+      />
+
+      {todayDeadlines.length === 0 ? (
+        <EmptyState message={t('today.noDueToday', 'No deadlines for today.')} icon={ClockIcon} />
+      ) : (
+        <div className="space-y-0.5">
+          {todayDeadlines.slice(0, 6).map((item, idx) => (
+            <Link
+              key={item.id || `${item.deadline}-${idx}`}
+              to={item.path || '/today'}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors"
+              onMouseEnter={(event) => (event.currentTarget.style.background = 'var(--bg-hover)')}
+              onMouseLeave={(event) => (event.currentTarget.style.background = 'transparent')}
+            >
+              <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--fn-warning)' }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                  {item.title || item.course}
+                </p>
+                <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                  {item.courseCode || item.course}
+                </p>
+              </div>
+              <span className="text-xs tabular-nums" style={{ color: 'var(--fn-warning)' }}>
+                {format(new Date(item.deadline), 'HH:mm')}
+              </span>
+            </Link>
+          ))}
         </div>
       )}
     </WidgetShell>

@@ -4,6 +4,8 @@ import { Card, CardHeader, CardBody } from './Card';
 import { Button } from './Button';
 import { Loading } from './Loading';
 import apiClient from '../api/client';
+import { coursesApi } from '../api/courses';
+import { useAuthStore } from '../store/authStore';
 import {
   UserGroupIcon,
   TrashIcon,
@@ -44,9 +46,12 @@ interface CourseMembers {
 
 export const CourseMembersTab: React.FC<CourseMembers> = ({ courseId, canManage, onMemberRemoved }) => {
   const { t } = useTranslation();
+  const { user } = useAuthStore();
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterRole, setFilterRole] = useState<'ALL' | 'STUDENT' | 'TA' | 'TEACHER'>('ALL');
+  const [isEnrolled, setIsEnrolled] = useState<boolean | null>(null);
+  const [enrollmentLoading, setEnrollmentLoading] = useState(false);
 
   const fetchMembers = useCallback(async () => {
     setLoading(true);
@@ -74,6 +79,14 @@ export const CourseMembersTab: React.FC<CourseMembers> = ({ courseId, canManage,
   useEffect(() => {
     fetchMembers();
   }, [fetchMembers]);
+
+  useEffect(() => {
+    setEnrollmentLoading(true);
+    void coursesApi.checkEnrollment(courseId)
+      .then((response) => setIsEnrolled(Boolean(response.data)))
+      .catch(() => setIsEnrolled(null))
+      .finally(() => setEnrollmentLoading(false));
+  }, [courseId]);
 
   const handleUnenroll = async (memberId: string, userId: string) => {
     if (!window.confirm(t('enrollment.confirmUnenroll'))) {
@@ -111,8 +124,48 @@ export const CourseMembersTab: React.FC<CourseMembers> = ({ courseId, canManage,
   const tas = members.filter(m => m.roleInCourse === 'TA');
   const teachers = members.filter(m => m.roleInCourse === 'TEACHER');
 
+  const handleDropCourse = async () => {
+    if (!window.confirm(t('enrollment.confirmDropCourse', 'Leave this course?'))) {
+      return;
+    }
+
+    try {
+      await coursesApi.dropEnrollment(courseId);
+      setIsEnrolled(false);
+      if (user?.id) {
+        setMembers((prev) => prev.filter((member) => String(member.userId) !== String(user.id)));
+      }
+      if (onMemberRemoved) onMemberRemoved();
+    } catch (error) {
+      console.error('Failed to drop course:', error);
+      alert(t('enrollment.errors.dropFailed', 'Unable to leave course.'));
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {!canManage && (
+        <Card>
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  {t('enrollment.myEnrollmentStatus', 'My enrollment status')}
+                </p>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                  {enrollmentLoading ? 'Checking…' : isEnrolled ? 'Enrolled' : 'Not enrolled'}
+                </p>
+              </div>
+              {isEnrolled && (
+                <Button variant="secondary" onClick={() => void handleDropCourse()}>
+                  {t('enrollment.dropCourse', 'Leave Course')}
+                </Button>
+              )}
+            </div>
+          </CardBody>
+        </Card>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>

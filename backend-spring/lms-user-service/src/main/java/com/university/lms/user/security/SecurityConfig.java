@@ -36,7 +36,9 @@ public class SecurityConfig {
             "/auth/refresh",
             "/auth/verify-email",
             "/auth/forgot-password",
-            "/auth/reset-password"
+            "/auth/reset-password",
+            "/auth/oauth2/google/start",
+            "/auth/oauth2/google/callback"
     };
 
     private static final String[] PUBLIC_STATIC_ENDPOINTS = {
@@ -55,6 +57,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final SecurityHeadersFilter securityHeadersFilter;
     private final RateLimitingFilter rateLimitingFilter;
+    private final InternalTokenFilter internalTokenFilter;
 
     @Value("${security.cors.allowed-origins:http://localhost:3000,https://localhost:3000,http://localhost:8080,https://localhost:8080}")
     private String allowedOriginsStr;
@@ -76,6 +79,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_AUTH_ENDPOINTS).permitAll()
+                        .requestMatchers("/internal/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/actuator/prometheus").hasRole("SUPERADMIN")
                         .requestMatchers("/admin/**", "/actuator/**").hasRole("SUPERADMIN")
@@ -98,7 +102,8 @@ public class SecurityConfig {
                 )
                 .addFilterBefore(securityHeadersFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(rateLimitingFilter, SecurityHeadersFilter.class)
-                .addFilterAfter(jwtAuthenticationFilter, RateLimitingFilter.class);
+                .addFilterAfter(jwtAuthenticationFilter, RateLimitingFilter.class)
+                .addFilterAfter(internalTokenFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

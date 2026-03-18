@@ -19,6 +19,16 @@ interface CourseSidebarProps {
   onClose?: () => void;
 }
 
+const readExpandedModules = (courseId: string): Set<string> | null => {
+  try {
+    const stored = sessionStorage.getItem(`courseSidebar_${courseId}_expanded`);
+    if (!stored) return null;
+    return new Set(JSON.parse(stored));
+  } catch {
+    return null;
+  }
+};
+
 export const CourseSidebar: React.FC<CourseSidebarProps> = ({ courseId, isOpen = false, onClose }) => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -27,29 +37,24 @@ export const CourseSidebar: React.FC<CourseSidebarProps> = ({ courseId, isOpen =
   const { data: assignments } = useAssignmentsQuery(courseId);
 
   // Persist expanded/collapsed state per course in sessionStorage
-  const [expandedModules, setExpandedModules] = useState<Set<string>>(() => {
-    try {
-      const stored = sessionStorage.getItem(`courseSidebar_${courseId}_expanded`);
-      if (stored) return new Set(JSON.parse(stored));
-    } catch { /* ignore */ }
-    // Default: expand all
-    return new Set<string>();
-  });
-  const [allExpanded, setAllExpanded] = useState(true);
+  const [expandedModules, setExpandedModules] = useState<Set<string> | null>(() =>
+    readExpandedModules(courseId)
+  );
 
-  // When modules load, expand all by default if no stored state
-  useEffect(() => {
-    if (modules && modules.length > 0 && expandedModules.size === 0) {
-      const stored = sessionStorage.getItem(`courseSidebar_${courseId}_expanded`);
-      if (!stored) {
-        setExpandedModules(new Set(modules.map((m: Module) => m.id)));
-        setAllExpanded(true);
-      }
-    }
-  }, [modules, courseId, expandedModules.size]);
+  const effectiveExpandedModules = React.useMemo(() => {
+    if (expandedModules) return expandedModules;
+    if (!modules || modules.length === 0) return new Set<string>();
+    return new Set(modules.map((m) => m.id));
+  }, [expandedModules, modules]);
+
+  const allExpanded = React.useMemo(() => {
+    if (!modules || modules.length === 0) return false;
+    return effectiveExpandedModules.size === modules.length;
+  }, [effectiveExpandedModules, modules]);
 
   // Persist expanded state
   useEffect(() => {
+    if (expandedModules === null) return;
     sessionStorage.setItem(
       `courseSidebar_${courseId}_expanded`,
       JSON.stringify([...expandedModules])
@@ -58,7 +63,8 @@ export const CourseSidebar: React.FC<CourseSidebarProps> = ({ courseId, isOpen =
 
   const toggleModule = useCallback((moduleId: string) => {
     setExpandedModules((prev) => {
-      const next = new Set(prev);
+      const base = prev ?? new Set((modules || []).map((m) => m.id));
+      const next = new Set(base);
       if (next.has(moduleId)) {
         next.delete(moduleId);
       } else {
@@ -66,15 +72,13 @@ export const CourseSidebar: React.FC<CourseSidebarProps> = ({ courseId, isOpen =
       }
       return next;
     });
-  }, []);
+  }, [modules]);
 
   const toggleAll = useCallback(() => {
     if (allExpanded) {
       setExpandedModules(new Set());
-      setAllExpanded(false);
     } else if (modules) {
-      setExpandedModules(new Set(modules.map((m: Module) => m.id)));
-      setAllExpanded(true);
+      setExpandedModules(new Set(modules.map((m) => m.id)));
     }
   }, [allExpanded, modules]);
 
@@ -181,7 +185,7 @@ export const CourseSidebar: React.FC<CourseSidebarProps> = ({ courseId, isOpen =
             </div>
           ) : (
             modules.map((mod: Module) => {
-              const isExpanded = expandedModules.has(mod.id);
+              const isExpanded = effectiveExpandedModules.has(mod.id);
               const modResources: Resource[] = mod.resources || [];
               const modAssignments = assignmentsByModule.get(mod.id) || [];
 

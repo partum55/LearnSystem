@@ -38,6 +38,8 @@ public class CreateCourseRequest {
 
   private CourseVisibility visibility;
   private String thumbnailUrl;
+  @Size(max = 20, message = "Theme color must not exceed 20 characters")
+  private String themeColor;
 
   private LocalDate startDate;
 

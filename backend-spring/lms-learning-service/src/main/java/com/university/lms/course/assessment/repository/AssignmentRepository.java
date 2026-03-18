@@ -101,5 +101,7 @@ public interface AssignmentRepository extends JpaRepository<Assignment, UUID> {
 
     List<Assignment> findByCourseId(UUID courseId);
 
+    List<Assignment> findByCourseIdIn(List<UUID> courseIds);
+
     Optional<Assignment> findFirstByQuizId(UUID quizId);
 }

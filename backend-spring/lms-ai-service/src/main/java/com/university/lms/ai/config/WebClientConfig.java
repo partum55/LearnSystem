@@ -34,16 +34,11 @@ public class WebClientConfig {
                             new WriteTimeoutHandler(
                                 llamaApiProperties.getTimeout(), TimeUnit.MILLISECONDS)));
 
-    WebClient.Builder builder =
-        WebClient.builder()
-            .baseUrl(llamaApiProperties.getUrl())
-            .clientConnector(new ReactorClientHttpConnector(httpClient));
-
-    // Додати Authorization header якщо є API ключ (для Groq, Together AI, etc.)
-    if (llamaApiProperties.getKey() != null && !llamaApiProperties.getKey().isEmpty()) {
-      builder.defaultHeader("Authorization", "Bearer " + llamaApiProperties.getKey());
-    }
-
-    return builder.build();
+    // No default Authorization header — API key is set per-request
+    // to support per-user API keys
+    return WebClient.builder()
+        .baseUrl(llamaApiProperties.getUrl())
+        .clientConnector(new ReactorClientHttpConnector(httpClient))
+        .build();
   }
 }

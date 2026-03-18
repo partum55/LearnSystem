@@ -38,9 +38,11 @@ public class GradebookEntryController {
 
     @GetMapping("/course/{courseId}")
     @PreAuthorize("hasAnyRole('TEACHER', 'SUPERADMIN', 'TA')")
-    public ResponseEntity<List<GradebookEntryDto>> getCourseEntries(@PathVariable UUID courseId) {
+    public ResponseEntity<List<GradebookEntryDto>> getCourseEntries(
+            @PathVariable UUID courseId,
+            @RequestAttribute("userId") UUID userId) {
         log.info("Fetching gradebook entries for course: {}", courseId);
-        List<GradebookEntryDto> entries = entryService.getEntriesForCourse(courseId)
+        List<GradebookEntryDto> entries = entryService.getEntriesForCourse(courseId, userId)
                 .stream()
                 .map(entryMapper::toDto)
                 .collect(Collectors.toList());
@@ -79,11 +81,10 @@ public class GradebookEntryController {
             @RequestAttribute("userId") UUID userId) {
 
         log.info("Updating grade for entry: {} by user: {}", entryId, userId);
-        var updated = entryService.updateScore(
+        var updated = entryService.updateEntry(
                 entryId,
-                request.getOverrideScore(),
-                userId,
-                request.getOverrideReason()
+                request,
+                userId
         );
 
         return ResponseEntity.ok(entryMapper.toDto(updated));

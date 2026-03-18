@@ -1,0 +1,32 @@
+package com.university.lms.submission.dto;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import java.util.List;
+import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * Bulk publish request payload.
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class BulkPublishGradesRequest {
+
+  @NotEmpty private List<@Valid BulkPublishItem> items;
+
+  @Data
+  @NoArgsConstructor
+  @AllArgsConstructor
+  @Builder
+  public static class BulkPublishItem {
+    @NotNull private UUID submissionId;
+    private Long version;
+  }
+}

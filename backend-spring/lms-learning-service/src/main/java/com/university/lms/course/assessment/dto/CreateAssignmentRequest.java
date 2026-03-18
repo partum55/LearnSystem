@@ -1,5 +1,6 @@
 package com.university.lms.course.assessment.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,7 +10,6 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -27,11 +27,12 @@ public class CreateAssignmentRequest {
     private UUID courseId;
 
     private UUID moduleId;
+    private UUID topicId;
     private UUID categoryId;
     private Integer position;
 
     @NotBlank(message = "Assignment type is required")
-    @Pattern(regexp = "^(QUIZ|FILE_UPLOAD|TEXT|CODE|URL|MANUAL_GRADE|EXTERNAL)$")
+    @Pattern(regexp = "^(QUIZ|FILE_UPLOAD|TEXT|CODE|URL|MANUAL_GRADE|EXTERNAL|SEMINAR)$")
     private String assignmentType;
 
     @NotBlank(message = "Title is required")
@@ -64,9 +65,6 @@ public class CreateAssignmentRequest {
     @DecimalMax("10000.00")
     private BigDecimal maxPoints;
 
-    @Builder.Default
-    private Map<String, Object> rubric = new HashMap<>();
-
     // Dates
     private LocalDateTime dueDate;
     private LocalDateTime availableFrom;
@@ -87,6 +85,7 @@ public class CreateAssignmentRequest {
     private Integer maxFiles;
 
     private UUID quizId;
+    @Valid
     private InlineQuizRequest quiz;
     private String externalToolUrl;
 

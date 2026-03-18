@@ -167,6 +167,7 @@ public class AssignmentService {
             assignment.setQuizId(resolvedQuizId);
         }
         Assignment savedAssignment = assignmentRepository.save(assignment);
+        syncInlineQuizQuestions(request.getAssignmentType(), request.getQuiz(), resolvedQuizId, createdBy);
 
         log.info("Assignment created successfully with ID: {}", savedAssignment.getId());
         return mapper.toDto(savedAssignment);
@@ -329,7 +330,6 @@ public class AssignmentService {
             .autoGradingEnabled(Boolean.TRUE.equals(original.getAutoGradingEnabled()))
             .testCases(copyResourceList(original.getTestCases()))
             .maxPoints(original.getMaxPoints() != null ? original.getMaxPoints() : BigDecimal.valueOf(100.00))
-            .rubric(copyMap(original.getRubric()))
             .dueDate(original.getDueDate())
             .availableFrom(original.getAvailableFrom())
             .availableUntil(original.getAvailableUntil())
@@ -556,6 +556,7 @@ public class AssignmentService {
                 quizService.updateQuizFromAssignment(currentQuizId, request.getQuiz(), userId);
                 request.setQuizId(currentQuizId);
             }
+            syncInlineQuizQuestions(assignment.getAssignmentType(), request.getQuiz(), request.getQuizId(), userId);
         }
 
     }
@@ -593,6 +594,24 @@ public class AssignmentService {
         if (quiz.getModuleId() != null && !moduleId.equals(quiz.getModuleId())) {
             throw new ValidationException("Quiz is linked to a different module");
         }
+    }
+
+    private void syncInlineQuizQuestions(
+            String assignmentType,
+            InlineQuizRequest inlineQuiz,
+            UUID quizId,
+            UUID userId) {
+        if (!"QUIZ".equals(assignmentType) || inlineQuiz == null || quizId == null) {
+            return;
+        }
+        if (inlineQuiz.getQuestions() == null) {
+            // When questions are omitted in the request, they typically deserialize as null.
+            // Treat this as "no change" and avoid calling replaceQuizQuestionsFromInline.
+            return;
+        }
+        // A non-null questions list (including an explicitly empty list) is treated as the desired
+        // final state for the quiz questions. Passing an empty list will intentionally clear them.
+        quizService.replaceQuizQuestionsFromInline(quizId, inlineQuiz.getQuestions(), userId);
     }
 
     private PageResponse<AssignmentDto> mapToPageResponse(Page<Assignment> page) {

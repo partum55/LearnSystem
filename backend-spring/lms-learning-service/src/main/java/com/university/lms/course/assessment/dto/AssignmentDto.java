@@ -29,6 +29,7 @@ public class AssignmentDto implements Serializable {
     private UUID id;
     private UUID courseId;
     private UUID moduleId;
+    private UUID topicId;
     private UUID categoryId;
     private Integer position;
 
@@ -49,7 +50,6 @@ public class AssignmentDto implements Serializable {
 
     // Grading
     private BigDecimal maxPoints;
-    private Map<String, Object> rubric;
 
     // Dates
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")

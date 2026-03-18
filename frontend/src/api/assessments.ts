@@ -1,13 +1,6 @@
 import apiClient from './client';
 import { Assignment, Quiz, Question, QuizSection, QuizAttemptQuestion, QuizAttempt } from '../types';
-
-interface PageResponse<T> {
-  content: T[];
-  pageNumber?: number;
-  pageSize?: number;
-  totalElements?: number;
-  totalPages?: number;
-}
+import { PageResponse } from './types';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -29,6 +22,8 @@ const mapAssignmentFromApi = (raw: UnknownRecord): Assignment => ({
   id: String(raw.id ?? ''),
   course_id: String(raw.courseId ?? raw.course_id ?? raw.course ?? ''),
   module_id: (raw.moduleId ?? raw.module_id) ? String(raw.moduleId ?? raw.module_id) : undefined,
+  topic_id: (raw.topicId ?? raw.topic_id) ? String(raw.topicId ?? raw.topic_id) : undefined,
+  category_id: (raw.categoryId ?? raw.category_id) ? String(raw.categoryId ?? raw.category_id) : undefined,
   assignment_type: String(raw.assignmentType ?? raw.assignment_type ?? 'FILE_UPLOAD') as Assignment['assignment_type'],
   title: String(raw.title ?? ''),
   description: String(raw.description ?? ''),
@@ -75,6 +70,7 @@ const mapAssignmentToApi = (raw: Partial<Assignment> & UnknownRecord): UnknownRe
   return compact({
     courseId: raw.courseId ?? raw.course_id ?? raw.course,
     moduleId: raw.moduleId ?? raw.module_id ?? raw.module,
+    topicId: raw.topicId ?? raw.topic_id,
     categoryId: raw.categoryId ?? raw.category_id ?? raw.category,
     position: raw.position,
     assignmentType: raw.assignmentType ?? raw.assignment_type,
@@ -89,7 +85,6 @@ const mapAssignmentToApi = (raw: Partial<Assignment> & UnknownRecord): UnknownRe
     autoGradingEnabled: raw.autoGradingEnabled ?? raw.auto_grading_enabled,
     testCases: raw.testCases ?? raw.test_cases,
     maxPoints: raw.maxPoints ?? raw.max_points,
-    rubric: raw.rubric,
     dueDate: raw.dueDate ?? raw.due_date,
     availableFrom: raw.availableFrom ?? raw.available_from,
     availableUntil: raw.availableUntil ?? raw.available_until,
@@ -121,7 +116,18 @@ const mapQuizFromApi = (raw: UnknownRecord): Quiz => ({
   title: String(raw.title ?? ''),
   description: (raw.description as string | undefined) || '',
   time_limit: (raw.timeLimit as number | undefined) ?? (raw.time_limit as number | undefined),
-  attempts_allowed: asNumber(raw.attemptsAllowed ?? raw.attempts_allowed, 1),
+  timer_enabled: Boolean(raw.timerEnabled ?? raw.timer_enabled),
+  attempts_allowed:
+    (raw.attemptsAllowed ?? raw.attempts_allowed) === null || (raw.attemptsAllowed ?? raw.attempts_allowed) === undefined
+      ? null
+      : asNumber(raw.attemptsAllowed ?? raw.attempts_allowed, 1),
+  attempt_limit_enabled: Boolean(raw.attemptLimitEnabled ?? raw.attempt_limit_enabled),
+  attempt_score_policy: String(raw.attemptScorePolicy ?? raw.attempt_score_policy ?? 'HIGHEST') as Quiz['attempt_score_policy'],
+  secure_session_enabled: Boolean(raw.secureSessionEnabled ?? raw.secure_session_enabled),
+  secure_require_fullscreen:
+    raw.secureRequireFullscreen === undefined && raw.secure_require_fullscreen === undefined
+      ? undefined
+      : Boolean(raw.secureRequireFullscreen ?? raw.secure_require_fullscreen),
   randomize_questions: Boolean(raw.shuffleQuestions ?? raw.randomize_questions ?? raw.shuffle_questions),
   randomize_answers: Boolean(raw.shuffleAnswers ?? raw.randomize_answers ?? raw.shuffle_answers),
   questions: (raw.questions as Question[] | undefined) || [],
@@ -152,6 +158,7 @@ const mapQuestionFromApi = (raw: UnknownRecord): Question => ({
   tags: (raw.tags as string[] | undefined) || undefined,
   type: String(raw.questionType ?? raw.question_type ?? 'short_answer').toLowerCase() as Question['type'],
   stem: String(raw.stem ?? ''),
+  image_url: (raw.imageUrl as string | undefined) || (raw.image_url as string | undefined),
   options: (
     (Array.isArray(raw.options) ? raw.options : undefined)
       || (((raw.options as UnknownRecord | undefined)?.choices as string[] | undefined))
@@ -183,6 +190,16 @@ const mapAttemptFromApi = (raw: UnknownRecord): QuizAttempt => ({
   auto_score: (raw.autoScore ?? raw.auto_score) !== undefined ? asNumber(raw.autoScore ?? raw.auto_score) : undefined,
   final_score: (raw.finalScore ?? raw.final_score) !== undefined ? asNumber(raw.finalScore ?? raw.final_score) : undefined,
   graded_by: (raw.gradedBy ?? raw.graded_by) ? String(raw.gradedBy ?? raw.graded_by) : undefined,
+  expires_at: (raw.expiresAt as string | undefined) || (raw.expires_at as string | undefined),
+  remaining_seconds:
+    (raw.remainingSeconds ?? raw.remaining_seconds) !== undefined
+      ? asNumber(raw.remainingSeconds ?? raw.remaining_seconds)
+      : undefined,
+  timed_out:
+    raw.timedOut === undefined && raw.timed_out === undefined
+      ? undefined
+      : Boolean(raw.timedOut ?? raw.timed_out),
+  proctoring_data: (raw.proctoringData as Record<string, unknown> | undefined) || (raw.proctoring_data as Record<string, unknown> | undefined),
 });
 
 // Assignment API - Spring backend URLs
@@ -290,6 +307,12 @@ export const assignmentsApi = {
 
   getUpcoming: (courseId: string) =>
     apiClient.get<UnknownRecord[]>(`/assessments/assignments/course/${courseId}/upcoming`).then((response) => ({
+      ...response,
+      data: response.data.map(mapAssignmentFromApi),
+    })),
+
+  getOverdue: (courseId: string) =>
+    apiClient.get<UnknownRecord[]>(`/assessments/assignments/course/${courseId}/overdue`).then((response) => ({
       ...response,
       data: response.data.map(mapAssignmentFromApi),
     })),
@@ -470,6 +493,26 @@ export const quizzesApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+
+  importExcel: (courseId: string, title: string, file: File) => {
+    const formData = new FormData();
+    formData.append('courseId', courseId);
+    formData.append('title', title);
+    formData.append('file', file);
+    return apiClient.post(`/assessments/quizzes/import/excel`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
+  importWord: (courseId: string, title: string, file: File) => {
+    const formData = new FormData();
+    formData.append('courseId', courseId);
+    formData.append('title', title);
+    formData.append('file', file);
+    return apiClient.post(`/assessments/quizzes/import/word`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 // Question Bank API - Spring backend URLs
@@ -495,6 +538,7 @@ export const questionsApi = {
       difficulty: data.difficulty,
       tags: data.tags,
       stem: data.stem,
+      imageUrl: data.imageUrl ?? data.image_url,
       options: data.options,
       correctAnswer: data.correctAnswer ?? data.correct_answer,
       explanation: data.explanation,
@@ -512,6 +556,7 @@ export const questionsApi = {
       difficulty: (data as UnknownRecord).difficulty,
       tags: (data as UnknownRecord).tags,
       stem: data.stem,
+      imageUrl: (data as UnknownRecord).imageUrl ?? (data as UnknownRecord).image_url,
       options: data.options,
       correctAnswer: (data as UnknownRecord).correctAnswer ?? (data as UnknownRecord).correct_answer,
       explanation: (data as UnknownRecord).explanation,
@@ -585,14 +630,41 @@ export const attemptsApi = {
     apiClient.get(`/assessments/quiz-attempts/quiz/${quizId}/user`),
   getLatestForQuiz: (quizId: string) =>
     apiClient.get(`/assessments/quiz-attempts/quiz/${quizId}/user/latest`),
+  getOfficialForQuiz: (quizId: string) =>
+    apiClient.get(`/assessments/quiz-attempts/quiz/${quizId}/user/official`),
   getInProgressForQuiz: (quizId: string) =>
     apiClient.get(`/assessments/quiz-attempts/quiz/${quizId}/user/in-progress`),
+  getUngradedForQuiz: (quizId: string) =>
+    apiClient.get(`/assessments/quiz-attempts/quiz/${quizId}/ungraded`),
+  recordViolation: (attemptId: string, payload: { type: string; details?: Record<string, unknown> }) =>
+    apiClient.post(`/assessments/quiz-attempts/${attemptId}/violations`, payload),
 };
 
 // Submissions API - Spring backend URLs
 export const submissionsApi = {
   getForAssignment: (assignmentId: string) =>
     apiClient.get(`/submissions?assignmentId=${encodeURIComponent(assignmentId)}`),
+
+  getReviewQueue: (
+    assignmentId: string,
+    params?: {
+      status?: string;
+      search?: string;
+      page?: number;
+      size?: number;
+      sort?: string;
+    }
+  ) =>
+    apiClient.get('/submissions/review-queue', {
+      params: compact({
+        assignmentId,
+        status: params?.status,
+        search: params?.search,
+        page: params?.page,
+        size: params?.size,
+        sort: params?.sort,
+      }),
+    }),
 
   getMySubmission: (assignmentId: string) =>
     apiClient.get(`/submissions/my?assignmentId=${encodeURIComponent(assignmentId)}`),
@@ -610,8 +682,49 @@ export const submissionsApi = {
   },
 
   grade: (submissionId: string, score: number, feedback?: string) =>
-    apiClient.post(`/submissions/${submissionId}/grade`, { score, feedback }),
+    apiClient.post(`/submissions/${submissionId}/grade-draft`, { finalScore: score, feedback }),
+
+  saveGradeDraft: (
+    submissionId: string,
+    payload: {
+      rawScore?: number;
+      finalScore?: number;
+      feedback?: string;
+      overridePenalty?: boolean;
+      version?: number | null;
+    }
+  ) => apiClient.post(`/submissions/${submissionId}/grade-draft`, payload),
+
+  publishGrade: (
+    submissionId: string,
+    payload?: {
+      finalScore?: number;
+      feedback?: string;
+      version?: number | null;
+    }
+  ) => apiClient.post(`/submissions/${submissionId}/publish-grade`, payload || {}),
+
+  publishBulk: (
+    items: Array<{ submissionId: string; version?: number | null }>
+  ) =>
+    apiClient.post('/submissions/grades/publish-bulk', {
+      items: items.map((item) => ({
+        submissionId: item.submissionId,
+        version: item.version,
+      })),
+    }),
 
   getById: (id: string) =>
     apiClient.get(`/submissions/${id}`),
+
+  updateDraft: (
+    submissionId: string,
+    payload: {
+      content?: string;
+      textAnswer?: string;
+      submissionUrl?: string;
+      programmingLanguage?: string;
+    }
+  ) =>
+    apiClient.put(`/submissions/${submissionId}/draft`, payload),
 };

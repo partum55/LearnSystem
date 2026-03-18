@@ -14,25 +14,6 @@ export const useAuthoringValidation = (draft: TaskDraft): ValidationResult => {
       issues.push({ field: 'metadata.description', message: 'Description is required.', severity: 'ERROR' });
     }
 
-    draft.rubric.criteria.forEach((criterion, index) => {
-      if (!criterion.title.trim()) {
-        issues.push({
-          field: `rubric.criteria[${index}].title`,
-          message: 'Rubric criterion title is required.',
-          severity: 'ERROR',
-        });
-      }
-
-      const latexIssues = validateLatex(criterion.explanation);
-      latexIssues.forEach((issue) =>
-        issues.push({
-          field: `rubric.criteria[${index}].explanation`,
-          message: issue,
-          severity: 'WARNING',
-        })
-      );
-    });
-
     draft.questions.forEach((question, index) => {
       if (!question.prompt.trim()) {
         issues.push({

@@ -18,20 +18,6 @@ export interface TaskSettings {
   allowLateSubmission?: boolean;
 }
 
-export interface RubricCriterion {
-  id: string;
-  title: string;
-  description: string;
-  weight: number;
-  explanation: string;
-  format: LatexFormat;
-}
-
-export interface RubricDraft {
-  criteria: RubricCriterion[];
-  totalPoints: number;
-}
-
 export interface QuestionOption {
   id: string;
   text: string;
@@ -55,7 +41,6 @@ export interface TaskDraft {
   type: TaskType;
   metadata: TaskMetadata;
   settings: TaskSettings;
-  rubric: RubricDraft;
   questions: QuestionDraft[];
   aiDrafts: AIDraft[];
   updatedAt?: string;

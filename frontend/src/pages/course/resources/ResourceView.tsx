@@ -8,6 +8,9 @@ import rehypeKatex from 'rehype-katex';
 import rehypeHighlight from 'rehype-highlight';
 import 'katex/dist/katex.min.css';
 import { Loading } from '../../../components';
+import { DocumentRenderer } from '../../../features/editor-core/DocumentRenderer';
+import { parseCanonicalDocument } from '../../../features/editor-core/documentUtils';
+import { RichContentRenderer } from '../../../components/common/RichContentRenderer';
 import { CourseLayout } from '../../../components/CourseLayout';
 import { resourcesApi } from '../../../api/courses';
 import { Resource } from '../../../types';
@@ -19,6 +22,7 @@ import {
   ClockIcon,
 } from '@heroicons/react/24/outline';
 import { resourceTypeInfo } from '../../../utils/resourceIcons';
+import { ExplainButton } from '../../../components/ExplainButton';
 
 /* ── Helpers ─────────────────────────────────── */
 
@@ -155,19 +159,35 @@ const ResourceView: React.FC = () => {
       case 'TEXT':
       case 'CODE': {
         const raw = s(resource.text_content);
+
+        // Try parsing as CanonicalDocument JSON (new editor format)
+        if (raw.startsWith('{') && raw.includes('"type":"doc"')) {
+          try {
+            const doc = parseCanonicalDocument(raw);
+            if (doc.content.length > 0) {
+              return (
+                <article className="resource-prose">
+                  <DocumentRenderer document={doc} />
+                </article>
+              );
+            }
+          } catch {
+            // fall through to ReactMarkdown
+          }
+        }
+
+        // Fallback: legacy plain-markdown content
         return (
           <article className="resource-prose">
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkMath]}
               rehypePlugins={[rehypeKatex, rehypeHighlight]}
               components={{
-                /* All links open in a new tab */
                 a: ({ children, href, ...rest }) => (
                   <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>
                     {children}
                   </a>
                 ),
-                /* Wrap tables in a scrollable container */
                 table: ({ children, ...rest }) => (
                   <div className="resource-table-wrap">
                     <table {...rest}>{children}</table>
@@ -366,15 +386,12 @@ const ResourceView: React.FC = () => {
 
               {/* Description */}
               {resource.description && typeof resource.description === 'string' && (
-                <p
-                  className="mt-3 text-[15px] leading-relaxed max-w-2xl"
-                  style={{
-                    color: 'var(--text-muted)',
-                    fontFamily: 'var(--font-body)',
-                  }}
-                >
-                  {resource.description}
-                </p>
+                <div className="mt-3 max-w-2xl">
+                  <RichContentRenderer
+                    content={resource.description}
+                    className="text-[15px] leading-relaxed"
+                  />
+                </div>
               )}
 
               {/* Meta row */}
@@ -429,6 +446,14 @@ const ResourceView: React.FC = () => {
                   {'Download'}
                 </a>
               </div>
+            )}
+
+            {/* AI Explain Button */}
+            {resource.text_content && (
+              <ExplainButton
+                contentType="RESOURCE"
+                contentText={typeof resource.text_content === 'string' ? resource.text_content : String(resource.text_content)}
+              />
             )}
           </div>
 

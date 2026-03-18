@@ -38,13 +38,14 @@ public class QuestionVersionService {
   public QuestionVersion createVersionFromQuestion(QuestionBank question, UUID createdBy) {
     int nextVersion = questionVersionRepository.findMaxVersionNumber(question.getId()) + 1;
 
-    Map<String, Object> promptDoc = toPromptDoc(question.getStem());
+    Map<String, Object> promptDoc = resolvePromptDoc(question);
     Map<String, Object> payload = new HashMap<>();
     payload.put("questionType", question.getQuestionType());
     payload.put("topic", question.getTopic());
     payload.put("difficulty", question.getDifficulty());
     payload.put("tags", question.getTags() == null ? List.of() : question.getTags());
     payload.put("options", question.getOptions() == null ? Map.of() : question.getOptions());
+    payload.put("imageUrl", question.getImageUrl());
     payload.put("explanation", question.getExplanation());
     payload.put("points", question.getPoints());
 
@@ -131,5 +132,20 @@ public class QuestionVersionService {
     root.put("type", "doc");
     root.put("content", List.of(paragraphNode));
     return root;
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> resolvePromptDoc(QuestionBank question) {
+    if (question.getMetadata() != null) {
+      Object promptDocument = question.getMetadata().get("promptDocument");
+      if (promptDocument instanceof Map<?, ?> promptMap) {
+        Map<String, Object> converted = new HashMap<>();
+        promptMap.forEach((key, value) -> converted.put(String.valueOf(key), value));
+        if (converted.containsKey("content") && converted.containsKey("type")) {
+          return converted;
+        }
+      }
+    }
+    return toPromptDoc(question.getStem());
   }
 }

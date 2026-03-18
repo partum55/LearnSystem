@@ -1,6 +1,5 @@
 import React from 'react';
 import { TFunction } from 'i18next';
-import { ResourceWizard } from '../../components/wizards/ResourceWizard';
 import {
   AIElementGenerator,
   Button,
@@ -15,7 +14,6 @@ interface CourseDetailModalsProps {
   courseId: string;
   currentCourse: Course;
   showModuleModal: boolean;
-  showResourceModal: boolean;
   showEnrollModal: boolean;
   showAIModuleGenerator: boolean;
   showAIAssignmentGenerator: boolean;
@@ -23,12 +21,10 @@ interface CourseDetailModalsProps {
   selectedModuleContext: string;
   deleteConfirmation: DeleteConfirmationState | null;
   onCloseModuleModal: () => void;
-  onCloseResourceModal: () => void;
   onCloseEnrollModal: () => void;
   onCloseAIModuleGenerator: () => void;
   onCloseAIAssignmentGenerator: () => void;
   onModuleCreated: () => void;
-  onResourceCreated: () => void;
   onEnrolled: () => void;
   onAIModuleGenerated: () => void;
   onAIAssignmentGenerated: () => void;
@@ -42,7 +38,6 @@ export const CourseDetailModals: React.FC<CourseDetailModalsProps> = ({
   courseId,
   currentCourse,
   showModuleModal,
-  showResourceModal,
   showEnrollModal,
   showAIModuleGenerator,
   showAIAssignmentGenerator,
@@ -50,12 +45,10 @@ export const CourseDetailModals: React.FC<CourseDetailModalsProps> = ({
   selectedModuleContext,
   deleteConfirmation,
   onCloseModuleModal,
-  onCloseResourceModal,
   onCloseEnrollModal,
   onCloseAIModuleGenerator,
   onCloseAIAssignmentGenerator,
   onModuleCreated,
-  onResourceCreated,
   onEnrolled,
   onAIModuleGenerated,
   onAIAssignmentGenerated,
@@ -72,15 +65,6 @@ export const CourseDetailModals: React.FC<CourseDetailModalsProps> = ({
           courseId={courseId}
           onModuleCreated={onModuleCreated}
         />
-        {selectedModuleId && (
-          <ResourceWizard
-            isOpen={showResourceModal}
-            onClose={onCloseResourceModal}
-            courseId={courseId}
-            moduleId={selectedModuleId}
-            onResourceCreated={onResourceCreated}
-          />
-        )}
         <EnrollStudentsModal
           isOpen={showEnrollModal}
           onClose={onCloseEnrollModal}

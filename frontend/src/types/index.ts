@@ -17,6 +17,16 @@ export interface User {
   updated_at: string;
 }
 
+// API Key types
+export interface ApiKeyDto {
+  id: string;
+  provider: string;
+  keyHint: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Course types
 export interface Course {
   id: string;
@@ -29,9 +39,14 @@ export interface Course {
   // Computed/display fields
   title: string;
   description: string;
+  syllabus?: string;
   ownerId?: string;
   ownerName?: string;
+  thumbnailUrl?: string;
+  themeColor?: string;
   visibility: 'PUBLIC' | 'PRIVATE' | 'DRAFT';
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | string;
+  academicYear?: string | null;
   createdAt?: string;
   updatedAt?: string;
   memberCount?: number;
@@ -55,6 +70,8 @@ export interface CourseCreateData {
   maxStudents?: number;
   isPublished?: boolean;
   syllabus?: string;
+  thumbnailUrl?: string;
+  themeColor?: string;
 }
 
 export interface CourseMember {
@@ -69,6 +86,16 @@ export interface CourseMember {
 }
 
 // Module and Resource types
+export interface Topic {
+  id: string;
+  module_id: string;
+  title: string;
+  description?: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Module {
   id: string;
   course: string;
@@ -83,6 +110,7 @@ export interface Module {
   content_meta?: Record<string, unknown>;
   resources?: Resource[];
   assignments?: Assignment[];
+  topics?: Topic[];
 }
 
 export interface ModulePage {
@@ -141,6 +169,7 @@ export type ResourceType = 'VIDEO' | 'PDF' | 'SLIDE' | 'LINK' | 'TEXT' | 'CODE' 
 export interface Resource {
   id: string;
   module: string;
+  topic_id?: string;
   title: string;
   description?: string;
   resource_type: ResourceType;
@@ -162,13 +191,30 @@ export interface Resource {
 export interface ResourceCreateData {
   courseId: string;
   module: string;
+  topic_id?: string;
   title: string;
   description?: string;
   resource_type: ResourceType;
   file?: File;
+  file_url?: string;
+  file_size?: number;
+  mime_type?: string;
   external_url?: string;
   text_content?: string;
   is_downloadable?: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+export interface Announcement {
+  id: string;
+  course_id: string;
+  title: string;
+  content: string;
+  is_pinned: boolean;
+  created_by: string;
+  updated_by?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // Assignment types
@@ -180,12 +226,15 @@ export type AssignmentType =
   | 'URL'
   | 'MANUAL_GRADE'
   | 'EXTERNAL'
-  | 'VIRTUAL_LAB';
+  | 'VIRTUAL_LAB'
+  | 'SEMINAR';
 
 export interface Assignment {
   id: string;
   course_id: string;
   module_id?: string;
+  topic_id?: string;
+  category_id?: string;
   assignment_type: AssignmentType;
   title: string;
   description: string;
@@ -196,7 +245,6 @@ export interface Assignment {
   available_from?: string;
   available_until?: string;
   max_points: number;
-  rubric?: Rubric;
   submission_types?: string[];
   allowed_file_types?: string[];
   max_file_size?: number;
@@ -220,17 +268,6 @@ export interface Assignment {
   created_by_name?: string;
   submission?: Submission;
   requires_submission?: boolean;
-}
-
-export interface Rubric {
-  criteria: RubricCriterion[];
-}
-
-export interface RubricCriterion {
-  id: string;
-  name: string;
-  description: string;
-  max_points: number;
 }
 
 export interface Submission {
@@ -264,6 +301,7 @@ export interface Question {
   difficulty?: string;
   tags?: string[];
   stem: string;
+  image_url?: string;
   options?: string[];
   correct_answer: string | number | boolean | string[] | number[];
   points: number;
@@ -278,7 +316,12 @@ export interface Quiz {
   title: string;
   description?: string;
   time_limit?: number;
-  attempts_allowed: number;
+  timer_enabled?: boolean;
+  attempts_allowed: number | null;
+  attempt_limit_enabled?: boolean;
+  attempt_score_policy?: 'HIGHEST' | 'LATEST' | 'FIRST';
+  secure_session_enabled?: boolean;
+  secure_require_fullscreen?: boolean;
   randomize_questions: boolean;
   randomize_answers: boolean;
   questions: Question[];
@@ -325,6 +368,10 @@ export interface QuizAttempt {
   auto_score?: number;
   final_score?: number;
   graded_by?: string;
+  expires_at?: string;
+  remaining_seconds?: number;
+  timed_out?: boolean;
+  proctoring_data?: Record<string, unknown>;
 }
 
 // Gradebook types
@@ -374,6 +421,23 @@ export interface EngagementStats {
   daily_active_users: number;
   weekly_active_users: number;
   avg_time_spent: number;
+}
+
+// Plugin types
+export type PluginType = 'ACTIVITY' | 'REPORT' | 'BLOCK' | 'INTEGRATION' | 'THEME';
+export type PluginStatus = 'ENABLED' | 'DISABLED' | 'ERROR';
+
+export interface InstalledPlugin {
+  pluginId: string;
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  type: PluginType;
+  status: PluginStatus;
+  permissions: string[];
+  config: Record<string, string>;
+  installedAt: string;
 }
 
 // API Response types

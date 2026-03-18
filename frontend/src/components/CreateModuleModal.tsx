@@ -24,6 +24,8 @@ export const CreateModuleModal: React.FC<CreateModuleModalProps> = ({
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    topic: '',
+    tags: '',
     is_published: false,
   });
   const [error, setError] = useState('');
@@ -38,10 +40,17 @@ export const CreateModuleModal: React.FC<CreateModuleModalProps> = ({
         course: courseId,
         title: formData.title,
         description: formData.description,
+        content_meta: {
+          topic: formData.topic.trim() || undefined,
+          tags: formData.tags
+            .split(',')
+            .map((tag) => tag.trim())
+            .filter(Boolean),
+        },
         is_published: formData.is_published,
       });
 
-      setFormData({ title: '', description: '', is_published: false });
+      setFormData({ title: '', description: '', topic: '', tags: '', is_published: false });
       onModuleCreated();
       onClose();
     } catch (err: unknown) {
@@ -90,6 +99,22 @@ export const CreateModuleModal: React.FC<CreateModuleModalProps> = ({
             placeholder={t('modules.descriptionPlaceholder')}
           />
         </div>
+
+        <Input
+          label={t('modules.moduleTopic', 'Topic')}
+          name="topic"
+          value={formData.topic}
+          onChange={handleChange}
+          placeholder={t('modules.moduleTopicPlaceholder', 'Enter module topic')}
+        />
+
+        <Input
+          label={t('modules.moduleTags', 'Tags')}
+          name="tags"
+          value={formData.tags}
+          onChange={handleChange}
+          placeholder={t('modules.moduleTagsPlaceholder', 'Comma-separated tags')}
+        />
 
         <div className="flex items-center">
           <input

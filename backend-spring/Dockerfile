@@ -14,10 +14,13 @@ COPY pom.xml .
 COPY lms-common/pom.xml ./lms-common/
 
 # Copy all service POMs
+COPY lms-plugin-sdk/pom.xml ./lms-plugin-sdk/
+COPY lms-plugin-runtime/pom.xml ./lms-plugin-runtime/
 COPY lms-user-service/pom.xml ./lms-user-service/
 COPY lms-learning-service/pom.xml ./lms-learning-service/
 COPY lms-ai-service/pom.xml ./lms-ai-service/
 COPY lms-analytics-service/pom.xml ./lms-analytics-service/
+COPY lms-marketplace-service/pom.xml ./lms-marketplace-service/
 COPY lms-api-gateway/pom.xml ./lms-api-gateway/
 COPY lms-eureka-server/pom.xml ./lms-eureka-server/
 
@@ -26,10 +29,13 @@ RUN mvn dependency:go-offline -B || true
 
 # Copy source code
 COPY lms-common/src ./lms-common/src
+COPY lms-plugin-sdk/src ./lms-plugin-sdk/src
+COPY lms-plugin-runtime/src ./lms-plugin-runtime/src
 COPY lms-user-service/src ./lms-user-service/src
 COPY lms-learning-service/src ./lms-learning-service/src
 COPY lms-ai-service/src ./lms-ai-service/src
 COPY lms-analytics-service/src ./lms-analytics-service/src
+COPY lms-marketplace-service/src ./lms-marketplace-service/src
 COPY lms-api-gateway/src ./lms-api-gateway/src
 COPY lms-eureka-server/src ./lms-eureka-server/src
 

@@ -3,6 +3,7 @@
  * SUPERADMIN only endpoints for full system control.
  */
 import apiClient from './client';
+import { PageResponse } from './types';
 import { Module, Resource } from '../types';
 
 // ==================== TYPES ====================
@@ -58,7 +59,6 @@ export interface AssignmentExport {
   instructions?: string;
   instructionsFormat?: string;
   maxPoints?: number;
-  rubric?: Record<string, unknown>;
   dueDate?: string;
   availableFrom?: string;
   availableUntil?: string;
@@ -185,13 +185,44 @@ export const adminCourseDeepApi = {
     return response.data;
   },
 
-  createModule: async (courseId: string, data: { title: string; description?: string; isPublished?: boolean }) => {
-    const response = await apiClient.post(`/courses/${courseId}/modules`, data);
+  createModule: async (
+    courseId: string,
+    data: {
+      title: string;
+      description?: string;
+      isPublished?: boolean;
+      contentMeta?: Record<string, unknown>;
+    }
+  ) => {
+    const response = await apiClient.post(`/courses/${courseId}/modules`, {
+      title: data.title,
+      description: data.description,
+      isPublished: data.isPublished,
+      contentMeta: data.contentMeta,
+    });
     return response.data;
   },
 
-  updateModule: async (courseId: string, moduleId: string, data: Partial<Module>) => {
-    const response = await apiClient.put(`/courses/${courseId}/modules/${moduleId}`, data);
+  updateModule: async (
+    courseId: string,
+    moduleId: string,
+    data: {
+      title?: string;
+      description?: string;
+      position?: number;
+      isPublished?: boolean;
+      publishDate?: string;
+      contentMeta?: Record<string, unknown>;
+    }
+  ) => {
+    const response = await apiClient.put(`/courses/${courseId}/modules/${moduleId}`, {
+      title: data.title,
+      description: data.description,
+      position: data.position,
+      isPublished: data.isPublished,
+      publishDate: data.publishDate,
+      contentMeta: data.contentMeta,
+    });
     return response.data;
   },
 
@@ -394,5 +425,169 @@ export const adminCourseDeepApi = {
 
   unenrollUser: async (courseId: string, userId: string) => {
     await apiClient.delete(`/courses/${courseId}/enroll/${userId}`);
+  },
+};
+
+export interface SisImportRowError {
+  file: string;
+  row?: number;
+  field?: string;
+  code: string;
+  message: string;
+}
+
+export interface SisImportPreviewResponse {
+  importId: string;
+  semesterCode: string;
+  status: string;
+  valid: boolean;
+  summary: Record<string, unknown>;
+  errors: SisImportRowError[];
+  warnings: string[];
+}
+
+export interface SisImportApplyResponse {
+  importId: string;
+  status: string;
+  message: string;
+  createdCourses: number;
+  createdEnrollments: number;
+  skippedEnrollments: number;
+  rollbackExpiresAt?: string;
+}
+
+export interface SisImportRunResponse {
+  id: string;
+  semesterCode: string;
+  status: string;
+  valid: boolean;
+  requestedBy: string;
+  summary: Record<string, unknown>;
+  errors: SisImportRowError[];
+  warnings: string[];
+  applyReport: Record<string, unknown>;
+  appliedAt?: string;
+  rollbackExpiresAt?: string;
+  rolledBackAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SisAuditLogEntry {
+  id: string;
+  importRunId?: string;
+  actorId: string;
+  action: string;
+  entityType: string;
+  entityKey?: string;
+  details: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface SisBulkEnrollmentActionRequest {
+  action: 'MOVE_STUDENTS' | 'CHANGE_STATUS' | 'UNENROLL';
+  emails: string[];
+  courseCodes: string[];
+  targetCourseCode?: string;
+  enrollmentStatus?: string;
+}
+
+export interface SisBulkEnrollmentActionResponse {
+  action: string;
+  affectedUsers: number;
+  affectedEnrollments: number;
+  skipped: number;
+  message: string;
+}
+
+export const sisAdminOpsApi = {
+  previewImport: async (payload: {
+    semesterCode: string;
+    studentsFile: File;
+    coursesFile: File;
+    groupCourseMapFile: File;
+    currentEnrollmentsFile?: File;
+  }): Promise<SisImportPreviewResponse> => {
+    const formData = new FormData();
+    formData.append('semesterCode', payload.semesterCode);
+    formData.append('studentsFile', payload.studentsFile);
+    formData.append('coursesFile', payload.coursesFile);
+    formData.append('groupCourseMapFile', payload.groupCourseMapFile);
+    if (payload.currentEnrollmentsFile) {
+      formData.append('currentEnrollmentsFile', payload.currentEnrollmentsFile);
+    }
+    const response = await apiClient.upload<SisImportPreviewResponse>('/course-management/sis/preview', formData);
+    return response.data;
+  },
+
+  applyImport: async (importId: string): Promise<SisImportApplyResponse> => {
+    const response = await apiClient.post<SisImportApplyResponse>(`/course-management/sis/apply/${importId}`);
+    return response.data;
+  },
+
+  rollbackImport: async (importId: string): Promise<SisImportApplyResponse> => {
+    const response = await apiClient.post<SisImportApplyResponse>(`/course-management/sis/rollback/${importId}`);
+    return response.data;
+  },
+
+  getImport: async (importId: string): Promise<SisImportRunResponse> => {
+    const response = await apiClient.get<SisImportRunResponse>(`/course-management/sis/imports/${importId}`);
+    return response.data;
+  },
+
+  listImports: async (params?: { page?: number; size?: number }): Promise<PageResponse<SisImportRunResponse>> => {
+    const page = params?.page ?? 0;
+    const size = params?.size ?? 20;
+    const response = await apiClient.get<PageResponse<SisImportRunResponse>>(`/course-management/sis/imports?page=${page}&size=${size}`);
+    return response.data;
+  },
+
+  getAuditLog: async (params?: { importId?: string; action?: string; entityType?: string; page?: number; size?: number }): Promise<PageResponse<SisAuditLogEntry>> => {
+    const search = new URLSearchParams();
+    if (params?.importId) search.set('importId', params.importId);
+    if (params?.action) search.set('action', params.action);
+    if (params?.entityType) search.set('entityType', params.entityType);
+    search.set('page', String(params?.page ?? 0));
+    search.set('size', String(params?.size ?? 30));
+    const response = await apiClient.get<PageResponse<SisAuditLogEntry>>(`/course-management/sis/audit-log?${search.toString()}`);
+    return response.data;
+  },
+
+  applyEnrollmentGroup: async (importId: string, groupCode: string) => {
+    const response = await apiClient.post(`/course-management/sis/enrollment-groups/apply`, { importId, groupCode });
+    return response.data;
+  },
+
+  bulkEnrollmentAction: async (payload: SisBulkEnrollmentActionRequest): Promise<SisBulkEnrollmentActionResponse> => {
+    const response = await apiClient.post<SisBulkEnrollmentActionResponse>(`/course-management/sis/bulk-actions/enrollments`, payload);
+    return response.data;
+  },
+
+  downloadDeanGradebook: async (params: { courseId: string; semester?: string; group?: string }): Promise<void> => {
+    const search = new URLSearchParams();
+    search.set('courseId', params.courseId);
+    if (params.semester) search.set('semester', params.semester);
+    if (params.group) search.set('group', params.group);
+
+    const response = await apiClient.get<Blob>(
+      `/course-management/gradebook/export/dean?${search.toString()}`,
+      { responseType: 'blob' as const }
+    );
+
+    const disposition = (response.headers?.['content-disposition'] ?? '') as string;
+    const filenameMatch = disposition.match(/filename="?([^"]+)"?/i);
+    const filename = filenameMatch?.[1] || `dean-gradebook-${params.courseId}.xlsx`;
+
+    const blob = new Blob([response.data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
   },
 };

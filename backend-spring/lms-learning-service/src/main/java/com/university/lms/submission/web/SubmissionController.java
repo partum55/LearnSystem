@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -14,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -96,6 +98,20 @@ public class SubmissionController {
         return ResponseEntity.ok(submission);
     }
 
+    @PutMapping(path = "/{submissionId}/draft", consumes = "application/json")
+    public ResponseEntity<SubmissionResponse> updateDraft(
+            @PathVariable UUID submissionId,
+            @RequestBody UpdateSubmissionDraftRequest request,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole) {
+
+        UpdateSubmissionDraftRequest safeRequest =
+                request == null ? new UpdateSubmissionDraftRequest() : request;
+        SubmissionResponse submission =
+                submissionService.updateDraft(submissionId, safeRequest, userId, userRole);
+        return ResponseEntity.ok(submission);
+    }
+
     @GetMapping("/{submissionId}/files/{fileId}")
     public ResponseEntity<?> downloadFile(
             @PathVariable UUID submissionId,
@@ -128,14 +144,55 @@ public class SubmissionController {
     }
 
     @PostMapping("/{submissionId}/grade")
-    public ResponseEntity<SubmissionResponse> grade(
+    public ResponseEntity<Map<String, Object>> grade(
             @PathVariable UUID submissionId,
             @Valid @RequestBody GradeSubmissionRequest request,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole) {
 
-        SubmissionResponse submission = submissionService.grade(submissionId, request, userId, userRole);
+        log.warn(
+                "Deprecated /grade endpoint called for submission {} by user {} role {} (score={})",
+                submissionId,
+                userId,
+                userRole,
+                request == null ? null : request.resolvedGrade());
+        Map<String, Object> body = Map.of(
+                "code", "DEPRECATED_ENDPOINT",
+                "message", "POST /submissions/{id}/grade is deprecated. Use /grade-draft and /publish-grade endpoints.");
+        return ResponseEntity.status(HttpStatus.GONE).body(body);
+    }
+
+    @PostMapping("/{submissionId}/grade-draft")
+    public ResponseEntity<SubmissionResponse> saveGradeDraft(
+            @PathVariable UUID submissionId,
+            @Valid @RequestBody GradeDraftRequest request,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole) {
+
+        SubmissionResponse submission = submissionService.saveGradeDraft(submissionId, request, userId, userRole);
         return ResponseEntity.ok(submission);
+    }
+
+    @PostMapping("/{submissionId}/publish-grade")
+    public ResponseEntity<SubmissionResponse> publishGrade(
+            @PathVariable UUID submissionId,
+            @RequestBody(required = false) PublishGradeRequest request,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole) {
+
+        PublishGradeRequest safeRequest = request == null ? new PublishGradeRequest() : request;
+        SubmissionResponse submission = submissionService.publishGrade(submissionId, safeRequest, userId, userRole);
+        return ResponseEntity.ok(submission);
+    }
+
+    @PostMapping("/grades/publish-bulk")
+    public ResponseEntity<BulkPublishGradesResponse> publishBulk(
+            @Valid @RequestBody BulkPublishGradesRequest request,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole) {
+
+        BulkPublishGradesResponse response = submissionService.publishBulk(request, userId, userRole);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{submissionId}/comments")
@@ -156,6 +213,20 @@ public class SubmissionController {
             @RequestAttribute("userRole") String userRole) {
 
         SpeedGraderResponse response = submissionService.getSpeedGraderQueue(assignmentId, userRole);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/review-queue")
+    public ResponseEntity<ReviewQueueResponse> getReviewQueue(
+            @RequestParam UUID assignmentId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size,
+            @RequestParam(defaultValue = "needs_review") String sort,
+            @RequestAttribute("userRole") String userRole) {
+
+        ReviewQueueResponse response = submissionService.getReviewQueue(assignmentId, status, search, page, size, sort, userRole);
         return ResponseEntity.ok(response);
     }
 }

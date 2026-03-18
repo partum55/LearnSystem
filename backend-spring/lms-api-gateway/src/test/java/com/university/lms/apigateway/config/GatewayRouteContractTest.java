@@ -20,6 +20,7 @@ import org.yaml.snakeyaml.Yaml;
 class GatewayRouteContractTest {
 
   private static final String LEARNING_SERVICE_URI = "lb://lms-learning-service";
+  private static final String MARKETPLACE_SERVICE_URI = "lb://lms-marketplace-service";
 
   @ParameterizedTest
   @ValueSource(strings = {"application.yml", "application-docker.yml"})
@@ -35,6 +36,25 @@ class GatewayRouteContractTest {
         routes,
         "learning-assessments",
         Set.of("/api/v1/assessments/**", "/api/assessments/**"));
+
+    assertLearningRoute(
+        routes,
+        "learning-quiz-attempts",
+        Set.of(
+            "/api/v1/assessments/quiz-attempts/**",
+            "/api/assessments/quiz-attempts/**"));
+
+    assertLearningRoute(
+        routes,
+        "learning-assignment-documents",
+        Set.of(
+            "/api/assignments/*/template-document",
+            "/api/assignments/*/submissions/clone-template"));
+
+    assertLearningRoute(
+        routes,
+        "learning-submission-documents",
+        Set.of("/api/submissions/*/document"));
 
     assertLearningRoute(
         routes,
@@ -57,6 +77,8 @@ class GatewayRouteContractTest {
             "/api/v1/notifications/**",
             "/api/notifications/**"));
 
+    assertLearningRoute(routes, "plugin-management", Set.of("/api/plugins/**"));
+
     assertLearningRoute(
         routes,
         "learning-risk-analytics",
@@ -65,6 +87,37 @@ class GatewayRouteContractTest {
             "/api/analytics/courses/*/students/*/risk",
             "/api/v1/analytics/courses/*/at-risk-students",
             "/api/v1/analytics/courses/*/students/*/risk"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"application.yml", "application-docker.yml"})
+  void pathPredicatesMustNotUseDoubleWildcardInMiddle(String resourceName) {
+    List<Map<String, Object>> routes = loadRoutes(resourceName);
+
+    Set<String> invalidPatterns =
+        routes.stream()
+            .flatMap(route -> extractPathPatterns(route).stream())
+            .filter(path -> path.contains("**/"))
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+
+    assertThat(invalidPatterns)
+        .as("Path predicates cannot contain `**/` with Spring PathPattern parser")
+        .isEmpty();
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"application.yml", "application-docker.yml"})
+  void marketplaceRouteMustPointToMarketplaceService(String resourceName) {
+    List<Map<String, Object>> routes = loadRoutes(resourceName);
+
+    Map<String, Object> route =
+        routes.stream()
+            .filter(candidate -> "marketplace-service".equals(candidate.get("id")))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Missing gateway route: marketplace-service"));
+
+    assertThat(route.get("uri")).isEqualTo(MARKETPLACE_SERVICE_URI);
+    assertThat(extractPathPatterns(route)).contains("/api/marketplace/**");
   }
 
   private static void assertLearningRoute(

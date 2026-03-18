@@ -12,12 +12,14 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.multipart.MultipartFile;
 
 /** REST endpoints for quiz import/export in JSON and CSV formats. */
 @RestController
 @RequestMapping("/quizzes")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
 public class QuizImportExportController {
 
   private final QuizImportExportService quizImportExportService;
@@ -50,5 +52,23 @@ public class QuizImportExportController {
       @RequestPart MultipartFile file) {
     UUID userId = requestUserContext.requireUserId();
     return ResponseEntity.ok(quizImportExportService.importFromCsv(courseId, title, file, userId));
+  }
+
+  @PostMapping(value = "/import/excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<QuizDto> importExcel(
+      @RequestParam UUID courseId,
+      @RequestParam String title,
+      @RequestPart MultipartFile file) {
+    UUID userId = requestUserContext.requireUserId();
+    return ResponseEntity.ok(quizImportExportService.importFromExcel(courseId, title, file, userId));
+  }
+
+  @PostMapping(value = "/import/word", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<QuizDto> importWord(
+      @RequestParam UUID courseId,
+      @RequestParam String title,
+      @RequestPart MultipartFile file) {
+    UUID userId = requestUserContext.requireUserId();
+    return ResponseEntity.ok(quizImportExportService.importFromWord(courseId, title, file, userId));
   }
 }

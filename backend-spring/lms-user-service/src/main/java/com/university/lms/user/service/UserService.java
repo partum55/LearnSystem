@@ -99,6 +99,56 @@ public class UserService {
         return buildAuthResponse(user);
     }
 
+    @Transactional
+    public AuthResponse loginWithGoogle(
+            String email,
+            String displayName,
+            String firstName,
+            String lastName,
+            String avatarUrl,
+            String googleSub
+    ) {
+        String normalizedEmail = normalizeEmail(email);
+
+        User user = userRepository.findByEmailIgnoreCaseAndIsDeletedFalse(normalizedEmail).orElse(null);
+        if (user == null) {
+            User existing = userRepository.findByEmailIgnoreCase(normalizedEmail).orElse(null);
+            if (existing != null && existing.isDeleted()) {
+                throw new ValidationException("Account is deactivated. Please contact administrator.");
+            }
+            user = createGoogleUser(normalizedEmail, displayName, firstName, lastName, avatarUrl, googleSub);
+        } else {
+            if (displayName != null && !displayName.isBlank()) {
+                user.setDisplayName(displayName.trim());
+            }
+            if (firstName != null && !firstName.isBlank()) {
+                user.setFirstName(firstName.trim());
+            }
+            if (lastName != null && !lastName.isBlank()) {
+                user.setLastName(lastName.trim());
+            }
+            if (avatarUrl != null && !avatarUrl.isBlank()) {
+                user.setAvatarUrl(avatarUrl);
+            }
+        }
+
+        ensureUserIsActive(user);
+
+        user.setEmailVerified(true);
+        Map<String, Object> preferences =
+                user.getPreferences() != null ? new HashMap<>(user.getPreferences()) : new HashMap<>();
+        preferences.put("authProvider", "GOOGLE");
+        if (googleSub != null && !googleSub.isBlank()) {
+            preferences.put("googleSub", googleSub);
+        }
+        user.setPreferences(preferences);
+
+        User savedUser = userRepository.save(user);
+        evictUserCache(savedUser.getId());
+        log.info("User logged in with Google OAuth: {}", savedUser.getId());
+        return buildAuthResponse(savedUser);
+    }
+
     @Transactional(readOnly = true)
     public AuthResponse refreshToken(String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {
@@ -359,6 +409,36 @@ public class UserService {
 
     private UserRole resolveRegistrationRole() {
         return UserRole.STUDENT;
+    }
+
+    private User createGoogleUser(
+            String email,
+            String displayName,
+            String firstName,
+            String lastName,
+            String avatarUrl,
+            String googleSub
+    ) {
+        Map<String, Object> preferences = new HashMap<>();
+        preferences.put("authProvider", "GOOGLE");
+        if (googleSub != null && !googleSub.isBlank()) {
+            preferences.put("googleSub", googleSub);
+        }
+
+        User newUser = User.builder()
+                .email(email)
+                .displayName(normalizeOptional(displayName))
+                .firstName(normalizeOptional(firstName))
+                .lastName(normalizeOptional(lastName))
+                .role(UserRole.STUDENT)
+                .locale(UserLocale.UK)
+                .theme("light")
+                .avatarUrl(normalizeOptional(avatarUrl))
+                .isActive(true)
+                .emailVerified(true)
+                .preferences(preferences)
+                .build();
+        return userRepository.save(newUser);
     }
 
     private AuthResponse buildAuthResponse(User user) {

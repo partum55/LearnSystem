@@ -47,15 +47,19 @@ public class GroqProvider implements LLMProvider {
 
   @Override
   public LLMResponse generate(String prompt, String systemPrompt, LLMGenerationOptions options) {
-    if (!isAvailable()) {
-      throw new LLMProviderException(PROVIDER_NAME, "Groq API key not configured");
+    return generate(prompt, systemPrompt, options, llamaApiProperties.getKey());
+  }
+
+  @Override
+  public LLMResponse generate(String prompt, String systemPrompt, LLMGenerationOptions options, String apiKey) {
+    if (!StringUtils.hasText(apiKey)) {
+      throw new LLMProviderException(PROVIDER_NAME, "Groq API key not provided");
     }
 
     log.debug("Generating content with Groq provider, type: {}", options.getGenerationType());
     long startTime = System.currentTimeMillis();
 
     try {
-      // Build messages array for OpenAI-compatible API
       var messages = new ArrayList<Map<String, String>>();
       if (StringUtils.hasText(systemPrompt)) {
         messages.add(Map.of("role", "system", "content", systemPrompt));
@@ -85,6 +89,7 @@ public class GroqProvider implements LLMProvider {
               .post()
               .uri("/chat/completions")
               .contentType(MediaType.APPLICATION_JSON)
+              .header("Authorization", "Bearer " + apiKey)
               .bodyValue(requestBody)
               .retrieve()
               .bodyToMono(String.class)

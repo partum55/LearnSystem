@@ -66,6 +66,7 @@ class QuizAttemptServiceTest {
             .id(quizId)
             .courseId(UUID.randomUUID())
             .title("Quiz")
+            .attemptLimitEnabled(true)
             .attemptsAllowed(2)
             .shuffleQuestions(false)
             .shuffleAnswers(false)
@@ -113,7 +114,7 @@ class QuizAttemptServiceTest {
               return attempt;
             });
 
-    QuizAttempt created = service.startQuizAttempt(quizId, userId, "127.0.0.1", "ua");
+    QuizAttempt created = service.startQuizAttempt(quizId, userId, "127.0.0.1", "ua", null);
 
     assertNotNull(created.getId());
     verify(quizAttemptQuestionRepository).deleteByAttempt_Id(created.getId());
@@ -150,6 +151,7 @@ class QuizAttemptServiceTest {
             .id(quizId)
             .courseId(UUID.randomUUID())
             .title("Quiz")
+            .attemptLimitEnabled(true)
             .attemptsAllowed(1)
             .createdBy(UUID.randomUUID())
             .build();

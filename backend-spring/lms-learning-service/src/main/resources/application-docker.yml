@@ -1,9 +1,9 @@
 # Docker profile for learning-service
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/lms_db}
-    username: ${SPRING_DATASOURCE_USERNAME:lms_user}
-    password: ${SPRING_DATASOURCE_PASSWORD:lms_password}
+    url: ${SPRING_DATASOURCE_URL:${DATABASE_URL:jdbc:postgresql://postgres:5432/lms_db}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USERNAME:lms_user}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:lms_password}}
 
   data:
     redis:

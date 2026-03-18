@@ -11,7 +11,6 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -38,8 +37,16 @@ public class SubmissionResponse {
     private String programmingLanguage;
 
     private BigDecimal grade;
+    private BigDecimal rawScore;
+    private BigDecimal draftGrade;
+    private String draftFeedback;
+    private BigDecimal publishedGrade;
+    private String publishedFeedback;
     private String feedback;
-    private Map<String, Object> rubricEvaluation;
+    private Integer submissionVersion;
+    private Boolean hasUnpublishedTeacherNotes;
+    private Boolean isReReviewInProgress;
+    private Long version;
 
     private Boolean isLate;
     private Integer daysLate;
@@ -49,6 +56,9 @@ public class SubmissionResponse {
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime gradedAt;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime publishedAt;
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
@@ -95,9 +105,44 @@ public class SubmissionResponse {
         return programmingLanguage;
     }
 
-    @JsonProperty("rubric_evaluation")
-    public Map<String, Object> getRubricEvaluationSnake() {
-        return rubricEvaluation;
+    @JsonProperty("raw_score")
+    public BigDecimal getRawScoreSnake() {
+        return rawScore;
+    }
+
+    @JsonProperty("draft_grade")
+    public BigDecimal getDraftGradeSnake() {
+        return draftGrade;
+    }
+
+    @JsonProperty("draft_feedback")
+    public String getDraftFeedbackSnake() {
+        return draftFeedback;
+    }
+
+    @JsonProperty("published_grade")
+    public BigDecimal getPublishedGradeSnake() {
+        return publishedGrade;
+    }
+
+    @JsonProperty("published_feedback")
+    public String getPublishedFeedbackSnake() {
+        return publishedFeedback;
+    }
+
+    @JsonProperty("submission_version")
+    public Integer getSubmissionVersionSnake() {
+        return submissionVersion;
+    }
+
+    @JsonProperty("has_unpublished_teacher_notes")
+    public Boolean getHasUnpublishedTeacherNotesSnake() {
+        return hasUnpublishedTeacherNotes;
+    }
+
+    @JsonProperty("is_re_review_in_progress")
+    public Boolean getIsReReviewInProgressSnake() {
+        return isReReviewInProgress;
     }
 
     @JsonProperty("is_late")
@@ -120,6 +165,11 @@ public class SubmissionResponse {
         return gradedAt;
     }
 
+    @JsonProperty("published_at")
+    public LocalDateTime getPublishedAtSnake() {
+        return publishedAt;
+    }
+
     @JsonProperty("created_at")
     public LocalDateTime getCreatedAtSnake() {
         return createdAt;
@@ -128,6 +178,11 @@ public class SubmissionResponse {
     @JsonProperty("updated_at")
     public LocalDateTime getUpdatedAtSnake() {
         return updatedAt;
+    }
+
+    @JsonProperty("entity_version")
+    public Long getVersionSnake() {
+        return version;
     }
 
     @JsonProperty("uploaded_files")

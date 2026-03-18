@@ -3,6 +3,7 @@ package com.university.lms.course.dto;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.Map;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,6 +20,8 @@ public class UpdateResourceRequest {
   private String title;
 
   private String description;
+
+  private UUID topicId;
 
   @Pattern(
       regexp = "^(VIDEO|PDF|SLIDE|LINK|TEXT|CODE|OTHER)$",

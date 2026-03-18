@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Layout, Card, CardHeader, CardBody, Button } from '../components';
 import { useAuthStore } from '../store/authStore';
 import { useUIStore, type ThemeMode } from '../store/uiStore';
 import apiClient, { extractErrorMessage } from '../api/client';
+import { aiApi } from '../api/ai';
+import type { ApiKeyDto } from '../types';
 import {
   UserCircleIcon,
   EnvelopeIcon,
@@ -11,6 +13,10 @@ import {
   KeyIcon,
   ShieldCheckIcon,
   SwatchIcon,
+  CpuChipIcon,
+  TrashIcon,
+  CheckCircleIcon,
+  XCircleIcon,
 } from '@heroicons/react/24/outline';
 
 export const ProfileSettings: React.FC = () => {
@@ -33,6 +39,67 @@ export const ProfileSettings: React.FC = () => {
     newPassword: '',
     confirmPassword: '',
   });
+
+  // API Key state
+  const [apiKeys, setApiKeys] = useState<ApiKeyDto[]>([]);
+  const [newApiKey, setNewApiKey] = useState('');
+  const [apiKeyLoading, setApiKeyLoading] = useState(false);
+  const [apiKeyValidating, setApiKeyValidating] = useState(false);
+  const [apiKeyValid, setApiKeyValid] = useState<boolean | null>(null);
+
+  const fetchApiKeys = useCallback(async () => {
+    try {
+      const keys = await aiApi.apiKeys.getKeys();
+      setApiKeys(Array.isArray(keys) ? (keys as ApiKeyDto[]) : []);
+    } catch {
+      // User may not have keys yet
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchApiKeys();
+  }, [fetchApiKeys]);
+
+  const handleValidateApiKey = async () => {
+    if (!newApiKey.trim()) return;
+    setApiKeyValidating(true);
+    setApiKeyValid(null);
+    try {
+      const result = await aiApi.apiKeys.validateKey('GROQ', newApiKey);
+      setApiKeyValid(result.valid);
+    } catch {
+      setApiKeyValid(false);
+    } finally {
+      setApiKeyValidating(false);
+    }
+  };
+
+  const handleSaveApiKey = async () => {
+    if (!newApiKey.trim()) return;
+    setApiKeyLoading(true);
+    try {
+      await aiApi.apiKeys.saveKey('GROQ', newApiKey);
+      setNewApiKey('');
+      setApiKeyValid(null);
+      await fetchApiKeys();
+      setMessage({ type: 'success', text: t('apiKeys.saved', 'API key saved successfully!') });
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: extractErrorMessage(err) });
+    } finally {
+      setApiKeyLoading(false);
+    }
+  };
+
+  const handleDeleteApiKey = async (provider: string) => {
+    if (!confirm(t('apiKeys.confirmDelete', 'Are you sure you want to delete this API key?'))) return;
+    try {
+      await aiApi.apiKeys.deleteKey(provider);
+      await fetchApiKeys();
+      setMessage({ type: 'success', text: t('apiKeys.deleted', 'API key deleted') });
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: extractErrorMessage(err) });
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -420,6 +487,100 @@ export const ProfileSettings: React.FC = () => {
               </form>
             </CardBody>
           </Card>
+
+          {/* AI API Keys */}
+          {user?.role !== 'SUPERADMIN' && (
+            <Card className="mb-6">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <CpuChipIcon className="h-6 w-6" style={{ color: 'var(--text-secondary)' }} />
+                  <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    {t('apiKeys.title', 'AI API Keys')}
+                  </h2>
+                </div>
+              </CardHeader>
+              <CardBody>
+                <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
+                  {t('apiKeys.description', 'Add your Groq API key to use AI features. Get one at groq.com/console.')}
+                </p>
+
+                {/* Current keys */}
+                {apiKeys.length > 0 && (
+                  <div className="mb-4 space-y-2">
+                    {apiKeys.map((key) => (
+                      <div
+                        key={key.id}
+                        className="flex items-center justify-between p-3 rounded-lg"
+                        style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
+                      >
+                        <div>
+                          <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                            {key.provider}
+                          </span>
+                          <span className="ml-2 text-sm font-mono" style={{ color: 'var(--text-muted)' }}>
+                            gsk_****{key.keyHint}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteApiKey(key.provider)}
+                          className="p-1.5 rounded hover:bg-red-500/10 transition-colors"
+                          title={t('common.delete', 'Delete')}
+                        >
+                          <TrashIcon className="h-4 w-4" style={{ color: 'var(--fn-error)' }} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add/Update key */}
+                <div className="space-y-3">
+                  <div className="input-group">
+                    <label className="label">
+                      {t('apiKeys.groqKey', 'Groq API Key')}
+                    </label>
+                    <input
+                      type="password"
+                      value={newApiKey}
+                      onChange={(e) => { setNewApiKey(e.target.value); setApiKeyValid(null); }}
+                      className="input"
+                      placeholder="gsk_..."
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      onClick={handleValidateApiKey}
+                      disabled={!newApiKey.trim() || apiKeyValidating}
+                      variant="secondary"
+                    >
+                      {apiKeyValidating ? t('apiKeys.validating', 'Validating...') : t('apiKeys.validate', 'Validate')}
+                    </Button>
+                    <Button
+                      onClick={handleSaveApiKey}
+                      disabled={!newApiKey.trim() || apiKeyLoading}
+                    >
+                      {apiKeyLoading ? t('common.saving', 'Saving...') : t('apiKeys.save', 'Save Key')}
+                    </Button>
+                    {apiKeyValid !== null && (
+                      <span className="flex items-center gap-1 text-sm">
+                        {apiKeyValid ? (
+                          <>
+                            <CheckCircleIcon className="h-5 w-5" style={{ color: 'var(--fn-success)' }} />
+                            <span style={{ color: 'var(--fn-success)' }}>{t('apiKeys.valid', 'Valid')}</span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircleIcon className="h-5 w-5" style={{ color: 'var(--fn-error)' }} />
+                            <span style={{ color: 'var(--fn-error)' }}>{t('apiKeys.invalid', 'Invalid')}</span>
+                          </>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          )}
 
           {/* Account Info */}
           <Card>

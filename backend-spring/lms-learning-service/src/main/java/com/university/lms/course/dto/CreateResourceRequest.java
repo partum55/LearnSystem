@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,6 +23,8 @@ public class CreateResourceRequest {
   private String title;
 
   private String description;
+
+  private UUID topicId;
 
   @NotBlank(message = "Resource type is required")
   @Pattern(

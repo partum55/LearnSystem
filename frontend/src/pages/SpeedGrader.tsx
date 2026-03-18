@@ -1,187 +1,399 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { Card, CardHeader, CardBody, Button, Loading } from '../components';
-import { ConfirmModal } from '../components/common/ConfirmModal';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { Button, Card, CardBody, CardHeader, Loading } from '../components';
 import apiClient from '../api/client';
-
-interface SubmissionFile {
-  id: string;
-  file_url: string;
-  filename: string;
-  file_size: number;
-}
-
-interface Submission {
-  id: string;
-  user: string;
-  student_name: string;
-  student_email: string;
-  status: string;
-  text_answer: string;
-  files: SubmissionFile[];
-  uploaded_files: SubmissionFile[];
-  submission_url: string | null;
-  grade: number | null;
-  feedback: string;
-  rubric_evaluation: Record<string, number>;
-  submitted_at: string;
-  is_late: boolean;
-  days_late: number;
-  comments: Comment[];
-}
-
-interface Comment {
-  id: string;
-  author_name: string;
-  author_email: string;
-  comment: string;
-  created_at: string;
-}
+import { submissionsApi } from '../api/assessments';
+import { GradingSuggestionPanel } from '../components/GradingSuggestionPanel';
+import { PlagiarismCheckPanel } from '../components/PlagiarismCheckPanel';
+import { RichContentRenderer } from '../components/common/RichContentRenderer';
 
 interface Assignment {
   id: string;
   title: string;
-  max_points: number;
-  rubric: Record<string, number>;
-  late_penalty_percent: number;
+  maxPoints: number;
+  latePenaltyPercent: number;
 }
+
+interface SubmissionFile {
+  id: string;
+  fileUrl: string;
+  filename: string;
+  fileSize: number;
+}
+
+interface Comment {
+  id: string;
+  authorName: string;
+  comment: string;
+  createdAt: string;
+}
+
+interface Submission {
+  id: string;
+  studentName: string;
+  studentEmail: string;
+  status: string;
+  textAnswer: string;
+  submissionUrl: string | null;
+  uploadedFiles: SubmissionFile[];
+  comments: Comment[];
+  isLate: boolean;
+  daysLate: number;
+  submittedAt: string | null;
+  updatedAt: string | null;
+  rawScore: number | null;
+  draftGrade: number | null;
+  draftFeedback: string;
+  publishedGrade: number | null;
+  publishedFeedback: string;
+  grade: number | null;
+  feedback: string;
+  version: number | null;
+}
+
+interface ReviewQueueResponse {
+  content: Submission[];
+  pageNumber: number;
+  pageSize: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+const asString = (value: unknown) => (value == null ? '' : String(value));
+const asNumberOrNull = (value: unknown): number | null => {
+  if (value == null) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const mapSubmission = (raw: Record<string, unknown>): Submission => ({
+  id: asString(raw.id),
+  studentName: asString(raw.studentName ?? raw.student_name),
+  studentEmail: asString(raw.studentEmail ?? raw.student_email),
+  status: asString(raw.status).toUpperCase(),
+  textAnswer: asString(raw.textAnswer ?? raw.text_answer),
+  submissionUrl:
+    raw.submissionUrl == null && raw.submission_url == null
+      ? null
+      : asString(raw.submissionUrl ?? raw.submission_url),
+  uploadedFiles: Array.isArray(raw.uploadedFiles ?? raw.uploaded_files)
+    ? ((raw.uploadedFiles ?? raw.uploaded_files) as Record<string, unknown>[]).map((file) => ({
+        id: asString(file.id),
+        fileUrl: asString(file.fileUrl ?? file.file_url),
+        filename: asString(file.filename),
+        fileSize: Number(file.fileSize ?? file.file_size ?? 0),
+      }))
+    : [],
+  comments: Array.isArray(raw.comments)
+    ? (raw.comments as Record<string, unknown>[]).map((comment) => ({
+        id: asString(comment.id),
+        authorName: asString(comment.authorName ?? comment.author_name),
+        comment: asString(comment.comment),
+        createdAt: asString(comment.createdAt ?? comment.created_at),
+      }))
+    : [],
+  isLate: Boolean(raw.isLate ?? raw.is_late),
+  daysLate: Number(raw.daysLate ?? raw.days_late ?? 0),
+  submittedAt:
+    raw.submittedAt == null && raw.submitted_at == null
+      ? null
+      : asString(raw.submittedAt ?? raw.submitted_at),
+  updatedAt:
+    raw.updatedAt == null && raw.updated_at == null
+      ? null
+      : asString(raw.updatedAt ?? raw.updated_at),
+  rawScore: asNumberOrNull(raw.rawScore ?? raw.raw_score),
+  draftGrade: asNumberOrNull(raw.draftGrade ?? raw.draft_grade),
+  draftFeedback: asString(raw.draftFeedback ?? raw.draft_feedback),
+  publishedGrade: asNumberOrNull(raw.publishedGrade ?? raw.published_grade),
+  publishedFeedback: asString(raw.publishedFeedback ?? raw.published_feedback),
+  grade: asNumberOrNull(raw.grade),
+  feedback: asString(raw.feedback),
+  version: asNumberOrNull(raw.version ?? raw.entity_version),
+});
+
+const mapQueueResponse = (raw: Record<string, unknown>): ReviewQueueResponse => ({
+  content: Array.isArray(raw.content)
+    ? (raw.content as Record<string, unknown>[]).map(mapSubmission)
+    : [],
+  pageNumber: Number(raw.pageNumber ?? 0),
+  pageSize: Number(raw.pageSize ?? 25),
+  totalElements: Number(raw.totalElements ?? 0),
+  totalPages: Number(raw.totalPages ?? 0),
+});
+
+const statusLabel = (status: string) => {
+  if (status === 'IN_REVIEW' || status === 'SUBMITTED') return 'Needs review';
+  if (status === 'GRADED_DRAFT') return 'Draft graded';
+  if (status === 'GRADED_PUBLISHED') return 'Published';
+  return status;
+};
+
+const statusToApi = (statusFilter: string) => {
+  if (statusFilter === 'all') return undefined;
+  if (statusFilter === 'needs_review') return 'IN_REVIEW';
+  if (statusFilter === 'draft') return 'GRADED_DRAFT';
+  if (statusFilter === 'published') return 'GRADED_PUBLISHED';
+  return undefined;
+};
 
 export const SpeedGrader: React.FC = () => {
   const { assignmentId: routeAssignmentId } = useParams<{ assignmentId: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const assignmentId = routeAssignmentId || searchParams.get('assignmentId') || undefined;
-  const navigate = useNavigate();
+  const quizId = searchParams.get('quizId') || undefined;
 
   const [assignment, setAssignment] = useState<Assignment | null>(null);
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [queue, setQueue] = useState<ReviewQueueResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
-  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
-  const [pendingNavigation, setPendingNavigation] = useState<'prev' | 'next' | 'exit' | null>(null);
+  const [queueLoading, setQueueLoading] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
-  const [grade, setGrade] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState('needs_review');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
+
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(
+    () => searchParams.get('submission')
+  );
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+
+  const [rawScore, setRawScore] = useState('');
+  const [finalScore, setFinalScore] = useState('');
   const [feedback, setFeedback] = useState('');
+  const initialRef = useRef({ rawScore: '', finalScore: '', feedback: '' });
+
   const [comment, setComment] = useState('');
-  const [rubricScores, setRubricScores] = useState<Record<string, number>>({});
+  const [error, setError] = useState<string | null>(null);
+  const [conflictError, setConflictError] = useState<string | null>(null);
+  const [ungradedQuizAttempts, setUngradedQuizAttempts] = useState<number | null>(null);
 
-  const initialValuesRef = useRef<{ grade: string; feedback: string; rubricScores: Record<string, number> }>({
-    grade: '',
-    feedback: '',
-    rubricScores: {},
-  });
+  const currentSubmission = useMemo(() => {
+    if (!queue?.content || queue.content.length === 0) return null;
+    if (selectedSubmissionId) {
+      return queue.content.find((item) => item.id === selectedSubmissionId) || null;
+    }
+    return queue.content[0] || null;
+  }, [queue, selectedSubmissionId]);
 
-  const currentSubmission = submissions[currentIndex];
+  const hasFormChanges =
+    rawScore !== initialRef.current.rawScore
+    || finalScore !== initialRef.current.finalScore
+    || feedback !== initialRef.current.feedback;
 
-  // Protect against browser navigation/refresh when there are unsaved changes
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDirty) {
-        e.preventDefault();
-        e.returnValue = 'You have unsaved grading changes. Are you sure you want to leave?';
-        return e.returnValue;
-      }
+  const hydrateForm = useCallback((submission: Submission | null) => {
+    if (!submission) {
+      setRawScore('');
+      setFinalScore('');
+      setFeedback('');
+      initialRef.current = { rawScore: '', finalScore: '', feedback: '' };
+      return;
+    }
+
+    const raw = submission.rawScore ?? submission.draftGrade ?? submission.publishedGrade ?? submission.grade;
+    const final = submission.draftGrade ?? submission.publishedGrade ?? submission.grade;
+    const fb = submission.draftFeedback || submission.publishedFeedback || submission.feedback || '';
+
+    const next = {
+      rawScore: raw == null ? '' : String(raw),
+      finalScore: final == null ? '' : String(final),
+      feedback: fb,
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isDirty]);
-
-  useEffect(() => {
-    const submissionId = searchParams.get('submission');
-    if (submissionId && submissions.length > 0) {
-      const index = submissions.findIndex(s => s.id === submissionId);
-      if (index !== -1) {
-        setCurrentIndex(index);
-      }
-    }
-  }, [searchParams, submissions]);
-
-  useEffect(() => {
-    if (currentSubmission) {
-      const initialGrade = currentSubmission.grade?.toString() || '';
-      const initialFeedback = currentSubmission.feedback || '';
-      const initialRubric = currentSubmission.rubric_evaluation || {};
-
-      setGrade(initialGrade);
-      setFeedback(initialFeedback);
-      setRubricScores(initialRubric);
-
-      // Store initial values for dirty checking
-      initialValuesRef.current = {
-        grade: initialGrade,
-        feedback: initialFeedback,
-        rubricScores: initialRubric,
-      };
-      setIsDirty(false);
-    }
-  }, [currentSubmission]);
+    setRawScore(next.rawScore);
+    setFinalScore(next.finalScore);
+    setFeedback(next.feedback);
+    initialRef.current = next;
+  }, []);
 
   const fetchAssignment = useCallback(async () => {
     if (!assignmentId) return;
-    try {
-      const response = await apiClient.get<Assignment>(`/assessments/assignments/${assignmentId}`);
-      setAssignment(response.data);
-    } catch (error) {
-      console.error('Failed to fetch assignment:', error);
-    }
+    const response = await apiClient.get<Record<string, unknown>>(`/assessments/assignments/${assignmentId}`);
+    setAssignment({
+      id: asString(response.data.id),
+      title: asString(response.data.title),
+      maxPoints: Number(response.data.maxPoints ?? response.data.max_points ?? 100),
+      latePenaltyPercent: Number(response.data.latePenaltyPercent ?? response.data.late_penalty_percent ?? 0),
+    });
   }, [assignmentId]);
 
-  const fetchSubmissions = useCallback(async () => {
+  const fetchQueue = useCallback(async () => {
     if (!assignmentId) return;
+
+    setQueueLoading(true);
+    setError(null);
+
     try {
-      const response = await apiClient.get<{ ungraded?: Submission[]; recently_graded?: Submission[] }>(
-        `/submissions/speedgrader?assignmentId=${assignmentId}`
-      );
-      const data = response.data;
-      const allSubmissions = [...(data.ungraded || []), ...(data.recently_graded || [])];
-      setSubmissions(allSubmissions);
-    } catch (error) {
-      console.error('Failed to fetch submissions:', error);
+      const response = await submissionsApi.getReviewQueue(assignmentId, {
+        status: statusToApi(statusFilter),
+        search: search.trim() || undefined,
+        page,
+        size: 25,
+        sort: 'needs_review',
+      });
+
+      const payload = mapQueueResponse(response.data as Record<string, unknown>);
+      setQueue(payload);
+
+      setSelectedSubmissionId((prev) => {
+        if (prev && payload.content.some((item) => item.id === prev)) {
+          return prev;
+        }
+        return payload.content[0]?.id || null;
+      });
+    } catch (err) {
+      const maybe = err as { response?: { data?: { message?: string } }; message?: string };
+      setError(maybe.response?.data?.message || maybe.message || 'Failed to load review queue');
     } finally {
+      setQueueLoading(false);
       setLoading(false);
     }
+  }, [assignmentId, page, search, statusFilter]);
+
+  useEffect(() => {
+    void fetchAssignment();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignmentId]);
 
   useEffect(() => {
-    fetchAssignment();
-    fetchSubmissions();
-  }, [fetchAssignment, fetchSubmissions]);
+    void fetchQueue();
+  }, [fetchQueue]);
 
-  const handleSaveGrade = async (navigateAfter?: 'prev' | 'next' | 'exit') => {
+  useEffect(() => {
+    if (!quizId) {
+      setUngradedQuizAttempts(null);
+      return;
+    }
+
+    void apiClient.get<unknown[]>(`/assessments/quiz-attempts/quiz/${quizId}/ungraded`)
+      .then((response) => {
+        const attempts = Array.isArray(response.data) ? response.data : [];
+        setUngradedQuizAttempts(attempts.length);
+      })
+      .catch(() => {
+        setUngradedQuizAttempts(null);
+      });
+  }, [quizId]);
+
+  useEffect(() => {
+    hydrateForm(currentSubmission);
+    setComment('');
+    setConflictError(null);
+  }, [currentSubmission, hydrateForm]);
+
+  useEffect(() => {
+    if (!assignmentId || !selectedSubmissionId) {
+      return;
+    }
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('assignmentId', assignmentId);
+      next.set('submission', selectedSubmissionId);
+      return next;
+    }, { replace: true });
+  }, [assignmentId, selectedSubmissionId, setSearchParams]);
+
+  useEffect(() => {
+    if (!currentSubmission || !hasFormChanges || savingDraft || publishing) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void handleSaveDraft(true);
+    }, 1500);
+
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSubmission?.id, rawScore, finalScore, feedback, hasFormChanges]);
+
+  const mergeSubmissionIntoQueue = (updated: Submission) => {
+    setQueue((prev) => {
+      if (!prev) return prev;
+      const nextContent = prev.content.map((item) => (item.id === updated.id ? updated : item));
+      return { ...prev, content: nextContent };
+    });
+    setSelectedSubmissionId(updated.id);
+    hydrateForm(updated);
+  };
+
+  const parseAxiosError = (err: unknown) => {
+    const maybe = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
+    const status = maybe.response?.status;
+    const message = maybe.response?.data?.message || maybe.message || 'Request failed';
+    return { status, message };
+  };
+
+  const handleSaveDraft = async (silent = false) => {
     if (!currentSubmission) return;
 
-    setSaving(true);
+    if (!silent) {
+      setSavingDraft(true);
+    }
+
+    setError(null);
+    setConflictError(null);
+
     try {
-      await apiClient.post(`/submissions/${currentSubmission.id}/grade`, {
-        grade: parseFloat(grade),
+      const response = await submissionsApi.saveGradeDraft(currentSubmission.id, {
+        rawScore: rawScore === '' ? undefined : Number(rawScore),
+        finalScore: finalScore === '' ? undefined : Number(finalScore),
         feedback,
-        rubric_evaluation: rubricScores,
+        overridePenalty: true,
+        version: currentSubmission.version,
       });
 
-      // Reset dirty state after successful save
-      initialValuesRef.current = { grade, feedback, rubricScores };
-      setIsDirty(false);
-
-      // Handle pending navigation after save
-      if (navigateAfter === 'next' && currentIndex < submissions.length - 1) {
-        setCurrentIndex(currentIndex + 1);
-      } else if (navigateAfter === 'prev' && currentIndex > 0) {
-        setCurrentIndex(currentIndex - 1);
-      } else if (navigateAfter === 'exit') {
-        navigate(`/assignments/${assignmentId}`);
-      } else if (currentIndex < submissions.length - 1) {
-        setCurrentIndex(currentIndex + 1);
+      const updated = mapSubmission(response.data as Record<string, unknown>);
+      mergeSubmissionIntoQueue(updated);
+    } catch (err) {
+      const parsed = parseAxiosError(err);
+      if (parsed.status === 409) {
+        setConflictError(parsed.message || 'Submission changed by another reviewer. Reload queue.');
+      } else if (!silent) {
+        setError(parsed.message);
       }
-      fetchSubmissions();
-    } catch (error) {
-      console.error('Failed to save grade:', error);
-      alert('Failed to save grade');
     } finally {
-      setSaving(false);
-      setShowUnsavedModal(false);
-      setPendingNavigation(null);
+      if (!silent) {
+        setSavingDraft(false);
+      }
+    }
+  };
+
+  const selectNextSubmission = () => {
+    if (!queue || !currentSubmission) return;
+    const currentIndex = queue.content.findIndex((item) => item.id === currentSubmission.id);
+    if (currentIndex >= 0 && currentIndex < queue.content.length - 1) {
+      setSelectedSubmissionId(queue.content[currentIndex + 1].id);
+    }
+  };
+
+  const handlePublish = async (moveNext = false) => {
+    if (!currentSubmission) return;
+
+    setPublishing(true);
+    setError(null);
+    setConflictError(null);
+
+    try {
+      const response = await submissionsApi.publishGrade(currentSubmission.id, {
+        finalScore: finalScore === '' ? undefined : Number(finalScore),
+        feedback,
+        version: currentSubmission.version,
+      });
+      const updated = mapSubmission(response.data as Record<string, unknown>);
+      mergeSubmissionIntoQueue(updated);
+      if (moveNext) {
+        selectNextSubmission();
+      }
+    } catch (err) {
+      const parsed = parseAxiosError(err);
+      if (parsed.status === 409) {
+        setConflictError(parsed.message || 'Submission changed by another reviewer. Reload queue.');
+      } else {
+        setError(parsed.message);
+      }
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -191,415 +403,458 @@ export const SpeedGrader: React.FC = () => {
     try {
       await apiClient.post(`/submissions/${currentSubmission.id}/comments`, { comment });
       setComment('');
-      fetchSubmissions();
-    } catch (error) {
-      console.error('Failed to add comment:', error);
+      await fetchQueue();
+    } catch (err) {
+      const parsed = parseAxiosError(err);
+      setError(parsed.message);
     }
   };
 
-  // Navigation with unsaved changes check
-  const handleNavigation = (direction: 'prev' | 'next' | 'exit') => {
-    if (isDirty) {
-      setPendingNavigation(direction);
-      setShowUnsavedModal(true);
-    } else {
-      executeNavigation(direction);
+  const selectedRowsList = Array.from(selectedRows);
+
+  const handleBulkPublish = async () => {
+    if (selectedRowsList.length === 0 || !queue) return;
+
+    const summary = `Publish grades for ${selectedRowsList.length} selected submissions?`;
+    if (!window.confirm(summary)) {
+      return;
+    }
+
+    setPublishing(true);
+    try {
+      const items = selectedRowsList.map((id) => {
+        const found = queue.content.find((entry) => entry.id === id);
+        return { submissionId: id, version: found?.version };
+      });
+
+      const response = await submissionsApi.publishBulk(items);
+      const result = response.data as {
+        published?: number;
+        total?: number;
+        results?: Array<{ status?: string; message?: string }>;
+      };
+
+      const failed = (result.results || []).filter((item) => item.status && item.status !== 'published');
+      setSelectedRows(new Set());
+
+      if (failed.length > 0) {
+        setError(`Published ${result.published || 0}/${result.total || items.length}. Some items failed.`);
+      }
+
+      await fetchQueue();
+    } catch (err) {
+      const parsed = parseAxiosError(err);
+      setError(parsed.message);
+    } finally {
+      setPublishing(false);
     }
   };
 
-  const executeNavigation = (direction: 'prev' | 'next' | 'exit') => {
-    if (direction === 'prev' && currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-    } else if (direction === 'next' && currentIndex < submissions.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    } else if (direction === 'exit') {
-      navigate(`/assignments/${assignmentId}`);
-    }
-  };
-
-  const handleDiscardChanges = () => {
-    setShowUnsavedModal(false);
-    if (pendingNavigation) {
-      executeNavigation(pendingNavigation);
-      setPendingNavigation(null);
-    }
-  };
-
-  const handleSaveAndNavigate = () => {
-    if (pendingNavigation) {
-      handleSaveGrade(pendingNavigation);
-    }
-  };
-
-  const navigateToPrevious = () => {
-    handleNavigation('prev');
-  };
-
-  const navigateToNext = () => {
-    handleNavigation('next');
-  };
-
-  const handleExit = () => {
-    handleNavigation('exit');
-  };
-
-  const calculateRubricTotal = () => {
-    return Object.values(rubricScores).reduce((sum, score) => sum + score, 0);
-  };
-
-  const applyRubricToGrade = () => {
-    const total = calculateRubricTotal();
-    setGrade(total.toString());
+  const toggleRow = (submissionId: string) => {
+    setSelectedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(submissionId)) {
+        next.delete(submissionId);
+      } else {
+        next.add(submissionId);
+      }
+      return next;
+    });
   };
 
   if (loading) {
     return <Loading />;
   }
 
-  if (!assignment || submissions.length === 0) {
+  if (!assignmentId || !assignment) {
     return (
-      <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
-        <div className="flex items-center justify-center h-screen">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
-              No Submissions to Grade
-            </h2>
-            <Button onClick={() => navigate(`/assignments/${assignmentId}`)}>
-              Back to Assignment
-            </Button>
-          </div>
-        </div>
+      <div className="p-8">
+        <p style={{ color: 'var(--text-muted)' }}>Assignment not found.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
-      {/* Unsaved Changes Modal */}
-      <ConfirmModal
-        isOpen={showUnsavedModal}
-        onClose={() => {
-          setShowUnsavedModal(false);
-          setPendingNavigation(null);
-        }}
-        onConfirm={handleDiscardChanges}
-        title="Unsaved Changes"
-        message="You have unsaved changes to this grade. What would you like to do?"
-        details="Your grade and feedback changes will be lost if you don't save."
-        variant="warning"
-        confirmText="Discard Changes"
-        cancelText="Keep Editing"
-        thirdAction={{
-          text: "Save & Continue",
-          onClick: handleSaveAndNavigate,
-          isLoading: saving,
-        }}
-      />
-
-      {/* SpeedGrader uses custom layout without sidebar */}
-      <div className="px-8 py-4" style={{ borderBottom: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
-        <div className="flex items-center justify-between">
+    <div className="min-h-screen p-6" style={{ background: 'var(--bg-base)' }}>
+      <div className="max-w-[1500px] mx-auto space-y-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
+            <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
               {assignment.title}
             </h1>
-            <div className="flex items-center gap-3">
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                SpeedGrader - {currentIndex + 1} of {submissions.length}
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              Reviewer workspace · {queue?.totalElements || 0} submissions
+            </p>
+            {ungradedQuizAttempts !== null && (
+              <p className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>
+                Ungraded quiz attempts: {ungradedQuizAttempts}
               </p>
-              {isDirty && (
-                <span className="text-xs flex items-center gap-1" style={{ color: 'var(--fn-warning)' }}>
-                  <span className="w-2 h-2 rounded-full" style={{ background: 'var(--fn-warning)' }}></span>
-                  Unsaved changes
-                </span>
-              )}
-            </div>
+            )}
           </div>
 
-          <div className="flex items-center space-x-4">
-            <Button
-              onClick={navigateToPrevious}
-              disabled={currentIndex === 0}
-              variant="secondary"
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={statusFilter}
+              onChange={(event) => {
+                setPage(0);
+                setStatusFilter(event.target.value);
+              }}
+              className="input"
             >
-              &larr; Previous
+              <option value="needs_review">Needs review</option>
+              <option value="draft">Draft graded</option>
+              <option value="published">Published</option>
+              <option value="all">All</option>
+            </select>
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="input"
+              placeholder="Search student"
+            />
+            <Button variant="secondary" onClick={() => { setPage(0); void fetchQueue(); }}>
+              Search
             </Button>
-            <Button
-              onClick={navigateToNext}
-              disabled={currentIndex === submissions.length - 1}
-              variant="secondary"
-            >
-              Next &rarr;
-            </Button>
-            <Button onClick={handleExit}>
-              Exit
+            <Button variant="secondary" onClick={() => void fetchQueue()}>
+              Reload
             </Button>
           </div>
         </div>
-      </div>
 
-      <div className="p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Submission Content */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Student Info */}
-              <Card>
-                <CardBody>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                        {currentSubmission.student_name}
-                      </h2>
-                      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                        {currentSubmission.student_email}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                        Submitted: {new Date(currentSubmission.submitted_at).toLocaleString()}
-                      </p>
-                      {currentSubmission.is_late && (
-                        <span className="badge badge-error inline-block mt-1">
-                          Late ({currentSubmission.days_late} days)
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </CardBody>
-              </Card>
+        {error && (
+          <div className="p-3 rounded" style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--fn-error)' }}>
+            {error}
+          </div>
+        )}
 
-              {/* Text Answer */}
-              {currentSubmission.text_answer && (
-                <Card>
-                  <CardHeader>
-                    <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                      Text Answer
-                    </h3>
-                  </CardHeader>
-                  <CardBody>
-                    <div className="max-w-none" style={{ color: 'var(--text-secondary)' }}>
-                      <p className="whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
-                        {currentSubmission.text_answer}
-                      </p>
-                    </div>
-                  </CardBody>
-                </Card>
-              )}
+        {conflictError && (
+          <div className="p-3 rounded flex items-center justify-between gap-2" style={{ background: 'rgba(245,158,11,0.12)', color: 'var(--fn-warning)' }}>
+            <span>{conflictError}</span>
+            <Button variant="secondary" size="sm" onClick={() => void fetchQueue()}>Reload queue</Button>
+          </div>
+        )}
 
-              {/* Uploaded Files */}
-              {currentSubmission.uploaded_files && currentSubmission.uploaded_files.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                      Uploaded Files
-                    </h3>
-                  </CardHeader>
-                  <CardBody>
-                    <div className="space-y-2">
-                      {currentSubmission.uploaded_files.map((file: SubmissionFile) => (
-                        <a
-                          key={file.id}
-                          href={file.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-between p-3 rounded-lg"
-                          style={{ background: 'var(--bg-elevated)' }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-elevated)'; }}
-                        >
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+          <Card className="xl:col-span-4">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  Submission Review
+                </h2>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleBulkPublish}
+                  disabled={selectedRowsList.length === 0 || publishing}
+                >
+                  Publish selected ({selectedRowsList.length})
+                </Button>
+              </div>
+            </CardHeader>
+            <CardBody>
+              {queueLoading ? (
+                <p style={{ color: 'var(--text-muted)' }}>Loading queue...</p>
+              ) : !queue || queue.content.length === 0 ? (
+                <p style={{ color: 'var(--text-muted)' }}>No submissions in this queue.</p>
+              ) : (
+                <div className="space-y-2">
+                  {queue.content.map((item) => {
+                    const isSelected = item.id === currentSubmission?.id;
+                    return (
+                      <div
+                        key={item.id}
+                        className="p-3 rounded border cursor-pointer"
+                        style={{
+                          borderColor: isSelected ? 'var(--border-strong)' : 'var(--border-subtle)',
+                          background: isSelected ? 'var(--bg-active)' : 'var(--bg-elevated)',
+                        }}
+                        onClick={() => {
+                          setSelectedSubmissionId(item.id);
+                          setSearchParams((prev) => {
+                            const next = new URLSearchParams(prev);
+                            next.set('submission', item.id);
+                            next.set('assignmentId', assignmentId);
+                            return next;
+                          }, { replace: true });
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-2">
                           <div>
-                            <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                              {file.filename}
-                            </p>
-                            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                              {(file.file_size / 1024).toFixed(2)} KB
+                            <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{item.studentName}</p>
+                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.studentEmail}</p>
+                            <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                              {statusLabel(item.status)}
                             </p>
                           </div>
-                          <svg className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        </a>
-                      ))}
+                          <input
+                            type="checkbox"
+                            checked={selectedRows.has(item.id)}
+                            onChange={(event) => {
+                              event.stopPropagation();
+                              toggleRow(item.id);
+                            }}
+                            onClick={(event) => event.stopPropagation()}
+                          />
+                        </div>
+                        {item.submittedAt && (
+                          <p className="text-xs mt-2" style={{ color: 'var(--text-faint)' }}>
+                            Submitted {new Date(item.submittedAt).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  <div className="flex items-center justify-between pt-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setPage((prev) => Math.max(0, prev - 1))}
+                      disabled={page <= 0}
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      Page {(queue.pageNumber || 0) + 1} / {Math.max(queue.totalPages || 0, 1)}
+                    </span>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setPage((prev) => prev + 1)}
+                      disabled={queue.totalPages > 0 ? page >= queue.totalPages - 1 : true}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardBody>
+          </Card>
+
+          <div className="xl:col-span-5 space-y-4">
+            {!currentSubmission ? (
+              <Card>
+                <CardBody>
+                  <p style={{ color: 'var(--text-muted)' }}>Select a submission to review.</p>
+                </CardBody>
+              </Card>
+            ) : (
+              <>
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between gap-3">
+                      <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                        {currentSubmission.studentName}
+                      </h2>
+                      <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                        {statusLabel(currentSubmission.status)}
+                      </div>
                     </div>
+                  </CardHeader>
+                  <CardBody>
+                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                      {currentSubmission.studentEmail}
+                    </p>
+                    {currentSubmission.submittedAt && (
+                      <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+                        Submitted at {new Date(currentSubmission.submittedAt).toLocaleString()}
+                      </p>
+                    )}
+                    {currentSubmission.isLate && (
+                      <p className="text-sm mt-2" style={{ color: 'var(--fn-error)' }}>
+                        Late by {currentSubmission.daysLate} day(s)
+                      </p>
+                    )}
                   </CardBody>
                 </Card>
-              )}
 
-              {/* Submission URL */}
-              {currentSubmission.submission_url && (
+                {currentSubmission.textAnswer && (
+                  <Card>
+                    <CardHeader>
+                      <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                        Submission text
+                      </h3>
+                    </CardHeader>
+                    <CardBody>
+                      <RichContentRenderer
+                        content={currentSubmission.textAnswer}
+                        className="whitespace-pre-wrap"
+                      />
+                    </CardBody>
+                  </Card>
+                )}
+
+                {currentSubmission.submissionUrl && (
+                  <Card>
+                    <CardHeader>
+                      <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                        Submission URL
+                      </h3>
+                    </CardHeader>
+                    <CardBody>
+                      <a href={currentSubmission.submissionUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-secondary)' }}>
+                        {currentSubmission.submissionUrl}
+                      </a>
+                    </CardBody>
+                  </Card>
+                )}
+
+                {currentSubmission.uploadedFiles.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                        Uploaded files
+                      </h3>
+                    </CardHeader>
+                    <CardBody>
+                      <div className="space-y-2">
+                        {currentSubmission.uploadedFiles.map((file) => (
+                          <a
+                            key={file.id}
+                            href={file.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block p-2 rounded"
+                            style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}
+                          >
+                            {file.filename}
+                          </a>
+                        ))}
+                      </div>
+                    </CardBody>
+                  </Card>
+                )}
+
                 <Card>
                   <CardHeader>
                     <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                      Submission URL
+                      Comments
                     </h3>
-                  </CardHeader>
-                  <CardBody>
-                    <a
-                      href={currentSubmission.submission_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ color: 'var(--text-secondary)' }}
-                    >
-                      {currentSubmission.submission_url}
-                    </a>
-                  </CardBody>
-                </Card>
-              )}
-
-              {/* Comments */}
-              <Card>
-                <CardHeader>
-                  <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                    Comments
-                  </h3>
-                </CardHeader>
-                <CardBody>
-                  <div className="space-y-4">
-                    {currentSubmission.comments?.map((c) => (
-                      <div key={c.id} className="pl-4 py-2" style={{ borderLeft: '4px solid var(--border-strong)' }}>
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                            {c.author_name}
-                          </p>
-                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                            {new Date(c.created_at).toLocaleString()}
-                          </p>
-                        </div>
-                        <p style={{ color: 'var(--text-secondary)' }}>{c.comment}</p>
-                      </div>
-                    ))}
-
-                    <div className="pt-4">
-                      <textarea
-                        value={comment}
-                        onChange={(e) => setComment(e.target.value)}
-                        placeholder="Add a comment..."
-                        rows={3}
-                        className="input w-full"
-                      />
-                      <Button
-                        onClick={handleAddComment}
-                        disabled={!comment.trim()}
-                        className="mt-2"
-                      >
-                        Add Comment
-                      </Button>
-                    </div>
-                  </div>
-                </CardBody>
-              </Card>
-            </div>
-
-            {/* Grading Panel */}
-            <div className="space-y-6">
-              {/* Grade Input */}
-              <Card>
-                <CardHeader>
-                  <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                    Grade
-                  </h3>
-                </CardHeader>
-                <CardBody>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="label block mb-2">
-                        Points
-                      </label>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="number"
-                          value={grade}
-                          onChange={(e) => setGrade(e.target.value)}
-                          min="0"
-                          max={assignment.max_points}
-                          step="0.01"
-                          className="input flex-1"
-                        />
-                        <span style={{ color: 'var(--text-muted)' }}>
-                          / {assignment.max_points}
-                        </span>
-                      </div>
-                      {currentSubmission.is_late && assignment.late_penalty_percent > 0 && (
-                        <p className="text-sm mt-1" style={{ color: 'var(--fn-error)' }}>
-                          Late penalty: {assignment.late_penalty_percent}% per day
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="label block mb-2">
-                        Feedback
-                      </label>
-                      <textarea
-                        value={feedback}
-                        onChange={(e) => setFeedback(e.target.value)}
-                        rows={6}
-                        placeholder="Provide feedback to the student..."
-                        className="input w-full"
-                      />
-                    </div>
-                  </div>
-                </CardBody>
-              </Card>
-
-              {/* Rubric */}
-              {assignment.rubric && Object.keys(assignment.rubric).length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                        Rubric
-                      </h3>
-                      <Button onClick={applyRubricToGrade} variant="secondary" size="sm">
-                        Apply to Grade
-                      </Button>
-                    </div>
                   </CardHeader>
                   <CardBody>
                     <div className="space-y-3">
-                      {Object.entries(assignment.rubric).map(([criterion, maxPoints]: [string, number]) => (
-                        <div key={criterion}>
-                          <label className="label block mb-1">
-                            {criterion}
-                          </label>
-                          <input
-                            type="number"
-                            value={rubricScores[criterion] || 0}
-                            onChange={(e) => setRubricScores({
-                              ...rubricScores,
-                              [criterion]: parseFloat(e.target.value) || 0
-                            })}
-                            min="0"
-                            max={maxPoints}
-                            step="0.5"
-                            className="input w-full text-sm"
-                          />
-                          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                            Max: {maxPoints} points
-                          </p>
+                      {currentSubmission.comments.map((entry) => (
+                        <div key={entry.id} className="p-2 rounded" style={{ background: 'var(--bg-elevated)' }}>
+                          <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{entry.authorName}</p>
+                          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{entry.comment}</p>
+                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{new Date(entry.createdAt).toLocaleString()}</p>
                         </div>
                       ))}
-                      <div className="pt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                        <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                          Total: {calculateRubricTotal()} points
-                        </p>
-                      </div>
+
+                      <textarea
+                        value={comment}
+                        onChange={(event) => setComment(event.target.value)}
+                        rows={3}
+                        className="input w-full"
+                        placeholder="Add a comment"
+                      />
+                      <Button variant="secondary" onClick={handleAddComment} disabled={!comment.trim()}>
+                        Add comment
+                      </Button>
                     </div>
                   </CardBody>
                 </Card>
-              )}
-
-              {/* Save Button */}
-              <Button
-                onClick={() => handleSaveGrade()}
-                disabled={!grade || saving}
-                className="w-full"
-              >
-                {saving ? 'Saving...' : 'Save Grade & Next'}
-              </Button>
-            </div>
+              </>
+            )}
           </div>
+
+          <Card className="xl:col-span-3 h-fit">
+            <CardHeader>
+              <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                Grading
+              </h2>
+            </CardHeader>
+            <CardBody>
+              {!currentSubmission ? (
+                <p style={{ color: 'var(--text-muted)' }}>Select a submission to grade.</p>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="label block mb-1">Raw score</label>
+                    <input
+                      className="input w-full"
+                      type="number"
+                      min={0}
+                      max={assignment.maxPoints}
+                      step="0.01"
+                      value={rawScore}
+                      onChange={(event) => setRawScore(event.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="label block mb-1">Final score</label>
+                    <input
+                      className="input w-full"
+                      type="number"
+                      min={0}
+                      max={assignment.maxPoints}
+                      step="0.01"
+                      value={finalScore}
+                      onChange={(event) => setFinalScore(event.target.value)}
+                    />
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                      / {assignment.maxPoints}
+                    </p>
+                    {currentSubmission.isLate && assignment.latePenaltyPercent > 0 && (
+                      <p className="text-xs mt-1" style={{ color: 'var(--fn-warning)' }}>
+                        Suggested late penalty: {assignment.latePenaltyPercent}% per day (override allowed).
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="label block mb-1">Feedback</label>
+                    <textarea
+                      className="input w-full"
+                      rows={8}
+                      value={feedback}
+                      onChange={(event) => setFeedback(event.target.value)}
+                      placeholder="Private until published"
+                    />
+                  </div>
+
+                  {/* AI Grading Assistant */}
+                  {assignmentId && currentSubmission && (
+                    <GradingSuggestionPanel
+                      assignmentId={assignmentId}
+                      submissionId={currentSubmission.id}
+                      onAccept={(grade, fb) => {
+                        setFinalScore(String(grade));
+                        setFeedback(fb);
+                      }}
+                    />
+                  )}
+
+                  {/* AI Plagiarism Check */}
+                  {currentSubmission && (
+                    <PlagiarismCheckPanel submissionId={currentSubmission.id} />
+                  )}
+
+                  <div className="space-y-2">
+                    <Button onClick={() => void handleSaveDraft(false)} disabled={savingDraft || publishing || !hasFormChanges} className="w-full" variant="secondary">
+                      {savingDraft ? 'Saving draft...' : 'Save Draft'}
+                    </Button>
+                    <Button onClick={() => void handlePublish(false)} disabled={publishing || finalScore === ''} className="w-full">
+                      {publishing ? 'Publishing...' : 'Publish'}
+                    </Button>
+                    <Button onClick={() => void handlePublish(true)} disabled={publishing || finalScore === ''} className="w-full" variant="secondary">
+                      Publish & Next
+                    </Button>
+                  </div>
+
+                  {currentSubmission.publishedGrade != null && (
+                    <div className="pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Last published</p>
+                      <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                        {currentSubmission.publishedGrade} / {assignment.maxPoints}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardBody>
+          </Card>
         </div>
       </div>
     </div>

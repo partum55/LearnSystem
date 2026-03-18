@@ -6,6 +6,8 @@ import { Card, CardHeader, CardBody } from '../components';
 import { Button } from '../components';
 import { Loading } from '../components';
 import { CreateQuestionModal } from '../components';
+import { Breadcrumbs } from '../components/common/Breadcrumbs';
+import { RichContentRenderer } from '../components/common/RichContentRenderer';
 import apiClient from '../api/client';
 
 interface Question {
@@ -32,7 +34,12 @@ interface Quiz {
   title: string;
   description: string;
   time_limit: number | null;
-  attempts_allowed: number;
+  timer_enabled: boolean;
+  attempts_allowed: number | null;
+  attempt_limit_enabled: boolean;
+  attempt_score_policy: 'HIGHEST' | 'LATEST' | 'FIRST';
+  secure_session_enabled: boolean;
+  secure_require_fullscreen: boolean;
   shuffle_questions: boolean;
   shuffle_answers: boolean;
   show_correct_answers: boolean;
@@ -53,6 +60,7 @@ export const QuizDetail: React.FC = () => {
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
   const [hoveredQuestionId, setHoveredQuestionId] = useState<string | null>(null);
+  const [courseName, setCourseName] = useState<string>('');
 
   const fetchQuiz = useCallback(async () => {
     if (!quizId) return;
@@ -64,7 +72,12 @@ export const QuizDetail: React.FC = () => {
         title: string;
         description?: string;
         timeLimit?: number | null;
+        timerEnabled?: boolean;
         attemptsAllowed?: number;
+        attemptLimitEnabled?: boolean;
+        attemptScorePolicy?: 'HIGHEST' | 'LATEST' | 'FIRST';
+        secureSessionEnabled?: boolean;
+        secureRequireFullscreen?: boolean;
         shuffleQuestions?: boolean;
         shuffleAnswers?: boolean;
         showCorrectAnswers?: boolean;
@@ -94,7 +107,17 @@ export const QuizDetail: React.FC = () => {
         title: response.data.title,
         description: response.data.description || '',
         time_limit: response.data.timeLimit ?? null,
-        attempts_allowed: response.data.attemptsAllowed ?? 1,
+        timer_enabled: Boolean(response.data.timerEnabled ?? (response.data.timeLimit !== null && response.data.timeLimit !== undefined)),
+        attempts_allowed:
+          response.data.attemptsAllowed === null || response.data.attemptsAllowed === undefined
+            ? null
+            : response.data.attemptsAllowed,
+        attempt_limit_enabled:
+          Boolean(response.data.attemptLimitEnabled ?? (response.data.attemptsAllowed !== null && response.data.attemptsAllowed !== undefined)),
+        attempt_score_policy: response.data.attemptScorePolicy ?? 'HIGHEST',
+        secure_session_enabled: Boolean(response.data.secureSessionEnabled),
+        secure_require_fullscreen:
+          response.data.secureRequireFullscreen === undefined ? true : Boolean(response.data.secureRequireFullscreen),
         shuffle_questions: Boolean(response.data.shuffleQuestions),
         shuffle_answers: Boolean(response.data.shuffleAnswers),
         show_correct_answers: Boolean(response.data.showCorrectAnswers),
@@ -161,6 +184,25 @@ export const QuizDetail: React.FC = () => {
     }
   }, [quiz?.course, fetchAvailableQuestions]);
 
+  useEffect(() => {
+    const fetchCourseName = async () => {
+      if (!quiz?.course) {
+        return;
+      }
+      try {
+        const response = await apiClient.get<{ titleUk?: string; titleEn?: string; title?: string; code?: string }>(
+          `/courses/${quiz.course}`
+        );
+        const data = response.data;
+        setCourseName(data.titleEn || data.titleUk || data.title || data.code || '');
+      } catch {
+        setCourseName('');
+      }
+    };
+
+    void fetchCourseName();
+  }, [quiz?.course]);
+
   const handleAddQuestions = async () => {
     try {
       await Promise.all(
@@ -224,6 +266,15 @@ export const QuizDetail: React.FC = () => {
     <Layout>
       <div className="p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
+          <Breadcrumbs
+            className="mb-6"
+            items={[
+              { label: t('courses.title', 'Courses'), to: '/courses' },
+              ...(quiz.course ? [{ label: courseName || t('courses.title', 'Course'), to: `/courses/${quiz.course}` }] : []),
+              { label: quiz.title },
+            ]}
+          />
+
           {/* Quiz Header */}
           <div className="mb-8">
             <div className="flex items-start justify-between gap-4">
@@ -231,9 +282,9 @@ export const QuizDetail: React.FC = () => {
                 <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
                   {quiz.title}
                 </h1>
-                <p className="mt-2" style={{ color: 'var(--text-muted)' }}>
-                  {quiz.description}
-                </p>
+                <div className="mt-2">
+                  <RichContentRenderer content={quiz.description} />
+                </div>
               </div>
               <Button onClick={handleDuplicateQuiz} disabled={isDuplicatingQuiz}>
                 {isDuplicatingQuiz
@@ -275,7 +326,7 @@ export const QuizDetail: React.FC = () => {
               <CardBody>
                 <div className="text-center">
                   <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                    {quiz.time_limit || '∞'}
+                    {quiz.timer_enabled && quiz.time_limit ? quiz.time_limit : '∞'}
                   </p>
                   <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                     {t('quiz.minutes')}
@@ -288,7 +339,7 @@ export const QuizDetail: React.FC = () => {
               <CardBody>
                 <div className="text-center">
                   <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                    {quiz.attempts_allowed}
+                    {quiz.attempt_limit_enabled ? (quiz.attempts_allowed ?? '\u2014') : t('quiz.unlimited', '∞')}
                   </p>
                   <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                     {t('quiz.attempts')}

@@ -10,7 +10,9 @@ import com.university.lms.course.dto.UpdateModuleRequest;
 import com.university.lms.course.repository.CourseMemberRepository;
 import com.university.lms.course.repository.CourseRepository;
 import com.university.lms.course.repository.ModuleRepository;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +32,7 @@ public class ModuleService {
   private final CourseRepository courseRepository;
   private final CourseMemberRepository courseMemberRepository;
   private final CourseMapper courseMapper;
+  private final ModuleUnlockService moduleUnlockService;
 
   /** Get all modules for a course. */
   @Cacheable(value = "modules", key = "T(String).format('%s:%s', #courseId, #userId)")
@@ -48,12 +51,18 @@ public class ModuleService {
     if (canManage) {
       // Teachers/TAs see all modules
       modules = moduleRepository.findByCourseIdOrderByPositionAsc(courseId);
-    } else {
-      // Students see only published modules
-      modules = moduleRepository.findPublishedModulesByCourse(courseId);
+      return modules.stream().map(courseMapper::toDto).toList();
     }
 
-    return modules.stream().map(courseMapper::toDto).toList();
+    // Students see published modules with unlock-state applied.
+    modules = moduleRepository.findPublishedModulesByCourse(courseId);
+    Map<UUID, Boolean> unlockStates = moduleUnlockService.resolveUnlockStates(modules, userId);
+    return modules.stream()
+        .map(
+            module ->
+                toStudentViewDto(
+                    module, unlockStates.getOrDefault(module.getId(), /* locked by default */ false)))
+        .toList();
   }
 
   /** Get module by ID. */
@@ -71,6 +80,9 @@ public class ModuleService {
     }
     if (!module.getIsPublished() && !canManage) {
       throw new ValidationException("Module is not published");
+    }
+    if (!canManage && !moduleUnlockService.isUnlocked(module, userId)) {
+      throw new ValidationException("Module is locked until prerequisite module is completed");
     }
 
     return courseMapper.toDto(module);
@@ -239,5 +251,21 @@ public class ModuleService {
       return true;
     }
     return courseMemberRepository.canUserManageCourse(course.getId(), userId);
+  }
+
+  private ModuleDto toStudentViewDto(Module module, boolean unlocked) {
+    ModuleDto dto = courseMapper.toDto(module);
+    boolean available = Boolean.TRUE.equals(dto.getIsAvailable()) && unlocked;
+    dto.setIsAvailable(available);
+
+    if (!available) {
+      dto.setResources(List.of());
+      dto.setResourceCount(0);
+      Map<String, Object> contentMeta =
+          dto.getContentMeta() == null ? new HashMap<>() : new HashMap<>(dto.getContentMeta());
+      contentMeta.put("locked", true);
+      dto.setContentMeta(contentMeta);
+    }
+    return dto;
   }
 }

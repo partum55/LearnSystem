@@ -108,6 +108,7 @@ public class CourseImportExportController {
             List<QuestionExport> questionExports = questions.getContent().stream().map(q -> QuestionExport.builder()
                     .questionType(q.getQuestionType())
                     .stem(q.getStem())
+                    .imageUrl(q.getImageUrl())
                     .options(q.getOptions())
                     .correctAnswer(q.getCorrectAnswer())
                     .explanation(q.getExplanation())
@@ -291,6 +292,7 @@ public class CourseImportExportController {
                     questionDto.setCourseId(courseId);
                     questionDto.setQuestionType(qExp.getQuestionType());
                     questionDto.setStem(qExp.getStem());
+                    questionDto.setImageUrl(qExp.getImageUrl());
                     if (qExp.getOptions() instanceof Map) {
                         @SuppressWarnings("unchecked")
                         Map<String, Object> opts = (Map<String, Object>) qExp.getOptions();
@@ -464,6 +466,7 @@ public class CourseImportExportController {
                         QuestionExport.builder()
                                 .questionType("MULTIPLE_CHOICE")
                                 .stem("What does CPU stand for?")
+                                .imageUrl("https://example.edu/images/cpu-diagram.png")
                                 .options(List.of("Central Processing Unit", "Computer Personal Unit", "Central Program Unit", "Computer Processing Unit"))
                                 .correctAnswer("Central Processing Unit")
                                 .explanation("CPU = Central Processing Unit")
@@ -486,7 +489,12 @@ public class CourseImportExportController {
                         .title(quiz.getTitle())
                         .description(quiz.getDescription())
                         .timeLimit(quiz.getTimeLimit())
+                        .timerEnabled(quiz.getTimerEnabled())
                         .attemptsAllowed(quiz.getAttemptsAllowed())
+                        .attemptLimitEnabled(quiz.getAttemptLimitEnabled())
+                        .attemptScorePolicy(quiz.getAttemptScorePolicy() == null ? null : quiz.getAttemptScorePolicy().name())
+                        .secureSessionEnabled(quiz.getSecureSessionEnabled())
+                        .secureRequireFullscreen(quiz.getSecureRequireFullscreen())
                         .shuffleQuestions(quiz.getShuffleQuestions())
                         .shuffleAnswers(quiz.getShuffleAnswers())
                         .passPercentage(quiz.getPassPercentage())
@@ -505,7 +513,6 @@ public class CourseImportExportController {
                 .instructions(a.getInstructions())
                 .instructionsFormat(a.getInstructionsFormat())
                 .maxPoints(a.getMaxPoints())
-                .rubric(a.getRubric())
                 .dueDate(a.getDueDate() != null ? a.getDueDate().toString() : null)
                 .availableFrom(a.getAvailableFrom() != null ? a.getAvailableFrom().toString() : null)
                 .availableUntil(a.getAvailableUntil() != null ? a.getAvailableUntil().toString() : null)
@@ -538,7 +545,6 @@ public class CourseImportExportController {
         if (exp.getProgrammingLanguage() != null) req.setProgrammingLanguage(exp.getProgrammingLanguage());
         if (exp.getAutoGradingEnabled() != null) req.setAutoGradingEnabled(exp.getAutoGradingEnabled());
         if (exp.getTestCases() != null) req.setTestCases(exp.getTestCases());
-        if (exp.getRubric() != null) req.setRubric(exp.getRubric());
         if (exp.getAllowLateSubmission() != null) req.setAllowLateSubmission(exp.getAllowLateSubmission());
         if (exp.getLatePenaltyPercent() != null) req.setLatePenaltyPercent(exp.getLatePenaltyPercent());
         if (exp.getSubmissionTypes() != null) req.setSubmissionTypes(exp.getSubmissionTypes());
@@ -555,7 +561,12 @@ public class CourseImportExportController {
                         .title(quizExp.getTitle())
                         .description(quizExp.getDescription())
                         .timeLimit(quizExp.getTimeLimit())
+                        .timerEnabled(quizExp.getTimerEnabled())
                         .attemptsAllowed(quizExp.getAttemptsAllowed())
+                        .attemptLimitEnabled(quizExp.getAttemptLimitEnabled())
+                        .attemptScorePolicy(parseAttemptScorePolicy(quizExp.getAttemptScorePolicy()))
+                        .secureSessionEnabled(quizExp.getSecureSessionEnabled())
+                        .secureRequireFullscreen(quizExp.getSecureRequireFullscreen())
                         .shuffleQuestions(quizExp.getShuffleQuestions())
                         .shuffleAnswers(quizExp.getShuffleAnswers())
                         .showCorrectAnswers(quizExp.getShowCorrectAnswers())
@@ -580,6 +591,17 @@ public class CourseImportExportController {
         }
 
         assignmentService.createAssignment(req, userId);
+    }
+
+    private com.university.lms.course.assessment.domain.AttemptScorePolicy parseAttemptScorePolicy(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return com.university.lms.course.assessment.domain.AttemptScorePolicy.HIGHEST;
+        }
+        try {
+            return com.university.lms.course.assessment.domain.AttemptScorePolicy.valueOf(raw.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return com.university.lms.course.assessment.domain.AttemptScorePolicy.HIGHEST;
+        }
     }
 
     // ==================== DTOs ====================
@@ -640,7 +662,6 @@ public class CourseImportExportController {
         private String instructions;
         private String instructionsFormat;
         private BigDecimal maxPoints;
-        private Map<String, Object> rubric;
         private String dueDate;
         private String availableFrom;
         private String availableUntil;
@@ -665,7 +686,12 @@ public class CourseImportExportController {
         private String title;
         private String description;
         private Integer timeLimit;
+        private Boolean timerEnabled;
         private Integer attemptsAllowed;
+        private Boolean attemptLimitEnabled;
+        private String attemptScorePolicy;
+        private Boolean secureSessionEnabled;
+        private Boolean secureRequireFullscreen;
         private Boolean shuffleQuestions;
         private Boolean shuffleAnswers;
         private BigDecimal passPercentage;
@@ -676,6 +702,7 @@ public class CourseImportExportController {
     public static class QuestionExport {
         private String questionType;
         private String stem;
+        private String imageUrl;
         private Object options;
         private Object correctAnswer;
         private String explanation;

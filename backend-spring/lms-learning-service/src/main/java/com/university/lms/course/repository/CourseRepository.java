@@ -3,6 +3,8 @@ package com.university.lms.course.repository;
 import com.university.lms.common.domain.CourseStatus;
 import com.university.lms.common.domain.CourseVisibility;
 import com.university.lms.course.domain.Course;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -19,11 +21,18 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
   /** Find course by unique code. */
   Optional<Course> findByCode(String code);
 
+  /** Find courses by a collection of codes. */
+  List<Course> findByCodeIn(Collection<String> codes);
+
   /** Check if course with code exists. */
   boolean existsByCode(String code);
 
   /** Find all courses by owner. */
   Page<Course> findByOwnerId(UUID ownerId, Pageable pageable);
+
+  /** Find all course IDs by owner. */
+  @Query("SELECT c.id FROM Course c WHERE c.ownerId = :ownerId")
+  List<UUID> findIdsByOwnerId(@Param("ownerId") UUID ownerId);
 
   /** Find published courses. */
   Page<Course> findByIsPublishedTrueAndVisibility(CourseVisibility visibility, Pageable pageable);

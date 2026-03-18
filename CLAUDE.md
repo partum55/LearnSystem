@@ -45,7 +45,7 @@ cp .env.production.example .env.production  # Fill in Supabase, JWT, Groq keys
 ### Docker — Development (dev branch)
 ```bash
 cp .env.example .env    # Configure local DB passwords, JWT_SECRET, LLAMA_API_KEY
-./run-local.sh build    # Includes local PostgreSQL container
+docker compose up --build -d    # Includes local PostgreSQL container
 ```
 
 ### Frontend

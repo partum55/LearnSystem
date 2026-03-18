@@ -30,6 +30,14 @@ public interface LLMProvider {
    */
   LLMResponse generate(String prompt, String systemPrompt, LLMGenerationOptions options);
 
+  /**
+   * Generate text using a specific API key (for per-user key support).
+   * Default implementation delegates to the standard generate method.
+   */
+  default LLMResponse generate(String prompt, String systemPrompt, LLMGenerationOptions options, String apiKey) {
+    return generate(prompt, systemPrompt, options);
+  }
+
   /** Get current health status of this provider. */
   default ProviderHealth getHealth() {
     return isAvailable() ? ProviderHealth.HEALTHY : ProviderHealth.UNAVAILABLE;

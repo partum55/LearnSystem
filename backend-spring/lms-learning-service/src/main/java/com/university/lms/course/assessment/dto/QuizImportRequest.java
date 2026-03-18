@@ -1,5 +1,6 @@
 package com.university.lms.course.assessment.dto;
 
+import com.university.lms.course.assessment.domain.AttemptScorePolicy;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -27,6 +28,11 @@ public class QuizImportRequest {
   private String description;
   private Integer timeLimit;
   private Integer attemptsAllowed;
+  private Boolean timerEnabled;
+  private Boolean attemptLimitEnabled;
+  private AttemptScorePolicy attemptScorePolicy;
+  private Boolean secureSessionEnabled;
+  private Boolean secureRequireFullscreen;
   private Boolean shuffleQuestions;
   private Boolean shuffleAnswers;
 

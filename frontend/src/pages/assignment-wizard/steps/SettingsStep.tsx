@@ -1,22 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WizardFormData } from '../wizardTypes';
-import { Assignment } from '../../../types';
+import { Assignment, Topic } from '../../../types';
 import api from '../../../api/client';
+import { topicsApi } from '../../../api/courses';
 
 interface SettingsStepProps {
   formData: WizardFormData;
   onChange: (partial: Partial<WizardFormData>) => void;
   validationErrors: Record<string, string>;
   courseId: string;
+  moduleId?: string;
+  topicId?: string;
+  onTopicChange?: (topicId: string | undefined) => void;
 }
 
 const FILE_TYPE_OPTIONS = ['.pdf', '.docx', '.doc', '.txt', '.zip', '.py', '.java', '.js', '.ts', '.cpp', '.c', '.png', '.jpg', '.jpeg'];
 
-const SettingsStep: React.FC<SettingsStepProps> = ({ formData, onChange, validationErrors, courseId }) => {
+const SettingsStep: React.FC<SettingsStepProps> = ({ formData, onChange, validationErrors, courseId, moduleId, topicId, onTopicChange }) => {
   const { t } = useTranslation();
   const isFileUpload = formData.assignment_type === 'FILE_UPLOAD';
   const [availableAssignments, setAvailableAssignments] = useState<Assignment[]>([]);
+  const [availableTopics, setAvailableTopics] = useState<Topic[]>([]);
 
   useEffect(() => {
     if (!courseId) return;
@@ -24,6 +29,13 @@ const SettingsStep: React.FC<SettingsStepProps> = ({ formData, onChange, validat
       .then(res => setAvailableAssignments(res.data?.content || []))
       .catch(() => {});
   }, [courseId]);
+
+  useEffect(() => {
+    if (!courseId || !moduleId) return;
+    topicsApi.getAll(courseId, moduleId)
+      .then(res => setAvailableTopics(res.data))
+      .catch(() => setAvailableTopics([]));
+  }, [courseId, moduleId]);
 
   const toggleFileType = (type: string) => {
     const current = formData.allowed_file_types;
@@ -94,6 +106,28 @@ const SettingsStep: React.FC<SettingsStepProps> = ({ formData, onChange, validat
           />
         </div>
       </div>
+
+      {/* Topic selector */}
+      {availableTopics.length > 0 && onTopicChange && (
+        <div>
+          <label className="label" htmlFor="wizard-topic">
+            {t('modules.topicSelector', 'Topic (optional)')}
+          </label>
+          <select
+            id="wizard-topic"
+            value={topicId || ''}
+            onChange={(e) => onTopicChange(e.target.value || undefined)}
+            className="input w-full"
+          >
+            <option value="">{t('modules.noTopic', 'No topic')}</option>
+            {availableTopics.map((topic) => (
+              <option key={topic.id} value={topic.id}>
+                {topic.title}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* File upload settings */}
       {isFileUpload && (

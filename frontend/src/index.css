@@ -67,6 +67,91 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ═══════════════════════════════════════════════
+   Animation wrapper classes (CSS replacements for motion/react)
+   ═══════════════════════════════════════════════ */
+
+@keyframes anim-page-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.anim-page-enter {
+  animation: anim-page-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes anim-tab-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.anim-tab-enter {
+  animation: anim-tab-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.anim-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1) 0.05s;
+}
+.anim-collapse[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.anim-collapse-inner {
+  overflow: hidden;
+}
+
+@keyframes anim-stagger-item-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.anim-stagger-item {
+  animation: anim-stagger-item-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.anim-stagger > .anim-stagger-item:nth-child(1)  { animation-delay: 0.02s; }
+.anim-stagger > .anim-stagger-item:nth-child(2)  { animation-delay: 0.06s; }
+.anim-stagger > .anim-stagger-item:nth-child(3)  { animation-delay: 0.10s; }
+.anim-stagger > .anim-stagger-item:nth-child(4)  { animation-delay: 0.14s; }
+.anim-stagger > .anim-stagger-item:nth-child(5)  { animation-delay: 0.18s; }
+.anim-stagger > .anim-stagger-item:nth-child(6)  { animation-delay: 0.22s; }
+.anim-stagger > .anim-stagger-item:nth-child(7)  { animation-delay: 0.26s; }
+.anim-stagger > .anim-stagger-item:nth-child(8)  { animation-delay: 0.30s; }
+.anim-stagger > .anim-stagger-item:nth-child(n+9) { animation-delay: 0.34s; }
+
 code {
   font-family: 'JetBrains Mono', source-code-pro, Menlo, Monaco, Consolas, monospace;
+}
+
+body.print-assignment {
+  background: var(--bg-base);
+}
+
+@media print {
+  html,
+  body,
+  body.print-assignment {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .print-no {
+    display: none !important;
+  }
+
+  .print-page {
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: auto !important;
+    max-width: none !important;
+  }
+
+  .print-card {
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+    padding: 0 !important;
+  }
 }

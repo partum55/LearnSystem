@@ -37,7 +37,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
 
             {/* Modal */}
             <motion.div
-              className={`inline-block align-bottom rounded-lg text-left overflow-hidden shadow-2xl sm:my-8 sm:align-middle ${sizeClasses[size]} sm:w-full`}
+              className={`relative z-10 inline-block align-bottom rounded-lg text-left overflow-hidden shadow-2xl sm:my-8 sm:align-middle ${sizeClasses[size]} sm:w-full`}
               style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}
               variants={reduced ? undefined : modalPanel}
               initial="hidden"

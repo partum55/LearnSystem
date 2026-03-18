@@ -106,6 +106,51 @@ public class AIGateway {
         "All AI providers are currently unavailable. Please try again later.", lastException);
   }
 
+  /**
+   * Generate text using a specific API key (per-user key support).
+   */
+  public LLMResponse generate(String prompt, String systemPrompt, LLMGenerationOptions options, String apiKey) {
+    List<LLMProvider> orderedProviders = getOrderedProviders();
+
+    if (orderedProviders.isEmpty()) {
+      throw new AIServiceUnavailableException("No AI providers configured");
+    }
+
+    Exception lastException = null;
+
+    for (LLMProvider provider : orderedProviders) {
+      String providerName = provider.getName();
+      CircuitBreaker circuitBreaker = getOrCreateCircuitBreaker(providerName);
+
+      try {
+        log.info("Attempting generation with provider: {} (user key)", providerName);
+
+        LLMResponse response =
+            circuitBreaker.executeSupplier(() -> provider.generate(prompt, systemPrompt, options, apiKey));
+
+        metricsCollector.recordGeneration(
+            options.getGenerationType(), providerName, response.getLatencyMs(), true);
+        metricsCollector.recordTokenUsage(
+            providerName, response.getPromptTokens(), response.getCompletionTokens());
+
+        return response;
+
+      } catch (CallNotPermittedException e) {
+        lastException = e;
+        log.warn("Circuit breaker is open for provider: {}", providerName);
+        metricsCollector.recordCircuitBreakerOpen(providerName);
+      } catch (Exception e) {
+        lastException = e;
+        log.warn("Provider {} failed with user key. Error: {}", providerName, e.getMessage());
+        metricsCollector.recordGeneration(options.getGenerationType(), providerName, 0, false);
+        metricsCollector.recordFallback(providerName, options.getGenerationType());
+      }
+    }
+
+    throw new AIServiceUnavailableException(
+        "All AI providers are currently unavailable. Please try again later.", lastException);
+  }
+
   /** Generate text with default options. */
   public LLMResponse generate(String prompt, String systemPrompt) {
     return generate(prompt, systemPrompt, LLMGenerationOptions.defaults());

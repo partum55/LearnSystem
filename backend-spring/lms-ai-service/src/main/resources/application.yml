@@ -54,6 +54,10 @@ llama:
     timeout: 120000  # 2 minutes for long generations
     max-retries: 3
 
+# Internal service-to-service auth
+security:
+  internal-token: ${INTERNAL_SERVICE_TOKEN:}
+
 # JWT Configuration (for common JwtService)
 jwt:
   secret: ${JWT_SECRET:CHANGE-ME-set-a-secure-jwt-secret-in-env-vars}
@@ -64,6 +68,8 @@ jwt:
 services:
   learning-service:
     url: ${LEARNING_SERVICE_URL:http://localhost:8089}
+  user-service:
+    url: ${USER_SERVICE_URL:http://localhost:8081}
 
 # Logging
 logging:

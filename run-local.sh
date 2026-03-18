@@ -155,13 +155,28 @@ show_status() {
     echo ""
     echo -e "${BLUE}Health Checks:${NC}"
 
-    services=("redis:6380" "eureka-server:8761" "api-gateway:8080" "user-service:8081" "learning-service:8089" "ai-service:8085" "analytics-service:8088" "frontend:3000")
+    services=(
+        "redis:6380:/health"
+        "eureka-server:8761:/actuator/health"
+        "api-gateway:8080:/actuator/health"
+        "user-service:8081:/api/actuator/health"
+        "learning-service:8089:/api/actuator/health"
+        "marketplace-service:8086:/api/actuator/health"
+        "ai-service:8085:/api/actuator/health"
+        "analytics-service:8088:/api/actuator/health"
+        "frontend:3000:/"
+    )
 
     for service in "${services[@]}"; do
         name="${service%%:*}"
-        port="${service##*:}"
+        rest="${service#*:}"
+        port="${rest%%:*}"
+        health_path="/${rest#*:}"
+        health_path="${health_path#//}"
 
-        if curl -s -f "http://localhost:$port/actuator/health" > /dev/null 2>&1 || \
+        if curl -s -f "http://localhost:$port/$health_path" > /dev/null 2>&1 || \
+           curl -s -f "http://localhost:$port/api/actuator/health" > /dev/null 2>&1 || \
+           curl -s -f "http://localhost:$port/actuator/health" > /dev/null 2>&1 || \
            curl -s -f "http://localhost:$port/health" > /dev/null 2>&1 || \
            curl -s -f "http://localhost:$port" > /dev/null 2>&1; then
             echo -e "  ${GREEN}✓${NC} $name (port $port)"

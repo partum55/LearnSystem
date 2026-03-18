@@ -1,5 +1,5 @@
-import { AssignmentType, Rubric } from '../../types';
-import { RubricDraft, QuestionDraft, AIDraft } from '../../features/authoring/types';
+import { AssignmentType } from '../../types';
+import { QuestionDraft, AIDraft } from '../../features/authoring/types';
 
 export type WizardStep = 'type' | 'content' | 'resources' | 'settings' | 'grading' | 'review';
 
@@ -54,11 +54,16 @@ export interface WizardFormData {
 
   // Grading step
   max_points: number;
-  rubric: Rubric | Record<string, unknown>;
-  rubric_draft: RubricDraft;
   auto_grading_enabled: boolean;
   test_cases: Array<{ input: string; expected_output: string; points: number }>;
   quiz_questions: QuestionDraft[];
+  quiz_timer_enabled: boolean;
+  quiz_time_limit: number | null;
+  quiz_attempt_limit_enabled: boolean;
+  quiz_attempts_allowed: number | null;
+  quiz_attempt_score_policy: 'HIGHEST' | 'LATEST' | 'FIRST';
+  quiz_secure_session_enabled: boolean;
+  quiz_secure_require_fullscreen: boolean;
 
   // Review / meta
   is_published: boolean;
@@ -90,21 +95,16 @@ export const initialWizardFormData: WizardFormData = {
   tags: [],
   prerequisites: [],
   max_points: 100,
-  rubric: {},
-  rubric_draft: {
-    criteria: [{
-      id: `criterion-${Date.now()}`,
-      title: 'New Criterion',
-      description: '',
-      weight: 0,
-      explanation: '',
-      format: 'MARKDOWN',
-    }],
-    totalPoints: 100,
-  },
   auto_grading_enabled: false,
   test_cases: [],
   quiz_questions: [],
+  quiz_timer_enabled: false,
+  quiz_time_limit: null,
+  quiz_attempt_limit_enabled: false,
+  quiz_attempts_allowed: null,
+  quiz_attempt_score_policy: 'HIGHEST',
+  quiz_secure_session_enabled: false,
+  quiz_secure_require_fullscreen: true,
   is_published: false,
   is_template: false,
   ai_drafts: [],

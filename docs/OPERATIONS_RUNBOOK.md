@@ -59,9 +59,10 @@
 |---------|------|-----------------|
 | Eureka Server | 8761 | /actuator/health |
 | API Gateway | 8080 | /actuator/health |
-| User Service | 8081 | /actuator/health |
+| User Service | 8081 | /api/actuator/health |
 | Learning Service | 8089 | /api/actuator/health |
-| AI Service | 8085 | /actuator/health |
+| Marketplace Service | 8086 | /api/actuator/health |
+| AI Service | 8085 | /api/actuator/health |
 | Analytics Service | 8088 | /api/actuator/health |
 | PostgreSQL | 5432 | - |
 | Redis | 6380 (host) / 6379 (container) | PING |
@@ -187,6 +188,7 @@ declare -A ENDPOINTS=(
   ["api-gateway"]="http://localhost:8080/actuator/health"
   ["user-service"]="http://localhost:8081/api/actuator/health"
   ["learning-service"]="http://localhost:8089/api/actuator/health"
+  ["marketplace-service"]="http://localhost:8086/api/actuator/health"
   ["ai-service"]="http://localhost:8085/api/actuator/health"
   ["analytics-service"]="http://localhost:8088/api/actuator/health"
 )
@@ -377,13 +379,13 @@ docker exec lms-postgres pg_dump -U lms_user lms_db | gzip > backup_$(date +%Y%m
 
 ```bash
 # Stop services
-docker-compose stop user-service learning-service ai-service analytics-service api-gateway
+docker-compose stop user-service learning-service marketplace-service ai-service analytics-service api-gateway
 
 # Restore
 gunzip -c backup_20251219.sql.gz | docker exec -i lms-postgres psql -U lms_user lms_db
 
 # Restart services
-docker-compose start user-service learning-service ai-service analytics-service api-gateway
+docker-compose start user-service learning-service marketplace-service ai-service analytics-service api-gateway
 ```
 
 ### 7.3 Redis Backup

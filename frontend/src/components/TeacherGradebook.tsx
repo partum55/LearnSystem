@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import apiClient, { extractErrorMessage } from '../api/client';
+import { gradebookApi, GradebookCategory, GradeHistoryItem } from '../api/gradebook';
 import { Card, CardBody } from './Card';
 import { Loading } from './Loading';
 import { Button } from './Button';
@@ -13,7 +14,10 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   FunnelIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  ClockIcon,
+  PlusIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 
 interface GradeEntry {
@@ -24,6 +28,7 @@ interface GradeEntry {
   status: string;
   is_late: boolean;
   is_excused: boolean;
+  notes?: string;
 }
 
 interface Assignment {
@@ -32,6 +37,7 @@ interface Assignment {
   max_points: number;
   due_date?: string;
   category?: string;
+  category_id?: string;
   module_id?: string;
   module_title?: string;
 }
@@ -79,6 +85,7 @@ interface ApiGradebookEntry {
   status: string;
   late: boolean;
   excused: boolean;
+  notes?: string;
 }
 
 interface TeacherGradebookProps {
@@ -92,6 +99,9 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
   const [error, setError] = useState<string | null>(null);
   const [editingCell, setEditingCell] = useState<{ studentId: string; assignmentId: string } | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [editStatus, setEditStatus] = useState<string>('NOT_SUBMITTED');
+  const [editExcused, setEditExcused] = useState(false);
+  const [editNotes, setEditNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
   // Filters and view state
@@ -100,9 +110,23 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
   const [expandedStudents, setExpandedStudents] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
   const [gradeFilter, setGradeFilter] = useState<'all' | 'graded' | 'pending' | 'missing'>('all');
+  const [categories, setCategories] = useState<GradebookCategory[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [historyByEntry, setHistoryByEntry] = useState<Record<string, GradeHistoryItem[]>>({});
+  const [loadingHistoryFor, setLoadingHistoryFor] = useState<string | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryWeight, setNewCategoryWeight] = useState('10');
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editingCategoryName, setEditingCategoryName] = useState('');
+  const [editingCategoryWeight, setEditingCategoryWeight] = useState('0');
+  const [editingCategoryDropLowest, setEditingCategoryDropLowest] = useState('0');
+  const [editingCategoryDescription, setEditingCategoryDescription] = useState('');
+  const [savingCategory, setSavingCategory] = useState(false);
+  const [mappingAssignmentId, setMappingAssignmentId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchGradebook();
+    void fetchCategories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId]);
 
@@ -120,13 +144,18 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
       ]);
 
       // Build assignment → module mapping from assessments API
-      const rawAssignments: { id: string; moduleId?: string; module_id?: string }[] = Array.isArray(assignmentsResponse.data)
+      const rawAssignments: { id: string; moduleId?: string; module_id?: string; categoryId?: string; category_id?: string }[] = Array.isArray(assignmentsResponse.data)
         ? assignmentsResponse.data
-        : (assignmentsResponse.data as { content?: { id: string; moduleId?: string; module_id?: string }[] })?.content || [];
+        : (assignmentsResponse.data as {
+            content?: { id: string; moduleId?: string; module_id?: string; categoryId?: string; category_id?: string }[];
+          })?.content || [];
       const assignmentModuleMap = new Map<string, string>();
-      rawAssignments.forEach((a: { id: string; moduleId?: string; module_id?: string }) => {
+      const assignmentCategoryMap = new Map<string, string>();
+      rawAssignments.forEach((a: { id: string; moduleId?: string; module_id?: string; categoryId?: string; category_id?: string }) => {
         const modId = a.moduleId || a.module_id;
         if (modId) assignmentModuleMap.set(a.id, String(modId));
+        const categoryId = a.categoryId || a.category_id;
+        if (categoryId) assignmentCategoryMap.set(a.id, String(categoryId));
       });
 
       // Build module info map
@@ -150,6 +179,7 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
             max_points: Number(entry.maxScore || 0),
             module_id: moduleId,
             module_title: moduleInfo?.title,
+            category_id: assignmentCategoryMap.get(entry.assignmentId),
           });
         }
 
@@ -172,6 +202,7 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
           status: entry.status,
           is_late: Boolean(entry.late),
           is_excused: Boolean(entry.excused),
+          notes: entry.notes || undefined,
         };
       });
 
@@ -227,6 +258,148 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
     }
   };
 
+  const fetchCategories = async () => {
+    setCategoriesLoading(true);
+    try {
+      const data = await gradebookApi.getCategories(courseId);
+      setCategories(data);
+    } catch (err) {
+      console.error('Failed to fetch gradebook categories:', err);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
+  const createCategory = async () => {
+    const name = newCategoryName.trim();
+    const weightPercent = Number(newCategoryWeight);
+    if (!name || Number.isNaN(weightPercent)) return;
+
+    try {
+      await gradebookApi.createCategory({ courseId, name, weight: weightPercent, dropLowest: 0 });
+      setNewCategoryName('');
+      setNewCategoryWeight('10');
+      await fetchCategories();
+    } catch (err) {
+      alert(extractErrorMessage(err));
+    }
+  };
+
+  const startEditCategory = (category: GradebookCategory) => {
+    setEditingCategoryId(category.id);
+    setEditingCategoryName(category.name);
+    setEditingCategoryWeight(String(category.weight));
+    setEditingCategoryDropLowest(String(category.dropLowest ?? 0));
+    setEditingCategoryDescription(category.description || '');
+  };
+
+  const cancelEditCategory = () => {
+    setEditingCategoryId(null);
+    setEditingCategoryName('');
+    setEditingCategoryWeight('0');
+    setEditingCategoryDropLowest('0');
+    setEditingCategoryDescription('');
+  };
+
+  const saveCategory = async () => {
+    if (!editingCategoryId) return;
+    const name = editingCategoryName.trim();
+    const weight = Number(editingCategoryWeight);
+    const dropLowest = Number(editingCategoryDropLowest);
+    if (!name || Number.isNaN(weight) || Number.isNaN(dropLowest)) return;
+
+    setSavingCategory(true);
+    try {
+      const original = categories.find((category) => category.id === editingCategoryId);
+      await gradebookApi.updateCategory(editingCategoryId, {
+        courseId,
+        name,
+        description: editingCategoryDescription.trim() || undefined,
+        weight,
+        dropLowest,
+        position: original?.position,
+      });
+      cancelEditCategory();
+      await fetchCategories();
+    } catch (err) {
+      alert(extractErrorMessage(err));
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
+  const deleteCategory = async (categoryId: string) => {
+    if (!window.confirm(t('gradebook.delete_category_confirm', 'Delete category?'))) return;
+
+    try {
+      await gradebookApi.deleteCategory(categoryId);
+      await fetchCategories();
+    } catch (err) {
+      alert(extractErrorMessage(err));
+    }
+  };
+
+  const moveCategory = async (categoryId: string, direction: 'up' | 'down') => {
+    const ordered = [...categories].sort((a, b) => a.position - b.position);
+    const index = ordered.findIndex((category) => category.id === categoryId);
+    if (index < 0) return;
+
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= ordered.length) return;
+
+    const reordered = [...ordered];
+    [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+
+    try {
+      await gradebookApi.reorderCategories(courseId, reordered.map((category) => category.id));
+      await fetchCategories();
+    } catch (err) {
+      alert(extractErrorMessage(err));
+    }
+  };
+
+  const mapAssignmentCategory = async (assignmentId: string, categoryId: string) => {
+    setMappingAssignmentId(assignmentId);
+    try {
+      await apiClient.put(`/assessments/assignments/${assignmentId}`, { categoryId });
+      setGradebook((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          assignments: prev.assignments.map((assignment) =>
+            assignment.id === assignmentId ? { ...assignment, category_id: categoryId } : assignment
+          ),
+        };
+      });
+    } catch (err) {
+      alert(extractErrorMessage(err));
+    } finally {
+      setMappingAssignmentId(null);
+    }
+  };
+
+  const loadEntryHistory = async (entryId?: string) => {
+    if (!entryId) return;
+    if (historyByEntry[entryId]) {
+      setHistoryByEntry((prev) => {
+        const next = { ...prev };
+        delete next[entryId];
+        return next;
+      });
+      return;
+    }
+
+    setLoadingHistoryFor(entryId);
+    try {
+      const history = await gradebookApi.getEntryHistory(entryId);
+      setHistoryByEntry((prev) => ({ ...prev, [entryId]: history }));
+    } catch (err) {
+      alert(extractErrorMessage(err));
+    } finally {
+      setLoadingHistoryFor(null);
+    }
+  };
+
   // Group assignments by modules
   const groupedAssignments = useMemo(() => {
     if (!gradebook) return [];
@@ -250,6 +423,20 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
 
     return Array.from(moduleMap.values());
   }, [gradebook, t]);
+
+  const sortedCategories = useMemo(
+    () => [...categories].sort((a, b) => a.position - b.position),
+    [categories]
+  );
+
+  const categoryNameById = useMemo(
+    () =>
+      sortedCategories.reduce<Record<string, string>>((acc, category) => {
+        acc[category.id] = category.name;
+        return acc;
+      }, {}),
+    [sortedCategories]
+  );
 
   // Filter students based on search and grade filter
   const filteredStudents = useMemo(() => {
@@ -307,14 +494,24 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
     setExpandedStudents(new Set());
   };
 
-  const startEdit = (studentId: string, assignmentId: string, currentScore?: number) => {
+  const startEdit = (
+    studentId: string,
+    assignmentId: string,
+    grade: GradeEntry | null | undefined
+  ) => {
     setEditingCell({ studentId, assignmentId });
-    setEditValue(currentScore !== undefined ? currentScore.toString() : '');
+    setEditValue(grade?.score !== undefined ? String(grade.score) : '');
+    setEditStatus(grade?.status || 'NOT_SUBMITTED');
+    setEditExcused(Boolean(grade?.is_excused));
+    setEditNotes(grade?.notes || '');
   };
 
   const cancelEdit = () => {
     setEditingCell(null);
     setEditValue('');
+    setEditStatus('NOT_SUBMITTED');
+    setEditExcused(false);
+    setEditNotes('');
   };
 
   const saveGrade = async (entryId?: string) => {
@@ -323,12 +520,19 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
     setSaving(true);
     try {
       const score = editValue === '' ? null : parseFloat(editValue);
+      if (score !== null && Number.isNaN(score)) {
+        alert('Invalid score');
+        return;
+      }
 
       if (entryId) {
         // Update existing entry
         await apiClient.patch(`/gradebook/entries/${entryId}`, {
           overrideScore: score,
-          overrideReason: 'Manual grade entry by teacher'
+          overrideReason: 'Manual grade entry by teacher',
+          status: editStatus,
+          isExcused: editExcused,
+          notes: editNotes.trim() || null,
         });
       } else {
         // Create new entry (would need additional logic)
@@ -337,8 +541,7 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
 
       // Refresh gradebook
       await fetchGradebook();
-      setEditingCell(null);
-      setEditValue('');
+      cancelEdit();
     } catch (err) {
       console.error('Failed to save grade:', err);
       alert(extractErrorMessage(err));
@@ -476,6 +679,157 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
         </Card>
       )}
 
+      {/* Gradebook Categories */}
+      <Card>
+        <CardBody>
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {t('gradebook.categories', 'Categories')}
+              </h3>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                {t('gradebook.categories_help', 'Use categories to structure weighted grading.')}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-end gap-2">
+              <div>
+                <label className="label block mb-1">{t('gradebook.category_name', 'Name')}</label>
+                <Input value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} />
+              </div>
+              <div>
+                <label className="label block mb-1">{t('gradebook.category_weight', 'Weight %')}</label>
+                <Input type="number" value={newCategoryWeight} onChange={(e) => setNewCategoryWeight(e.target.value)} />
+              </div>
+              <Button onClick={() => void createCategory()}>
+                <PlusIcon className="h-4 w-4 mr-1" />
+                {t('gradebook.add_category', 'Add')}
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-2">
+            {categoriesLoading ? (
+              <p style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</p>
+            ) : categories.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)' }}>{t('gradebook.no_categories', 'No categories yet.')}</p>
+            ) : (
+              sortedCategories.map((category) => {
+                const isEditing = editingCategoryId === category.id;
+                return (
+                  <div key={category.id} className="rounded-md px-3 py-2" style={{ background: 'var(--bg-base)' }}>
+                    {isEditing ? (
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
+                        <Input
+                          value={editingCategoryName}
+                          onChange={(event) => setEditingCategoryName(event.target.value)}
+                          placeholder={t('gradebook.category_name', 'Name')}
+                        />
+                        <Input
+                          type="number"
+                          value={editingCategoryWeight}
+                          onChange={(event) => setEditingCategoryWeight(event.target.value)}
+                          placeholder={t('gradebook.category_weight', 'Weight %')}
+                        />
+                        <Input
+                          type="number"
+                          value={editingCategoryDropLowest}
+                          onChange={(event) => setEditingCategoryDropLowest(event.target.value)}
+                          placeholder={t('gradebook.drop_lowest', 'Drop lowest')}
+                        />
+                        <Input
+                          value={editingCategoryDescription}
+                          onChange={(event) => setEditingCategoryDescription(event.target.value)}
+                          placeholder={t('assignment.description', 'Description')}
+                        />
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => void saveCategory()} isLoading={savingCategory}>
+                            <CheckIcon className="h-4 w-4 mr-1" />
+                            {t('common.save')}
+                          </Button>
+                          <Button size="sm" variant="secondary" onClick={cancelEditCategory}>
+                            <XMarkIcon className="h-4 w-4 mr-1" />
+                            {t('common.cancel')}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{category.name}</p>
+                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                            {category.weight}% · drop lowest {category.dropLowest || 0}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="secondary" onClick={() => void moveCategory(category.id, 'up')}>
+                            {t('common.moveUp', 'Move up')}
+                          </Button>
+                          <Button size="sm" variant="secondary" onClick={() => void moveCategory(category.id, 'down')}>
+                            {t('common.moveDown', 'Move down')}
+                          </Button>
+                          <Button size="sm" variant="secondary" onClick={() => startEditCategory(category)}>
+                            <PencilSquareIcon className="h-4 w-4 mr-1" />
+                            {t('gradebook.edit_category', 'Edit')}
+                          </Button>
+                          <Button variant="secondary" size="sm" onClick={() => void deleteCategory(category.id)}>
+                            <TrashIcon className="h-4 w-4 mr-1" />
+                            {t('common.delete')}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {gradebook.assignments.length > 0 && sortedCategories.length > 0 && (
+            <div className="mt-6">
+              <h4 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {t('gradebook.assignment_category', 'Assignment category')}
+              </h4>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                {t('gradebook.assignment_category_help', 'Map assignments to grading categories.')}
+              </p>
+              <div className="mt-3 space-y-2">
+                {gradebook.assignments.map((assignment) => (
+                  <div
+                    key={assignment.id}
+                    className="rounded-md px-3 py-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between"
+                    style={{ background: 'var(--bg-base)' }}
+                  >
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                        {assignment.title}
+                      </p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {assignment.module_title || t('gradebook.unassigned_module')}
+                      </p>
+                    </div>
+                    <select
+                      className="input w-full md:w-64"
+                      value={assignment.category_id || ''}
+                      onChange={(event) => void mapAssignmentCategory(assignment.id, event.target.value)}
+                      disabled={mappingAssignmentId === assignment.id}
+                    >
+                      <option value="" disabled>
+                        {t('common.select')}
+                      </option>
+                      {sortedCategories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardBody>
+      </Card>
+
       {/* Students List */}
       <div className="space-y-4">
         {filteredStudents.map((student) => {
@@ -566,45 +920,79 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
                                       {t('gradebook.max_points')}: {assignment.max_points}
                                       {assignment.due_date && ` • ${t('gradebook.due')}: ${new Date(assignment.due_date).toLocaleDateString()}`}
                                     </div>
+                                    <div className="text-xs" style={{ color: 'var(--text-faint)' }}>
+                                      {t('gradebook.assignment_category', 'Assignment category')}: {assignment.category_id ? categoryNameById[assignment.category_id] : t('gradebook.unassigned_category', 'Unassigned')}
+                                    </div>
                                   </div>
 
                                   {/* Grade Input/Display */}
                                   <div className="flex items-center gap-2">
                                     {isEditing ? (
-                                      <>
+                                      <div className="min-w-[340px] space-y-2">
+                                        <div className="flex items-center gap-2">
+                                          <Input
+                                            type="number"
+                                            value={editValue}
+                                            onChange={(e) => setEditValue(e.target.value)}
+                                            className="w-24 text-center"
+                                            min="0"
+                                            max={assignment.max_points}
+                                            step="0.1"
+                                            disabled={saving}
+                                            autoFocus
+                                          />
+                                          <span style={{ color: 'var(--text-muted)' }}>/ {assignment.max_points}</span>
+                                          <select
+                                            className="input w-40"
+                                            value={editStatus}
+                                            onChange={(event) => setEditStatus(event.target.value)}
+                                            disabled={saving}
+                                          >
+                                            {['NOT_SUBMITTED', 'SUBMITTED', 'GRADED', 'MISSING', 'LATE', 'EXCUSED'].map((status) => (
+                                              <option key={status} value={status}>
+                                                {t(`gradebook.status.${status.toLowerCase()}`, status)}
+                                              </option>
+                                            ))}
+                                          </select>
+                                          <label className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                                            <input
+                                              type="checkbox"
+                                              checked={editExcused}
+                                              onChange={(event) => setEditExcused(event.target.checked)}
+                                              disabled={saving}
+                                            />
+                                            {t('gradebook.excused')}
+                                          </label>
+                                        </div>
                                         <Input
-                                          type="number"
-                                          value={editValue}
-                                          onChange={(e) => setEditValue(e.target.value)}
-                                          className="w-24 text-center"
-                                          min="0"
-                                          max={assignment.max_points}
-                                          step="0.1"
+                                          value={editNotes}
+                                          onChange={(event) => setEditNotes(event.target.value)}
+                                          placeholder={t('gradebook.student_note', 'Note')}
                                           disabled={saving}
-                                          autoFocus
                                         />
-                                        <span style={{ color: 'var(--text-muted)' }}>/ {assignment.max_points}</span>
-                                        <button
-                                          onClick={() => saveGrade(grade?.entry_id)}
-                                          disabled={saving}
-                                          className="p-2 rounded transition-colors"
-                                          style={{ color: 'var(--fn-success)' }}
-                                          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(34, 197, 94, 0.1)'; }}
-                                          onMouseLeave={(e) => { e.currentTarget.style.background = ''; }}
-                                        >
-                                          <CheckIcon className="h-5 w-5" />
-                                        </button>
-                                        <button
-                                          onClick={cancelEdit}
-                                          disabled={saving}
-                                          className="p-2 rounded transition-colors"
-                                          style={{ color: 'var(--fn-error)' }}
-                                          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
-                                          onMouseLeave={(e) => { e.currentTarget.style.background = ''; }}
-                                        >
-                                          <XMarkIcon className="h-5 w-5" />
-                                        </button>
-                                      </>
+                                        <div className="flex items-center gap-2">
+                                          <button
+                                            onClick={() => saveGrade(grade?.entry_id)}
+                                            disabled={saving}
+                                            className="p-2 rounded transition-colors"
+                                            style={{ color: 'var(--fn-success)' }}
+                                            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(34, 197, 94, 0.1)'; }}
+                                            onMouseLeave={(e) => { e.currentTarget.style.background = ''; }}
+                                          >
+                                            <CheckIcon className="h-5 w-5" />
+                                          </button>
+                                          <button
+                                            onClick={cancelEdit}
+                                            disabled={saving}
+                                            className="p-2 rounded transition-colors"
+                                            style={{ color: 'var(--fn-error)' }}
+                                            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
+                                            onMouseLeave={(e) => { e.currentTarget.style.background = ''; }}
+                                          >
+                                            <XMarkIcon className="h-5 w-5" />
+                                          </button>
+                                        </div>
+                                      </div>
                                     ) : (
                                       <>
                                         <div className="min-w-[120px] text-right">
@@ -626,6 +1014,11 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
                                               {t('gradebook.not_graded')}
                                             </span>
                                           )}
+                                          {grade?.notes && (
+                                            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                                              {t('gradebook.student_note', 'Note')}: {grade.notes}
+                                            </p>
+                                          )}
                                         </div>
 
                                         {/* Status Badges */}
@@ -635,9 +1028,9 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
                                               {t('gradebook.late')}
                                             </span>
                                           )}
-                                          {grade?.status === 'PENDING' && (
+                                          {(grade?.status === 'SUBMITTED' || grade?.status === 'LATE') && (
                                             <span className="badge" style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
-                                              {t('gradebook.pending')}
+                                              {t(`gradebook.status.${grade.status.toLowerCase()}`, grade.status)}
                                             </span>
                                           )}
                                           {(!grade || grade.status === 'NOT_SUBMITTED') && (
@@ -648,7 +1041,7 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
                                         </div>
 
                                         <button
-                                          onClick={() => startEdit(student.student_id, assignment.id, grade?.score ?? undefined)}
+                                          onClick={() => startEdit(student.student_id, assignment.id, grade)}
                                           className="p-2 rounded transition-colors"
                                           style={{ color: 'var(--text-faint)' }}
                                           onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'var(--bg-hover)'; }}
@@ -656,6 +1049,17 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
                                         >
                                           <PencilSquareIcon className="h-5 w-5" />
                                         </button>
+                                        {grade?.entry_id && (
+                                          <button
+                                            onClick={() => void loadEntryHistory(grade.entry_id)}
+                                            className="p-2 rounded transition-colors"
+                                            style={{ color: 'var(--text-faint)' }}
+                                            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                                            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-faint)'; e.currentTarget.style.background = ''; }}
+                                          >
+                                            <ClockIcon className="h-5 w-5" />
+                                          </button>
+                                        )}
                                       </>
                                     )}
                                   </div>
@@ -663,6 +1067,41 @@ export const TeacherGradebook: React.FC<TeacherGradebookProps> = ({ courseId }) 
                               );
                             })}
                           </div>
+                          {module.assignments.some((assignment) => {
+                            const grade = student.grades[assignment.id];
+                            return Boolean(grade?.entry_id && historyByEntry[grade.entry_id]?.length);
+                          }) && (
+                            <div className="mt-3 space-y-2">
+                              {module.assignments.map((assignment) => {
+                                const grade = student.grades[assignment.id];
+                                if (!grade?.entry_id) return null;
+                                const history = historyByEntry[grade.entry_id];
+                                if (!history) return null;
+                                return (
+                                  <div key={`${assignment.id}-history`} className="rounded-md p-3" style={{ background: 'var(--bg-overlay)' }}>
+                                    <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                                      {assignment.title} · {t('gradebook.history', 'History')}
+                                    </p>
+                                    {loadingHistoryFor === grade.entry_id ? (
+                                      <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</p>
+                                    ) : history.length === 0 ? (
+                                      <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                                        {t('gradebook.no_history', 'No history entries')}
+                                      </p>
+                                    ) : (
+                                      <div className="mt-1 space-y-1">
+                                        {history.map((item) => (
+                                          <p key={item.id} className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                            {item.changedAt ? new Date(item.changedAt).toLocaleString() : '—'}: {item.previousScore ?? '-'} → {item.newScore ?? '-'} {item.reason ? `(${item.reason})` : ''}
+                                          </p>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       ))}
                   </div>

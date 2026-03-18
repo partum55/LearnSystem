@@ -21,6 +21,7 @@ public class ResourceDto implements Serializable {
 
   private UUID id;
   private UUID moduleId;
+  private UUID topicId;
   private String title;
   private String description;
   private String resourceType;

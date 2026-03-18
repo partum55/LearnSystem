@@ -67,6 +67,18 @@ const selectClass = 'input text-sm';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = Record<string, any>;
 
+const parseModuleMeta = (module: AnyRecord): { topic: string; tags: string[] } => {
+  const meta = (module.contentMeta ?? module.content_meta ?? {}) as AnyRecord;
+  const topic = typeof meta.topic === 'string' ? meta.topic : '';
+  const tags =
+    Array.isArray(meta.tags)
+      ? meta.tags.filter((item: unknown): item is string => typeof item === 'string')
+      : typeof meta.tags === 'string'
+        ? meta.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean)
+        : [];
+  return { topic, tags };
+};
+
 export const AdminCourseDeepManager: React.FC<Props> = ({ course, onBack, onFeedback }) => {
   const [loading, setLoading] = useState(false);
   const [modules, setModules] = useState<AnyRecord[]>([]);
@@ -80,9 +92,13 @@ export const AdminCourseDeepManager: React.FC<Props> = ({ course, onBack, onFeed
   // ---- Forms ----
   const [newModuleTitle, setNewModuleTitle] = useState('');
   const [newModuleDesc, setNewModuleDesc] = useState('');
+  const [newModuleTopic, setNewModuleTopic] = useState('');
+  const [newModuleTags, setNewModuleTags] = useState('');
   const [editingModule, setEditingModule] = useState<AnyRecord | null>(null);
   const [editModuleTitle, setEditModuleTitle] = useState('');
   const [editModuleDesc, setEditModuleDesc] = useState('');
+  const [editModuleTopic, setEditModuleTopic] = useState('');
+  const [editModuleTags, setEditModuleTags] = useState('');
 
   const [newResourceForm, setNewResourceForm] = useState<{ moduleId: string; title: string; type: string; url: string; text: string } | null>(null);
 
@@ -142,9 +158,18 @@ export const AdminCourseDeepManager: React.FC<Props> = ({ course, onBack, onFeed
   const createModule = async () => {
     if (!newModuleTitle.trim()) return;
     try {
-      await adminCourseDeepApi.createModule(courseId, { title: newModuleTitle.trim(), description: newModuleDesc.trim() || undefined });
+      await adminCourseDeepApi.createModule(courseId, {
+        title: newModuleTitle.trim(),
+        description: newModuleDesc.trim() || undefined,
+        contentMeta: {
+          topic: newModuleTopic.trim() || undefined,
+          tags: newModuleTags.split(',').map(tag => tag.trim()).filter(Boolean),
+        },
+      });
       setNewModuleTitle('');
       setNewModuleDesc('');
+      setNewModuleTopic('');
+      setNewModuleTags('');
       onFeedback('success', 'Module created');
       await loadAll();
     } catch (e: unknown) {
@@ -155,7 +180,16 @@ export const AdminCourseDeepManager: React.FC<Props> = ({ course, onBack, onFeed
   const saveEditModule = async () => {
     if (!editingModule) return;
     try {
-      await adminCourseDeepApi.updateModule(courseId, editingModule.id, { title: editModuleTitle, description: editModuleDesc });
+      const currentMeta = (editingModule.contentMeta ?? editingModule.content_meta ?? {}) as AnyRecord;
+      await adminCourseDeepApi.updateModule(courseId, editingModule.id, {
+        title: editModuleTitle,
+        description: editModuleDesc,
+        contentMeta: {
+          ...currentMeta,
+          topic: editModuleTopic.trim() || undefined,
+          tags: editModuleTags.split(',').map(tag => tag.trim()).filter(Boolean),
+        },
+      });
       setEditingModule(null);
       onFeedback('success', 'Module updated');
       await loadAll();
@@ -396,8 +430,10 @@ export const AdminCourseDeepManager: React.FC<Props> = ({ course, onBack, onFeed
           <div className="flex flex-wrap gap-2 p-2 rounded" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
             <input className={inputClass} placeholder="Module title" value={newModuleTitle.trim()} onChange={e => setNewModuleTitle(e.target.value)} style={{ flex: '1 1 200px' }} />
             <input className={inputClass} placeholder="Description (optional)" value={newModuleDesc} onChange={e => setNewModuleDesc(e.target.value)} style={{ flex: '1 1 200px' }} />
+            <input className={inputClass} placeholder="Topic (optional)" value={newModuleTopic} onChange={e => setNewModuleTopic(e.target.value)} style={{ flex: '1 1 180px' }} />
+            <input className={inputClass} placeholder="Tags (comma-separated)" value={newModuleTags} onChange={e => setNewModuleTags(e.target.value)} style={{ flex: '1 1 220px' }} />
             <button className="btn btn-primary btn-xs" onClick={createModule}>Create</button>
-            <button className="btn btn-ghost btn-xs" onClick={() => { setNewModuleTitle(''); setNewModuleDesc(''); }}>Cancel</button>
+            <button className="btn btn-ghost btn-xs" onClick={() => { setNewModuleTitle(''); setNewModuleDesc(''); setNewModuleTopic(''); setNewModuleTags(''); }}>Cancel</button>
           </div>
         )}
 
@@ -405,10 +441,19 @@ export const AdminCourseDeepManager: React.FC<Props> = ({ course, onBack, onFeed
 
         {modules.map((mod: AnyRecord) => (
           <div key={mod.id} className="rounded" style={{ border: '1px solid var(--border-subtle)' }}>
+            {(() => {
+              const meta = parseModuleMeta(mod);
+              return (
             <div className="flex items-center justify-between p-2">
               <button type="button" className="flex items-center gap-2 text-sm flex-1 text-left" onClick={() => toggleModule(mod.id)} style={{ color: 'var(--text-primary)' }}>
                 {expandedModule === mod.id ? <ChevronDownIcon className="h-3.5 w-3.5" /> : <ChevronRightIcon className="h-3.5 w-3.5" />}
                 <span className="font-medium">{mod.title}</span>
+                {meta.topic && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>• {meta.topic}</span>}
+                {meta.tags.length > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+                    {meta.tags.join(', ')}
+                  </span>
+                )}
                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>#{mod.position ?? '-'}</span>
                 {published(mod.isPublished ?? mod.is_published)}
               </button>
@@ -416,7 +461,18 @@ export const AdminCourseDeepManager: React.FC<Props> = ({ course, onBack, onFeed
                 <button className="btn btn-ghost btn-xs" title="Toggle publish" onClick={() => toggleModulePublish(mod)}>
                   {(mod.isPublished ?? mod.is_published) ? <EyeSlashIcon className="h-3.5 w-3.5" /> : <EyeIcon className="h-3.5 w-3.5" />}
                 </button>
-                <button className="btn btn-ghost btn-xs" title="Edit" onClick={() => { setEditingModule(mod); setEditModuleTitle(mod.title); setEditModuleDesc(mod.description || ''); }}>
+                <button
+                  className="btn btn-ghost btn-xs"
+                  title="Edit"
+                  onClick={() => {
+                    const editMeta = parseModuleMeta(mod);
+                    setEditingModule(mod);
+                    setEditModuleTitle(mod.title);
+                    setEditModuleDesc(mod.description || '');
+                    setEditModuleTopic(editMeta.topic);
+                    setEditModuleTags(editMeta.tags.join(', '));
+                  }}
+                >
                   <PencilSquareIcon className="h-3.5 w-3.5" />
                 </button>
                 <button className="btn btn-ghost btn-xs" title="Add resource" onClick={() => setNewResourceForm({ moduleId: mod.id, title: '', type: 'TEXT', url: '', text: '' })}>
@@ -427,12 +483,16 @@ export const AdminCourseDeepManager: React.FC<Props> = ({ course, onBack, onFeed
                 </button>
               </div>
             </div>
+              );
+            })()}
 
             {/* Edit module inline */}
             {editingModule?.id === mod.id && (
               <div className="flex flex-wrap gap-2 p-2 mx-2 mb-2 rounded" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
                 <input className={inputClass} value={editModuleTitle} onChange={e => setEditModuleTitle(e.target.value)} style={{ flex: '1 1 200px' }} />
                 <input className={inputClass} value={editModuleDesc} onChange={e => setEditModuleDesc(e.target.value)} placeholder="Description" style={{ flex: '1 1 200px' }} />
+                <input className={inputClass} value={editModuleTopic} onChange={e => setEditModuleTopic(e.target.value)} placeholder="Topic" style={{ flex: '1 1 160px' }} />
+                <input className={inputClass} value={editModuleTags} onChange={e => setEditModuleTags(e.target.value)} placeholder="Tags (comma-separated)" style={{ flex: '1 1 220px' }} />
                 <button className="btn btn-primary btn-xs" onClick={saveEditModule}>Save</button>
                 <button className="btn btn-ghost btn-xs" onClick={() => setEditingModule(null)}>Cancel</button>
               </div>
@@ -494,7 +554,7 @@ export const AdminCourseDeepManager: React.FC<Props> = ({ course, onBack, onFeed
             <div className="grid gap-2 md:grid-cols-2">
               <input className={inputClass} placeholder="Assignment title" value={assignForm.title || ''} onChange={e => setAssignForm(f => ({ ...f, title: e.target.value }))} />
               <select className={selectClass} value={assignForm.assignmentType} onChange={e => setAssignForm(f => ({ ...f, assignmentType: e.target.value }))}>
-                {['FILE_UPLOAD', 'TEXT', 'CODE', 'URL', 'QUIZ', 'MANUAL_GRADE', 'EXTERNAL'].map(t => <option key={t} value={t}>{t}</option>)}
+                {['FILE_UPLOAD', 'TEXT', 'CODE', 'URL', 'QUIZ', 'MANUAL_GRADE', 'EXTERNAL', 'SEMINAR'].map(t => <option key={t} value={t}>{t}</option>)}
               </select>
               <textarea className={inputClass} placeholder="Description" value={assignForm.description || ''} onChange={e => setAssignForm(f => ({ ...f, description: e.target.value }))} rows={2} />
               <div className="space-y-1">

@@ -32,6 +32,20 @@ spring:
           filters:
             - RewritePath=/api/v1/courses(?<segment>/?.*), /api/courses${segment}
 
+        - id: learning-quiz-attempts
+          uri: lb://lms-learning-service
+          predicates:
+            - Path=/api/v1/assessments/quiz-attempts/**, /api/assessments/quiz-attempts/**
+          filters:
+            - RewritePath=/api/assessments/quiz-attempts/(?<segment>.*), /api/quiz-attempts/${segment}
+            - RewritePath=/api/v1/assessments/quiz-attempts/(?<segment>.*), /api/quiz-attempts/${segment}
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: ${gateway.quiz-attempt-rate-limit.replenish-rate:8}
+                redis-rate-limiter.burstCapacity: ${gateway.quiz-attempt-rate-limit.burst-capacity:12}
+                redis-rate-limiter.requestedTokens: ${gateway.quiz-attempt-rate-limit.requested-tokens:1}
+                key-resolver: "#{@userKeyResolver}"
+
         - id: learning-assessments
           uri: lb://lms-learning-service
           predicates:
@@ -39,6 +53,21 @@ spring:
           filters:
             - RewritePath=/api/assessments/(?<segment>.*), /api/${segment}
             - RewritePath=/api/v1/assessments/(?<segment>.*), /api/${segment}
+
+        - id: learning-content
+          uri: lb://lms-learning-service
+          predicates:
+            - Path=/api/pages/**, /api/editor/media/**
+
+        - id: learning-assignment-documents
+          uri: lb://lms-learning-service
+          predicates:
+            - Path=/api/assignments/*/template-document, /api/assignments/*/submissions/clone-template
+
+        - id: learning-submission-documents
+          uri: lb://lms-learning-service
+          predicates:
+            - Path=/api/submissions/*/document
 
         - id: learning-submissions
           uri: lb://lms-learning-service
@@ -95,6 +124,22 @@ spring:
               args:
                 name: aiServiceCircuitBreaker
                 fallbackUri: forward:/fallback/ai
+
+        - id: plugin-management
+          uri: lb://lms-learning-service
+          predicates:
+            - Path=/api/plugins/**
+          filters:
+            - name: Retry
+              args:
+                retries: 1
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+                methods: GET
+
+        - id: marketplace-service
+          uri: lb://lms-marketplace-service
+          predicates:
+            - Path=/api/marketplace/**
 
         - id: learning-risk-analytics
           uri: lb://lms-learning-service

@@ -17,7 +17,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
       "com.university.lms.gradebook",
       "com.university.lms.submission",
       "com.university.lms.deadline",
-      "com.university.lms.common"
+      "com.university.lms.common",
+      "com.university.lms.plugin"
     })
 @EnableJpaRepositories(basePackages = "com.university.lms")
 @EntityScan(basePackages = "com.university.lms")

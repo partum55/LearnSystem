@@ -14,7 +14,15 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onMenuClick, onCourseMenuClick }) => {
   const { t, i18n } = useTranslation();
   const { user, logout, updateUserPreferences } = useAuthStore();
-  const { unreadCount } = useNotificationStore();
+  const { unreadCount, notifications, fetchNotifications, fetchUnreadCount, markAllAsRead } = useNotificationStore();
+
+  React.useEffect(() => {
+    void fetchUnreadCount();
+    const intervalId = window.setInterval(() => {
+      void fetchUnreadCount();
+    }, 30000);
+    return () => window.clearInterval(intervalId);
+  }, [fetchUnreadCount]);
 
   const changeLanguage = (lang: 'uk' | 'en') => {
     i18n.changeLanguage(lang);
@@ -124,19 +132,80 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick, onCourseMenuClick }
           </Menu>
 
           {/* Notifications */}
-          <Link
-            to="/notifications"
-            className="relative flex items-center justify-center w-8 h-8 rounded-md transition-colors"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            <BellIcon className="h-4 w-4" />
-            {unreadCount > 0 && (
-              <span
-                className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full"
-                style={{ background: 'var(--text-primary)' }}
-              />
-            )}
-          </Link>
+          <Menu as="div" className="relative">
+            <Menu.Button
+              className="relative flex items-center justify-center w-8 h-8 rounded-md transition-colors"
+              style={{ color: 'var(--text-muted)' }}
+              onClick={() => {
+                void fetchNotifications();
+              }}
+            >
+              <BellIcon className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span
+                  className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full text-[10px] font-semibold flex items-center justify-center"
+                  style={{ background: 'var(--text-primary)', color: 'var(--bg-base)' }}
+                >
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </Menu.Button>
+            <Transition
+              enter="transition ease-out duration-100"
+              enterFrom="opacity-0 -translate-y-1"
+              enterTo="opacity-100 translate-y-0"
+              leave="transition ease-in duration-75"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <Menu.Items
+                className="absolute right-0 mt-1 w-80 rounded-lg overflow-hidden focus:outline-none z-10 animate-slide-down"
+                style={{
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
+                  boxShadow: 'var(--shadow-lg)',
+                }}
+              >
+                <div className="px-3 py-2 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    {t('nav.notifications', 'Notifications')}
+                  </p>
+                  {notifications.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void markAllAsRead();
+                      }}
+                      className="text-xs"
+                      style={{ color: 'var(--text-muted)' }}
+                    >
+                      {t('common.markAllRead', 'Mark all as read')}
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="px-3 py-5 text-sm text-center" style={{ color: 'var(--text-muted)' }}>
+                      {t('notifications.empty', 'No new notifications')}
+                    </div>
+                  ) : (
+                    notifications.map((item) => (
+                      <div
+                        key={item.id}
+                        className="px-3 py-2.5 text-sm"
+                        style={{ borderBottom: '1px solid var(--border-subtle)' }}
+                      >
+                        <p style={{ color: 'var(--text-primary)' }}>{item.message}</p>
+                        <p className="mt-1 text-xs" style={{ color: 'var(--text-faint)' }}>
+                          {new Date(item.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </Menu.Items>
+            </Transition>
+          </Menu>
 
           {/* User */}
           <Menu as="div" className="relative ml-1">

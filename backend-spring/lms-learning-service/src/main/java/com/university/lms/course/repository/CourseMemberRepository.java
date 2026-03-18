@@ -1,6 +1,7 @@
 package com.university.lms.course.repository;
 
 import com.university.lms.course.domain.CourseMember;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -43,6 +44,14 @@ public interface CourseMemberRepository extends JpaRepository<CourseMember, UUID
           + "AND m.roleInCourse = 'STUDENT' AND m.enrollmentStatus = 'active'")
   long countActiveStudents(@Param("courseId") UUID courseId);
 
+  /** Count all members in a course. */
+  long countByCourseId(UUID courseId);
+
+  /** Batch load enrollments by course IDs and user IDs. */
+  @Query("SELECT m FROM CourseMember m WHERE m.course.id IN :courseIds AND m.userId IN :userIds")
+  List<CourseMember> findByCourseIdInAndUserIdIn(
+      @Param("courseIds") Collection<UUID> courseIds, @Param("userIds") Collection<UUID> userIds);
+
   /** Find teachers of a course. */
   @Query(
       "SELECT m FROM CourseMember m WHERE m.course.id = :courseId "
@@ -68,4 +77,18 @@ public interface CourseMemberRepository extends JpaRepository<CourseMember, UUID
   @Query(
       "SELECT m.userId FROM CourseMember m WHERE m.course.id = :courseId AND m.roleInCourse = 'STUDENT'")
   List<UUID> findStudentIdsByCourseId(@Param("courseId") UUID courseId);
+
+  @Query(
+      "SELECT DISTINCT m.course.id FROM CourseMember m WHERE m.userId = :userId AND m.roleInCourse IN ('TEACHER','TA')")
+  List<UUID> findManagedCourseIdsByUserId(@Param("userId") UUID userId);
+
+  @Query(
+      "SELECT m.userId FROM CourseMember m WHERE m.course.id = :courseId "
+          + "AND m.roleInCourse = 'STUDENT' AND m.enrollmentStatus = 'active'")
+  List<UUID> findActiveStudentUserIdsByCourseId(@Param("courseId") UUID courseId);
+
+  @Query(
+      "SELECT DISTINCT m.course.id FROM CourseMember m WHERE m.userId = :userId "
+          + "AND m.enrollmentStatus = 'active'")
+  List<UUID> findActiveCourseIdsByUserId(@Param("userId") UUID userId);
 }

@@ -4,6 +4,8 @@ import com.university.lms.course.assessment.domain.*;
 import com.university.lms.course.assessment.dto.*;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
 /**
@@ -21,6 +23,7 @@ public class AssessmentMapper {
             .id(assignment.getId())
             .courseId(assignment.getCourseId())
             .moduleId(assignment.getModuleId())
+            .topicId(assignment.getTopicId())
             .categoryId(assignment.getCategoryId())
             .position(assignment.getPosition())
             .assignmentType(assignment.getAssignmentType())
@@ -35,7 +38,6 @@ public class AssessmentMapper {
             .autoGradingEnabled(assignment.getAutoGradingEnabled())
             .testCases(assignment.getTestCases())
             .maxPoints(assignment.getMaxPoints())
-            .rubric(assignment.getRubric())
             .dueDate(assignment.getDueDate())
             .availableFrom(assignment.getAvailableFrom())
             .availableUntil(assignment.getAvailableUntil())
@@ -73,6 +75,7 @@ public class AssessmentMapper {
         return Assignment.builder()
             .courseId(request.getCourseId())
             .moduleId(request.getModuleId())
+            .topicId(request.getTopicId())
             .categoryId(request.getCategoryId())
             .position(request.getPosition() != null ? request.getPosition() : 0)
             .assignmentType(request.getAssignmentType())
@@ -87,7 +90,6 @@ public class AssessmentMapper {
             .autoGradingEnabled(request.getAutoGradingEnabled() != null ? request.getAutoGradingEnabled() : false)
             .testCases(request.getTestCases())
             .maxPoints(request.getMaxPoints() != null ? request.getMaxPoints() : java.math.BigDecimal.valueOf(100))
-            .rubric(request.getRubric())
             .dueDate(request.getDueDate())
             .availableFrom(request.getAvailableFrom())
             .availableUntil(request.getAvailableUntil())
@@ -117,6 +119,7 @@ public class AssessmentMapper {
         }
 
         if (request.getModuleId() != null) assignment.setModuleId(request.getModuleId());
+        if (request.getTopicId() != null) assignment.setTopicId(request.getTopicId());
         if (request.getCategoryId() != null) assignment.setCategoryId(request.getCategoryId());
         if (request.getPosition() != null) assignment.setPosition(request.getPosition());
         if (request.getTitle() != null) assignment.setTitle(request.getTitle());
@@ -130,7 +133,6 @@ public class AssessmentMapper {
         if (request.getAutoGradingEnabled() != null) assignment.setAutoGradingEnabled(request.getAutoGradingEnabled());
         if (request.getTestCases() != null) assignment.setTestCases(request.getTestCases());
         if (request.getMaxPoints() != null) assignment.setMaxPoints(request.getMaxPoints());
-        if (request.getRubric() != null) assignment.setRubric(request.getRubric());
         if (request.getDueDate() != null) assignment.setDueDate(request.getDueDate());
         if (request.getAvailableFrom() != null) assignment.setAvailableFrom(request.getAvailableFrom());
         if (request.getAvailableUntil() != null) assignment.setAvailableUntil(request.getAvailableUntil());
@@ -162,7 +164,12 @@ public class AssessmentMapper {
             .title(quiz.getTitle())
             .description(quiz.getDescription())
             .timeLimit(quiz.getTimeLimit())
+            .timerEnabled(quiz.getTimerEnabled())
             .attemptsAllowed(quiz.getAttemptsAllowed())
+            .attemptLimitEnabled(quiz.getAttemptLimitEnabled())
+            .attemptScorePolicy(quiz.getAttemptScorePolicy())
+            .secureSessionEnabled(quiz.getSecureSessionEnabled())
+            .secureRequireFullscreen(quiz.getSecureRequireFullscreen())
             .shuffleQuestions(quiz.getShuffleQuestions())
             .shuffleAnswers(quiz.getShuffleAnswers())
             .showCorrectAnswers(quiz.getShowCorrectAnswers())
@@ -249,6 +256,7 @@ public class AssessmentMapper {
             .topic(question.getTopic())
             .difficulty(question.getDifficulty())
             .stem(question.getStem())
+            .imageUrl(question.getImageUrl())
             .options(question.getOptions())
             .correctAnswer(question.getCorrectAnswer())
             .explanation(question.getExplanation())
@@ -264,6 +272,21 @@ public class AssessmentMapper {
     public QuizAttemptDto toDto(QuizAttempt quizAttempt) {
         if (quizAttempt == null) {
             return null;
+        }
+
+        LocalDateTime expiresAt = null;
+        Long remainingSeconds = null;
+        Boolean timedOut = false;
+
+        Quiz quiz = quizAttempt.getQuiz();
+        if (quiz != null
+            && Boolean.TRUE.equals(quiz.getTimerEnabled())
+            && quiz.getTimeLimit() != null
+            && quizAttempt.getStartedAt() != null) {
+            expiresAt = quizAttempt.getStartedAt().plusMinutes(quiz.getTimeLimit());
+            long secondsLeft = Duration.between(LocalDateTime.now(), expiresAt).getSeconds();
+            remainingSeconds = Math.max(0L, secondsLeft);
+            timedOut = !quizAttempt.isSubmitted() && secondsLeft <= 0;
         }
 
         return QuizAttemptDto.builder()
@@ -287,6 +310,9 @@ public class AssessmentMapper {
             .graded(quizAttempt.isGraded())
             .inProgress(quizAttempt.isInProgress())
             .durationInMinutes(quizAttempt.getDurationInMinutes())
+            .expiresAt(expiresAt)
+            .remainingSeconds(remainingSeconds)
+            .timedOut(timedOut)
             .build();
     }
 }

@@ -7,7 +7,6 @@ interface EssayQuestionProps {
     metadata: {
       max_words?: number;
       rich_text_enabled?: boolean;
-      rubric_id?: string;
     };
   };
   value?: string;
@@ -43,16 +42,6 @@ const EssayQuestion: React.FC<EssayQuestionProps> = ({
     <div className="essay-question">
       <div className="mb-4">
         <p className="text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{question.text}</p>
-        {question.metadata?.rubric_id && (
-          <button
-            type="button"
-            className="text-sm hover:underline"
-            style={{ color: 'var(--text-secondary)' }}
-            onClick={() => {/* Open rubric modal */ }}
-          >
-            View Rubric
-          </button>
-        )}
       </div>
 
       <div className="relative">

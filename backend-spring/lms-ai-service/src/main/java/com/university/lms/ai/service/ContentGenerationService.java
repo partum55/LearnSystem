@@ -160,27 +160,6 @@ public class ContentGenerationService {
   private String buildAssignmentSystemPrompt(AssignmentGenerationRequest request) {
     String language = "uk".equals(request.getLanguage()) ? "українською" : "in English";
 
-    String rubricSection =
-        request.getIncludeRubric() != null && request.getIncludeRubric()
-            ? """
-              "rubric": {
-                "criteria": [
-                  {
-                    "name": "Criterion name",
-                    "description": "What is being evaluated",
-                    "maxPoints": 25,
-                    "levels": [
-                      {"name": "Excellent", "points": 25, "description": "Exceeds expectations"},
-                      {"name": "Good", "points": 20, "description": "Meets expectations"},
-                      {"name": "Satisfactory", "points": 15, "description": "Partially meets expectations"},
-                      {"name": "Poor", "points": 10, "description": "Does not meet expectations"}
-                    ]
-                  }
-                ]
-              },
-            """
-            : "";
-
     return String.format(
         """
             You are an expert educational content creator for a university Learning Management System.
@@ -194,17 +173,16 @@ public class ContentGenerationService {
               "assignmentType": "FILE_UPLOAD",
               "maxPoints": 100,
               "timeLimit": null,
-              %s
               "learningObjectives": ["Objective 1", "Objective 2"],
               "resources": ["Recommended resource 1", "Recommended resource 2"]
             }
 
-            Assignment types: FILE_UPLOAD, TEXT, CODE, QUIZ
+            Assignment types: FILE_UPLOAD, TEXT, CODE, QUIZ, SEMINAR
             Do not include additional fields. Respect required fields and size limits.
             Create clear, achievable assignments with detailed instructions.
             Align with learning objectives and provide helpful resources.
             """,
-        language, rubricSection);
+        language);
   }
 
   private String buildAssignmentUserPrompt(AssignmentGenerationRequest request) {

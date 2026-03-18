@@ -37,6 +37,7 @@ export const AtRiskStudents: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [students, setStudents] = useState<StudentRiskPrediction[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<StudentRiskPrediction | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
 
   const fetchAtRiskStudents = useCallback(async () => {
     if (!courseId) return;
@@ -61,6 +62,24 @@ export const AtRiskStudents: React.FC = () => {
       fetchAtRiskStudents();
     }
   }, [courseId, fetchAtRiskStudents]);
+
+  const fetchStudentRiskDetails = async (studentId: number) => {
+    if (!courseId) return;
+
+    setDetailsLoading(true);
+    try {
+      const response = await apiClient.get<StudentRiskPrediction>(
+        `/analytics/courses/${courseId}/students/${studentId}/risk`
+      );
+      setSelectedStudent(response.data);
+    } catch (error) {
+      console.error('Failed to fetch student risk details:', error);
+      const fallback = students.find((student) => student.studentId === studentId) || null;
+      setSelectedStudent(fallback);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
 
   const getRiskBadgeStyle = (level: string) => {
     switch (level) {
@@ -127,7 +146,7 @@ export const AtRiskStudents: React.FC = () => {
             {students.map((student) => (
               <div
                 key={student.studentId}
-                onClick={() => setSelectedStudent(student)}
+                onClick={() => void fetchStudentRiskDetails(student.studentId)}
                 className="border-2 rounded-lg p-4 cursor-pointer transition"
                 style={{
                   borderColor: selectedStudent?.studentId === student.studentId
@@ -172,7 +191,11 @@ export const AtRiskStudents: React.FC = () => {
 
           {/* Student Details */}
           <div className="rounded-lg p-6" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
-            {selectedStudent ? (
+            {detailsLoading ? (
+              <div className="text-center py-12" style={{ color: 'var(--text-muted)' }}>
+                Loading student details...
+              </div>
+            ) : selectedStudent ? (
               <div className="space-y-6">
                 <div>
                   <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>

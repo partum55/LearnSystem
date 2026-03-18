@@ -144,8 +144,19 @@ app:
     max-size: 10MB
     max-history: 30
     total-size-cap: 1GB
+  encryption:
+    key: ${AES_ENCRYPTION_KEY:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}  # Base64 32-byte key
+  oauth:
+    google:
+      client-id: ${GOOGLE_OAUTH_CLIENT_ID:}
+      client-secret: ${GOOGLE_OAUTH_CLIENT_SECRET:}
+      redirect-uri: ${GOOGLE_OAUTH_REDIRECT_URI:http://localhost:8080/api/auth/oauth2/google/callback}
+      frontend-success-uri: ${GOOGLE_OAUTH_FRONTEND_SUCCESS_URI:http://localhost:3000/auth/google/callback}
+      frontend-failure-uri: ${GOOGLE_OAUTH_FRONTEND_FAILURE_URI:http://localhost:3000/login}
+      allowed-domains: ${GOOGLE_OAUTH_ALLOWED_DOMAINS:${GOOGLE_OAUTH_ALLOWED_DOMAIN:ucu.edu.ua}}
 
 security:
+  internal-token: ${INTERNAL_SERVICE_TOKEN:}
   cors:
     enabled: ${SECURITY_CORS_ENABLED:false}
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,https://localhost:3000}
