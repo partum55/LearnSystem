@@ -26,10 +26,20 @@ public class PluginLearningServiceClient {
         this.objectMapper = objectMapper;
     }
 
+    private String buildAuthorizationHeader(String authToken) {
+        if (authToken == null || authToken.isBlank()) {
+            return authToken;
+        }
+        if (authToken.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            return authToken;
+        }
+        return "Bearer " + authToken;
+    }
+
     public String getPluginInfo(String pluginId, String authToken) {
         return webClient.get()
                 .uri("/api/plugins/{pluginId}", pluginId)
-                .header("Authorization", "Bearer " + authToken)
+                .header("Authorization", buildAuthorizationHeader(authToken))
                 .retrieve()
                 .bodyToMono(String.class)
                 .timeout(Duration.ofSeconds(10))
@@ -41,7 +51,7 @@ public class PluginLearningServiceClient {
         try {
             String response = webClient.get()
                     .uri("/api/plugins/{pluginId}/config", pluginId)
-                    .header("Authorization", "Bearer " + authToken)
+                    .header("Authorization", buildAuthorizationHeader(authToken))
                     .retrieve()
                     .bodyToMono(String.class)
                     .timeout(Duration.ofSeconds(10))
@@ -66,7 +76,7 @@ public class PluginLearningServiceClient {
                         .path("/api/plugins/{pluginId}/logs")
                         .queryParam("size", logLines)
                         .build(pluginId))
-                .header("Authorization", "Bearer " + authToken)
+                .header("Authorization", buildAuthorizationHeader(authToken))
                 .retrieve()
                 .bodyToMono(String.class)
                 .timeout(Duration.ofSeconds(10))
