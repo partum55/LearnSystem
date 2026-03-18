@@ -2,6 +2,7 @@ package com.university.lms.plugin.runtime;
 
 import com.university.lms.plugin.api.annotation.PluginController;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
@@ -26,7 +27,7 @@ public class PluginRouteRegistrar {
     private final RequestMappingHandlerMapping handlerMapping;
     private final ConcurrentHashMap<String, List<RequestMappingInfo>> registeredMappings = new ConcurrentHashMap<>();
 
-    public PluginRouteRegistrar(RequestMappingHandlerMapping handlerMapping) {
+    public PluginRouteRegistrar(@Qualifier("requestMappingHandlerMapping") RequestMappingHandlerMapping handlerMapping) {
         this.handlerMapping = handlerMapping;
     }
 

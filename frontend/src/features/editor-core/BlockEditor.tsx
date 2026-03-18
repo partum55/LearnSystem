@@ -39,6 +39,7 @@ import {
   MermaidNode,
   MathBlockNode,
   MathInlineNode,
+  InteractiveWidgetNode,
 } from './nodes';
 import {
   SlashCommandPalette,
@@ -206,6 +207,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
       MermaidNode,
       MathBlockNode,
       MathInlineNode,
+      InteractiveWidgetNode,
     ],
     editable: !readOnly,
     content: toTiptapDocument(value),
@@ -414,6 +416,14 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     }).run();
   }, [editor]);
 
+  const insertInteractiveWidget = () => {
+    if (!editor || readOnly) return;
+    editor.chain().focus().insertContent({
+      type: 'interactiveWidget',
+      attrs: { code: '', prompt: '', title: '', conversationHistory: '[]' },
+    }).run();
+  };
+
   const insertMermaid = () => {
     if (!editor || readOnly) return;
     editor.chain().focus().insertContent({
@@ -522,6 +532,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
       { key: 'youtube', label: 'YouTube Embed', description: 'Embedded video', keywords: ['video', 'embed', 'youtube'], category: 'media', icon: SLASH_COMMAND_ICONS.youtube, execute: () => insertEmbed('youtube') },
       { key: 'pdf', label: 'PDF Embed', description: 'Embedded document', keywords: ['pdf', 'embed'], category: 'media', icon: SLASH_COMMAND_ICONS.pdf, execute: () => insertEmbed('pdf') },
       { key: 'mermaid', label: 'Mermaid Diagram', description: 'Diagram as code', keywords: ['diagram', 'flowchart', 'mermaid'], category: 'code', icon: SLASH_COMMAND_ICONS.mermaid, execute: insertMermaid },
+      { key: 'interactiveWidget', label: 'Interactive Widget', description: 'AI-generated interactive element', keywords: ['widget', 'interactive', 'simulation', 'ai', 'html'], category: 'advanced', icon: SLASH_COMMAND_ICONS.interactiveWidget, execute: insertInteractiveWidget },
     ];
   }, [editor, mode, readOnly]);
 
@@ -558,6 +569,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
         { key: 'youtube', label: 'YouTube Embed', hint: 'Embedded YouTube video', execute: () => insertEmbed('youtube') },
         { key: 'pdf', label: 'PDF Embed', hint: 'Embedded PDF document', execute: () => insertEmbed('pdf') },
         { key: 'mermaid', label: 'Mermaid Diagram', hint: 'Diagram as code', execute: insertMermaid },
+        { key: 'interactiveWidget', label: 'Interactive Widget', hint: 'AI-generated interactive element', execute: insertInteractiveWidget },
       );
     }
 

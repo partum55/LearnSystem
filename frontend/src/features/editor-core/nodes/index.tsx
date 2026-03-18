@@ -12,6 +12,9 @@ import 'katex/dist/katex.min.css';
 import { EmbedProvider, resolveSafeEmbed } from '../embedSecurity';
 import { ensureMermaidInitialized } from '../mermaidUtils';
 
+// Re-export InteractiveWidgetNode from its own file
+export { InteractiveWidgetNode } from './InteractiveWidgetNode';
+
 // ── Callout ──
 
 export const CalloutNode = Node.create({

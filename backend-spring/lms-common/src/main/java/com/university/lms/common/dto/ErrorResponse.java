@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 /**
@@ -22,18 +23,22 @@ public class ErrorResponse {
     private String code;
     private String error;
     private String message;
-    private LocalDateTime timestamp;
+    private String timestamp;
     private String path;
     private Integer status;
     private Object details;
     private Map<String, String> errors;
+
+    private static String now() {
+        return LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+    }
 
     public static ErrorResponse of(String code, String message, String path, Integer status) {
         return ErrorResponse.builder()
                 .code(code)
                 .error(code)
                 .message(message)
-                .timestamp(LocalDateTime.now())
+                .timestamp(now())
                 .path(path)
                 .status(status)
                 .build();
@@ -49,7 +54,7 @@ public class ErrorResponse {
                 .code(code)
                 .error(code)
                 .message(message)
-                .timestamp(LocalDateTime.now())
+                .timestamp(now())
                 .path(path)
                 .status(status)
                 .details(details)

@@ -12,12 +12,14 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.multipart.MultipartFile;
 
 /** REST endpoints for quiz import/export in JSON and CSV formats. */
 @RestController
 @RequestMapping("/quizzes")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
 public class QuizImportExportController {
 
   private final QuizImportExportService quizImportExportService;

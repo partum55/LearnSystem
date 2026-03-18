@@ -390,6 +390,22 @@ export const aiApi = {
     },
   },
 
+  /**
+   * Generate interactive widget HTML via AI
+   */
+  generateWidget: async (request: {
+    prompt: string;
+    existingCode?: string;
+    conversationHistory?: Array<{ role: string; content: string }>;
+    language?: 'uk' | 'en';
+  }) => {
+    const response = await apiClient.post<{ html: string; summary: string }>(
+      `${AI_CLIENT_URL}/widget/generate`,
+      request
+    );
+    return response.data;
+  },
+
   // API Key Management
   apiKeys: {
     getKeys: async () => {

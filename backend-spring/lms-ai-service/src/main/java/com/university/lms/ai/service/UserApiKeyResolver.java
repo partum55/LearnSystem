@@ -18,15 +18,20 @@ public class UserApiKeyResolver {
     private static final String CACHE_PREFIX = "user-api-key:";
     private static final Duration CACHE_TTL = Duration.ofMinutes(5);
 
+    private static final String INTERNAL_TOKEN_HEADER = "X-Internal-Token";
+
     private final WebClient userServiceClient;
     private final StringRedisTemplate redisTemplate;
     private final LlamaApiProperties llamaApiProperties;
+    private final String internalToken;
 
     public UserApiKeyResolver(
             @Value("${services.user-service.url:http://localhost:8081}") String userServiceUrl,
+            @Value("${security.internal-token:}") String internalToken,
             StringRedisTemplate redisTemplate,
             LlamaApiProperties llamaApiProperties) {
         this.userServiceClient = WebClient.create(userServiceUrl + "/api");
+        this.internalToken = internalToken;
         this.redisTemplate = redisTemplate;
         this.llamaApiProperties = llamaApiProperties;
     }
@@ -54,6 +59,7 @@ public class UserApiKeyResolver {
             @SuppressWarnings("unchecked")
             Map<String, String> response = userServiceClient.get()
                     .uri("/internal/api-keys/{userId}/GROQ", userId)
+                    .header(INTERNAL_TOKEN_HEADER, internalToken)
                     .retrieve()
                     .bodyToMono(Map.class)
                     .block(Duration.ofSeconds(5));

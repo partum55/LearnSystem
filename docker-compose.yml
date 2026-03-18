@@ -114,6 +114,7 @@ services:
       - BOOTSTRAP_ADMIN_EMAIL=${BOOTSTRAP_ADMIN_EMAIL:-admin@ucu.edu.ua}
       - BOOTSTRAP_ADMIN_PASSWORD=${BOOTSTRAP_ADMIN_PASSWORD:-Admin123!}
       - AES_ENCRYPTION_KEY=${AES_ENCRYPTION_KEY:-}
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -205,6 +206,7 @@ services:
       - EUREKA_URI=http://eureka-server:8761/eureka
       - LEARNING_SERVICE_URL=http://lms-learning-service:8089
       - USER_SERVICE_URL=http://lms-user-service:8081
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN:-}
       - JWT_SECRET=${JWT_SECRET:-local-dev-secret-key-for-jwt-must-be-at-least-256-bits-long-for-hs256-algorithm}
       - JAVA_OPTS=-Xmx768m -Xms384m -XX:+UseG1GC
     depends_on:
@@ -284,10 +286,14 @@ services:
       - DB_NAME=${SUPABASE_DB_NAME:-lms_db}
       - DB_USERNAME=${SUPABASE_DB_USER:-lms_user}
       - DB_PASSWORD=${SUPABASE_DB_PASSWORD:-lms_password_local}
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
       - EUREKA_URI=http://eureka-server:8761/eureka
       - JAVA_OPTS=-Xmx256m -Xms128m
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       eureka-server:
         condition: service_healthy

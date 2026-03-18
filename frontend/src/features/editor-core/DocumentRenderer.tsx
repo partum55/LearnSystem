@@ -394,6 +394,26 @@ const renderNode = (node: CanonicalNode, index: number): React.ReactNode => {
       );
     }
 
+    case 'interactiveWidget': {
+      const widgetCode = String(node.attrs?.code || '');
+      const widgetTitle = String(node.attrs?.title || '');
+      return (
+        <div key={key} className="doc-renderer-interactive-widget">
+          {widgetTitle && <div className="doc-renderer-widget-title">{widgetTitle}</div>}
+          {widgetCode ? (
+            <iframe
+              srcDoc={widgetCode}
+              sandbox="allow-scripts"
+              title={widgetTitle || 'Interactive widget'}
+              className="doc-renderer-widget-iframe"
+            />
+          ) : (
+            <div className="doc-renderer-widget-empty">Interactive widget (no content)</div>
+          )}
+        </div>
+      );
+    }
+
     default:
       // Fallback: render children if they exist
       if (node.content) return <div key={key}>{renderChildren(node.content)}</div>;

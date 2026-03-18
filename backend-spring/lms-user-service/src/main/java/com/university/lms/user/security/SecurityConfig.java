@@ -57,6 +57,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final SecurityHeadersFilter securityHeadersFilter;
     private final RateLimitingFilter rateLimitingFilter;
+    private final InternalTokenFilter internalTokenFilter;
 
     @Value("${security.cors.allowed-origins:http://localhost:3000,https://localhost:3000,http://localhost:8080,https://localhost:8080}")
     private String allowedOriginsStr;
@@ -101,7 +102,8 @@ public class SecurityConfig {
                 )
                 .addFilterBefore(securityHeadersFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(rateLimitingFilter, SecurityHeadersFilter.class)
-                .addFilterAfter(jwtAuthenticationFilter, RateLimitingFilter.class);
+                .addFilterAfter(jwtAuthenticationFilter, RateLimitingFilter.class)
+                .addFilterAfter(internalTokenFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

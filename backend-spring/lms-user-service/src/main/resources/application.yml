@@ -156,6 +156,7 @@ app:
       allowed-domains: ${GOOGLE_OAUTH_ALLOWED_DOMAINS:${GOOGLE_OAUTH_ALLOWED_DOMAIN:ucu.edu.ua}}
 
 security:
+  internal-token: ${INTERNAL_SERVICE_TOKEN:}
   cors:
     enabled: ${SECURITY_CORS_ENABLED:false}
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,https://localhost:3000}

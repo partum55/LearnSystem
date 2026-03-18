@@ -20,6 +20,7 @@ import {
   PlayCircleIcon,
   DocumentIcon,
   DocumentTextIcon,
+  CubeTransparentIcon,
 } from '@heroicons/react/24/outline';
 
 const ICON_CLASS = 'h-5 w-5';
@@ -49,4 +50,5 @@ export const SLASH_COMMAND_ICONS: Record<string, React.ReactNode> = {
   youtube: <PlayCircleIcon className={ICON_CLASS} />,
   pdf: <DocumentIcon className={ICON_CLASS} />,
   mermaid: <PresentationChartLineIcon className={ICON_CLASS} />,
+  interactiveWidget: <CubeTransparentIcon className={ICON_CLASS} />,
 };

@@ -56,13 +56,6 @@ spring:
       use-key-prefix: true
       key-prefix: "course:cache:"
 
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8080}
-          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8080/.well-known/jwks.json}
-
 # Security Configuration
 security:
   cors:
