@@ -22,7 +22,7 @@ public interface MarketplaceReviewRepository extends JpaRepository<MarketplaceRe
      * Computes the arithmetic mean of all ratings for a given plugin.
      * Returns null when no reviews exist.
      */
-    @Query("SELECT AVG(CAST(r.rating AS double)) FROM MarketplaceReview r WHERE r.marketplacePlugin.id = :pluginId")
+    @Query("SELECT AVG(r.rating) FROM MarketplaceReview r WHERE r.marketplacePlugin.id = :pluginId")
     Double findAverageRatingByPluginId(@Param("pluginId") UUID pluginId);
 
     @Query("SELECT COUNT(r) FROM MarketplaceReview r WHERE r.marketplacePlugin.id = :pluginId")
