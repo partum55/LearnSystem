@@ -279,7 +279,7 @@ services:
     container_name: lms-marketplace-service
     restart: always
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_PROFILES_ACTIVE=docker,supabase
       - SERVER_PORT=8086
       - SPRING_DATASOURCE_URL=jdbc:postgresql://${SUPABASE_DB_HOST:-postgres}:${SUPABASE_DB_PORT:-5432}/${SUPABASE_DB_NAME:-lms_db}
       - SPRING_DATASOURCE_USERNAME=${SUPABASE_DB_USER:-lms_user}
@@ -287,6 +287,8 @@ services:
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
       - EUREKA_URI=http://eureka-server:8761/eureka
+      - JWT_SECRET=${JWT_SECRET:-local-dev-secret-key-for-jwt-must-be-at-least-256-bits-long-for-hs256-algorithm}
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN:-}
       - JAVA_OPTS=-Xmx256m -Xms128m
     depends_on:
       postgres:
