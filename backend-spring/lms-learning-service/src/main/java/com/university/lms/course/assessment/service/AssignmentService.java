@@ -604,7 +604,9 @@ public class AssignmentService {
         if (!"QUIZ".equals(assignmentType) || inlineQuiz == null || quizId == null) {
             return;
         }
-        if (inlineQuiz.getQuestions() == null) {
+        if (inlineQuiz.getQuestions() == null || inlineQuiz.getQuestions().isEmpty()) {
+            // When questions are omitted in the request, they may deserialize as an empty list.
+            // In that case, avoid calling replaceQuizQuestionsFromInline to prevent wiping existing questions.
             return;
         }
         quizService.replaceQuizQuestionsFromInline(quizId, inlineQuiz.getQuestions(), userId);
