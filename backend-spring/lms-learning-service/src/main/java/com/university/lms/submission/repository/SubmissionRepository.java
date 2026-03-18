@@ -32,7 +32,7 @@ public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
     @Query("""
             SELECT s FROM Submission s
             WHERE s.assignmentId = :assignmentId
-              AND (:status IS NULL OR UPPER(s.status) = UPPER(:status))
+              AND (:status IS NULL OR s.status = UPPER(:status))
               AND (
                 :search IS NULL
                 OR LOWER(COALESCE(s.studentName, '')) LIKE LOWER(CONCAT('%', :search, '%'))
