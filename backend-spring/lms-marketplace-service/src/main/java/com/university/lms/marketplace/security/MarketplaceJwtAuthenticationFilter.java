@@ -15,6 +15,8 @@ import java.util.UUID;
 public class MarketplaceJwtAuthenticationFilter
         extends com.university.lms.common.security.JwtAuthenticationFilter {
 
+    private static final String DEFAULT_ROLE = "USER";
+
     public MarketplaceJwtAuthenticationFilter(
             JwtService jwtService,
             JwtTokenBlacklistService tokenBlacklistService,
@@ -37,8 +39,8 @@ public class MarketplaceJwtAuthenticationFilter
 
             @Override
             public String getRole() {
-                // Role is extracted from the token in the base filter.
-                return null;
+                // Return a non-null default role to ensure deterministic access control.
+                return DEFAULT_ROLE;
             }
 
             @Override
