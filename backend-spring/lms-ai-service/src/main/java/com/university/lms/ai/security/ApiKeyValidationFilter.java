@@ -11,13 +11,18 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class ApiKeyValidationFilter extends OncePerRequestFilter {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private static final Set<String> EXCLUDED_PATHS = Set.of(
             "/v1/ai/health", "/v1/ai/ready", "/v1/ai/alive",
@@ -50,10 +55,14 @@ public class ApiKeyValidationFilter extends OncePerRequestFilter {
 
         if (apiKey == null || apiKey.isBlank()) {
             log.warn("AI request denied for user {} — no API key configured", userId);
-            response.setStatus(403);
-            response.setContentType("application/json");
-            response.getWriter().write(
-                    "{\"error\":\"AI API key required\",\"message\":\"Please add your Groq API key in Settings.\"}");
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setCharacterEncoding("UTF-8");
+            response.setContentType("application/json;charset=UTF-8");
+            Map<String, String> errorBody = Map.of(
+                    "error", "AI API key required",
+                    "message", "Please add your Groq API key in Settings."
+            );
+            response.getWriter().write(OBJECT_MAPPER.writeValueAsString(errorBody));
             return;
         }
 
