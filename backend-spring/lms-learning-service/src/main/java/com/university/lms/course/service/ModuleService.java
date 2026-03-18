@@ -58,7 +58,10 @@ public class ModuleService {
     modules = moduleRepository.findPublishedModulesByCourse(courseId);
     Map<UUID, Boolean> unlockStates = moduleUnlockService.resolveUnlockStates(modules, userId);
     return modules.stream()
-        .map(module -> toStudentViewDto(module, unlockStates.getOrDefault(module.getId(), true)))
+        .map(
+            module ->
+                toStudentViewDto(
+                    module, unlockStates.getOrDefault(module.getId(), /* locked by default */ false)))
         .toList();
   }
 
