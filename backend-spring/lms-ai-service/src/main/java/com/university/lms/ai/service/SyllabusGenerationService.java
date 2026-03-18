@@ -15,7 +15,6 @@ import java.util.UUID;
 public class SyllabusGenerationService {
 
     private final LlamaApiService llamaApiService;
-    private final AICostTrackingService costTrackingService;
     private final ObjectMapper objectMapper;
 
     public SyllabusResponse generateSyllabus(SyllabusRequest request, String apiKey, UUID userId) {
