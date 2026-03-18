@@ -1,4 +1,13 @@
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+DO $$
+BEGIN
+    BEGIN
+        CREATE EXTENSION IF NOT EXISTS pgcrypto;
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE NOTICE 'pgcrypto extension could not be created due to insufficient privileges. Please ensure it is installed by a database administrator.';
+    END;
+END;
+$$;
 
 CREATE TABLE IF NOT EXISTS marketplace_plugins (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
