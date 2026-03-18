@@ -27,7 +27,7 @@ public class JwtAuthenticationFilter extends com.university.lms.common.security.
     }
 
     @Override
-    protected UserDetails getUserDetails(UUID userId, String email) {
+    protected UserDetails getUserDetails(UUID userId, String email, String roleFromToken) {
         return userRepository.findByIdAndIsDeletedFalse(userId)
                 .map(user -> new UserServiceUserDetails(
                         user.getId(),
