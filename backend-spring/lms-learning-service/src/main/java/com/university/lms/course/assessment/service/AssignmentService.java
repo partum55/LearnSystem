@@ -604,11 +604,13 @@ public class AssignmentService {
         if (!"QUIZ".equals(assignmentType) || inlineQuiz == null || quizId == null) {
             return;
         }
-        if (inlineQuiz.getQuestions() == null || inlineQuiz.getQuestions().isEmpty()) {
-            // When questions are omitted in the request, they may deserialize as an empty list.
-            // In that case, avoid calling replaceQuizQuestionsFromInline to prevent wiping existing questions.
+        if (inlineQuiz.getQuestions() == null) {
+            // When questions are omitted in the request, they typically deserialize as null.
+            // Treat this as "no change" and avoid calling replaceQuizQuestionsFromInline.
             return;
         }
+        // A non-null questions list (including an explicitly empty list) is treated as the desired
+        // final state for the quiz questions. Passing an empty list will intentionally clear them.
         quizService.replaceQuizQuestionsFromInline(quizId, inlineQuiz.getQuestions(), userId);
     }
 
