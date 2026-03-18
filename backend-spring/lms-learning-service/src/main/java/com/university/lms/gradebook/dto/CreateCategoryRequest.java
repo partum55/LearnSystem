@@ -33,9 +33,11 @@ public class CreateCategoryRequest {
     @DecimalMax(value = "100.0", message = "Weight cannot exceed 100%")
     private BigDecimal weight;
 
+    @Builder.Default
     @Min(value = 0, message = "Drop lowest must be non-negative")
-    private Integer dropLowest;
+    private Integer dropLowest = 0;
 
+    @Builder.Default
     @Min(value = 0, message = "Position must be non-negative")
-    private Integer position;
+    private Integer position = 0;
 }
