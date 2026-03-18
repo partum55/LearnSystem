@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 CREATE TABLE IF NOT EXISTS marketplace_plugins (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     plugin_id VARCHAR(255) NOT NULL UNIQUE,
