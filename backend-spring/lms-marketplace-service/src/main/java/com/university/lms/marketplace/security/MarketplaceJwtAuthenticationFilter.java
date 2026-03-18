@@ -25,7 +25,10 @@ public class MarketplaceJwtAuthenticationFilter
     }
 
     @Override
-    protected UserDetails getUserDetails(UUID userId, String email) {
+    protected UserDetails getUserDetails(UUID userId, String email, String roleFromToken) {
+        String resolvedRole = (roleFromToken != null && !roleFromToken.isBlank())
+                ? roleFromToken
+                : DEFAULT_ROLE;
         return new UserDetails() {
             @Override
             public UUID getId() {
@@ -39,8 +42,7 @@ public class MarketplaceJwtAuthenticationFilter
 
             @Override
             public String getRole() {
-                // Return a non-null default role to ensure deterministic access control.
-                return DEFAULT_ROLE;
+                return resolvedRole;
             }
 
             @Override

@@ -67,7 +67,7 @@ public abstract class JwtAuthenticationFilter extends OncePerRequestFilter {
                     String roleFromToken = jwtService.extractRole(jwt);
 
                     // Get user details from service-specific implementation
-                    UserDetails userDetails = getUserDetails(userId, email);
+                    UserDetails userDetails = getUserDetails(userId, email, roleFromToken);
 
                     if (userDetails != null && userDetails.isActive()) {
                         String effectiveRole = resolveRole(userDetails.getRole(), roleFromToken);
@@ -114,8 +114,11 @@ public abstract class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     /**
      * Service-specific user lookup. Return null if user not found or inactive.
+     * The {@code roleFromToken} parameter carries the role claim decoded from the JWT
+     * and may be null if the token has no role claim; implementations may use it as-is
+     * or apply a service-specific fallback.
      */
-    protected abstract UserDetails getUserDetails(UUID userId, String email);
+    protected abstract UserDetails getUserDetails(UUID userId, String email, String roleFromToken);
 
     /**
      * Extract JWT token from Authorization header.

@@ -24,7 +24,7 @@ public class JwtAuthenticationFilter
   }
 
   @Override
-  protected UserDetails getUserDetails(UUID userId, String email) {
+  protected UserDetails getUserDetails(UUID userId, String email, String roleFromToken) {
     // For course service, we don't need to look up user in database
     // The token validation is sufficient, and user info is in the token
     // Extract role from JWT token
