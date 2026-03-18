@@ -22,6 +22,8 @@ import java.util.List;
  *                      requires a scope not listed here.
  * @param dependencies  Other plugins that must be installed and active before this one starts.
  * @param entryPoints   Locators for the backend class and optional frontend assets.
+ * @param runtime       Optional execution runtime identifier (e.g. {@code "java"}, {@code "python"}).
+ *                      If {@code null} or omitted, the runtime defaults to {@code "java"}.
  */
 public record PluginManifest(
         String id,
