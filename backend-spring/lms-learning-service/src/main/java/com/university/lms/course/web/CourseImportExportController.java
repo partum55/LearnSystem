@@ -526,7 +526,6 @@ public class CourseImportExportController {
                 .programmingLanguage(a.getProgrammingLanguage())
                 .autoGradingEnabled(a.getAutoGradingEnabled())
                 .testCases(a.getTestCases())
-                .tags(a.getTags())
                 .estimatedDuration(a.getEstimatedDuration())
                 .isPublished(a.getIsPublished())
                 .quiz(quizExport)
@@ -551,7 +550,6 @@ public class CourseImportExportController {
         if (exp.getAllowedFileTypes() != null) req.setAllowedFileTypes(exp.getAllowedFileTypes());
         if (exp.getMaxFileSize() != null) req.setMaxFileSize(exp.getMaxFileSize());
         if (exp.getMaxFiles() != null) req.setMaxFiles(exp.getMaxFiles());
-        if (exp.getTags() != null) req.setTags(exp.getTags());
         if (exp.getEstimatedDuration() != null) req.setEstimatedDuration(exp.getEstimatedDuration());
         req.setIsPublished(exp.getIsPublished() != null ? exp.getIsPublished() : false);
         if ("QUIZ".equals(req.getAssignmentType())) {
@@ -675,7 +673,6 @@ public class CourseImportExportController {
         private String programmingLanguage;
         private Boolean autoGradingEnabled;
         private List<Map<String, Object>> testCases;
-        private List<String> tags;
         private Integer estimatedDuration;
         private Boolean isPublished;
         private QuizExport quiz;

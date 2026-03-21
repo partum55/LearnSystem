@@ -277,10 +277,6 @@ public class CourseTemplateService {
               .gradeAnonymously(sourceAssignment.getGradeAnonymously())
               .peerReviewEnabled(sourceAssignment.getPeerReviewEnabled())
               .peerReviewsRequired(sourceAssignment.getPeerReviewsRequired())
-              .tags(
-                  sourceAssignment.getTags() == null
-                      ? List.of()
-                      : new ArrayList<>(sourceAssignment.getTags()))
               .estimatedDuration(sourceAssignment.getEstimatedDuration())
               .isTemplate(sourceAssignment.getIsTemplate())
               .isArchived(false)
