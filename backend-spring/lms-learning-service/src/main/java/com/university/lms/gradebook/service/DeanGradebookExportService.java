@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import com.university.lms.course.repository.CourseMemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.BorderStyle;
@@ -53,12 +54,19 @@ public class DeanGradebookExportService {
   private final GradebookEntryService gradebookEntryService;
   private final JdbcTemplate jdbcTemplate;
   private final AdminAuditTrailService adminAuditTrailService;
+  private final CourseMemberRepository courseMemberRepository;
 
-  public DeanGradebookFile export(UUID courseId, String semester, String groupCode, UUID actorId) {
+  public DeanGradebookFile export(UUID courseId, String semester, String groupCode, UUID actorId, String actorRole) {
     Course course =
         courseRepository
             .findById(courseId)
             .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
+
+    if (!"SUPERADMIN".equals(actorRole)
+        && !courseMemberRepository.canUserManageCourse(courseId, actorId)) {
+      throw new org.springframework.security.access.AccessDeniedException(
+          "Not authorized to export this course gradebook");
+    }
 
     List<Assignment> assignments = assignmentRepository.findByCourseIdOrderByDueDateAsc(courseId);
     if (assignments.isEmpty()) {

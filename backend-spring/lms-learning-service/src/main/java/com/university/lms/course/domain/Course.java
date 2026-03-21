@@ -97,6 +97,10 @@ public class Course {
   @Builder.Default
   private Boolean isPublished = false;
 
+  @Column(name = "qr_attendance_enabled", nullable = false)
+  @Builder.Default
+  private Boolean qrAttendanceEnabled = false;
+
   // Audit fields
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)

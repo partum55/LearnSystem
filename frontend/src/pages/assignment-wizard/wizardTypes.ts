@@ -49,11 +49,10 @@ export interface WizardFormData {
   allow_late_submission: boolean;
   late_penalty_percent: number;
   estimated_duration: number | null;
-  tags: string[];
   prerequisites: string[];
 
   // Grading step
-  max_points: number;
+  max_points: number | null;
   auto_grading_enabled: boolean;
   test_cases: Array<{ input: string; expected_output: string; points: number }>;
   quiz_questions: QuestionDraft[];
@@ -92,9 +91,8 @@ export const initialWizardFormData: WizardFormData = {
   allow_late_submission: true,
   late_penalty_percent: 10,
   estimated_duration: null,
-  tags: [],
   prerequisites: [],
-  max_points: 100,
+  max_points: null,
   auto_grading_enabled: false,
   test_cases: [],
   quiz_questions: [],

@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import mermaid from 'mermaid';
@@ -7,6 +7,11 @@ import DOMPurify from 'dompurify';
 import { CanonicalDocument, CanonicalMark, CanonicalNode } from '../../types';
 import { resolveSafeEmbed, EmbedProvider } from './embedSecurity';
 import { ensureMermaidInitialized } from './mermaidUtils';
+import {
+  clampWidgetIframeHeight,
+  withWidgetAutoResize,
+  WIDGET_IFRAME_DEFAULT_HEIGHT,
+} from './widgetIframe';
 import './block-editor.css';
 
 const lowlight = createLowlight(common);
@@ -140,6 +145,46 @@ const MermaidDiagram: React.FC<{ code: string }> = ({ code }) => {
     return <div className="doc-renderer-mermaid-error">{error}</div>;
   }
   return <div className="doc-renderer-mermaid" dangerouslySetInnerHTML={{ __html: svg }} />;
+};
+
+const WidgetIframe: React.FC<{ code: string; title: string; className: string }> = ({
+  code,
+  title,
+  className,
+}) => {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [height, setHeight] = useState(WIDGET_IFRAME_DEFAULT_HEIGHT);
+  const srcDoc = useMemo(() => withWidgetAutoResize(code), [code]);
+
+  useEffect(() => {
+    setHeight(WIDGET_IFRAME_DEFAULT_HEIGHT);
+  }, [code]);
+
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (
+        event.source === iframeRef.current?.contentWindow &&
+        event.data?.type === 'resize' &&
+        typeof event.data.height === 'number'
+      ) {
+        setHeight(clampWidgetIframeHeight(event.data.height));
+      }
+    };
+
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
+  return (
+    <iframe
+      ref={iframeRef}
+      srcDoc={srcDoc}
+      sandbox="allow-scripts"
+      title={title}
+      className={className}
+      style={{ height: `${height}px` }}
+    />
+  );
 };
 
 // ── Code block with syntax highlighting ──
@@ -401,9 +446,8 @@ const renderNode = (node: CanonicalNode, index: number): React.ReactNode => {
         <div key={key} className="doc-renderer-interactive-widget">
           {widgetTitle && <div className="doc-renderer-widget-title">{widgetTitle}</div>}
           {widgetCode ? (
-            <iframe
-              srcDoc={widgetCode}
-              sandbox="allow-scripts"
+            <WidgetIframe
+              code={widgetCode}
               title={widgetTitle || 'Interactive widget'}
               className="doc-renderer-widget-iframe"
             />

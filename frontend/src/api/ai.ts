@@ -78,7 +78,6 @@ export interface GeneratedAssignment {
   allowedFileTypes?: string[];
   programmingLanguage?: string;
   starterCode?: string;
-  tags?: string[];
   estimatedDuration?: string;
   isPublished?: boolean;
 }
@@ -252,6 +251,28 @@ export const aiApi = {
           // Note: Authorization header is automatically added by apiClient interceptor
         },
       }
+    );
+    return response.data;
+  },
+
+  /**
+   * Confirm and save a user-reviewed generated course to the database.
+   * Uses the already-previewed course payload instead of re-generating.
+   */
+  confirmSave: async (payload: GeneratedCourse): Promise<{
+    courseId: string;
+    modulesCreated: number;
+    assignmentsCreated: number;
+    quizzesCreated: number;
+  }> => {
+    const response = await apiClient.post<{
+      courseId: string;
+      modulesCreated: number;
+      assignmentsCreated: number;
+      quizzesCreated: number;
+    }>(
+      `${AI_CLIENT_URL}/courses/confirm-save`,
+      { payload, confirmed: true }
     );
     return response.data;
   },

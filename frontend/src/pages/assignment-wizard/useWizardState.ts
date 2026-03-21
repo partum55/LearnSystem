@@ -40,7 +40,7 @@ function validateStep(step: WizardStep, data: WizardFormData): WizardStepValidat
       }
       break;
     case 'grading':
-      if (data.max_points <= 0) errors.max_points = 'must_be_positive';
+      if (!data.max_points || data.max_points <= 0) errors.max_points = 'must_be_positive';
       if (data.assignment_type === 'QUIZ') {
         if (data.quiz_timer_enabled) {
           if (!data.quiz_time_limit || data.quiz_time_limit < 1 || data.quiz_time_limit > 1440) {

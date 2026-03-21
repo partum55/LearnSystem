@@ -1,20 +1,30 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   NodeViewWrapper,
   NodeViewProps,
   ReactNodeViewRenderer,
 } from '@tiptap/react';
 import { Node, mergeAttributes } from '@tiptap/core';
+import { useTranslation } from 'react-i18next';
 import { aiApi } from '../../../api/ai';
+import {
+  clampWidgetIframeHeight,
+  withWidgetAutoResize,
+  WIDGET_IFRAME_DEFAULT_HEIGHT,
+} from '../widgetIframe';
 
 // ── Interactive Widget View (Editor) ──
 
 const InteractiveWidgetView: React.FC<NodeViewProps> = ({ node, updateAttributes, editor }) => {
+  const { t } = useTranslation();
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCode, setShowCode] = useState(false);
   const [codeDraft, setCodeDraft] = useState('');
+  const [emptyMode, setEmptyMode] = useState<'prompt' | 'code'>('prompt');
+  const [directCode, setDirectCode] = useState('');
+  const [iframeHeight, setIframeHeight] = useState(WIDGET_IFRAME_DEFAULT_HEIGHT);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const isEditable = editor.isEditable;
 
@@ -29,17 +39,26 @@ const InteractiveWidgetView: React.FC<NodeViewProps> = ({ node, updateAttributes
       return [];
     }
   })();
+  const widgetSrcDoc = useMemo(() => withWidgetAutoResize(code), [code]);
 
   // Listen for resize messages from iframe
   useEffect(() => {
     const handler = (event: MessageEvent) => {
-      if (event.data?.type === 'resize' && typeof event.data.height === 'number' && iframeRef.current) {
-        iframeRef.current.style.height = `${Math.min(Math.max(event.data.height, 200), 1200)}px`;
+      if (
+        event.source === iframeRef.current?.contentWindow &&
+        event.data?.type === 'resize' &&
+        typeof event.data.height === 'number'
+      ) {
+        setIframeHeight(clampWidgetIframeHeight(event.data.height));
       }
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
   }, []);
+
+  useEffect(() => {
+    setIframeHeight(WIDGET_IFRAME_DEFAULT_HEIGHT);
+  }, [code]);
 
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim()) return;
@@ -77,7 +96,12 @@ const InteractiveWidgetView: React.FC<NodeViewProps> = ({ node, updateAttributes
     setShowCode(false);
   }, [codeDraft, updateAttributes]);
 
-  // Empty state — show prompt input
+  const handleDirectCodeCreate = useCallback(() => {
+    if (!directCode.trim()) return;
+    updateAttributes({ code: directCode, title: t('interactiveWidget.manualWidget') });
+  }, [directCode, updateAttributes, t]);
+
+  // Empty state — show prompt input or code editor
   if (!code && isEditable) {
     return (
       <NodeViewWrapper className="editor-interactive-widget">
@@ -87,30 +111,77 @@ const InteractiveWidgetView: React.FC<NodeViewProps> = ({ node, updateAttributes
               <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
             </svg>
           </div>
-          <div className="editor-widget-empty-label">Interactive Widget</div>
-          <div className="editor-widget-empty-hint">Describe what you want to create — AI will generate an interactive element</div>
-          <textarea
-            className="editor-widget-prompt-input"
-            placeholder="e.g. A physics simulation showing projectile motion with adjustable angle and velocity..."
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault();
-                void handleGenerate();
-              }
-            }}
-            rows={3}
-          />
-          {error && <div className="editor-widget-error">{error}</div>}
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            disabled={loading || !prompt.trim()}
-            onClick={() => void handleGenerate()}
-          >
-            {loading ? 'Generating...' : 'Generate Widget'}
-          </button>
+          <div className="editor-widget-empty-label">{t('interactiveWidget.title')}</div>
+
+          <div className="editor-widget-mode-toggle">
+            <button
+              type="button"
+              className={`editor-widget-mode-btn ${emptyMode === 'prompt' ? 'editor-widget-mode-active' : ''}`}
+              onClick={() => setEmptyMode('prompt')}
+            >
+              {t('interactiveWidget.aiPrompt')}
+            </button>
+            <button
+              type="button"
+              className={`editor-widget-mode-btn ${emptyMode === 'code' ? 'editor-widget-mode-active' : ''}`}
+              onClick={() => setEmptyMode('code')}
+            >
+              {t('interactiveWidget.code')}
+            </button>
+          </div>
+
+          {emptyMode === 'prompt' ? (
+            <>
+              <div className="editor-widget-empty-hint">{t('interactiveWidget.promptHint')}</div>
+              <textarea
+                className="editor-widget-prompt-input"
+                placeholder={t('interactiveWidget.promptPlaceholder')}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault();
+                    void handleGenerate();
+                  }
+                }}
+                rows={3}
+              />
+              {error && <div className="editor-widget-error">{error}</div>}
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                disabled={loading || !prompt.trim()}
+                onClick={() => void handleGenerate()}
+              >
+                {loading ? t('interactiveWidget.generating') : t('interactiveWidget.generate')}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="editor-widget-empty-hint">{t('interactiveWidget.codeHint')}</div>
+              <textarea
+                className="editor-widget-code-textarea"
+                placeholder={t('interactiveWidget.codePlaceholder')}
+                value={directCode}
+                onChange={(e) => setDirectCode(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault();
+                    handleDirectCodeCreate();
+                  }
+                }}
+                rows={8}
+              />
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                disabled={!directCode.trim()}
+                onClick={handleDirectCodeCreate}
+              >
+                {t('interactiveWidget.createWidget')}
+              </button>
+            </>
+          )}
         </div>
       </NodeViewWrapper>
     );
@@ -125,9 +196,10 @@ const InteractiveWidgetView: React.FC<NodeViewProps> = ({ node, updateAttributes
         <iframe
           ref={iframeRef}
           className="editor-widget-iframe"
-          srcDoc={code}
+          srcDoc={widgetSrcDoc}
           sandbox="allow-scripts"
           title={title || 'Interactive widget'}
+          style={{ height: `${iframeHeight}px` }}
         />
       )}
 

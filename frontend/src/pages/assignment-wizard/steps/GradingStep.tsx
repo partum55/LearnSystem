@@ -81,6 +81,18 @@ const GradingStep: React.FC<GradingStepProps> = ({
   const [aiLoading, setAiLoading] = useState(false);
   const [quizPreview, setQuizPreview] = useState(false);
 
+  // Point budget tracking
+  const [pointBudget, setPointBudget] = useState<{ totalPoints: number; limit: number; assignments: Array<{ id: string; title: string; maxPoints: number }> } | null>(null);
+
+  React.useEffect(() => {
+    if (!courseId) return;
+    import('../../../api/client').then(({ default: apiClient }) => {
+      apiClient.get<{ totalPoints: number; limit: number; assignments: Array<{ id: string; title: string; maxPoints: number }> }>(
+        `/assessments/assignments/course/${courseId}/point-budget`
+      ).then((res) => setPointBudget(res.data)).catch(() => {});
+    });
+  }, [courseId]);
+
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -272,13 +284,36 @@ const GradingStep: React.FC<GradingStepProps> = ({
           <input
             id="wizard-max-points"
             type="number"
-            min={1}
-            value={formData.max_points}
-            onChange={(e) => onChange({ max_points: Number(e.target.value) })}
+            min={0.01}
+            step="0.01"
+            value={formData.max_points ?? ''}
+            onChange={(e) => onChange({ max_points: e.target.value ? Number(e.target.value) : null })}
             className={`input w-32 ${validationErrors.max_points ? 'input-error' : ''}`}
+            placeholder={t('grading.enterPoints', 'Enter points')}
           />
           {validationErrors.max_points && (
             <p className="error-text mt-1">{t(`validation.${validationErrors.max_points}`, validationErrors.max_points)}</p>
+          )}
+          {/* Point budget warning */}
+          {pointBudget && formData.max_points != null && (
+            (() => {
+              const projected = pointBudget.totalPoints + formData.max_points;
+              const limit = pointBudget.limit;
+              const color = projected <= limit ? 'var(--fn-success)' : projected <= limit * 1.5 ? 'var(--fn-warning)' : 'var(--fn-error)';
+              return (
+                <div
+                  className="mt-2 text-sm rounded-lg px-3 py-2"
+                  style={{ border: `1px solid ${color}`, color }}
+                >
+                  {t('grading.budgetWarning', 'Course total: {{current}}/{{limit}} pts. Adding {{adding}} → {{projected}} total', {
+                    current: pointBudget.totalPoints,
+                    limit,
+                    adding: formData.max_points,
+                    projected,
+                  })}
+                </div>
+              );
+            })()
           )}
         </div>
       )}

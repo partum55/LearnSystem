@@ -388,7 +388,6 @@ public class AiGeneratedContentValidator {
             assignment.setProgrammingLanguage(sanitizeText(assignment.getProgrammingLanguage()));
             assignment.setStarterCode(sanitizeText(assignment.getStarterCode()));
             assignment.setEstimatedDuration(sanitizeText(assignment.getEstimatedDuration()));
-            assignment.setTags(sanitizeStringList(assignment.getTags()));
             assignment.setSubmissionTypes(sanitizeStringList(assignment.getSubmissionTypes()));
             assignment.setAllowedFileTypes(sanitizeStringList(assignment.getAllowedFileTypes()));
           }

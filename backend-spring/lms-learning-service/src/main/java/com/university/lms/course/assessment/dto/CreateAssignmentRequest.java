@@ -61,6 +61,7 @@ public class CreateAssignmentRequest {
     private List<Map<String, Object>> testCases = new ArrayList<>();
 
     // Grading
+    @NotNull(message = "Max points is required")
     @DecimalMin("0.01")
     @DecimalMax("10000.00")
     private BigDecimal maxPoints;
@@ -94,8 +95,6 @@ public class CreateAssignmentRequest {
     @Min(0)
     private Integer peerReviewsRequired;
 
-    @Builder.Default
-    private List<String> tags = new ArrayList<>();
     private Integer estimatedDuration;
 
     private Boolean isTemplate;

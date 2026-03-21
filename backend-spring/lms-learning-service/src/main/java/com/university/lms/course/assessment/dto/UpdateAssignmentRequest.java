@@ -75,7 +75,6 @@ public class UpdateAssignmentRequest {
     @Min(0)
     private Integer peerReviewsRequired;
 
-    private List<String> tags;
     private Integer estimatedDuration;
 
     private Boolean isArchived;

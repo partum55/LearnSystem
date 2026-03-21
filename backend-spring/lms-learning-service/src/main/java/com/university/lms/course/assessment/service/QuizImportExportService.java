@@ -7,6 +7,7 @@ import com.university.lms.common.exception.ValidationException;
 import com.university.lms.course.assessment.domain.Quiz;
 import com.university.lms.course.assessment.dto.*;
 import com.university.lms.course.assessment.repository.QuizRepository;
+import com.university.lms.course.repository.CourseMemberRepository;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -23,6 +24,7 @@ import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -39,12 +41,14 @@ public class QuizImportExportService {
   private final QuizSectionService quizSectionService;
   private final QuestionVersionService questionVersionService;
   private final ObjectMapper objectMapper;
+  private final CourseMemberRepository courseMemberRepository;
 
-  public Map<String, Object> exportQuizAsJson(UUID quizId) {
+  public Map<String, Object> exportQuizAsJson(UUID quizId, UUID userId, String userRole) {
     Quiz quiz =
         quizRepository
             .findById(quizId)
             .orElseThrow(() -> new ResourceNotFoundException("Quiz", "id", quizId));
+    ensureCanManageCourse(quiz.getCourseId(), userId, userRole);
 
     List<Map<String, Object>> questions =
         quiz.getQuizQuestions().stream()
@@ -69,14 +73,15 @@ public class QuizImportExportService {
     return output;
   }
 
-  public String exportQuizAsCsv(UUID quizId) {
+  public String exportQuizAsCsv(UUID quizId, UUID userId, String userRole) {
     Quiz quiz =
         quizRepository
             .findById(quizId)
             .orElseThrow(() -> new ResourceNotFoundException("Quiz", "id", quizId));
+    ensureCanManageCourse(quiz.getCourseId(), userId, userRole);
 
     StringBuilder csv = new StringBuilder();
-    csv.append("question_type,stem,points,correct_answer_json,options_json,topic,difficulty,tags_json\n");
+    csv.append("question_type,stem,points,correct_answer_json,options_json,topic,difficulty,tags_json,image_url,explanation\n");
 
     quiz.getQuizQuestions().stream()
         .sorted(Comparator.comparingInt(q -> q.getPosition() == null ? 0 : q.getPosition()))
@@ -90,14 +95,17 @@ public class QuizImportExportService {
               csv.append(csvCell(toJson(question.getOptions()))).append(',');
               csv.append(csvCell(question.getTopic())).append(',');
               csv.append(csvCell(question.getDifficulty())).append(',');
-              csv.append(csvCell(toJson(question.getTags()))).append('\n');
+              csv.append(csvCell(toJson(question.getTags()))).append(',');
+              csv.append(csvCell(question.getImageUrl())).append(',');
+              csv.append(csvCell(question.getExplanation())).append('\n');
             });
 
     return csv.toString();
   }
 
   @Transactional
-  public QuizDto importFromJson(QuizImportRequest request, UUID createdBy) {
+  public QuizDto importFromJson(QuizImportRequest request, UUID createdBy, String userRole) {
+    ensureCanManageCourse(request.getCourseId(), createdBy, userRole);
     QuizDto quiz = quizService.createQuiz(request.getCourseId(), request.getTitle(), request.getDescription(), createdBy);
 
     QuizDto updates = QuizDto.builder()
@@ -133,7 +141,8 @@ public class QuizImportExportService {
   }
 
   @Transactional
-  public QuizDto importFromCsv(UUID courseId, String title, MultipartFile file, UUID createdBy) {
+  public QuizDto importFromCsv(UUID courseId, String title, MultipartFile file, UUID createdBy, String userRole) {
+    ensureCanManageCourse(courseId, createdBy, userRole);
     String csv;
     try (InputStream inputStream = file.getInputStream()) {
       csv = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
@@ -156,11 +165,12 @@ public class QuizImportExportService {
           Arrays.stream(values).map(this::unquote).toList());
     }
 
-    return importFromJson(request, createdBy);
+    return importFromJson(request, createdBy, userRole);
   }
 
   @Transactional
-  public QuizDto importFromExcel(UUID courseId, String title, MultipartFile file, UUID createdBy) {
+  public QuizDto importFromExcel(UUID courseId, String title, MultipartFile file, UUID createdBy, String userRole) {
+    ensureCanManageCourse(courseId, createdBy, userRole);
     QuizImportRequest request = QuizImportRequest.builder().courseId(courseId).title(title).build();
     try (InputStream inputStream = file.getInputStream();
         Workbook workbook = WorkbookFactory.create(inputStream)) {
@@ -195,11 +205,12 @@ public class QuizImportExportService {
     if (request.getQuestions().isEmpty()) {
       throw new ValidationException("No questions were found in the Excel file");
     }
-    return importFromJson(request, createdBy);
+    return importFromJson(request, createdBy, userRole);
   }
 
   @Transactional
-  public QuizDto importFromWord(UUID courseId, String title, MultipartFile file, UUID createdBy) {
+  public QuizDto importFromWord(UUID courseId, String title, MultipartFile file, UUID createdBy, String userRole) {
+    ensureCanManageCourse(courseId, createdBy, userRole);
     QuizImportRequest request = QuizImportRequest.builder().courseId(courseId).title(title).build();
     try (InputStream inputStream = file.getInputStream(); XWPFDocument document = new XWPFDocument(inputStream)) {
       List<XWPFTable> tables = document.getTables();
@@ -225,7 +236,16 @@ public class QuizImportExportService {
     if (request.getQuestions().isEmpty()) {
       throw new ValidationException("No questions were found in the Word table");
     }
-    return importFromJson(request, createdBy);
+    return importFromJson(request, createdBy, userRole);
+  }
+
+  private void ensureCanManageCourse(UUID courseId, UUID userId, String userRole) {
+    if ("SUPERADMIN".equals(userRole)) {
+      return;
+    }
+    if (!courseMemberRepository.canUserManageCourse(courseId, userId)) {
+      throw new AccessDeniedException("Not authorized to manage quizzes in this course");
+    }
   }
 
   private String[] splitCsv(String line) {

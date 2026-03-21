@@ -309,7 +309,7 @@ export const CourseDetail: React.FC = () => {
   );
 
   const handleEditModuleStructure = useCallback(
-    async (module: Module, patch: { topic?: string; tags?: string[] }) => {
+    async (module: Module, patch: { topic?: string }) => {
       if (!id) {
         return;
       }
@@ -322,14 +322,6 @@ export const CourseDetail: React.FC = () => {
           nextMeta.topic = patch.topic.trim();
         } else {
           delete nextMeta.topic;
-        }
-      }
-
-      if (patch.tags !== undefined) {
-        if (patch.tags.length > 0) {
-          nextMeta.tags = patch.tags;
-        } else {
-          delete nextMeta.tags;
         }
       }
 

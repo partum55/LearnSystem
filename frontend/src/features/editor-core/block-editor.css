@@ -1678,6 +1678,47 @@
   max-width: 400px;
 }
 
+.editor-widget-mode-toggle {
+  display: flex;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md, 6px);
+  padding: 2px;
+  gap: 2px;
+}
+
+.editor-widget-mode-btn {
+  padding: 4px 12px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm, 4px);
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  font-family: var(--font-body, 'Outfit', sans-serif);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.editor-widget-mode-btn:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.editor-widget-mode-active,
+.editor-widget-mode-active:hover {
+  background: var(--bg-overlay);
+  color: var(--text-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.editor-widget-empty .editor-widget-code-textarea {
+  width: 100%;
+  max-width: 480px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md, 6px);
+  min-height: 160px;
+}
+
 .editor-widget-prompt-input {
   width: 100%;
   max-width: 480px;
@@ -1816,4 +1857,25 @@
   text-align: center;
   color: var(--text-muted);
   font-size: 0.85rem;
+}
+
+/* ── Diagram Creator Modal ── */
+.editor-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: var(--z-modal, 400);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: fadeIn var(--duration-normal, 200ms) var(--ease-out, ease-out);
+}
+
+.editor-diagram-creator-modal {
+  width: 100%;
+  max-width: 960px;
+  max-height: 80vh;
+  animation: fadeInUp var(--duration-slow, 400ms) var(--ease-out, ease-out);
 }

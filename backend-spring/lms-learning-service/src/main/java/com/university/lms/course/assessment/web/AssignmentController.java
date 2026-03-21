@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -216,6 +217,15 @@ public class AssignmentController {
         AssignmentDto assignment =
                 assignmentService.duplicateAssignment(id, userId, userRole, targetCourseId, targetModuleId);
         return ResponseEntity.status(HttpStatus.CREATED).body(assignment);
+    }
+
+    /**
+     * Get point budget summary for all published assignments in a course.
+     */
+    @GetMapping("/course/{courseId}/point-budget")
+    public ResponseEntity<Map<String, Object>> getPointBudget(@PathVariable UUID courseId) {
+        Map<String, Object> budget = assignmentService.getPointBudget(courseId);
+        return ResponseEntity.ok(budget);
     }
 
     @GetMapping

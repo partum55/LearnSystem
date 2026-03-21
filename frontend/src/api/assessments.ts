@@ -100,7 +100,6 @@ const mapAssignmentToApi = (raw: Partial<Assignment> & UnknownRecord): UnknownRe
     gradeAnonymously: raw.gradeAnonymously ?? raw.grade_anonymously,
     peerReviewEnabled: raw.peerReviewEnabled ?? raw.peer_review_enabled,
     peerReviewsRequired: raw.peerReviewsRequired ?? raw.peer_reviews_required,
-    tags: raw.tags,
     estimatedDuration: raw.estimatedDuration ?? raw.estimated_duration,
     isTemplate: raw.isTemplate ?? raw.is_template,
     isArchived: raw.isArchived ?? raw.is_archived,

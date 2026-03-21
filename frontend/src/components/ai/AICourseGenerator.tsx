@@ -66,18 +66,13 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
   };
 
   const handleSave = async () => {
-    if (!generatedCourse || !userId || !authToken) return;
+    if (!generatedCourse) return;
 
     setSaving(true);
     setError('');
 
     try {
-      const request: CourseGenerationRequest = {
-        ...options,
-        prompt: prompt.trim(),
-      };
-
-      await aiApi.generateAndSaveCourse(request, userId);
+      await aiApi.confirmSave(generatedCourse);
       setStep('success');
 
       if (onCourseGenerated) {

@@ -5,6 +5,8 @@ import { Menu, Transition } from '@headlessui/react';
 import { BellIcon, LanguageIcon, Bars3Icon, BookOpenIcon } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../store/authStore';
 import { useNotificationStore } from '../store/notificationStore';
+import { useWebSocket } from '../hooks/useWebSocket';
+import { getAccessToken } from '../api/token';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -14,15 +16,58 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onMenuClick, onCourseMenuClick }) => {
   const { t, i18n } = useTranslation();
   const { user, logout, updateUserPreferences } = useAuthStore();
-  const { unreadCount, notifications, fetchNotifications, fetchUnreadCount, markAllAsRead } = useNotificationStore();
+  const { unreadCount, notifications, fetchNotifications, fetchUnreadCount, markAsRead, markAllAsRead, wsConnected } = useNotificationStore();
+
+  const token = getAccessToken() ?? null;
+  useWebSocket(token);
 
   React.useEffect(() => {
-    void fetchUnreadCount();
-    const intervalId = window.setInterval(() => {
-      void fetchUnreadCount();
-    }, 30000);
-    return () => window.clearInterval(intervalId);
-  }, [fetchUnreadCount]);
+    let timeoutId: number | undefined;
+
+    const shouldPollNow = () => navigator.onLine && document.visibilityState === 'visible';
+
+    const nextDelay = () => {
+      if (!navigator.onLine) {
+        return 300000;
+      }
+      if (document.visibilityState !== 'visible') {
+        return wsConnected ? 300000 : 120000;
+      }
+      return wsConnected ? 120000 : 30000;
+    };
+
+    const schedule = () => {
+      timeoutId = window.setTimeout(() => {
+        if (shouldPollNow()) {
+          void fetchUnreadCount();
+        }
+        schedule();
+      }, nextDelay());
+    };
+
+    if (shouldPollNow()) {
+      void fetchUnreadCount({ force: true });
+    }
+
+    const handleVisibilityOrOnline = () => {
+      if (shouldPollNow()) {
+        void fetchUnreadCount({ force: true });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityOrOnline);
+    window.addEventListener('online', handleVisibilityOrOnline);
+
+    schedule();
+
+    return () => {
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityOrOnline);
+      window.removeEventListener('online', handleVisibilityOrOnline);
+    };
+  }, [fetchUnreadCount, wsConnected]);
 
   const changeLanguage = (lang: 'uk' | 'en') => {
     i18n.changeLanguage(lang);
@@ -140,7 +185,15 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick, onCourseMenuClick }
                 void fetchNotifications();
               }}
             >
-              <BellIcon className="h-4 w-4" />
+              <div className="relative">
+                <BellIcon className="h-4 w-4" />
+                {/* WebSocket status dot */}
+                <div
+                  className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full"
+                  style={{ background: wsConnected ? 'var(--fn-success)' : 'var(--text-faint)' }}
+                  title={wsConnected ? t('notifications.wsConnected', 'Live updates active') : undefined}
+                />
+              </div>
               {unreadCount > 0 && (
                 <span
                   className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full text-[10px] font-semibold flex items-center justify-center"
@@ -189,18 +242,49 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick, onCourseMenuClick }
                       {t('notifications.empty', 'No new notifications')}
                     </div>
                   ) : (
-                    notifications.map((item) => (
-                      <div
-                        key={item.id}
-                        className="px-3 py-2.5 text-sm"
-                        style={{ borderBottom: '1px solid var(--border-subtle)' }}
-                      >
-                        <p style={{ color: 'var(--text-primary)' }}>{item.message}</p>
-                        <p className="mt-1 text-xs" style={{ color: 'var(--text-faint)' }}>
-                          {new Date(item.created_at).toLocaleString()}
-                        </p>
-                      </div>
-                    ))
+                    notifications.map((item) => {
+                      const isUnread = !item.read;
+                      const timeAgo = (() => {
+                        const diff = Date.now() - new Date(item.created_at).getTime();
+                        if (diff < 60_000) return t('notifications.justNow', 'just now');
+                        if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`;
+                        if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`;
+                        return `${Math.floor(diff / 86_400_000)}d`;
+                      })();
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2.5 text-sm flex items-start gap-2.5 transition-colors"
+                          style={{
+                            borderBottom: '1px solid var(--border-subtle)',
+                            borderLeft: isUnread ? '2px solid var(--text-primary)' : '2px solid transparent',
+                            background: isUnread ? 'rgba(255,255,255,0.02)' : 'transparent',
+                          }}
+                          onClick={() => markAsRead(item.id)}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = isUnread ? 'rgba(255,255,255,0.02)' : 'transparent')}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p
+                              className="truncate"
+                              style={{
+                                color: 'var(--text-primary)',
+                                fontWeight: isUnread ? 500 : 400,
+                              }}
+                            >
+                              {item.message}
+                            </p>
+                          </div>
+                          <span
+                            className="flex-shrink-0 text-xs tabular-nums mt-0.5"
+                            style={{ color: 'var(--text-faint)' }}
+                          >
+                            {timeAgo}
+                          </span>
+                        </button>
+                      );
+                    })
                   )}
                 </div>
               </Menu.Items>

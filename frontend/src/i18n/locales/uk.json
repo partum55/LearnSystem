@@ -40,7 +40,6 @@
       "grading": "Оцінювання",
       "settings": "Налаштування"
     },
-    "tags": "Теги",
     "test_cases": "Тестові випадки",
     "title": "Назва",
     "type": "Тип",
@@ -301,10 +300,41 @@
       "progress": "Прогрес курсу",
       "quickLinks": "Швидкі посилання",
       "recentAssignments": "Останні завдання",
-      "studyGroups": "Навчальні групи"
+      "studyGroups": "Навчальні групи",
+      "noGrades": "Оцінок поки немає",
+      "totalGrades": "всього оцінок",
+      "fromYesterday": "з учорашнього дня",
+      "streakEmpty": "Почніть серію, завершуючи завдання"
     }
   },
   "Description": "Опис",
+  "diagram": {
+    "title": "Створити діаграму",
+    "aiMode": "AI підказка",
+    "fieldMode": "Конструктор",
+    "describePrompt": "Опишіть вашу діаграму",
+    "promptPlaceholder": "напр. \"Блок-схема процесу автентифікації користувача з логіном, перевіркою MFA та створенням сесії\"",
+    "generate": "Згенерувати",
+    "generating": "Генерація...",
+    "promptHint": "Ctrl+Enter для генерації. Ви можете вдосконалити результат потім.",
+    "aiError": "Не вдалося згенерувати діаграму",
+    "aiEmpty": "AI повернув порожній результат",
+    "diagramType": "Тип діаграми",
+    "direction": "Напрямок",
+    "nodes": "Вузли",
+    "edges": "З'єднання",
+    "participants": "Учасники",
+    "messages": "Повідомлення",
+    "rootTopic": "Центральна тема",
+    "chartTitle": "Назва діаграми",
+    "slices": "Сегменти",
+    "mermaidCode": "Код Mermaid",
+    "preview": "Попередній перегляд",
+    "emptyPreview": "Діаграма з'явиться тут",
+    "insert": "Вставити діаграму",
+    "rawCodeHint": "Використовуйте редактор коду нижче, щоб написати цей тип діаграми безпосередньо у синтаксисі Mermaid.",
+    "createDiagram": "Створити діаграму"
+  },
   "email": "Електронна пошта",
   "EN": "EN",
   "enrollment": {
@@ -483,6 +513,19 @@
     "footer": "© 2024 Український католицький університет. Всі права захищені."
   },
   "Input:": "Вхідні дані:",
+  "interactiveWidget": {
+    "title": "Інтерактивний віджет",
+    "aiPrompt": "AI підказка",
+    "code": "Код",
+    "promptHint": "Опишіть, що ви хочете створити — AI згенерує інтерактивний елемент",
+    "promptPlaceholder": "напр. Симуляція фізики з рухом снаряда та регульованим кутом і швидкістю...",
+    "generating": "Генерація...",
+    "generate": "Згенерувати віджет",
+    "codeHint": "Напишіть власний HTML, CSS та JavaScript напряму",
+    "codePlaceholder": "<html>\n  <body>\n    <h1>Привіт, світе</h1>\n  </body>\n</html>",
+    "createWidget": "Створити віджет",
+    "manualWidget": "Власний віджет"
+  },
   "italic": "курсив",
   "Java": "Java",
   "JavaScript": "JavaScript",
@@ -612,7 +655,10 @@
   "No data available": "Немає доступних даних",
   "notifications": {
     "noNotifications": "Немає сповіщень",
-    "title": "Сповіщення"
+    "title": "Сповіщення",
+    "empty": "Нових сповіщень немає",
+    "justNow": "щойно",
+    "wsConnected": "Оновлення в реальному часі активні"
   },
   "or drag and drop": "або перетягніть",
   "Pending Grading": "Очікує оцінювання",
@@ -1257,5 +1303,78 @@
     "clearLog": "Очистити журнал",
     "running": "Виконується...",
     "runAll": "Повне налаштування"
+  },
+  "grading": {
+    "enterPoints": "Введіть бали",
+    "budgetWarning": "Загалом по курсу: {{current}}/{{limit}} б. Додаємо {{adding}} → {{projected}} загалом",
+    "pointsRequired": "Максимальний бал є обов'язковим"
+  },
+  "progress": {
+    "title": "Прогрес",
+    "completed": "Завершено",
+    "moduleProgress": "{{completed}}/{{total}} завершено",
+    "markComplete": "Позначити як завершене",
+    "complete": "Завершено"
+  },
+  "seminar": {
+    "attendance": "Відвідуваність",
+    "present": "присутній",
+    "absent": "відсутній",
+    "markAll": "Позначити всіх",
+    "markAllPresent": "Позначити всіх присутніми",
+    "markAllAbsent": "Позначити всіх відсутніми",
+    "saveAttendance": "Зберегти відвідуваність",
+    "notes": "Нотатки",
+    "notesPlaceholder": "Необов'язкові нотатки...",
+    "saved": "Відвідуваність збережено",
+    "noSubmission": "Це семінар — відвідуваність відмічає викладач",
+    "attendanceInfo": "Семінар — відвідуваність відмічає викладач"
+  },
+  "lesson": {
+    "notFound": "Урок не знайдено",
+    "step": "Крок",
+    "steps": "Кроки",
+    "textStep": "Текст",
+    "quizStep": "Тест",
+    "addText": "Текст",
+    "addQuiz": "Тест",
+    "selectStep": "Виберіть крок для редагування або додайте новий",
+    "titlePlaceholder": "Назва уроку",
+    "summaryPlaceholder": "Опис (необов'язково)",
+    "quizStepHint": "Питання тесту зберігаються у форматі JSON. Редагуйте вміст кроку з даними питань.",
+    "typeAnswer": "Введіть вашу відповідь...",
+    "correct": "Правильно!",
+    "incorrect": "Неправильно",
+    "checkAnswers": "Перевірити відповіді",
+    "completeAndNext": "Завершити і далі",
+    "completeLesson": "Завершити урок",
+    "progressSummary": "{{completed}}/{{total}} кроків завершено",
+    "stepsProgress": "{{completed}}/{{total}} кроків"
+  },
+  "form": {
+    "addAnother": "Додати ще",
+    "formField": "Поле форми",
+    "repeatableGroup": "Повторювана група",
+    "configureField": "Налаштувати поле форми"
+  },
+  "qr": {
+    "generate": "Згенерувати QR-код",
+    "regenerate": "Оновити",
+    "expiresIn": "Діє ще {{minutes}} хв",
+    "expired": "QR-код прострочений"
+  },
+  "peerReview": {
+    "submitReview": "Надіслати рецензію",
+    "reviewFor": "Рецензія для",
+    "score": "Бал",
+    "feedback": "Відгук",
+    "feedbackPlaceholder": "Надайте конструктивний відгук...",
+    "submit": "Надіслати рецензію",
+    "invalidScore": "Бал має бути від 0 до 100"
+  },
+  "checkin": {
+    "success": "Присутність підтверджено",
+    "failed": "Помилка реєстрації",
+    "tokenExpired": "Цей QR-код прострочений"
   }
 }

@@ -56,6 +56,9 @@ const Landing = lazy(() => import('./pages/Landing'));
 const ModulePageEditor = lazy(() => import('./pages/ModulePageEditor'));
 const MarketplaceBrowse = lazy(() => import('./pages/marketplace/MarketplaceBrowse'));
 const MarketplacePluginDetail = lazy(() => import('./pages/marketplace/MarketplacePluginDetail'));
+const LessonPlayer = lazy(() => import('./pages/lesson/LessonPlayer'));
+const LessonBuilder = lazy(() => import('./pages/lesson/LessonBuilder'));
+const AttendanceCheckin = lazy(() => import('./pages/AttendanceCheckin'));
 
 // Wrapper to key ResourceEditor by resourceId so it remounts on route changes
 const ResourceEditorKeyed: React.FC = () => {
@@ -233,6 +236,23 @@ const AppOptimized: React.FC = () => {
               </LazyRoute>
             } />
             <Route path="/courses/:courseId/modules/:moduleId/assignments/:assignmentId/print" element={<LazyRoute isPrivate><AssignmentPrintView /></LazyRoute>} />
+            <Route path="/courses/:courseId/modules/:moduleId/lessons/:lessonId" element={<LazyRoute isPrivate><LessonPlayer /></LazyRoute>} />
+            <Route path="/courses/:courseId/modules/:moduleId/lessons/:lessonId/edit" element={
+              <LazyRoute isPrivate>
+                <RoleRoute allowedRoles={['TEACHER', 'TA', 'SUPERADMIN']}>
+                  <LessonBuilder />
+                </RoleRoute>
+              </LazyRoute>
+            } />
+            <Route path="/courses/:courseId/modules/:moduleId/lessons/new" element={
+              <LazyRoute isPrivate>
+                <RoleRoute allowedRoles={['TEACHER', 'TA', 'SUPERADMIN']}>
+                  <LessonBuilder />
+                </RoleRoute>
+              </LazyRoute>
+            } />
+
+            <Route path="/courses/:courseId/assignments/:assignmentId/checkin" element={<LazyRoute isPrivate><AttendanceCheckin /></LazyRoute>} />
 
             <Route path="/calendar" element={<LazyRoute isPrivate><CalendarPage /></LazyRoute>} />
 

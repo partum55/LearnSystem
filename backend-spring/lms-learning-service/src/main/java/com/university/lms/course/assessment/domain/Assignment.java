@@ -97,8 +97,7 @@ public class Assignment {
 
     // Points and grading
     @Column(name = "max_points", precision = 6, scale = 2, nullable = false)
-    @Builder.Default
-    private BigDecimal maxPoints = BigDecimal.valueOf(100.00);
+    private BigDecimal maxPoints;
 
     // Dates
     @Column(name = "due_date")
@@ -163,12 +162,6 @@ public class Assignment {
     @Column(name = "peer_reviews_required")
     @Builder.Default
     private Integer peerReviewsRequired = 0;
-
-    // Tags and metadata
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
-    @Builder.Default
-    private List<String> tags = new ArrayList<>();
 
     @Column(name = "estimated_duration")
     private Integer estimatedDuration; // in minutes

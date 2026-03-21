@@ -17,6 +17,16 @@ spring:
           filters:
             - RewritePath=/api/course-management(?<segment>/?.*), /api/admin/course-management${segment}
 
+        - id: learning-progress
+          uri: lb://lms-learning-service
+          predicates:
+            - Path=/api/progress/**
+
+        - id: learning-lessons
+          uri: lb://lms-learning-service
+          predicates:
+            - Path=/api/lessons/**
+
         - id: user-service
           uri: lb://lms-user-service
           predicates:
@@ -59,6 +69,11 @@ spring:
           predicates:
             - Path=/api/pages/**, /api/editor/media/**
 
+        - id: learning-assignments
+          uri: lb://lms-learning-service
+          predicates:
+            - Path=/api/assignments/**
+
         - id: learning-assignment-documents
           uri: lb://lms-learning-service
           predicates:
@@ -82,6 +97,11 @@ spring:
             - Path=/api/v1/gradebook/**, /api/gradebook/**
           filters:
             - RewritePath=/api/v1/gradebook(?<segment>/?.*), /api/gradebook${segment}
+
+        - id: learning-websocket
+          uri: lb://lms-learning-service
+          predicates:
+            - Path=/ws/**
 
         - id: learning-deadlines
           uri: lb://lms-learning-service
