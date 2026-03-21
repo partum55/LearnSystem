@@ -375,8 +375,6 @@ export const CourseList: React.FC = () => {
         <AICourseGenerator
           isOpen={showAIGenerator}
           onClose={() => setShowAIGenerator(false)}
-          userId={user?.id}
-          authToken={getAccessToken() || ''}
           onCourseGenerated={(course) => {
             console.log('AI generated course:', course);
             setShowAIGenerator(false);

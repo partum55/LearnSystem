@@ -12,8 +12,6 @@ interface AICourseGeneratorProps {
   isOpen: boolean;
   onClose: () => void;
   onCourseGenerated?: (course: GeneratedCourse) => void;
-  userId?: string;
-  authToken?: string;
 }
 
 type Step = 'prompt' | 'options' | 'generating' | 'preview' | 'success';
@@ -22,8 +20,6 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
   isOpen,
   onClose,
   onCourseGenerated,
-  userId,
-  authToken,
 }) => {
   const { t } = useTranslation();
   const [step, setStep] = useState<Step>('prompt');
