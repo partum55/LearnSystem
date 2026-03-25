@@ -185,6 +185,7 @@ export function legacyToWizardData(legacy: AssignmentFormData): WizardFormData {
     is_published: false,
     is_template: legacy.is_template,
     ai_drafts: [],
+    vpl_config: legacy.vpl_config ?? null,
   };
 }
 
@@ -217,6 +218,7 @@ export function wizardDataToApiPayload(
     maxFileSize: data.max_file_size,
     testCases: data.test_cases,
     autoGradingEnabled: data.auto_grading_enabled,
+    vplConfig: data.vpl_config ?? undefined,
     allowLateSubmission: data.allow_late_submission,
     latePenaltyPercent: data.late_penalty_percent,
     estimatedDuration: data.estimated_duration,
