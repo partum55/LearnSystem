@@ -185,7 +185,7 @@ export function legacyToWizardData(legacy: AssignmentFormData): WizardFormData {
     is_published: false,
     is_template: legacy.is_template,
     ai_drafts: [],
-    vpl_config: legacy.vpl_config ?? null,
+    vpl_config: null,
   };
 }
 

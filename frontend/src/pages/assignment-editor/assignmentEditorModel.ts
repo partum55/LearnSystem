@@ -1,3 +1,5 @@
+import { VplConfig } from '../../types';
+
 export type AssignmentEditorTab = 'basic' | 'content' | 'settings' | 'grading' | 'advanced';
 
 export interface AssignmentFormData {
@@ -49,7 +51,7 @@ export interface AssignmentRequestPayload {
   maxFileSize: number;
   testCases: Array<{ input: string; expected_output: string; points: number }>;
   autoGradingEnabled: boolean;
-  vplConfig?: Record<string, unknown> | null;
+  vplConfig?: VplConfig | null;
   allowLateSubmission: boolean;
   latePenaltyPercent: number;
   estimatedDuration: number | null;
