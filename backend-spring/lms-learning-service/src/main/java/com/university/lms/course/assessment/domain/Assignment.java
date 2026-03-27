@@ -95,6 +95,10 @@ public class Assignment {
     @Builder.Default
     private List<Map<String, Object>> testCases = new ArrayList<>();
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "vpl_config", columnDefinition = "jsonb")
+    private Map<String, Object> vplConfig;
+
     // Points and grading
     @Column(name = "max_points", precision = 6, scale = 2, nullable = false)
     private BigDecimal maxPoints;

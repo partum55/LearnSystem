@@ -33,15 +33,15 @@ const mapAssignments = (
   status: 'upcoming' | 'overdue'
 ): CourseDeadlineItem[] => {
   return assignments
-    .filter((assignment) => Boolean(assignment.id && assignment.due_date))
+    .filter((assignment) => Boolean(assignment.id && assignment.dueDate))
     .map((assignment) => ({
       assignmentId: assignment.id,
-      moduleId: assignment.module_id,
+      moduleId: assignment.moduleId,
       courseId: course.id,
       courseCode: course.code,
       courseTitle: course.title,
       title: assignment.title,
-      dueDate: String(assignment.due_date),
+      dueDate: String(assignment.dueDate),
       status,
     }));
 };

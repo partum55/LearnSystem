@@ -5,26 +5,26 @@ type UnknownRecord = Record<string, unknown>;
 
 const normalizeModulePage = (raw: UnknownRecord): ModulePage => ({
   id: String(raw.id ?? ''),
-  module_id: String(raw.moduleId ?? raw.module_id ?? ''),
-  parent_page_id: raw.parentPageId ? String(raw.parentPageId) : (raw.parent_page_id ? String(raw.parent_page_id) : undefined),
+  moduleId: String(raw.moduleId ?? ''),
+  parentPageId: raw.parentPageId ? String(raw.parentPageId) : undefined,
   title: String(raw.title ?? ''),
   slug: String(raw.slug ?? ''),
   position: Number(raw.position ?? 0),
-  is_published: Boolean(raw.isPublished ?? raw.is_published ?? false),
-  has_unpublished_changes: Boolean(raw.hasUnpublishedChanges ?? raw.has_unpublished_changes ?? false),
-  created_by: String(raw.createdBy ?? raw.created_by ?? ''),
-  updated_by: String(raw.updatedBy ?? raw.updated_by ?? ''),
-  created_at: String(raw.createdAt ?? raw.created_at ?? ''),
-  updated_at: String(raw.updatedAt ?? raw.updated_at ?? ''),
+  isPublished: Boolean(raw.isPublished ?? false),
+  hasUnpublishedChanges: Boolean(raw.hasUnpublishedChanges ?? false),
+  createdBy: String(raw.createdBy ?? ''),
+  updatedBy: String(raw.updatedBy ?? ''),
+  createdAt: String(raw.createdAt ?? ''),
+  updatedAt: String(raw.updatedAt ?? ''),
 });
 
 const normalizeDocumentPayload = (raw: UnknownRecord): CanonicalDocumentPayload => ({
-  owner_id: String(raw.ownerId ?? raw.owner_id ?? ''),
-  schema_version: Number(raw.schemaVersion ?? raw.schema_version ?? 1),
-  document_hash: raw.documentHash ? String(raw.documentHash) : (raw.document_hash ? String(raw.document_hash) : undefined),
+  ownerId: String(raw.ownerId ?? ''),
+  schemaVersion: Number(raw.schemaVersion ?? 1),
+  documentHash: raw.documentHash ? String(raw.documentHash) : undefined,
   document: (raw.document as CanonicalDocument) ?? { version: 1, type: 'doc', content: [] },
-  updated_at: raw.updatedAt ? String(raw.updatedAt) : (raw.updated_at ? String(raw.updated_at) : undefined),
-  published_snapshot: Boolean(raw.publishedSnapshot ?? raw.published_snapshot ?? false),
+  updatedAt: raw.updatedAt ? String(raw.updatedAt) : undefined,
+  publishedSnapshot: Boolean(raw.publishedSnapshot ?? false),
 });
 
 const normalizeTocItem = (raw: UnknownRecord): TocItem => ({

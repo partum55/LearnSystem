@@ -6,6 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Full-stack Learning Management System: Spring Boot microservices backend, React + TypeScript frontend, Docker-based infrastructure with split deployment support (Vercel + DigitalOcean + Supabase).
 
+## Naming Convention — camelCase Everywhere
+
+**Both frontend and backend use camelCase for all identifiers:**
+- Java: fields, method names, variable names, DTO properties — all camelCase (`assignmentId`, `vplConfig`, `autoGradeResult`)
+- TypeScript/React: variables, functions, component props, object keys, API response fields — all camelCase
+- JSON API payloads: all keys camelCase (Spring Jackson serializes Java camelCase fields to camelCase JSON by default — do not add `@JsonProperty` to override this)
+- Database columns use `snake_case` (Flyway migrations), but Java entity fields mapping them are camelCase (`@Column(name = "auto_grade_result")`)
+- React components use PascalCase (standard), hooks use `useCamelCase`
+
 ## Branch Strategy
 
 - **`main`** — Production-ready. `docker-compose.yml` uses external Supabase PostgreSQL, no local DB container. Requires `.env.production`.
@@ -19,16 +28,18 @@ Frontend (React+TS, Vite :5173 / Nginx :3000 / Vercel)
 API Gateway (Spring Cloud Gateway :8080, Eureka, Resilience4j, Bucket4j rate limiting)
     │
     ├── User Service (:8081) — Auth, JWT, Google OAuth SSO, user management
-    ├── Learning Service (:8089) — Modular monolith: courses, assessments, gradebook, submissions, deadlines, plugin runtime
+    ├── Learning Service (:8089) — Modular monolith: courses, assessments, gradebook,
+    │                              submissions, deadlines, VPL/autograding, marketplace, plugin runtime
     ├── AI Service (:8085) — Groq Llama API integration, content generation (WebFlux)
     ├── Analytics Service (:8088) — Teacher analytics, Feign clients to other services
-    ├── Marketplace Service (:8086) — Plugin marketplace
-    └── Eureka Server (:8761) — Service discovery
+    ├── Marketplace Service (:8086) — Plugin marketplace (standalone service)
+    ├── Eureka Server (:8761) — Service discovery
+    └── Execution Service (:3000) — Sandboxed code execution (Python/FastAPI + isolate)
          │
     PostgreSQL (Supabase on main / local :5432 on dev) + Redis (:6380)
 ```
 
-The Learning Service is a **modular monolith** — one Spring Boot app with distinct domain packages (courses, assessments, gradebook, submissions, deadlines) rather than separate microservices. It also hosts the plugin runtime (Python sidecar via FastAPI).
+The Learning Service is a **modular monolith** — one Spring Boot app with domain packages: `course`, `assessment` (including VPL/autograding), `gradebook` (including analytics), `submission`, `deadline`, `marketplace`. It also hosts the plugin runtime (Python sidecar via FastAPI).
 
 ## Development Commands
 
@@ -94,10 +105,10 @@ Markers: `@pytest.mark.smoke`, `.critical`, `.auth`, `.course`, `.quiz`, `.assig
 ### Backend (`backend-spring/`)
 - **lms-common** — Shared DTOs, security helpers, rate limiting (bucket4j), validation
 - **lms-user-service** — Spring Security + JWT (jjwt 0.12.3), Google OAuth SSO, user CRUD, AES-256-GCM encryption for user API keys
-- **lms-learning-service** — Domain modules under `com.university.lms.{course,assessment,gradebook,submission,deadline}`. Flyway migrations, iCal4j calendar, WebSocket, mail support, plugin runtime
+- **lms-learning-service** — Domain modules under `com.university.lms.{course,assessment,gradebook,submission,deadline,marketplace}`. Flyway migrations, iCal4j calendar, WebSocket, mail support, plugin runtime. Assessment domain includes VPL/autograding sub-domain. Gradebook domain includes analytics.
 - **lms-ai-service** — Spring WebFlux async HTTP to Groq/Llama API (also supports Together AI, OpenAI, Ollama)
 - **lms-analytics-service** — Feign clients to other services for cross-service queries
-- **lms-marketplace-service** — Plugin marketplace for discovering/installing plugins
+- **lms-marketplace-service** — Standalone plugin marketplace service
 - **lms-plugin-sdk** — Plugin contract definitions and shared types
 - **lms-plugin-runtime** — Python plugin execution via FastAPI sidecar, health monitoring, auto-restart
 - **lms-api-gateway** — Route predicates in `application.yml`, circuit breaker, rate limiting
@@ -105,18 +116,54 @@ Markers: `@pytest.mark.smoke`, `.critical`, `.auth`, `.course`, `.quiz`, `.assig
 
 Tech: Java 21, Spring Boot 3.2.2, Spring Cloud 2023.0.0, PostgreSQL, Redis, Flyway, Lombok, MapStruct.
 
+### Execution Service (`execution-service/`)
+
+Standalone Python/FastAPI microservice for sandboxed code execution. Not part of the Spring ecosystem.
+
+- **`main.py`** — FastAPI app, endpoints: `POST /execute` (with test cases), `POST /execute/raw` (stdin), `GET /health`, `GET /languages`
+- **`isolate_runner.py`** — Isolate sandbox wrapper (process isolation)
+- **`box_pool.py`** — Box pool management (up to 100 concurrent sandboxes)
+- **`language_registry.py`** — Language configs (Python 3.14, Java 21, Node.js 24/JS, GCC 13/C++)
+- **`test_runner.py`** — I/O and framework test execution (pytest, JUnit, Jest, GTest)
+- **`pylint_runner.py`** — Python code quality checks
+
+Execution modes: `"io"` (stdin/stdout matching) and `"framework"` (unit test framework). Called by Learning Service's `ExecutionServiceClient.java`.
+
+### VPL / Auto-Grading (Learning Service — assessment domain)
+
+VPL (Virtual Programming Lab) enables code assignments with auto-grading:
+
+- **`VplConfig`** (record) — Stored as JSONB in `assignments.vpl_config`: mode, language, time/memory limits, pylint config, scoring mode, max attempts, starter code
+- **`VplTestCase`** (JPA entity) — `vpl_test_cases` table: name, input, expectedOutput, checkMode, testCode, hidden, required, weight, position
+- **`AutoGradingService`** — Orchestrates grading: calls ExecutionServiceClient, scores results, persists `auto_grade_result` JSONB on submission
+- **`VplTestCaseService`** — CRUD + reorder for test cases
+- **`ExecutionServiceClient`** — HTTP client from Learning Service to Execution Service
+
+DB: `V4__vpl_autograding.sql` — adds `vpl_config` JSONB to assignments, creates `vpl_test_cases`, adds `auto_grade_result` JSONB to submissions.
+
+Rate limit on Gateway: `/api/virtual-lab/**` — 4 req/s, burst 8.
+
+### Marketplace (Learning Service — marketplace domain)
+
+Embedded in Learning Service under `com.university.lms.marketplace`:
+- **Entities**: `MarketplacePlugin`, `MarketplacePluginVersion`, `MarketplaceReview`
+- **Features**: ratings, download counts, verification status, featured plugins, versioned releases
+- DB: `V5__marketplace.sql`
+
 ### Plugin System
 Python plugins packaged as ZIP with `plugin.json` manifest. Plugin types include ANALYTICS. Learning Service runs FastAPI sidecars and proxies requests via `/api/plugins/{pluginId}/**`. Contract documented in `docs/plugins/python-plugin-contract.md`.
 
 ### Frontend (`frontend/src/`)
-- **api/** — Axios clients (`client.ts` base instance with token refresh, protocol-aware URL detection), per-domain endpoints
+- **api/** — Axios clients (`client.ts` base instance with token refresh, protocol-aware URL detection), per-domain endpoints. `virtualLab.ts` — VPL code execution and test case CRUD.
 - **queries/** + **mutations/** — React Query hooks for data fetching/mutations
 - **store/** — Zustand stores (auth, UI state)
-- **pages/** — Route-level components
-- **components/** — Reusable UI, design system components
+- **pages/** — Route-level components. `VirtualLab.tsx` — standalone code playground. `AssignmentDetail.tsx` — includes VPL submission flow. `assignment-wizard/` — multi-step assignment creation.
+- **components/** — Reusable UI. `vpl/` — `VplEditorTab`, `VplTestCaseManager`, `VplResultsTab`, `VplTaskTab`. `analytics/`, `ai/`, `submission/`, `editors/`.
+- **features/** — `authoring/` (course authoring), `editor-core/`
 - **i18n/** — i18next with `en.json` and `uk.json` locales
 - **types/** — TypeScript interfaces matching backend DTOs
 - **hooks/** — Custom hooks (network status, etc.)
+- **plugins/** — Plugin system integration
 
 Tech: React 18, TypeScript 5.9, Vite 7, Tailwind CSS 3, Zustand, React Query 5, Monaco Editor, Recharts, HeadlessUI, i18next.
 
@@ -134,7 +181,7 @@ Dark monochrome design using CSS custom properties in `design-system.css`:
 - `Dockerfile.local` — Local development variant
 
 ### Docker Memory Limits
-Learning Service and AI Service: 1024M. User/Analytics/Gateway: 512M. Eureka/Marketplace: 384M. Frontend: 128M. Redis: 256M.
+Learning Service and AI Service: 1024M. User/Analytics/Gateway: 512M. Eureka/Marketplace: 384M. Frontend: 128M. Redis: 256M. Execution Service: configured per-request limits (default 128MB per sandbox box).
 
 ## Deployment
 
@@ -152,7 +199,8 @@ CORS is controlled per-service via `GATEWAY_CORS_ALLOWED_ORIGINS` env var. All e
 
 Frontend and backend contracts ensure API consistency:
 - **Frontend**: `contracts/frontend-gateway-route-contract.test.mjs` — scans `.tsx` files for API calls, validates they match gateway route patterns
-- **Backend**: `LearningEndpointContractTest.java` — validates controller paths match `application.yml`
+- **Frontend**: `contracts/ops-service-contract.test.mjs` — operations/maintenance service contracts
+- **Backend**: `LearningEndpointContractTest.java` and `GatewayRouteContractTest.java` — validate controller paths match `application.yml`
 - **CI**: GitHub Actions runs contract tests on PRs touching frontend or gateway config
 
 ## CI/CD
@@ -198,3 +246,4 @@ Key docs in `docs/`:
 | AI Service | http://localhost:8085 |
 | Marketplace Service | http://localhost:8086 |
 | Analytics Service | http://localhost:8088 |
+| Execution Service | http://localhost:3000 |

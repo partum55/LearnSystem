@@ -38,7 +38,7 @@ export const Profile: React.FC = () => {
                   <div className="space-y-4">
                     <div>
                       <label className="label mb-1 block">Name</label>
-                      <p style={{ color: 'var(--text-primary)' }}>{user?.display_name}</p>
+                      <p style={{ color: 'var(--text-primary)' }}>{user?.displayName}</p>
                     </div>
                     <div>
                       <label className="label mb-1 block">Email</label>

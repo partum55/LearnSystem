@@ -30,7 +30,7 @@ interface DashboardData {
   courses?: Array<{ id: string; code: string; title: string; progress?: number; grades?: Array<{ score: number; maxPoints: number }> }>;
   deadlines?: Array<{ course: string; courseCode?: string; title?: string; deadline: string; id?: string }>;
   todayDeadlines?: Array<{ course: string; courseCode?: string; title?: string; deadline: string; id?: string; path?: string }>;
-  notifications?: Array<{ id: string; title: string; message: string; created_at: string; read: boolean }>;
+  notifications?: Array<{ id: string; title: string; message: string; createdAt: string; read: boolean }>;
   progressItems?: ProgressItem[];
   [key: string]: unknown;
 }
@@ -379,7 +379,7 @@ const NotificationsWidget: React.FC<{ data?: DashboardData }> = ({ data }) => {
                 <p className="text-xs mt-0.5 line-clamp-1" style={{ color: 'var(--text-muted)' }}>{n.message}</p>
               </div>
               <span className="text-xs flex-shrink-0 mt-0.5" style={{ color: 'var(--text-faint)' }}>
-                {formatDistanceToNow(new Date(n.created_at), { addSuffix: false })}
+                {formatDistanceToNow(new Date(n.createdAt), { addSuffix: false })}
               </span>
             </div>
           ))}

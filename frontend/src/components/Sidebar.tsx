@@ -140,11 +140,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
                 border: '1px solid var(--border-default)',
               }}
             >
-              {user?.display_name?.charAt(0).toUpperCase() || 'U'}
+              {user?.displayName?.charAt(0).toUpperCase() || 'U'}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-                {user?.display_name}
+                {user?.displayName}
               </p>
               <p className="text-[11px] capitalize truncate" style={{ color: 'var(--text-faint)' }}>
                 {user?.role?.toLowerCase()}

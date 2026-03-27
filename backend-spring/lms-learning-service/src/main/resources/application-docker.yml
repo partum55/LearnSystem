@@ -27,13 +27,8 @@ security:
   cors:
     enabled: false
 
-eureka:
-  client:
-    serviceUrl:
-      defaultZone: ${EUREKA_URI:http://eureka-server:8761/eureka}
-  instance:
-    prefer-ip-address: true
-    hostname: learning-service
+execution-service:
+  base-url: http://execution-service:3000
 
 submission:
   storage:

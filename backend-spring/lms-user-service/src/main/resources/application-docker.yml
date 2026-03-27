@@ -40,11 +40,3 @@ app:
     enabled: ${BOOTSTRAP_ADMIN_ENABLED:false}
     email: ${BOOTSTRAP_ADMIN_EMAIL:admin@ucu.edu.ua}
     password: ${BOOTSTRAP_ADMIN_PASSWORD:admin123}
-
-eureka:
-  client:
-    serviceUrl:
-      defaultZone: ${EUREKA_URI:http://eureka-server:8761/eureka}
-  instance:
-    prefer-ip-address: true
-    hostname: user-service

@@ -27,10 +27,10 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
   const [options, setOptions] = useState<CourseGenerationRequest>({
     prompt: '',
     language: 'uk',
-    include_modules: true,
-    include_assignments: false,
-    include_quizzes: false,
-    academic_year: '2024-2025',
+    includeModules: true,
+    includeAssignments: false,
+    includeQuizzes: false,
+    academicYear: '2024-2025',
   });
   const [generatedCourse, setGeneratedCourse] = useState<GeneratedCourse | null>(null);
   const [error, setError] = useState('');
@@ -158,8 +158,8 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
         </label>
         <Input
           type="text"
-          value={options.academic_year}
-          onChange={(e) => setOptions({ ...options, academic_year: e.target.value })}
+          value={options.academicYear}
+          onChange={(e) => setOptions({ ...options, academicYear: e.target.value })}
           placeholder="2024-2025"
         />
       </div>
@@ -168,8 +168,8 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
         <label className="flex items-center">
           <input
             type="checkbox"
-            checked={options.include_modules}
-            onChange={(e) => setOptions({ ...options, include_modules: e.target.checked })}
+            checked={options.includeModules}
+            onChange={(e) => setOptions({ ...options, includeModules: e.target.checked })}
             className="rounded" style={{ accentColor: 'var(--text-primary)' }}
           />
           <span className="ml-2 text-sm " style={{ color: 'var(--text-secondary)' }}>
@@ -180,10 +180,10 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
         <label className="flex items-center">
           <input
             type="checkbox"
-            checked={options.include_assignments}
-            onChange={(e) => setOptions({ ...options, include_assignments: e.target.checked })}
+            checked={options.includeAssignments}
+            onChange={(e) => setOptions({ ...options, includeAssignments: e.target.checked })}
             className="rounded" style={{ accentColor: 'var(--text-primary)' }}
-            disabled={!options.include_modules}
+            disabled={!options.includeModules}
           />
           <span className="ml-2 text-sm " style={{ color: 'var(--text-secondary)' }}>
             {t('ai.includeAssignments')}
@@ -193,10 +193,10 @@ export const AICourseGenerator: React.FC<AICourseGeneratorProps> = ({
         <label className="flex items-center">
           <input
             type="checkbox"
-            checked={options.include_quizzes}
-            onChange={(e) => setOptions({ ...options, include_quizzes: e.target.checked })}
+            checked={options.includeQuizzes}
+            onChange={(e) => setOptions({ ...options, includeQuizzes: e.target.checked })}
             className="rounded" style={{ accentColor: 'var(--text-primary)' }}
-            disabled={!options.include_modules}
+            disabled={!options.includeModules}
           />
           <span className="ml-2 text-sm " style={{ color: 'var(--text-secondary)' }}>
             {t('ai.includeQuizzes')}

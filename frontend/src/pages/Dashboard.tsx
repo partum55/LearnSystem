@@ -207,7 +207,7 @@ export const Dashboard: React.FC = () => {
     progressItems,
   };
 
-  const firstName = user?.display_name?.split(' ')[0] || user?.display_name;
+  const firstName = user?.displayName?.split(' ')[0] || user?.displayName;
 
   return (
     <Layout>

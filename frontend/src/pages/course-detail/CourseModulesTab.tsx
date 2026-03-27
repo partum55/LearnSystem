@@ -73,7 +73,7 @@ const isCompletedSubmissionStatus = (status?: string | null): boolean =>
   status === 'SUBMITTED' || status === 'GRADED';
 
 const parseModuleMeta = (module: Module): { topic: string } => {
-  const meta = (module.content_meta || {}) as Record<string, unknown>;
+  const meta = (module.contentMeta || {}) as Record<string, unknown>;
   const topic = typeof meta.topic === 'string' ? meta.topic.trim() : '';
   return { topic };
 };
@@ -268,14 +268,14 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
   const checkpointStats = useMemo(() => {
     const moduleStats = displayModules.map((module) => {
       const assignments = module.assignments || [];
-      const requiredAssignments = assignments.filter((assignment) => assignment.requires_submission !== false);
+      const requiredAssignments = assignments.filter((assignment) => assignment.requiresSubmission !== false);
       const totalAssignments = requiredAssignments.length;
       const completedAssignments = requiredAssignments.filter((assignment) => {
         const status = assignmentSubmissionStatus[assignment.id];
         if (isCompletedSubmissionStatus(status)) {
           return true;
         }
-        return Boolean(assignment.submission?.submitted_at || assignment.submission?.graded_at);
+        return Boolean(assignment.submission?.submittedAt || assignment.submission?.gradedAt);
       }).length;
 
       return {
@@ -402,7 +402,7 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
     dragHandleProps?: DraggableProvidedDragHandleProps | null
   ) => {
     const completed = !isInstructor && isResourceCompleted(module.id, resource.id);
-    const isLink = resource.resource_type === 'LINK';
+    const isLink = resource.resourceType === 'LINK';
     const ResIcon = {
       TEXT: DocumentTextIcon,
       PDF: DocumentIcon,
@@ -411,7 +411,7 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
       CODE: CodeBracketIcon,
       LINK: LinkIcon,
       OTHER: DocumentIcon,
-    }[resource.resource_type] || DocumentIcon;
+    }[resource.resourceType] || DocumentIcon;
 
     return (
       <div
@@ -436,9 +436,9 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
 
         <ResIcon className="h-5 w-5 flex-shrink-0" style={{ color: 'var(--text-faint)' }} />
         <div className="min-w-0 flex-1">
-          {isLink && resource.external_url ? (
+          {isLink && resource.externalUrl ? (
             <a
-              href={resource.external_url}
+              href={resource.externalUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 truncate font-medium transition-colors"
@@ -462,7 +462,7 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
           )}
         </div>
         <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>
-          {resource.resource_type}
+          {resource.resourceType}
         </span>
         {!isInstructor && completed && (
           <CheckCircleIcon className="h-4 w-4 flex-shrink-0" style={{ color: 'var(--fn-success)' }} />
@@ -535,14 +535,14 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
             {assignment.title}
           </div>
           <div className="mt-1 flex items-center gap-3 text-sm" style={{ color: 'var(--text-muted)' }}>
-            {assignment.due_date && (
+            {assignment.dueDate && (
               <span className="flex items-center gap-1">
                 <ClockIcon className="h-4 w-4" />
-                {new Date(assignment.due_date).toLocaleDateString()}
+                {new Date(assignment.dueDate).toLocaleDateString()}
               </span>
             )}
             <span>
-              {assignment.max_points} {t('assignments.points')}
+              {assignment.maxPoints} {t('assignments.points')}
             </span>
           </div>
         </div>
@@ -647,13 +647,13 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
 
     // Topics exist — group assignments and resources by topic
     const resources = module.resources || [];
-    const uncategorized = assignments.filter((a) => !a.topic_id || !topics.some((tp) => tp.id === a.topic_id));
-    const uncategorizedResources = resources.filter((r) => !r.topic_id || !topics.some((tp) => tp.id === r.topic_id));
+    const uncategorized = assignments.filter((a) => !a.topicId || !topics.some((tp) => tp.id === a.topicId));
+    const uncategorizedResources = resources.filter((r) => !r.topicId || !topics.some((tp) => tp.id === r.topicId));
     const assignmentsByTopic = new Map<string, Assignment[]>();
     const resourcesByTopic = new Map<string, Resource[]>();
     for (const topic of topics) {
-      assignmentsByTopic.set(topic.id, assignments.filter((a) => a.topic_id === topic.id));
-      resourcesByTopic.set(topic.id, resources.filter((r) => r.topic_id === topic.id));
+      assignmentsByTopic.set(topic.id, assignments.filter((a) => a.topicId === topic.id));
+      resourcesByTopic.set(topic.id, resources.filter((r) => r.topicId === topic.id));
     }
 
     return (
@@ -901,7 +901,7 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
       {(() => {
         const topics = moduleTopics[module.id] || [];
         const moduleLevelResources = topics.length > 0
-          ? (module.resources || []).filter((r) => !r.topic_id || !topics.some((tp) => tp.id === r.topic_id))
+          ? (module.resources || []).filter((r) => !r.topicId || !topics.some((tp) => tp.id === r.topicId))
           : (module.resources || []);
         if (moduleLevelResources.length === 0) return null;
         return (
@@ -1100,7 +1100,7 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
                 {checkpointLabel}
               </span>
             )}
-            {module.is_published && (
+            {module.isPublished && (
               <span className="badge badge-success">
                 <CheckCircleIcon className="mr-1 h-4 w-4" />
                 {t('common.published')}

@@ -27,12 +27,12 @@ export function useWebSocket(token: string | null) {
             const payload = JSON.parse(message.body);
             useNotificationStore.getState().addRealtimeNotification({
               id: `ws-${payload.deadlineId}-${Date.now()}`,
-              user_id: '',
+              userId: '',
               type: 'assignment_due',
               title: payload.title,
               message: `${payload.title} — due ${new Date(payload.dueAt).toLocaleString()}`,
               read: false,
-              created_at: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
             });
           } catch {
             // ignore malformed messages

@@ -78,8 +78,8 @@ export const CourseAssignmentsTab: React.FC<CourseAssignmentsTabProps> = ({
           return;
         }
 
-        if (targetCourseId === duplicateTarget.course_id) {
-          const preferredModuleId = duplicateTarget.module_id || '';
+        if (targetCourseId === duplicateTarget.courseId) {
+          const preferredModuleId = duplicateTarget.moduleId || '';
           const hasPreferred = loaded.some((module) => module.id === preferredModuleId);
           if (hasPreferred) {
             setTargetModuleId(preferredModuleId);
@@ -99,7 +99,7 @@ export const CourseAssignmentsTab: React.FC<CourseAssignmentsTabProps> = ({
     if (!duplicateTarget) {
       return false;
     }
-    if (duplicateTarget.assignment_type === 'QUIZ') {
+    if (duplicateTarget.assignmentType === 'QUIZ') {
       return Boolean(targetModuleId);
     }
     return true;
@@ -107,8 +107,8 @@ export const CourseAssignmentsTab: React.FC<CourseAssignmentsTabProps> = ({
 
   const openDuplicateModal = (assignment: Assignment) => {
     setDuplicateTarget(assignment);
-    setTargetCourseId(assignment.course_id || courseId);
-    setTargetModuleId(assignment.module_id || '');
+    setTargetCourseId(assignment.courseId || courseId);
+    setTargetModuleId(assignment.moduleId || '');
   };
 
   const submitDuplicate = async () => {
@@ -208,8 +208,8 @@ export const CourseAssignmentsTab: React.FC<CourseAssignmentsTabProps> = ({
       <div className="grid gap-4">
         {assignments.map((assignment) => (
           <Link key={assignment.id} to={
-            assignment.module_id
-              ? `/courses/${assignment.course_id}/modules/${assignment.module_id}/assignments/${assignment.id}`
+            assignment.moduleId
+              ? `/courses/${assignment.courseId}/modules/${assignment.moduleId}/assignments/${assignment.id}`
               : `/assignments/${assignment.id}`
           }>
             <Card hoverable>
@@ -231,25 +231,25 @@ export const CourseAssignmentsTab: React.FC<CourseAssignmentsTabProps> = ({
                     <div className="flex items-center gap-4 text-sm">
                       <span className="flex items-center" style={{ color: 'var(--text-muted)' }}>
                         <ClockIcon className="mr-1 h-4 w-4" />
-                        {assignment.due_date
-                          ? new Date(assignment.due_date).toLocaleDateString()
+                        {assignment.dueDate
+                          ? new Date(assignment.dueDate).toLocaleDateString()
                           : t('assignments.noDueDate')}
                       </span>
                       <span style={{ color: 'var(--text-muted)' }}>
-                        {assignment.max_points} {t('assignments.points')}
+                        {assignment.maxPoints} {t('assignments.points')}
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {isInstructor && (
                       <>
-                        {assignment.module_id && (
+                        {assignment.moduleId && (
                           <button
                             type="button"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              navigate(`/courses/${assignment.course_id}/modules/${assignment.module_id}/assignments/${assignment.id}/edit`);
+                              navigate(`/courses/${assignment.courseId}/modules/${assignment.moduleId}/assignments/${assignment.id}/edit`);
                             }}
                             className="p-1.5 rounded transition-colors hover:bg-[var(--bg-active)]"
                             title={t('common.edit', 'Edit')}
@@ -342,7 +342,7 @@ export const CourseAssignmentsTab: React.FC<CourseAssignmentsTabProps> = ({
                 </option>
               ))}
             </select>
-            {duplicateTarget?.assignment_type === 'QUIZ' && !targetModuleId && (
+            {duplicateTarget?.assignmentType === 'QUIZ' && !targetModuleId && (
               <p className="mt-1 text-xs" style={{ color: 'var(--fn-error)' }}>
                 {t('assignment.quizTargetModuleRequired', 'Quiz assignments require a target module.')}
               </p>

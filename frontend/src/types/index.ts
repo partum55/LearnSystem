@@ -4,17 +4,17 @@ export type UserRole = 'SUPERADMIN' | 'TEACHER' | 'STUDENT' | 'TA';
 export interface User {
   id: string;
   email: string;
-  display_name: string;
-  first_name?: string;
-  last_name?: string;
-  student_id?: string;
+  displayName: string;
+  firstName?: string;
+  lastName?: string;
+  studentId?: string;
   role: UserRole;
   locale: 'uk' | 'en';
   theme: 'light' | 'dark';
   avatar?: string;
   bio?: string;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // API Key types
@@ -53,9 +53,9 @@ export interface Course {
   moduleCount?: number;
   isPublished?: boolean;
   progress?: number;
-  start_date?: string;
-  end_date?: string;
-  max_students?: number;
+  startDate?: string;
+  endDate?: string;
+  maxStudents?: number;
 }
 
 export interface CourseCreateData {
@@ -76,24 +76,24 @@ export interface CourseCreateData {
 
 export interface CourseMember {
   id: string;
-  course_id: string;
-  user_id: string;
-  user_name: string;
-  user_email: string;
-  role_in_course: 'teacher' | 'ta' | 'student';
-  added_by: string;
-  added_at: string;
+  courseId: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  roleInCourse: 'teacher' | 'ta' | 'student';
+  addedBy: string;
+  addedAt: string;
 }
 
 // Module and Resource types
 export interface Topic {
   id: string;
-  module_id: string;
+  moduleId: string;
   title: string;
   description?: string;
   position: number;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Module {
@@ -102,12 +102,12 @@ export interface Module {
   title: string;
   description?: string;
   position: number;
-  is_published: boolean;
-  publish_date?: string;
-  created_at: string;
-  updated_at: string;
-  resources_count?: number;
-  content_meta?: Record<string, unknown>;
+  isPublished: boolean;
+  publishDate?: string;
+  createdAt: string;
+  updatedAt: string;
+  resourcesCount?: number;
+  contentMeta?: Record<string, unknown>;
   resources?: Resource[];
   assignments?: Assignment[];
   topics?: Topic[];
@@ -115,17 +115,17 @@ export interface Module {
 
 export interface ModulePage {
   id: string;
-  module_id: string;
-  parent_page_id?: string;
+  moduleId: string;
+  parentPageId?: string;
   title: string;
   slug: string;
   position: number;
-  is_published: boolean;
-  has_unpublished_changes: boolean;
-  created_by: string;
-  updated_by: string;
-  created_at: string;
-  updated_at: string;
+  isPublished: boolean;
+  hasUnpublishedChanges: boolean;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CanonicalMark {
@@ -150,12 +150,12 @@ export interface CanonicalDocument {
 }
 
 export interface CanonicalDocumentPayload {
-  owner_id: string;
-  schema_version: number;
-  document_hash?: string;
+  ownerId: string;
+  schemaVersion: number;
+  documentHash?: string;
   document: CanonicalDocument;
-  updated_at?: string;
-  published_snapshot?: boolean;
+  updatedAt?: string;
+  publishedSnapshot?: boolean;
 }
 
 export interface TocItem {
@@ -169,52 +169,78 @@ export type ResourceType = 'VIDEO' | 'PDF' | 'SLIDE' | 'LINK' | 'TEXT' | 'CODE' 
 export interface Resource {
   id: string;
   module: string;
-  topic_id?: string;
+  topicId?: string;
   title: string;
   description?: string;
-  resource_type: ResourceType;
+  resourceType: ResourceType;
   file?: string;
-  file_url?: string;
-  file_size?: number;
-  external_url?: string;
-  text_content?: string;
-  storage_path?: string;
+  fileUrl?: string;
+  fileSize?: number;
+  externalUrl?: string;
+  textContent?: string;
+  storagePath?: string;
   metadata?: Record<string, unknown>;
   position: number;
-  is_downloadable: boolean;
-  created_at: string;
-  updated_at: string;
-  uploaded_by?: string;
-  uploaded_by_name?: string;
+  isDownloadable: boolean;
+  createdAt: string;
+  updatedAt: string;
+  uploadedBy?: string;
+  uploadedByName?: string;
 }
 
 export interface ResourceCreateData {
   courseId: string;
   module: string;
-  topic_id?: string;
+  topicId?: string;
   title: string;
   description?: string;
-  resource_type: ResourceType;
+  resourceType: ResourceType;
   file?: File;
-  file_url?: string;
-  file_size?: number;
-  mime_type?: string;
-  external_url?: string;
-  text_content?: string;
-  is_downloadable?: boolean;
+  fileUrl?: string;
+  fileSize?: number;
+  mimeType?: string;
+  externalUrl?: string;
+  textContent?: string;
+  isDownloadable?: boolean;
   metadata?: Record<string, unknown>;
 }
 
 export interface Announcement {
   id: string;
-  course_id: string;
+  courseId: string;
   title: string;
   content: string;
-  is_pinned: boolean;
-  created_by: string;
-  updated_by?: string;
-  created_at: string;
-  updated_at: string;
+  isPinned: boolean;
+  createdBy: string;
+  updatedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// VPL types
+export interface VplConfig {
+  mode: 'io' | 'framework';
+  language: 'python' | 'java' | 'javascript' | 'cpp';
+  timeLimitSeconds: number;
+  memoryLimitMb: number;
+  pylintEnabled: boolean;
+  pylintMinScore: number;
+  scoringMode: 'weighted' | 'all_or_nothing';
+  maxSubmitAttempts: number;
+}
+
+export interface VplTestCase {
+  id: string;
+  assignmentId: string;
+  name: string;
+  input?: string;
+  expectedOutput?: string;
+  checkMode: 'EXACT' | 'TRIM' | 'CONTAINS' | 'REGEX';
+  testCode?: string;
+  hidden: boolean;
+  required: boolean;
+  weight: number;
+  position: number;
 }
 
 // Assignment types
@@ -231,56 +257,57 @@ export type AssignmentType =
 
 export interface Assignment {
   id: string;
-  course_id: string;
-  module_id?: string;
-  topic_id?: string;
-  category_id?: string;
-  assignment_type: AssignmentType;
+  courseId: string;
+  moduleId?: string;
+  topicId?: string;
+  categoryId?: string;
+  assignmentType: AssignmentType;
   title: string;
   description: string;
-  description_format?: string;
+  descriptionFormat?: string;
   instructions?: string;
-  instructions_format?: string;
-  due_date?: string;
-  available_from?: string;
-  available_until?: string;
-  max_points: number;
-  submission_types?: string[];
-  allowed_file_types?: string[];
-  max_file_size?: number;
-  max_files?: number;
-  programming_language?: string;
-  starter_code?: string;
-  auto_grading_enabled?: boolean;
-  test_cases?: { input: string; output: string;[key: string]: unknown }[];
+  instructionsFormat?: string;
+  dueDate?: string;
+  availableFrom?: string;
+  availableUntil?: string;
+  maxPoints: number;
+  submissionTypes?: string[];
+  allowedFileTypes?: string[];
+  maxFileSize?: number;
+  maxFiles?: number;
+  programmingLanguage?: string;
+  starterCode?: string;
+  autoGradingEnabled?: boolean;
+  vplConfig?: VplConfig;
+  testCases?: { input: string; output: string;[key: string]: unknown }[];
   quiz?: string;
-  external_tool_url?: string;
-  external_tool_config?: Record<string, unknown>;
-  grade_anonymously?: boolean;
-  peer_review_enabled?: boolean;
-  peer_reviews_required?: number;
-  allow_late_submission?: boolean;
-  late_penalty_percent?: number;
-  is_published?: boolean;
-  created_at: string;
-  updated_at: string;
-  created_by?: string;
-  created_by_name?: string;
+  externalToolUrl?: string;
+  externalToolConfig?: Record<string, unknown>;
+  gradeAnonymously?: boolean;
+  peerReviewEnabled?: boolean;
+  peerReviewsRequired?: number;
+  allowLateSubmission?: boolean;
+  latePenaltyPercent?: number;
+  isPublished?: boolean;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+  createdByName?: string;
   submission?: Submission;
-  requires_submission?: boolean;
+  requiresSubmission?: boolean;
 }
 
 export interface Submission {
   id: string;
-  assignment_id: string;
-  user_id: string;
+  assignmentId: string;
+  userId: string;
   files?: string[];
-  text_answer?: string;
+  textAnswer?: string;
   grade?: number;
-  grader_id?: string;
-  graded_at?: string;
+  graderId?: string;
+  gradedAt?: string;
   feedback?: string;
-  submitted_at: string;
+  submittedAt: string;
 }
 
 // Quiz types
@@ -295,44 +322,44 @@ export type QuestionType =
 
 export interface Question {
   id: string;
-  course_id: string;
+  courseId: string;
   type: QuestionType;
   topic?: string;
   difficulty?: string;
   tags?: string[];
   stem: string;
-  image_url?: string;
+  imageUrl?: string;
   options?: string[];
-  correct_answer: string | number | boolean | string[] | number[];
+  correctAnswer: string | number | boolean | string[] | number[];
   points: number;
   metadata?: Record<string, unknown>;
-  latest_version?: number;
+  latestVersion?: number;
 }
 
 export interface Quiz {
   id: string;
-  course_id: string;
-  module_id?: string;
+  courseId: string;
+  moduleId?: string;
   title: string;
   description?: string;
-  time_limit?: number;
-  timer_enabled?: boolean;
-  attempts_allowed: number | null;
-  attempt_limit_enabled?: boolean;
-  attempt_score_policy?: 'HIGHEST' | 'LATEST' | 'FIRST';
-  secure_session_enabled?: boolean;
-  secure_require_fullscreen?: boolean;
-  randomize_questions: boolean;
-  randomize_answers: boolean;
+  timeLimit?: number;
+  timerEnabled?: boolean;
+  attemptsAllowed: number | null;
+  attemptLimitEnabled?: boolean;
+  attemptScorePolicy?: 'HIGHEST' | 'LATEST' | 'FIRST';
+  secureSessionEnabled?: boolean;
+  secureRequireFullscreen?: boolean;
+  randomizeQuestions: boolean;
+  randomizeAnswers: boolean;
   questions: Question[];
   sections?: QuizSection[];
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface QuizSectionRule {
   id?: string;
-  question_type?: string;
+  questionType?: string;
   difficulty?: string;
   tag?: string;
   quota: number;
@@ -340,47 +367,47 @@ export interface QuizSectionRule {
 
 export interface QuizSection {
   id?: string;
-  quiz_id?: string;
+  quizId?: string;
   title: string;
   position: number;
-  question_count: number;
+  questionCount: number;
   rules: QuizSectionRule[];
 }
 
 export interface QuizAttemptQuestion {
   id: string;
-  attempt_id: string;
-  question_id: string;
-  question_version_id?: string;
+  attemptId: string;
+  questionId: string;
+  questionVersionId?: string;
   position: number;
   points: number;
-  prompt_snapshot: Record<string, unknown>;
-  payload_snapshot: Record<string, unknown>;
+  promptSnapshot: Record<string, unknown>;
+  payloadSnapshot: Record<string, unknown>;
 }
 
 export interface QuizAttempt {
   id: string;
-  quiz_id: string;
-  user_id: string;
-  started_at: string;
-  submitted_at?: string;
+  quizId: string;
+  userId: string;
+  startedAt: string;
+  submittedAt?: string;
   answers: Record<string, unknown>;
-  auto_score?: number;
-  final_score?: number;
-  graded_by?: string;
-  expires_at?: string;
-  remaining_seconds?: number;
-  timed_out?: boolean;
-  proctoring_data?: Record<string, unknown>;
+  autoScore?: number;
+  finalScore?: number;
+  gradedBy?: string;
+  expiresAt?: string;
+  remainingSeconds?: number;
+  timedOut?: boolean;
+  proctoringData?: Record<string, unknown>;
 }
 
 // Gradebook types
 export interface GradeEntry {
   id: string;
-  course_id: string;
-  user_id: string;
-  user_name: string;
-  aggregated_score: number;
+  courseId: string;
+  userId: string;
+  userName: string;
+  aggregatedScore: number;
   breakdown: GradeBreakdown;
 }
 
@@ -398,29 +425,29 @@ export type NotificationType =
 
 export interface Notification {
   id: string;
-  user_id: string;
+  userId: string;
   type: NotificationType;
   title: string;
   message: string;
   payload?: Record<string, unknown>;
   read: boolean;
-  created_at: string;
+  createdAt: string;
 }
 
 // Analytics types
 export interface CourseAnalytics {
-  course_id: string;
-  total_students: number;
-  active_students: number;
-  average_grade: number;
-  completion_rate: number;
-  engagement_stats: EngagementStats;
+  courseId: string;
+  totalStudents: number;
+  activeStudents: number;
+  averageGrade: number;
+  completionRate: number;
+  engagementStats: EngagementStats;
 }
 
 export interface EngagementStats {
-  daily_active_users: number;
-  weekly_active_users: number;
-  avg_time_spent: number;
+  dailyActiveUsers: number;
+  weeklyActiveUsers: number;
+  avgTimeSpent: number;
 }
 
 // Plugin types

@@ -55,12 +55,12 @@ let unreadCountInFlight: Promise<void> | null = null;
 
 const mapNotification = (n: NotificationDto, readIds: string[]): Notification => ({
   id: n.id,
-  user_id: n.userId,
+  userId: n.userId,
   type: 'assignment_due',
   title: 'Upcoming deadline',
   message: n.message,
   read: readIds.includes(n.id),
-  created_at: n.sendAt,
+  createdAt: n.sendAt,
 });
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({

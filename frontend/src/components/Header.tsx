@@ -245,7 +245,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick, onCourseMenuClick }
                     notifications.map((item) => {
                       const isUnread = !item.read;
                       const timeAgo = (() => {
-                        const diff = Date.now() - new Date(item.created_at).getTime();
+                        const diff = Date.now() - new Date(item.createdAt).getTime();
                         if (diff < 60_000) return t('notifications.justNow', 'just now');
                         if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`;
                         if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`;
@@ -302,13 +302,13 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick, onCourseMenuClick }
                   border: '1px solid var(--border-default)',
                 }}
               >
-                {user?.display_name?.charAt(0).toUpperCase() || 'U'}
+                {user?.displayName?.charAt(0).toUpperCase() || 'U'}
               </div>
               <span
                 className="text-sm hidden md:block"
                 style={{ color: 'var(--text-secondary)' }}
               >
-                {user?.display_name}
+                {user?.displayName}
               </span>
             </Menu.Button>
             <Transition
@@ -329,7 +329,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick, onCourseMenuClick }
               >
                 <div className="px-3 py-2.5" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                   <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {user?.display_name}
+                    {user?.displayName}
                   </p>
                   <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                     {user?.email}

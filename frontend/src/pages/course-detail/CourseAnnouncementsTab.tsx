@@ -14,10 +14,10 @@ interface CourseAnnouncementsTabProps {
   announcements: Announcement[];
   isInstructor: boolean;
   isLoading: boolean;
-  onCreate: (payload: { title: string; content: string; is_pinned?: boolean }) => Promise<void>;
+  onCreate: (payload: { title: string; content: string; isPinned?: boolean }) => Promise<void>;
   onUpdate: (
     announcementId: string,
-    payload: Partial<{ title: string; content: string; is_pinned?: boolean }>
+    payload: Partial<{ title: string; content: string; isPinned?: boolean }>
   ) => Promise<void>;
   onDelete: (announcementId: string) => Promise<void>;
   t: TFunction;
@@ -27,13 +27,13 @@ interface AnnouncementFormState {
   id?: string;
   title: string;
   content: string;
-  is_pinned: boolean;
+  isPinned: boolean;
 }
 
 const EMPTY_FORM: AnnouncementFormState = {
   title: '',
   content: '',
-  is_pinned: false,
+  isPinned: false,
 };
 
 export const CourseAnnouncementsTab: React.FC<CourseAnnouncementsTabProps> = ({
@@ -54,8 +54,8 @@ export const CourseAnnouncementsTab: React.FC<CourseAnnouncementsTabProps> = ({
   const orderedAnnouncements = useMemo(
     () =>
       [...announcements].sort((a, b) => {
-        if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       }),
     [announcements]
   );
@@ -72,7 +72,7 @@ export const CourseAnnouncementsTab: React.FC<CourseAnnouncementsTabProps> = ({
       id: announcement.id,
       title: announcement.title,
       content: announcement.content,
-      is_pinned: announcement.is_pinned,
+      isPinned: announcement.isPinned,
     });
     setShowEditor(true);
   };
@@ -92,13 +92,13 @@ export const CourseAnnouncementsTab: React.FC<CourseAnnouncementsTabProps> = ({
         await onUpdate(form.id, {
           title,
           content,
-          is_pinned: form.is_pinned,
+          isPinned: form.isPinned,
         });
       } else {
         await onCreate({
           title,
           content,
-          is_pinned: form.is_pinned,
+          isPinned: form.isPinned,
         });
       }
       setShowEditor(false);
@@ -128,7 +128,7 @@ export const CourseAnnouncementsTab: React.FC<CourseAnnouncementsTabProps> = ({
   const handleTogglePin = async (announcement: Announcement) => {
     setError(null);
     try {
-      await onUpdate(announcement.id, { is_pinned: !announcement.is_pinned });
+      await onUpdate(announcement.id, { isPinned: !announcement.isPinned });
     } catch (updateError) {
       setError((updateError as Error)?.message || t('announcements.saveFailed', 'Failed to save announcement.'));
     }
@@ -195,14 +195,14 @@ export const CourseAnnouncementsTab: React.FC<CourseAnnouncementsTabProps> = ({
                       <h4 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
                         {announcement.title}
                       </h4>
-                      {announcement.is_pinned && (
+                      {announcement.isPinned && (
                         <span className="rounded px-2 py-0.5 text-[10px] uppercase tracking-wide" style={{ background: 'rgba(251,191,36,0.18)', color: 'var(--fn-warning)' }}>
                           {t('announcements.pinned', 'Pinned')}
                         </span>
                       )}
                     </div>
                     <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                      {new Date(announcement.created_at).toLocaleString()}
+                      {new Date(announcement.createdAt).toLocaleString()}
                     </p>
                   </div>
 
@@ -212,8 +212,8 @@ export const CourseAnnouncementsTab: React.FC<CourseAnnouncementsTabProps> = ({
                         type="button"
                         onClick={() => void handleTogglePin(announcement)}
                         className="rounded p-1 transition-colors"
-                        style={{ color: announcement.is_pinned ? 'var(--fn-warning)' : 'var(--text-faint)' }}
-                        title={announcement.is_pinned ? t('announcements.unpin', 'Unpin') : t('announcements.pin', 'Pin')}
+                        style={{ color: announcement.isPinned ? 'var(--fn-warning)' : 'var(--text-faint)' }}
+                        title={announcement.isPinned ? t('announcements.unpin', 'Unpin') : t('announcements.pin', 'Pin')}
                       >
                         <BookmarkIcon className="h-4 w-4" />
                       </button>
@@ -295,8 +295,8 @@ export const CourseAnnouncementsTab: React.FC<CourseAnnouncementsTabProps> = ({
           <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
             <input
               type="checkbox"
-              checked={form.is_pinned}
-              onChange={(event) => setForm((prev) => ({ ...prev, is_pinned: event.target.checked }))}
+              checked={form.isPinned}
+              onChange={(event) => setForm((prev) => ({ ...prev, isPinned: event.target.checked }))}
             />
             {t('announcements.pinToTop', 'Pin to top')}
           </label>

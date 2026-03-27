@@ -18,21 +18,21 @@ import { editorMediaApi } from '../api/pages';
 interface ResourceEditorFormState {
   title: string;
   description: string;
-  resource_type: ResourceType;
-  file_url: string;
-  external_url: string;
-  text_content: string;
-  is_downloadable: boolean;
+  resourceType: ResourceType;
+  fileUrl: string;
+  externalUrl: string;
+  textContent: string;
+  isDownloadable: boolean;
 }
 
 const DEFAULT_FORM: ResourceEditorFormState = {
   title: '',
   description: '',
-  resource_type: 'TEXT',
-  file_url: '',
-  external_url: '',
-  text_content: '',
-  is_downloadable: true,
+  resourceType: 'TEXT',
+  fileUrl: '',
+  externalUrl: '',
+  textContent: '',
+  isDownloadable: true,
 };
 
 const FILE_BASED_TYPES: ResourceType[] = ['VIDEO', 'PDF', 'SLIDE', 'CODE', 'OTHER'];
@@ -59,9 +59,9 @@ const ResourceEditor: React.FC = () => {
 
   const isEditMode = Boolean(resourceId);
   const hasContext = Boolean(courseId && moduleId);
-  const isTextResource = formState.resource_type === 'TEXT';
-  const isLinkResource = formState.resource_type === 'LINK';
-  const isFileBasedResource = FILE_BASED_TYPES.includes(formState.resource_type);
+  const isTextResource = formState.resourceType === 'TEXT';
+  const isLinkResource = formState.resourceType === 'LINK';
+  const isFileBasedResource = FILE_BASED_TYPES.includes(formState.resourceType);
 
   const pageTitle = useMemo(
     () =>
@@ -112,13 +112,13 @@ const ResourceEditor: React.FC = () => {
         setFormState({
           title: resource.title || '',
           description: resource.description || '',
-          resource_type: resource.resource_type,
-          file_url: resource.file_url || '',
-          external_url: resource.external_url || '',
-          text_content: resource.text_content || '',
-          is_downloadable: resource.is_downloadable ?? true,
+          resourceType: resource.resourceType,
+          fileUrl: resource.fileUrl || '',
+          externalUrl: resource.externalUrl || '',
+          textContent: resource.textContent || '',
+          isDownloadable: resource.isDownloadable ?? true,
         });
-        setTextDocument(parseCanonicalDocument(resource.text_content || ''));
+        setTextDocument(parseCanonicalDocument(resource.textContent || ''));
       } catch (loadError) {
         if (!cancelled) {
           setError(extractErrorMessage(loadError));
@@ -181,13 +181,13 @@ const ResourceEditor: React.FC = () => {
       module: moduleId,
       title: formState.title.trim(),
       description: formState.description.trim() || undefined,
-      resource_type: formState.resource_type,
-      file_url: formState.file_url.trim() || undefined,
-      external_url: formState.external_url.trim() || undefined,
-      text_content: isTextResource
+      resourceType: formState.resourceType,
+      fileUrl: formState.fileUrl.trim() || undefined,
+      externalUrl: formState.externalUrl.trim() || undefined,
+      textContent: isTextResource
         ? serializeCanonicalDocument(textDocument)
-        : formState.text_content.trim() || undefined,
-      is_downloadable: formState.is_downloadable,
+        : formState.textContent.trim() || undefined,
+      isDownloadable: formState.isDownloadable,
     };
 
     try {
@@ -291,11 +291,11 @@ const ResourceEditor: React.FC = () => {
                   {t('resources.type', 'Type')}
                 </label>
                 <select
-                  value={formState.resource_type}
+                  value={formState.resourceType}
                   onChange={(event) =>
                     setFormState((prev) => ({
                       ...prev,
-                      resource_type: event.target.value as ResourceType,
+                      resourceType: event.target.value as ResourceType,
                     }))
                   }
                   className="input w-full"
@@ -327,9 +327,9 @@ const ResourceEditor: React.FC = () => {
               <div className="mt-4">
                 <Input
                   label={t('resources.externalUrl', 'External URL')}
-                  value={formState.external_url}
+                  value={formState.externalUrl}
                   onChange={(event) =>
-                    setFormState((prev) => ({ ...prev, external_url: event.target.value }))
+                    setFormState((prev) => ({ ...prev, externalUrl: event.target.value }))
                   }
                 />
               </div>
@@ -339,9 +339,9 @@ const ResourceEditor: React.FC = () => {
               <div className="mt-4">
                 <Input
                   label={t('resources.fileUrl', 'File URL')}
-                  value={formState.file_url}
+                  value={formState.fileUrl}
                   onChange={(event) =>
-                    setFormState((prev) => ({ ...prev, file_url: event.target.value }))
+                    setFormState((prev) => ({ ...prev, fileUrl: event.target.value }))
                   }
                   placeholder="https://..."
                 />
@@ -361,7 +361,7 @@ const ResourceEditor: React.FC = () => {
                 setTextDocument(doc);
                 setFormState((prev) => ({
                   ...prev,
-                  text_content: serializeCanonicalDocument(doc),
+                  textContent: serializeCanonicalDocument(doc),
                 }));
               }}
               mode="full"

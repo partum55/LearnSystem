@@ -88,6 +88,7 @@ public class AssessmentMapper {
             .programmingLanguage(request.getProgrammingLanguage())
             .autoGradingEnabled(request.getAutoGradingEnabled() != null ? request.getAutoGradingEnabled() : false)
             .testCases(request.getTestCases())
+            .vplConfig(request.getVplConfig())
             .maxPoints(request.getMaxPoints() != null ? request.getMaxPoints() : java.math.BigDecimal.valueOf(100))
             .dueDate(request.getDueDate())
             .availableFrom(request.getAvailableFrom())
@@ -130,6 +131,7 @@ public class AssessmentMapper {
         if (request.getProgrammingLanguage() != null) assignment.setProgrammingLanguage(request.getProgrammingLanguage());
         if (request.getAutoGradingEnabled() != null) assignment.setAutoGradingEnabled(request.getAutoGradingEnabled());
         if (request.getTestCases() != null) assignment.setTestCases(request.getTestCases());
+        if (request.getVplConfig() != null) assignment.setVplConfig(request.getVplConfig());
         if (request.getMaxPoints() != null) assignment.setMaxPoints(request.getMaxPoints());
         if (request.getDueDate() != null) assignment.setDueDate(request.getDueDate());
         if (request.getAvailableFrom() != null) assignment.setAvailableFrom(request.getAvailableFrom());

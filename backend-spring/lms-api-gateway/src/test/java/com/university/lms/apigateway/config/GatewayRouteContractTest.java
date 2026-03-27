@@ -19,8 +19,10 @@ import org.yaml.snakeyaml.Yaml;
 
 class GatewayRouteContractTest {
 
-  private static final String LEARNING_SERVICE_URI = "lb://lms-learning-service";
-  private static final String MARKETPLACE_SERVICE_URI = "lb://lms-marketplace-service";
+  private static final String LEARNING_SERVICE_URI_MAIN = "${LEARNING_SERVICE_URL:http://localhost:8089}";
+  private static final String LEARNING_SERVICE_URI_DOCKER = "${LEARNING_SERVICE_URL:http://learning-service:8089}";
+  private static final String USER_SERVICE_URI_MAIN = "${USER_SERVICE_URL:http://localhost:8081}";
+  private static final String USER_SERVICE_URI_DOCKER = "${USER_SERVICE_URL:http://user-service:8081}";
 
   @ParameterizedTest
   @ValueSource(strings = {"application.yml", "application-docker.yml"})
@@ -30,16 +32,19 @@ class GatewayRouteContractTest {
     assertLearningRoute(
         routes,
         "learning-courses",
+        expectedLearningUri(resourceName),
         Set.of("/api/v1/courses/**", "/api/courses/**"));
 
     assertLearningRoute(
         routes,
         "learning-assessments",
+        expectedLearningUri(resourceName),
         Set.of("/api/v1/assessments/**", "/api/assessments/**"));
 
     assertLearningRoute(
         routes,
         "learning-quiz-attempts",
+        expectedLearningUri(resourceName),
         Set.of(
             "/api/v1/assessments/quiz-attempts/**",
             "/api/assessments/quiz-attempts/**"));
@@ -47,6 +52,7 @@ class GatewayRouteContractTest {
     assertLearningRoute(
         routes,
         "learning-assignment-documents",
+        expectedLearningUri(resourceName),
         Set.of(
             "/api/assignments/*/template-document",
             "/api/assignments/*/submissions/clone-template"));
@@ -54,21 +60,25 @@ class GatewayRouteContractTest {
     assertLearningRoute(
         routes,
         "learning-submission-documents",
+        expectedLearningUri(resourceName),
         Set.of("/api/submissions/*/document"));
 
     assertLearningRoute(
         routes,
         "learning-submissions",
+        expectedLearningUri(resourceName),
         Set.of("/api/v1/submissions/**", "/api/submissions/**"));
 
     assertLearningRoute(
         routes,
         "learning-gradebook",
+        expectedLearningUri(resourceName),
         Set.of("/api/v1/gradebook/**", "/api/gradebook/**"));
 
     assertLearningRoute(
         routes,
         "learning-deadlines",
+        expectedLearningUri(resourceName),
         Set.of(
             "/api/v1/calendar/**",
             "/api/calendar/**",
@@ -77,16 +87,22 @@ class GatewayRouteContractTest {
             "/api/v1/notifications/**",
             "/api/notifications/**"));
 
-    assertLearningRoute(routes, "plugin-management", Set.of("/api/plugins/**"));
+    assertLearningRoute(
+        routes, "plugin-management", expectedLearningUri(resourceName), Set.of("/api/plugins/**"));
 
     assertLearningRoute(
         routes,
         "learning-risk-analytics",
+        expectedLearningUri(resourceName),
         Set.of(
             "/api/analytics/courses/*/at-risk-students",
             "/api/analytics/courses/*/students/*/risk",
             "/api/v1/analytics/courses/*/at-risk-students",
             "/api/v1/analytics/courses/*/students/*/risk"));
+
+    assertRouteUri(routes, "analytics-service", expectedLearningUri(resourceName));
+    assertRouteUri(routes, "marketplace-service", expectedLearningUri(resourceName));
+    assertRouteUri(routes, "user-service", expectedUserUri(resourceName));
   }
 
   @ParameterizedTest
@@ -107,7 +123,7 @@ class GatewayRouteContractTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"application.yml", "application-docker.yml"})
-  void marketplaceRouteMustPointToMarketplaceService(String resourceName) {
+  void marketplaceRouteMustPointToLearningService(String resourceName) {
     List<Map<String, Object>> routes = loadRoutes(resourceName);
 
     Map<String, Object> route =
@@ -116,12 +132,15 @@ class GatewayRouteContractTest {
             .findFirst()
             .orElseThrow(() -> new AssertionError("Missing gateway route: marketplace-service"));
 
-    assertThat(route.get("uri")).isEqualTo(MARKETPLACE_SERVICE_URI);
+    assertThat(route.get("uri")).isEqualTo(expectedLearningUri(resourceName));
     assertThat(extractPathPatterns(route)).contains("/api/marketplace/**");
   }
 
   private static void assertLearningRoute(
-      List<Map<String, Object>> routes, String routeId, Set<String> expectedPathPatterns) {
+      List<Map<String, Object>> routes,
+      String routeId,
+      String expectedUri,
+      Set<String> expectedPathPatterns) {
 
     Map<String, Object> route =
         routes.stream()
@@ -129,8 +148,28 @@ class GatewayRouteContractTest {
             .findFirst()
             .orElseThrow(() -> new AssertionError("Missing gateway route: " + routeId));
 
-    assertThat(route.get("uri")).isEqualTo(LEARNING_SERVICE_URI);
+    assertThat(route.get("uri")).isEqualTo(expectedUri);
     assertThat(extractPathPatterns(route)).containsAll(expectedPathPatterns);
+  }
+
+  private static void assertRouteUri(
+      List<Map<String, Object>> routes, String routeId, String expectedUri) {
+    Map<String, Object> route =
+        routes.stream()
+            .filter(candidate -> routeId.equals(candidate.get("id")))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Missing gateway route: " + routeId));
+    assertThat(route.get("uri")).isEqualTo(expectedUri);
+  }
+
+  private static String expectedLearningUri(String resourceName) {
+    return "application-docker.yml".equals(resourceName)
+        ? LEARNING_SERVICE_URI_DOCKER
+        : LEARNING_SERVICE_URI_MAIN;
+  }
+
+  private static String expectedUserUri(String resourceName) {
+    return "application-docker.yml".equals(resourceName) ? USER_SERVICE_URI_DOCKER : USER_SERVICE_URI_MAIN;
   }
 
   private static Set<String> extractPathPatterns(Map<String, Object> route) {

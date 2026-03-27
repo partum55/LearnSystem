@@ -56,7 +56,7 @@ const ResourceLibraryDrawer: React.FC<ResourceLibraryDrawerProps> = ({
   const availableResources = scopeKey ? resources : [];
 
   const filtered = availableResources.filter((r) => {
-    if (filterType && r.resource_type !== filterType) return false;
+    if (filterType && r.resourceType !== filterType) return false;
     if (search && !r.title.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
@@ -79,8 +79,8 @@ const ResourceLibraryDrawer: React.FC<ResourceLibraryDrawerProps> = ({
       .map((r) => ({
         id: r.id,
         name: r.title,
-        url: r.file_url || r.external_url || '',
-        type: r.resource_type,
+        url: r.fileUrl || r.externalUrl || '',
+        type: r.resourceType,
         resource_id: r.id,
       }));
     onSelect(selectedResources);

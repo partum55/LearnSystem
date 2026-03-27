@@ -102,9 +102,9 @@ const CourseEditFormLogic: React.FC<CourseEditFormLogicProps> = ({ course, onSub
         title: course.title,
         description: course.description || '',
         visibility: (course.visibility as 'PUBLIC' | 'PRIVATE' | 'DRAFT') || 'PRIVATE',
-        start_date: course.start_date ? new Date(course.start_date).toISOString().split('T')[0] : '',
-        end_date: course.end_date ? new Date(course.end_date).toISOString().split('T')[0] : '',
-        max_students: course.max_students ? String(course.max_students) : '',
+        startDate: course.startDate ? new Date(course.startDate).toISOString().split('T')[0] : '',
+        endDate: course.endDate ? new Date(course.endDate).toISOString().split('T')[0] : '',
+        maxStudents: course.maxStudents ? String(course.maxStudents) : '',
         thumbnail_url: course.thumbnailUrl || '',
         theme_color: course.themeColor || '#1f2937',
     });
@@ -125,13 +125,13 @@ const CourseEditFormLogic: React.FC<CourseEditFormLogicProps> = ({ course, onSub
         if (!formData.code.trim()) newErrors.code = t('courses.errors.codeRequired');
         if (!formData.title.trim()) newErrors.title = t('courses.errors.titleRequired');
         if (!formData.description.trim()) newErrors.description = t('courses.errors.descriptionRequired');
-        if (formData.start_date && formData.end_date) {
-            if (new Date(formData.start_date) > new Date(formData.end_date)) {
-                newErrors.end_date = t('courses.errors.endDateBeforeStart');
+        if (formData.startDate && formData.endDate) {
+            if (new Date(formData.startDate) > new Date(formData.endDate)) {
+                newErrors.endDate = t('courses.errors.endDateBeforeStart');
             }
         }
-        if (formData.max_students && parseInt(formData.max_students) < 1) {
-            newErrors.max_students = t('courses.errors.maxStudentsPositive');
+        if (formData.maxStudents && parseInt(formData.maxStudents) < 1) {
+            newErrors.maxStudents = t('courses.errors.maxStudentsPositive');
         }
         if (formData.theme_color && !isHexColor(formData.theme_color)) {
             newErrors.theme_color = t('courses.invalidThemeColor', 'Use HEX format, for example #1d4ed8');
@@ -152,9 +152,9 @@ const CourseEditFormLogic: React.FC<CourseEditFormLogicProps> = ({ course, onSub
                 descriptionUk: formData.description.trim(),
                 descriptionEn: formData.description.trim(),
                 visibility: formData.visibility,
-                startDate: formData.start_date || undefined,
-                endDate: formData.end_date || undefined,
-                maxStudents: formData.max_students ? parseInt(formData.max_students) : undefined,
+                startDate: formData.startDate || undefined,
+                endDate: formData.endDate || undefined,
+                maxStudents: formData.maxStudents ? parseInt(formData.maxStudents) : undefined,
                 isPublished: formData.visibility !== 'DRAFT',
                 thumbnailUrl: formData.thumbnail_url.trim() || undefined,
                 themeColor: formData.theme_color.trim() || undefined,
@@ -243,9 +243,9 @@ interface CourseEditFormProps {
         title: string;
         description: string;
         visibility: 'PUBLIC' | 'PRIVATE' | 'DRAFT';
-        start_date: string;
-        end_date: string;
-        max_students: string;
+        startDate: string;
+        endDate: string;
+        maxStudents: string;
         thumbnail_url: string;
         theme_color: string;
     };
@@ -362,20 +362,20 @@ const CourseEditForm: React.FC<CourseEditFormProps> = ({ onSubmit, errors, isLoa
                             <div>
                                 <Input
                                     label={t('courses.startDate')}
-                                    name="start_date"
+                                    name="startDate"
                                     type="date"
-                                    value={formData.start_date}
+                                    value={formData.startDate}
                                     onChange={onChange}
                                 />
                             </div>
                             <div>
                                 <Input
                                     label={t('courses.endDate')}
-                                    name="end_date"
+                                    name="endDate"
                                     type="date"
-                                    value={formData.end_date}
+                                    value={formData.endDate}
                                     onChange={onChange}
-                                    error={errors.end_date}
+                                    error={errors.endDate}
                                 />
                             </div>
                         </div>
@@ -383,12 +383,12 @@ const CourseEditForm: React.FC<CourseEditFormProps> = ({ onSubmit, errors, isLoa
                         <div>
                             <Input
                                 label={t('courses.maxStudents')}
-                                name="max_students"
+                                name="maxStudents"
                                 type="number"
                                 min="1"
-                                value={formData.max_students}
+                                value={formData.maxStudents}
                                 onChange={onChange}
-                                error={errors.max_students}
+                                error={errors.maxStudents}
                             />
                         </div>
 

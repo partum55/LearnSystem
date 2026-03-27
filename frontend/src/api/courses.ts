@@ -234,66 +234,60 @@ export interface CourseArchiveSnapshotResponse {
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/**
- * Normalizes a raw module object from the backend (camelCase) to the frontend Module type (snake_case).
- */
 const normalizeModule = (raw: any): Module => ({
   id: String(raw.id ?? ''),
   course: String(raw.courseId ?? raw.course ?? ''),
   title: String(raw.title ?? ''),
   description: raw.description ?? undefined,
   position: Number(raw.position ?? 0),
-  is_published: Boolean(raw.isPublished ?? raw.is_published ?? false),
-  publish_date: raw.publishDate ?? raw.publish_date ?? undefined,
-  created_at: raw.createdAt ?? raw.created_at ?? '',
-  updated_at: raw.updatedAt ?? raw.updated_at ?? '',
-  resources_count: raw.resourceCount ?? raw.resources_count ?? undefined,
-  content_meta: raw.contentMeta ?? raw.content_meta ?? undefined,
+  isPublished: Boolean(raw.isPublished ?? false),
+  publishDate: raw.publishDate ?? undefined,
+  createdAt: raw.createdAt ?? '',
+  updatedAt: raw.updatedAt ?? '',
+  resourcesCount: raw.resourceCount ?? undefined,
+  contentMeta: raw.contentMeta ?? undefined,
   resources: Array.isArray(raw.resources) ? raw.resources.map(normalizeResource) : undefined,
   assignments: Array.isArray(raw.assignments) ? raw.assignments.map(normalizeAssignment) : undefined,
 });
 
-/**
- * Normalizes a raw resource object from the backend (camelCase) to the frontend Resource type (snake_case).
- */
 const normalizeResource = (raw: any): Resource => ({
   id: String(raw.id ?? ''),
   module: String(raw.moduleId ?? raw.module ?? ''),
-  topic_id: (raw.topicId ?? raw.topic_id) ? String(raw.topicId ?? raw.topic_id) : undefined,
+  topicId: raw.topicId ? String(raw.topicId) : undefined,
   title: String(raw.title ?? ''),
   description: raw.description ?? undefined,
-  resource_type: String(raw.resourceType ?? raw.resource_type ?? 'OTHER') as Resource['resource_type'],
-  file_url: raw.fileUrl ?? raw.file_url ?? undefined,
-  file_size: raw.fileSize ?? raw.file_size ?? undefined,
-  external_url: raw.externalUrl ?? raw.external_url ?? undefined,
-  text_content: raw.textContent ?? raw.text_content ?? undefined,
-  storage_path: raw.storagePath ?? raw.storage_path ?? undefined,
+  resourceType: String(raw.resourceType ?? 'OTHER') as Resource['resourceType'],
+  fileUrl: raw.fileUrl ?? undefined,
+  fileSize: raw.fileSize ?? undefined,
+  externalUrl: raw.externalUrl ?? undefined,
+  textContent: raw.textContent ?? undefined,
+  storagePath: raw.storagePath ?? undefined,
   metadata: raw.metadata ?? undefined,
   position: Number(raw.position ?? 0),
-  is_downloadable: Boolean(raw.isDownloadable ?? raw.is_downloadable ?? true),
-  created_at: raw.createdAt ?? raw.created_at ?? '',
-  updated_at: raw.updatedAt ?? raw.updated_at ?? '',
-  uploaded_by: raw.uploadedBy ?? raw.uploaded_by ?? undefined,
-  uploaded_by_name: raw.uploadedByName ?? raw.uploaded_by_name ?? undefined,
+  isDownloadable: Boolean(raw.isDownloadable ?? true),
+  createdAt: raw.createdAt ?? '',
+  updatedAt: raw.updatedAt ?? '',
+  uploadedBy: raw.uploadedBy ?? undefined,
+  uploadedByName: raw.uploadedByName ?? undefined,
 });
 
 const normalizeAnnouncement = (raw: any): Announcement => ({
   id: String(raw.id ?? ''),
-  course_id: String(raw.courseId ?? raw.course_id ?? raw.course ?? ''),
+  courseId: String(raw.courseId ?? raw.course ?? ''),
   title: String(raw.title ?? ''),
   content: String(raw.content ?? ''),
-  is_pinned: Boolean(raw.isPinned ?? raw.is_pinned ?? false),
-  created_by: String(raw.createdBy ?? raw.created_by ?? ''),
-  updated_by: raw.updatedBy ?? raw.updated_by ?? undefined,
-  created_at: raw.createdAt ?? raw.created_at ?? '',
-  updated_at: raw.updatedAt ?? raw.updated_at ?? '',
+  isPinned: Boolean(raw.isPinned ?? false),
+  createdBy: String(raw.createdBy ?? ''),
+  updatedBy: raw.updatedBy ?? undefined,
+  createdAt: raw.createdAt ?? '',
+  updatedAt: raw.updatedAt ?? '',
 });
 
 const normalizeCourse = (raw: any): Course => {
-  const titleUk = raw.titleUk ?? raw.title_uk ?? undefined;
-  const titleEn = raw.titleEn ?? raw.title_en ?? undefined;
-  const descriptionUk = raw.descriptionUk ?? raw.description_uk ?? undefined;
-  const descriptionEn = raw.descriptionEn ?? raw.description_en ?? undefined;
+  const titleUk = raw.titleUk ?? undefined;
+  const titleEn = raw.titleEn ?? undefined;
+  const descriptionUk = raw.descriptionUk ?? undefined;
+  const descriptionEn = raw.descriptionEn ?? undefined;
   const visibility = String(raw.visibility ?? 'DRAFT').toUpperCase();
 
   return {
@@ -307,55 +301,51 @@ const normalizeCourse = (raw: any): Course => {
     title: String(raw.title ?? titleUk ?? titleEn ?? ''),
     description: String(raw.description ?? descriptionUk ?? descriptionEn ?? ''),
     syllabus: raw.syllabus == null ? undefined : String(raw.syllabus),
-    ownerId: raw.ownerId ? String(raw.ownerId) : (raw.owner_id ? String(raw.owner_id) : undefined),
-    ownerName: raw.ownerName ?? raw.owner_name ?? undefined,
-    thumbnailUrl: raw.thumbnailUrl ?? raw.thumbnail_url ?? undefined,
-    themeColor: raw.themeColor ?? raw.theme_color ?? undefined,
+    ownerId: raw.ownerId ? String(raw.ownerId) : undefined,
+    ownerName: raw.ownerName ?? undefined,
+    thumbnailUrl: raw.thumbnailUrl ?? undefined,
+    themeColor: raw.themeColor ?? undefined,
     visibility: (visibility === 'PUBLIC' || visibility === 'PRIVATE' || visibility === 'DRAFT'
       ? visibility
       : 'DRAFT') as Course['visibility'],
     status: raw.status ? String(raw.status).toUpperCase() : undefined,
-    academicYear: raw.academicYear ?? raw.academic_year ?? null,
-    createdAt: raw.createdAt ?? raw.created_at ?? undefined,
-    updatedAt: raw.updatedAt ?? raw.updated_at ?? undefined,
-    memberCount: raw.memberCount ?? raw.member_count ?? undefined,
-    moduleCount: raw.moduleCount ?? raw.module_count ?? undefined,
-    isPublished: raw.isPublished ?? raw.is_published ?? undefined,
-    start_date: raw.startDate ?? raw.start_date ?? undefined,
-    end_date: raw.endDate ?? raw.end_date ?? undefined,
-    max_students: raw.maxStudents ?? raw.max_students ?? undefined,
+    academicYear: raw.academicYear ?? null,
+    createdAt: raw.createdAt ?? undefined,
+    updatedAt: raw.updatedAt ?? undefined,
+    memberCount: raw.memberCount ?? undefined,
+    moduleCount: raw.moduleCount ?? undefined,
+    isPublished: raw.isPublished ?? undefined,
+    startDate: raw.startDate ?? undefined,
+    endDate: raw.endDate ?? undefined,
+    maxStudents: raw.maxStudents ?? undefined,
   };
 };
 
-/**
- * Minimal assignment normalizer for assignments embedded in module responses.
- * Full normalization happens in assessments.ts for standalone assignment fetches.
- */
 const normalizeTopic = (raw: any): Topic => ({
   id: String(raw.id ?? ''),
-  module_id: String(raw.moduleId ?? raw.module_id ?? ''),
+  moduleId: String(raw.moduleId ?? ''),
   title: String(raw.title ?? ''),
   description: raw.description ?? undefined,
   position: Number(raw.position ?? 0),
-  created_at: raw.createdAt ?? raw.created_at ?? '',
-  updated_at: raw.updatedAt ?? raw.updated_at ?? '',
+  createdAt: raw.createdAt ?? '',
+  updatedAt: raw.updatedAt ?? '',
 });
 
 const normalizeAssignment = (raw: any): Assignment => ({
   ...raw,
   id: String(raw.id ?? ''),
-  course_id: String(raw.courseId ?? raw.course_id ?? ''),
-  module_id: (raw.moduleId ?? raw.module_id) ? String(raw.moduleId ?? raw.module_id) : undefined,
-  topic_id: (raw.topicId ?? raw.topic_id) ? String(raw.topicId ?? raw.topic_id) : undefined,
-  category_id: (raw.categoryId ?? raw.category_id) ? String(raw.categoryId ?? raw.category_id) : undefined,
-  assignment_type: String(raw.assignmentType ?? raw.assignment_type ?? 'FILE_UPLOAD') as Assignment['assignment_type'],
+  courseId: String(raw.courseId ?? ''),
+  moduleId: raw.moduleId ? String(raw.moduleId) : undefined,
+  topicId: raw.topicId ? String(raw.topicId) : undefined,
+  categoryId: raw.categoryId ? String(raw.categoryId) : undefined,
+  assignmentType: String(raw.assignmentType ?? 'FILE_UPLOAD') as Assignment['assignmentType'],
   title: String(raw.title ?? ''),
   description: String(raw.description ?? ''),
-  due_date: raw.dueDate ?? raw.due_date ?? undefined,
-  max_points: Number(raw.maxPoints ?? raw.max_points ?? 100),
-  is_published: Boolean(raw.isPublished ?? raw.is_published ?? false),
-  created_at: raw.createdAt ?? raw.created_at ?? '',
-  updated_at: raw.updatedAt ?? raw.updated_at ?? '',
+  dueDate: raw.dueDate ?? undefined,
+  maxPoints: Number(raw.maxPoints ?? 100),
+  isPublished: Boolean(raw.isPublished ?? false),
+  createdAt: raw.createdAt ?? '',
+  updatedAt: raw.updatedAt ?? '',
 });
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -535,9 +525,9 @@ export const modulesApi = {
       title: data.title,
       description: data.description,
       position: data.position,
-      contentMeta: data.content_meta,
-      isPublished: data.is_published,
-      publishDate: data.publish_date,
+      contentMeta: data.contentMeta,
+      isPublished: data.isPublished,
+      publishDate: data.publishDate,
     });
     return { ...response, data: normalizeModule(response.data) };
   },
@@ -623,25 +613,25 @@ export const resourcesApi = {
       const formData = new FormData();
       formData.append('title', data.title);
       if (data.description) formData.append('description', data.description);
-      formData.append('resourceType', data.resource_type);
+      formData.append('resourceType', data.resourceType);
       formData.append('file', data.file);
-      if (data.is_downloadable !== undefined) {
-        formData.append('isDownloadable', String(data.is_downloadable));
+      if (data.isDownloadable !== undefined) {
+        formData.append('isDownloadable', String(data.isDownloadable));
       }
       response = await apiClient.upload<Resource>(`/courses/${data.courseId}/modules/${data.module}/resources`, formData);
     } else {
       response = await apiClient.post<Resource>(`/courses/${data.courseId}/modules/${data.module}/resources`, {
         title: data.title,
         description: data.description,
-        resourceType: data.resource_type,
-        fileUrl: data.file_url,
-        externalUrl: data.external_url,
-        fileSize: data.file_size,
-        mimeType: data.mime_type,
-        textContent: data.text_content,
-        isDownloadable: data.is_downloadable,
+        resourceType: data.resourceType,
+        fileUrl: data.fileUrl,
+        externalUrl: data.externalUrl,
+        fileSize: data.fileSize,
+        mimeType: data.mimeType,
+        textContent: data.textContent,
+        isDownloadable: data.isDownloadable,
         metadata: data.metadata,
-        topicId: data.topic_id,
+        topicId: data.topicId,
       });
     }
     return { ...response, data: normalizeResource(response.data) };
@@ -656,16 +646,16 @@ export const resourcesApi = {
     const response = await apiClient.put(`/courses/${courseId}/modules/${moduleId}/resources/${resourceId}`, {
       title: data.title,
       description: data.description,
-      resourceType: data.resource_type,
-      fileUrl: data.file_url,
-      externalUrl: data.external_url,
-      fileSize: data.file_size,
-      mimeType: data.mime_type,
+      resourceType: data.resourceType,
+      fileUrl: data.fileUrl,
+      externalUrl: data.externalUrl,
+      fileSize: data.fileSize,
+      mimeType: data.mimeType,
       position: data.position,
-      isDownloadable: data.is_downloadable,
-      textContent: data.text_content,
+      isDownloadable: data.isDownloadable,
+      textContent: data.textContent,
       metadata: data.metadata,
-      topicId: data.topic_id,
+      topicId: data.topicId,
     });
     return { ...response, data: normalizeResource(response.data) };
   },
@@ -699,23 +689,23 @@ export const announcementsApi = {
     const response = await apiClient.get<Announcement>(`/courses/${courseId}/announcements/${id}`);
     return { ...response, data: normalizeAnnouncement(response.data) };
   },
-  create: async (courseId: string, data: { title: string; content: string; is_pinned?: boolean }) => {
+  create: async (courseId: string, data: { title: string; content: string; isPinned?: boolean }) => {
     const response = await apiClient.post<Announcement>(`/courses/${courseId}/announcements`, {
       title: data.title,
       content: data.content,
-      isPinned: data.is_pinned,
+      isPinned: data.isPinned,
     });
     return { ...response, data: normalizeAnnouncement(response.data) };
   },
   update: async (
     courseId: string,
     id: string,
-    data: Partial<{ title: string; content: string; is_pinned?: boolean }>
+    data: Partial<{ title: string; content: string; isPinned?: boolean }>
   ) => {
     const response = await apiClient.put<Announcement>(`/courses/${courseId}/announcements/${id}`, {
       title: data.title,
       content: data.content,
-      isPinned: data.is_pinned,
+      isPinned: data.isPinned,
     });
     return { ...response, data: normalizeAnnouncement(response.data) };
   },

@@ -49,6 +49,7 @@ export interface AssignmentRequestPayload {
   maxFileSize: number;
   testCases: Array<{ input: string; expected_output: string; points: number }>;
   autoGradingEnabled: boolean;
+  vplConfig?: Record<string, unknown> | null;
   allowLateSubmission: boolean;
   latePenaltyPercent: number;
   estimatedDuration: number | null;

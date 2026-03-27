@@ -1,415 +1,246 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
-import api from '../api/client';
-import CodeEditor from '../components/CodeEditor';
-import { Assignment } from '../types';
-import { PlayIcon, CheckCircleIcon, XCircleIcon, StopIcon } from '@heroicons/react/24/outline';
+import React, { useEffect, useRef, useState } from 'react';
+import Editor from '@monaco-editor/react';
+import { Layout } from '../components';
+import { virtualLabApi } from '../api/virtualLab';
 
-const EXECUTION_TIMEOUT_SECONDS = 30; // Maximum execution time
+const LANGUAGES = [
+  { value: 'python', label: 'Python' },
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'java', label: 'Java' },
+  { value: 'cpp', label: 'C++' },
+] as const;
 
-interface TestCaseResult {
-  name: string;
-  input: string;
-  expectedOutput: string;
-  actualOutput: string;
-  passed: boolean;
-  error?: string;
-  points: number;
-}
+const LANG_MAP: Record<string, string> = {
+  python: 'python', javascript: 'javascript', java: 'java', cpp: 'cpp',
+};
 
-interface ExecutionResult {
-  output: string;
-  error?: string;
-  exitCode: number;
-  executionTime: number;
-  success: boolean;
-  testResults?: TestCaseResult[];
-}
+const STORAGE_KEY = 'vpl-playground';
 
 const VirtualLab: React.FC = () => {
-  const { assignmentId: routeAssignmentId } = useParams<{ assignmentId: string }>();
-  const [searchParams] = useSearchParams();
-  const assignmentId = routeAssignmentId || searchParams.get('assignmentId') || undefined;
-
-  const [assignment, setAssignment] = useState<Assignment | null>(null);
+  const [language, setLanguage] = useState<string>('python');
   const [code, setCode] = useState<string>('');
-  const [input, setInput] = useState<string>('');
-  const [output, setOutput] = useState<string>('');
-  const [error, setError] = useState<string>('');
-  const [executing, setExecuting] = useState(false);
-  const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [timeoutRemaining, setTimeoutRemaining] = useState<number | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const timeoutIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [stdin, setStdin] = useState('');
+  const [stdinOpen, setStdinOpen] = useState(false);
+  const [output, setOutput] = useState<{ text?: string; isError?: boolean; time?: number; exitCode?: number } | null>(null);
+  const [running, setRunning] = useState(false);
+  const [splitPct, setSplitPct] = useState(60);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
 
-  const fetchAssignment = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get(`/assessments/assignments/${assignmentId}`);
-      const raw = response.data as Assignment & {
-        starterCode?: string;
-        programmingLanguage?: string;
-      };
-      const data = {
-        ...raw,
-        starter_code: raw.starter_code || raw.starterCode,
-        programming_language: raw.programming_language || raw.programmingLanguage,
-      } as Assignment;
-      setAssignment(data);
-
-      // Set starter code if available
-      if (data.starter_code) {
-        setCode(data.starter_code);
-      }
-    } catch (err: unknown) {
-      console.error('Failed to fetch assignment:', err);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const error = err as any;
-      setError(error.message || 'Failed to load assignment');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Persist code per language
+  useEffect(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}-${language}`);
+    setCode(saved || '');
+  }, [language]);
 
   useEffect(() => {
-    fetchAssignment();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assignmentId]);
+    localStorage.setItem(`${STORAGE_KEY}-${language}`, code);
+  }, [code, language]);
 
-  // Cleanup on unmount
+  // Cmd/Ctrl+Enter shortcut
   useEffect(() => {
-    return () => {
-      if (timeoutIntervalRef.current) {
-        clearInterval(timeoutIntervalRef.current);
-      }
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        void handleRun();
       }
     };
-  }, []);
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, stdin, language]);
 
-  const handleAbortExecution = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    if (timeoutIntervalRef.current) {
-      clearInterval(timeoutIntervalRef.current);
-    }
-    setExecuting(false);
-    setTimeoutRemaining(null);
-    setError('Execution cancelled by user');
-  };
-
-  const executeCode = async () => {
-    if (!assignment) return;
-
+  const handleRun = async () => {
+    if (running) return;
+    setRunning(true);
     try {
-      // Create abort controller
-      abortControllerRef.current = new AbortController();
-
-      setExecuting(true);
-      setOutput('');
-      setError('');
-      setExecutionResult(null);
-      setTimeoutRemaining(EXECUTION_TIMEOUT_SECONDS);
-
-      // Start countdown timer
-      timeoutIntervalRef.current = setInterval(() => {
-        setTimeoutRemaining((prev) => {
-          if (prev === null || prev <= 1) {
-            return null;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-
-      const response = await api.post('/assessments/virtual-lab/execute', {
-        assignmentId: assignment.id,
-        code,
-        language: assignment.programming_language || 'python',
-        input,
-      }, {
-        signal: abortControllerRef.current.signal,
+      const result = await virtualLabApi.runCode({ language, code, stdin: stdin || undefined });
+      setOutput({
+        text: result.output || result.error || '(no output)',
+        isError: !result.success && !result.output,
+        time: result.executionTime,
+        exitCode: result.exitCode,
       });
-
-      const result = response.data as ExecutionResult;
-      setExecutionResult(result);
-
-      if (result.success) {
-        setOutput(result.output || 'Program executed successfully with no output');
-      } else {
-        setError(result.error || 'Execution failed');
-      }
-    } catch (err: unknown) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const error = err as any;
-      if (error.name === 'AbortError' || error.name === 'CanceledError') {
-        // Already handled in handleAbortExecution
-        if (!error) {
-          setError('Execution cancelled');
-        }
-      } else if (error.response?.status === 408 || error.message?.includes('timeout')) {
-        setError(`Execution timed out after ${EXECUTION_TIMEOUT_SECONDS} seconds. Your code may contain an infinite loop or be too slow.`);
-      } else {
-        console.error('Code execution failed:', error);
-        setError(error.response?.data?.message || 'Failed to execute code');
-      }
+    } catch (err) {
+      setOutput({ text: err instanceof Error ? err.message : 'Execution failed', isError: true, exitCode: -1 });
     } finally {
-      setExecuting(false);
-      setTimeoutRemaining(null);
-      if (timeoutIntervalRef.current) {
-        clearInterval(timeoutIntervalRef.current);
-        timeoutIntervalRef.current = null;
-      }
-      abortControllerRef.current = null;
+      setRunning(false);
     }
   };
 
-  const calculateScore = () => {
-    if (!executionResult?.testResults) return 0;
-
-    return executionResult.testResults.reduce((sum, test) => sum + (test.points || 0), 0);
+  // Resizable drag
+  const onMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    dragging.current = true;
+    const onMove = (ev: MouseEvent) => {
+      if (!dragging.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      setSplitPct(Math.max(30, Math.min(80, ((ev.clientX - rect.left) / rect.width) * 100)));
+    };
+    const onUp = () => {
+      dragging.current = false;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
   };
-
-  const getTotalPoints = () => {
-    if (!assignment?.test_cases) return 0;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return assignment.test_cases.reduce((sum: number, tc: any) => sum + (tc.points || 0), 0);
-  };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12" style={{ borderBottom: '2px solid var(--text-primary)' }}></div>
-      </div>
-    );
-  }
-
-  if (!assignment) {
-    return (
-      <div className="text-center py-12">
-        <p style={{ color: 'var(--text-muted)' }}>Assignment not found</p>
-      </div>
-    );
-  }
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      <div className="rounded-lg mb-6 p-6" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
-        <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
-          {assignment.title}
-        </h1>
-        <p className="mb-4" style={{ color: 'var(--text-muted)' }}>
-          {assignment.description}
-        </p>
-        {assignment.instructions && (
-          <div className="p-4 mb-4" style={{ background: 'var(--bg-elevated)', borderLeft: '4px solid var(--text-secondary)' }}>
-            <h3 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
-              Instructions
-            </h3>
-            <div className="whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>
-              {assignment.instructions}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Code Editor */}
-        <div className="rounded-lg p-6" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Code Editor
-            </h2>
-            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-              Language: {assignment.programming_language || 'python'}
-            </span>
-          </div>
-
-          <div className="mb-4">
-            <CodeEditor
-              value={code}
-              onChange={(value: string) => setCode(value)}
-              language={assignment.programming_language || 'python'}
-              height="400px"
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="label block mb-2">
-              Input (optional)
-            </label>
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              className="input w-full text-sm"
-              style={{ fontFamily: 'var(--font-mono)' }}
-              rows={3}
-              placeholder="Enter program input here..."
-            />
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={executeCode}
-              disabled={executing || !code.trim()}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors"
-              style={{ background: 'var(--fn-success)', color: '#fff' }}
+    <Layout>
+      <div className="flex flex-col" style={{ height: 'calc(100vh - 64px)' }}>
+        {/* Toolbar */}
+        <div
+          className="flex items-center justify-between px-6 py-3 flex-shrink-0"
+          style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-default)' }}
+        >
+          <div className="flex items-center gap-3">
+            <h1
+              className="text-base font-semibold"
+              style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}
             >
-              <PlayIcon className="w-5 h-5" />
-              {executing ? (
-                <>
-                  Running...
-                  {timeoutRemaining !== null && (
-                    <span className="ml-2" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                      ({timeoutRemaining}s)
-                    </span>
-                  )}
-                </>
-              ) : 'Run Code'}
-            </button>
-
-            {executing && (
-              <button
-                onClick={handleAbortExecution}
-                className="px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
-                style={{ background: 'var(--fn-error)', color: '#fff' }}
-              >
-                <StopIcon className="w-5 h-5" />
-                Stop
-              </button>
-            )}
+              Code Playground
+            </h1>
+            <select
+              value={language}
+              onChange={e => setLanguage(e.target.value)}
+              className="text-sm rounded px-3 py-1.5 outline-none"
+              style={{ background: 'var(--bg-base)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}
+            >
+              {LANGUAGES.map(l => (
+                <option key={l.value} value={l.value}>{l.label}</option>
+              ))}
+            </select>
           </div>
 
-          {executing && (
-            <div className="mt-3 p-3 rounded-lg" style={{ background: 'rgba(234, 179, 8, 0.08)', border: '1px solid rgba(234, 179, 8, 0.15)' }}>
-              <p className="text-sm" style={{ color: 'var(--fn-warning)' }}>
-                Timeout in {timeoutRemaining} seconds. Code will be terminated if it runs too long.
-              </p>
-            </div>
-          )}
+          <button
+            onClick={() => void handleRun()}
+            disabled={running}
+            className="flex items-center gap-2 px-4 py-1.5 rounded text-sm font-medium transition-opacity disabled:opacity-50"
+            style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-default)' }}
+          >
+            {running ? (
+              <span className="inline-block w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+            ) : (
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M6.3 2.84A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.27l9.344-5.891a1.5 1.5 0 000-2.538L6.3 2.84z" />
+              </svg>
+            )}
+            Run
+            <span className="text-xs opacity-40 font-mono">⌘↵</span>
+          </button>
         </div>
 
-        {/* Output */}
-        <div className="rounded-lg p-6" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
-          <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-            Output
-          </h2>
-
-          {executionResult && (
-            <div className="mb-4">
-              <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-                <span>Execution time: {executionResult.executionTime}ms</span>
-                <span style={{ color: executionResult.success ? 'var(--fn-success)' : 'var(--fn-error)' }}>
-                  • {executionResult.success ? 'Success' : 'Failed'}
-                </span>
-              </div>
+        {/* Split pane */}
+        <div ref={containerRef} className="flex flex-1 overflow-hidden">
+          {/* Editor */}
+          <div style={{ width: `${splitPct}%`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div className="flex-1 overflow-hidden">
+              <Editor
+                height="100%"
+                language={LANG_MAP[language] || language}
+                value={code}
+                onChange={v => setCode(v || '')}
+                theme="vs-dark"
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  lineNumbers: 'on',
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  tabSize: 4,
+                  wordWrap: 'on',
+                  fontFamily: 'var(--font-mono)',
+                }}
+              />
             </div>
-          )}
 
-          {output && (
-            <div className="mb-4">
-              <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                Standard Output
-              </h3>
-              <pre className="rounded-lg p-4 text-sm overflow-x-auto whitespace-pre-wrap" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
-                {output}
-              </pre>
+            {/* Stdin */}
+            <div style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', flexShrink: 0 }}>
+              <button
+                onClick={() => setStdinOpen(o => !o)}
+                className="w-full flex items-center justify-between px-4 py-2 text-xs"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                stdin
+                <svg
+                  className="w-3.5 h-3.5 transition-transform"
+                  style={{ transform: stdinOpen ? 'rotate(180deg)' : 'none' }}
+                  fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {stdinOpen && (
+                <textarea
+                  value={stdin}
+                  onChange={e => setStdin(e.target.value)}
+                  placeholder="Enter input..."
+                  rows={3}
+                  className="w-full px-4 py-2 text-sm resize-none outline-none"
+                  style={{
+                    background: 'var(--bg-base)', color: 'var(--text-secondary)',
+                    fontFamily: 'var(--font-mono)', borderTop: '1px solid var(--border-subtle)',
+                  }}
+                />
+              )}
             </div>
-          )}
+          </div>
 
-          {error && (
-            <div className="mb-4">
-              <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--fn-error)' }}>
-                Error Output
-              </h3>
-              <pre className="rounded-lg p-4 text-sm overflow-x-auto whitespace-pre-wrap" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', color: 'var(--fn-error)', fontFamily: 'var(--font-mono)' }}>
-                {error}
-              </pre>
+          {/* Drag handle */}
+          <div
+            onMouseDown={onMouseDown}
+            className="flex-shrink-0 cursor-col-resize"
+            style={{ width: 6, background: 'var(--border-default)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--border-muted)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'var(--border-default)')}
+          />
+
+          {/* Output */}
+          <div
+            className="flex-1 flex flex-col overflow-hidden"
+            style={{ background: 'var(--bg-base)' }}
+          >
+            <div
+              className="px-4 py-2 text-xs font-medium flex-shrink-0"
+              style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}
+            >
+              Output
             </div>
-          )}
-
-          {executionResult?.testResults && executionResult.testResults.length > 0 && (
-            <div>
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  Test Results
-                </h3>
-                <div className="text-sm">
-                  <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Score: </span>
-                  <span style={{ color: 'var(--text-secondary)' }}>
-                    {String(calculateScore())} / {getTotalPoints()}
-                  </span>
+            <div className="flex-1 overflow-auto p-4">
+              {running && (
+                <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--fn-warning)' }}>
+                  <span className="inline-block w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                  Running...
                 </div>
-              </div>
-
-              <div className="space-y-3">
-                {executionResult.testResults.map((test, index) => (
-                  <div
-                    key={index}
-                    className="rounded-lg p-3"
-                    style={test.passed
-                      ? { background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.15)' }
-                      : { background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)' }
-                    }
+              )}
+              {!running && !output && (
+                <p className="text-sm" style={{ color: 'var(--text-faint)' }}>
+                  Press <kbd className="px-1.5 py-0.5 rounded text-xs" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>⌘ ↵</kbd> or click Run
+                </p>
+              )}
+              {!running && output && (
+                <div className="space-y-3">
+                  <pre
+                    className="text-sm whitespace-pre-wrap break-all"
+                    style={{
+                      color: output.isError ? 'var(--fn-error)' : 'var(--text-secondary)',
+                      fontFamily: 'var(--font-mono)',
+                    }}
                   >
-                    <div className="flex items-center gap-2 mb-2">
-                      {test.passed ? (
-                        <CheckCircleIcon className="w-5 h-5" style={{ color: 'var(--fn-success)' }} />
-                      ) : (
-                        <XCircleIcon className="w-5 h-5" style={{ color: 'var(--fn-error)' }} />
-                      )}
-                      <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                        {test.name || `Test Case ${index + 1}`}
-                      </span>
-                      <span className="ml-auto text-sm" style={{ color: 'var(--text-muted)' }}>
-                        {test.passed ? test.points : 0} / {test.points} points
-                      </span>
-                    </div>
-
-                    {test.input && (
-                      <div className="text-xs mb-1">
-                        <span style={{ color: 'var(--text-muted)' }}>Input: </span>
-                        <code style={{ color: 'var(--text-primary)' }}>{test.input}</code>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div>
-                        <span style={{ color: 'var(--text-muted)' }}>Expected: </span>
-                        <code style={{ color: 'var(--text-primary)' }}>
-                          {test.expectedOutput}
-                        </code>
-                      </div>
-                      <div>
-                        <span style={{ color: 'var(--text-muted)' }}>Actual: </span>
-                        <code style={{ color: test.passed ? 'var(--fn-success)' : 'var(--fn-error)' }}>
-                          {test.actualOutput}
-                        </code>
-                      </div>
-                    </div>
-
-                    {test.error && (
-                      <div className="mt-2 text-xs" style={{ color: 'var(--fn-error)' }}>
-                        Error: {test.error}
-                      </div>
-                    )}
+                    {output.text}
+                  </pre>
+                  <div className="flex gap-4 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <span>Exit: {output.exitCode}</span>
+                    {output.time !== undefined && <span>{output.time}ms</span>}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
             </div>
-          )}
-
-          {!output && !error && !executionResult && (
-            <div className="text-center py-12" style={{ color: 'var(--text-faint)' }}>
-              Run your code to see the output
-            </div>
-          )}
+          </div>
         </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

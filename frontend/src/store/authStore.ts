@@ -48,18 +48,18 @@ function mapApiUserToFrontend(u: ApiUser | null | undefined): User | null {
   return {
     id: u.id,
     email: u.email,
-    display_name: u.displayName ?? u.display_name ?? '',
-    first_name: u.firstName ?? u.first_name,
-    last_name: u.lastName ?? u.last_name,
-    student_id: u.studentId ?? u.student_id,
+    displayName: u.displayName ?? u.display_name ?? '',
+    firstName: u.firstName ?? u.first_name,
+    lastName: u.lastName ?? u.last_name,
+    studentId: u.studentId ?? u.student_id,
     role: u.role as UserRole,
     // Backend returns 'UK'|'EN'; normalize to 'uk'|'en'
     locale: (typeof u.locale === 'string' ? u.locale.toLowerCase() : u.locale) as 'uk' | 'en',
     theme: u.theme === 'dark' || u.theme === 'obsidian' ? 'dark' : 'light',
     avatar: u.avatarUrl ?? u.avatar,
     bio: u.bio,
-    created_at: u.createdAt ?? u.created_at ?? '',
-    updated_at: u.updatedAt ?? u.updated_at ?? '',
+    createdAt: u.createdAt ?? u.created_at ?? '',
+    updatedAt: u.updatedAt ?? u.updated_at ?? '',
   };
 }
 

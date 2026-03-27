@@ -290,9 +290,9 @@ const DiagramCreator: React.FC<DiagramCreatorProps> = ({ onInsert, onClose, init
 
     try {
       const response = await aiApi.editContent({
-        entity_type: 'COURSE',
-        entity_id: 'diagram',
-        current_content: mermaidCode || '',
+        entityType: 'COURSE',
+        entityId: 'diagram',
+        currentContent: mermaidCode || '',
         prompt: `Generate ONLY valid Mermaid diagram code (no markdown fences, no explanation) for: ${prompt.trim()}`,
       });
 

@@ -232,6 +232,26 @@ const AssignmentWizard: React.FC = () => {
           document: templateDocument,
           schemaVersion: 1,
         });
+
+        // For new VPL/CODE assignments, sync test cases to dedicated vpl_test_cases table
+        const isVpl = wizard.formData.assignment_type === 'VIRTUAL_LAB' ||
+                      wizard.formData.assignment_type === 'CODE';
+        if (isVpl && !assignmentId && wizard.formData.test_cases.length > 0) {
+          const { virtualLabApi } = await import('../../api/virtualLab');
+          for (let i = 0; i < wizard.formData.test_cases.length; i++) {
+            const tc = wizard.formData.test_cases[i];
+            await virtualLabApi.testCases.create(savedAssignmentId, {
+              name: (tc as { name?: string; input: string; expected_output: string; points: number }).name || `Test ${i + 1}`,
+              input: tc.input,
+              expectedOutput: tc.expected_output,
+              checkMode: ((tc as { checkMode?: string }).checkMode ?? 'TRIM') as 'EXACT' | 'TRIM' | 'CONTAINS' | 'REGEX',
+              hidden: (tc as { hidden?: boolean }).hidden ?? false,
+              required: false,
+              weight: tc.points,
+              position: i,
+            });
+          }
+        }
       }
 
       wizard.clearDraft();

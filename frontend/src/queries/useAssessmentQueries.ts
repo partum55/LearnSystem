@@ -55,9 +55,9 @@ export function useCreateAssignmentMutation() {
     },
     onSuccess: (newAssignment) => {
       // Invalidate assignments list for the course
-      if (newAssignment.course_id) {
+      if (newAssignment.courseId) {
         queryClient.invalidateQueries({
-          queryKey: queryKeys.assessments.assignments(newAssignment.course_id),
+          queryKey: queryKeys.assessments.assignments(newAssignment.courseId),
         });
       }
       // Invalidate all assessments
@@ -152,9 +152,9 @@ export function useCreateQuizMutation() {
       return response.data;
     },
     onSuccess: (newQuiz) => {
-      if (newQuiz.course_id) {
+      if (newQuiz.courseId) {
         queryClient.invalidateQueries({
-          queryKey: queryKeys.assessments.quizzes(newQuiz.course_id),
+          queryKey: queryKeys.assessments.quizzes(newQuiz.courseId),
         });
       }
       queryClient.invalidateQueries({ queryKey: queryKeys.assessments.all });

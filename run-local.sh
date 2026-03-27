@@ -50,14 +50,14 @@ print_banner() {
 }
 
 check_env() {
-    if [ ! -f ".env" ]; then
-        echo -e "${YELLOW}⚠ No .env file found. Creating from .env.example...${NC}"
-        if [ -f ".env.example" ]; then
-            cp .env.example .env
-            echo -e "${GREEN}✓ Created .env file${NC}"
-            echo -e "${YELLOW}⚠ Please edit .env and add your LLAMA_API_KEY${NC}"
+    if [ ! -f "$ENV_FILE" ]; then
+        echo -e "${YELLOW}⚠ No $ENV_FILE file found. Creating from $ENV_FILE_EXAMPLE...${NC}"
+        if [ -f "$ENV_FILE_EXAMPLE" ]; then
+            cp "$ENV_FILE_EXAMPLE" "$ENV_FILE"
+            echo -e "${GREEN}✓ Created $ENV_FILE file${NC}"
+            echo -e "${YELLOW}⚠ Please edit $ENV_FILE and set required values before starting.${NC}"
         else
-            echo -e "${RED}✗ No .env.example template found!${NC}"
+            echo -e "${RED}✗ No $ENV_FILE_EXAMPLE template found!${NC}"
             exit 1
         fi
     fi
@@ -156,14 +156,10 @@ show_status() {
     echo -e "${BLUE}Health Checks:${NC}"
 
     services=(
-        "redis:6380:/health"
-        "eureka-server:8761:/actuator/health"
         "api-gateway:8080:/actuator/health"
         "user-service:8081:/api/actuator/health"
         "learning-service:8089:/api/actuator/health"
-        "marketplace-service:8086:/api/actuator/health"
         "ai-service:8085:/api/actuator/health"
-        "analytics-service:8088:/api/actuator/health"
         "frontend:3000:/"
     )
 
@@ -184,6 +180,15 @@ show_status() {
             echo -e "  ${RED}✗${NC} $name (port $port)"
         fi
     done
+
+    redis_health=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}unknown{{end}}' lms-redis 2>/dev/null || echo "missing")
+    if [ "$redis_health" = "healthy" ]; then
+        echo -e "  ${GREEN}✓${NC} redis (container health: healthy)"
+    elif [ "$redis_health" = "missing" ]; then
+        echo -e "  ${RED}✗${NC} redis (container not found)"
+    else
+        echo -e "  ${YELLOW}⚠${NC} redis (container health: $redis_health)"
+    fi
 }
 
 # ==========================================

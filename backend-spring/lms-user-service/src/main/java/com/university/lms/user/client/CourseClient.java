@@ -12,6 +12,7 @@ import java.util.UUID;
  */
 @FeignClient(
         name = "lms-learning-service",
+        url = "${LEARNING_SERVICE_URL:http://localhost:8089}",
         configuration = FeignAuthForwardingConfig.class
 )
 public interface CourseClient {

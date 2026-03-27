@@ -2,6 +2,7 @@ package com.university.lms.course.assessment.web;
 
 import com.university.lms.course.assessment.dto.CodeExecutionRequest;
 import com.university.lms.course.assessment.dto.CodeExecutionResult;
+import com.university.lms.course.assessment.dto.RunCodeRequest;
 import com.university.lms.course.assessment.service.VirtualLabService;
 import com.university.lms.course.web.RequestUserContext;
 import jakarta.validation.Valid;
@@ -33,6 +34,23 @@ public class VirtualLabController {
         log.info("Code execution request from user: {}", userId);
 
         CodeExecutionResult result = virtualLabService.executeCode(executionRequest, userId);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Run code without tests (Run button — no assignment context required).
+     */
+    @PostMapping("/run-code")
+    public ResponseEntity<CodeExecutionResult> runCode(@Valid @RequestBody RunCodeRequest request) {
+        log.info("Run code request: language={}", request.getLanguage());
+
+        CodeExecutionResult result = virtualLabService.runCode(
+                request.getLanguage(),
+                request.getCode(),
+                request.getStdin(),
+                request.getTimeLimitSeconds(),
+                request.getMemoryLimitMb()
+        );
         return ResponseEntity.ok(result);
     }
 }

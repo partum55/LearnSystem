@@ -70,6 +70,10 @@ public class Submission {
         @Column(name = "form_data", columnDefinition = "jsonb")
         private Map<String, Object> formData;
 
+        @JdbcTypeCode(SqlTypes.JSON)
+        @Column(name = "auto_grade_result", columnDefinition = "jsonb")
+        private Map<String, Object> autoGradeResult;
+
         @Column(name = "programming_language", length = 50)
         private String programmingLanguage;
 
