@@ -35,8 +35,9 @@ public class DeanGradebookExportController {
       @RequestParam(name = "group", required = false) String groupCode) {
 
     UUID actorId = requestUserContext.requireUserId();
+    String actorRole = requestUserContext.requireUserRole();
     DeanGradebookExportService.DeanGradebookFile exported =
-        deanGradebookExportService.export(courseId, semester, groupCode, actorId);
+        deanGradebookExportService.export(courseId, semester, groupCode, actorId, actorRole);
 
     return ResponseEntity.ok()
         .header(

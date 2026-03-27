@@ -29,7 +29,6 @@ const ReviewStep: React.FC<ReviewStepProps> = ({
     { label: t('assignment.programming_language', 'Language'), value: formData.assignment_type === 'CODE' ? formData.programming_language : '-' },
     { label: t('assignment.resources', 'Resources'), value: `${formData.resources.length} attached` },
     { label: t('assignment.allow_late_submission', 'Late submission'), value: formData.allow_late_submission ? `${t('common.yes', 'Yes')} (${formData.late_penalty_percent}%)` : t('common.no', 'No') },
-    { label: t('assignment.tags', 'Tags'), value: formData.tags.length > 0 ? formData.tags.join(', ') : '-' },
     { label: t('assignment.enable_auto_grading', 'Auto-grading'), value: formData.auto_grading_enabled ? `${t('common.yes', 'Yes')} (${formData.test_cases.length} tests)` : t('common.no', 'No') },
   ];
 

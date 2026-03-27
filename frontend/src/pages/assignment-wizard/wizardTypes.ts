@@ -1,4 +1,4 @@
-import { AssignmentType } from '../../types';
+import { AssignmentType, VplConfig } from '../../types';
 import { QuestionDraft, AIDraft } from '../../features/authoring/types';
 
 export type WizardStep = 'type' | 'content' | 'resources' | 'settings' | 'grading' | 'review';
@@ -49,12 +49,12 @@ export interface WizardFormData {
   allow_late_submission: boolean;
   late_penalty_percent: number;
   estimated_duration: number | null;
-  tags: string[];
   prerequisites: string[];
 
   // Grading step
-  max_points: number;
+  max_points: number | null;
   auto_grading_enabled: boolean;
+  vpl_config: VplConfig | null;
   test_cases: Array<{ input: string; expected_output: string; points: number }>;
   quiz_questions: QuestionDraft[];
   quiz_timer_enabled: boolean;
@@ -92,10 +92,10 @@ export const initialWizardFormData: WizardFormData = {
   allow_late_submission: true,
   late_penalty_percent: 10,
   estimated_duration: null,
-  tags: [],
   prerequisites: [],
-  max_points: 100,
+  max_points: null,
   auto_grading_enabled: false,
+  vpl_config: null,
   test_cases: [],
   quiz_questions: [],
   quiz_timer_enabled: false,

@@ -46,6 +46,7 @@ public class UpdateAssignmentRequest {
     private String programmingLanguage;
     private Boolean autoGradingEnabled;
     private List<Map<String, Object>> testCases;
+    private Map<String, Object> vplConfig;
 
     @DecimalMin("0.01")
     @DecimalMax("10000.00")
@@ -75,7 +76,6 @@ public class UpdateAssignmentRequest {
     @Min(0)
     private Integer peerReviewsRequired;
 
-    private List<String> tags;
     private Integer estimatedDuration;
 
     private Boolean isArchived;

@@ -1,15 +1,22 @@
 # Backend .dockerignore
-target/
+# This file applies when build context is ./backend-spring (used by all Spring services).
+# Per-service .dockerignore files in each service directory are for documentation/Buildx use.
+
+# Build artifacts
+*/target/
 .mvn/
 mvnw
 mvnw.cmd
-*.iml
+
+# IDE / OS
 .idea/
 .vscode/
+*.iml
+.DS_Store
+
+# Git / docs
 .git/
 .gitignore
 *.md
 logs/
 *.log
-.DS_Store
-

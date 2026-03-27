@@ -1,6 +1,7 @@
 import { TFunction } from 'i18next';
 import {
   AcademicCapIcon,
+  ChartBarIcon,
   DocumentTextIcon,
   FolderIcon,
   MegaphoneIcon,
@@ -26,7 +27,8 @@ export type CourseDetailTabId =
   | 'announcements'
   | 'assignments'
   | 'members'
-  | 'grades';
+  | 'grades'
+  | 'analytics';
 
 const COURSE_DETAIL_TABS: CourseDetailTabId[] = [
   'modules',
@@ -35,6 +37,7 @@ const COURSE_DETAIL_TABS: CourseDetailTabId[] = [
   'assignments',
   'members',
   'grades',
+  'analytics',
 ];
 
 export const isCourseDetailTabId = (tab: string | null): tab is CourseDetailTabId =>
@@ -81,4 +84,5 @@ export const getCourseDetailTabs = (t: TFunction): CourseDetailTab[] => [
   { id: 'assignments', name: t('assignments.title'), icon: DocumentTextIcon },
   { id: 'members', name: t('courses.students'), icon: UserGroupIcon },
   { id: 'grades', name: t('gradebook.title'), icon: AcademicCapIcon },
+  { id: 'analytics', name: 'Analytics', icon: ChartBarIcon },
 ];

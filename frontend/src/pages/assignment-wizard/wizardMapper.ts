@@ -170,7 +170,6 @@ export function legacyToWizardData(legacy: AssignmentFormData): WizardFormData {
     allow_late_submission: legacy.allow_late_submission,
     late_penalty_percent: legacy.late_penalty_percent,
     estimated_duration: legacy.estimated_duration,
-    tags: legacy.tags,
     prerequisites: legacy.prerequisites,
     max_points: legacy.max_points,
     auto_grading_enabled: legacy.auto_grading_enabled,
@@ -186,6 +185,7 @@ export function legacyToWizardData(legacy: AssignmentFormData): WizardFormData {
     is_published: false,
     is_template: legacy.is_template,
     ai_drafts: [],
+    vpl_config: null,
   };
 }
 
@@ -206,7 +206,7 @@ export function wizardDataToApiPayload(
     descriptionFormat: 'RICH',
     instructions: data.instructions,
     instructionsFormat: 'RICH',
-    maxPoints: data.max_points,
+    maxPoints: data.max_points ?? 0,
     dueDate: data.due_date || null,
     availableFrom: data.available_from || null,
     availableUntil: data.available_until || null,
@@ -218,9 +218,9 @@ export function wizardDataToApiPayload(
     maxFileSize: data.max_file_size,
     testCases: data.test_cases,
     autoGradingEnabled: data.auto_grading_enabled,
+    vplConfig: data.vpl_config ?? undefined,
     allowLateSubmission: data.allow_late_submission,
     latePenaltyPercent: data.late_penalty_percent,
-    tags: data.tags,
     estimatedDuration: data.estimated_duration,
     isTemplate: data.is_template,
     isPublished: data.is_published,

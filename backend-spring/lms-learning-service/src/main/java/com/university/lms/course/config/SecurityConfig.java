@@ -84,16 +84,16 @@ public class SecurityConfig {
         .authorizeHttpRequests(
             auth ->
                 auth
-                    // Public endpoints
+                    // Public endpoints (paths are relative to context-path /api)
                     .requestMatchers("/actuator/health", "/actuator/info")
                     .permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/courses/published")
+                    .requestMatchers(HttpMethod.GET, "/courses/published")
                     .permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/courses/search")
+                    .requestMatchers(HttpMethod.GET, "/courses/search")
                     .permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/courses/code/**")
+                    .requestMatchers(HttpMethod.GET, "/courses/code/**")
                     .permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/courses/*/preview")
+                    .requestMatchers(HttpMethod.GET, "/courses/*/preview")
                     .permitAll()
                     // Admin endpoints
                     .requestMatchers("/actuator/prometheus")

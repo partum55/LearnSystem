@@ -82,8 +82,6 @@ public class AssignmentDto implements Serializable {
     private Boolean peerReviewEnabled;
     private Integer peerReviewsRequired;
 
-    // Metadata
-    private List<String> tags;
     private Integer estimatedDuration;
 
     // Template/archive

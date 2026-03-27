@@ -33,15 +33,15 @@ const mapAssignments = (
   status: 'upcoming' | 'overdue'
 ): CourseDeadlineItem[] => {
   return assignments
-    .filter((assignment) => Boolean(assignment.id && assignment.due_date))
+    .filter((assignment) => Boolean(assignment.id && assignment.dueDate))
     .map((assignment) => ({
       assignmentId: assignment.id,
-      moduleId: assignment.module_id,
+      moduleId: assignment.moduleId,
       courseId: course.id,
       courseCode: course.code,
       courseTitle: course.title,
       title: assignment.title,
-      dueDate: String(assignment.due_date),
+      dueDate: String(assignment.dueDate),
       status,
     }));
 };
@@ -66,9 +66,10 @@ export const useCourseDeadlines = (
         .join('|'),
     [eligibleCourses]
   );
+  const stableEligibleCourses = useMemo(() => eligibleCourses, [courseKey]);
 
   useEffect(() => {
-    if (!enabled || eligibleCourses.length === 0) {
+    if (!enabled || stableEligibleCourses.length === 0) {
       return;
     }
 
@@ -77,7 +78,7 @@ export const useCourseDeadlines = (
     void (async () => {
       try {
         const results = await Promise.all(
-          eligibleCourses.map(async (course) => {
+          stableEligibleCourses.map(async (course) => {
             const [upcoming, overdue] = await Promise.allSettled([
               assignmentsApi.getUpcoming(course.id),
               assignmentsApi.getOverdue(course.id),
@@ -129,7 +130,7 @@ export const useCourseDeadlines = (
     return () => {
       cancelled = true;
     };
-  }, [courseKey, eligibleCourses, enabled]);
+  }, [courseKey, enabled, stableEligibleCourses]);
 
   if (!enabled || eligibleCourses.length === 0) {
     return { deadlines: [], isLoading: false };

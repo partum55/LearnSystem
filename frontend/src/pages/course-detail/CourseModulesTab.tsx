@@ -32,6 +32,7 @@ import { RichContentRenderer } from '../../components/common/RichContentRenderer
 import { submissionsApi } from '../../api/assessments';
 import { topicsApi } from '../../api/courses';
 import { Assignment, Module, Resource, Topic } from '../../types';
+import { useCourseProgress, useMarkComplete } from '../../queries/useProgressQueries';
 
 interface CourseModulesTabProps {
   courseId: string;
@@ -48,7 +49,7 @@ interface CourseModulesTabProps {
   onDeleteAssignment: (assignment: Assignment) => void;
   onReorderModules: (moduleIds: string[]) => Promise<void>;
   onReorderResources: (moduleId: string, resourceIds: string[]) => Promise<void>;
-  onEditModuleStructure: (module: Module, patch: { topic?: string; tags?: string[] }) => Promise<void>;
+  onEditModuleStructure: (module: Module, patch: { topic?: string }) => Promise<void>;
   t: TFunction;
 }
 
@@ -71,16 +72,10 @@ const extractModuleId = (droppableId: string): string | null => {
 const isCompletedSubmissionStatus = (status?: string | null): boolean =>
   status === 'SUBMITTED' || status === 'GRADED';
 
-const parseModuleMeta = (module: Module): { topic: string; tags: string[] } => {
-  const meta = (module.content_meta || {}) as Record<string, unknown>;
+const parseModuleMeta = (module: Module): { topic: string } => {
+  const meta = (module.contentMeta || {}) as Record<string, unknown>;
   const topic = typeof meta.topic === 'string' ? meta.topic.trim() : '';
-  const tags =
-    Array.isArray(meta.tags)
-      ? meta.tags.filter((item): item is string => typeof item === 'string').map((tag) => tag.trim()).filter(Boolean)
-      : typeof meta.tags === 'string'
-        ? meta.tags.split(',').map((tag) => tag.trim()).filter(Boolean)
-        : [];
-  return { topic, tags };
+  return { topic };
 };
 
 export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
@@ -104,10 +99,13 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
   const navigate = useNavigate();
   const [displayModules, setDisplayModules] = useState<Module[]>(modules);
   const [isReorderingModules, setIsReorderingModules] = useState(false);
+  const { data: courseProgress } = useCourseProgress(isInstructor ? undefined : courseId);
+  const markCompleteMutation = useMarkComplete();
   const [reorderingResourcesModuleId, setReorderingResourcesModuleId] = useState<string | null>(null);
   const [assignmentSubmissionStatus, setAssignmentSubmissionStatus] = useState<Record<string, string | null>>({});
   const [moduleTopics, setModuleTopics] = useState<Record<string, Topic[]>>({});
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
+  const [editingTopic, setEditingTopic] = useState<{ moduleId: string; topic?: Topic; title: string; description: string } | null>(null);
 
   useEffect(() => {
     setDisplayModules(modules);
@@ -203,39 +201,41 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
     });
   };
 
-  const handleCreateTopic = async (moduleId: string) => {
-    const title = window.prompt(t('modules.topicTitlePlaceholder', 'Enter topic title'));
-    if (!title?.trim()) return;
-    try {
-      const response = await topicsApi.create(courseId, moduleId, { title: title.trim() });
-      setModuleTopics((prev) => ({
-        ...prev,
-        [moduleId]: [...(prev[moduleId] || []), response.data],
-      }));
-    } catch {
-      window.alert(t('modules.topicCreateFailed', 'Failed to create topic.'));
-    }
+  const handleCreateTopic = (moduleId: string) => {
+    setEditingTopic({ moduleId, title: '', description: '' });
   };
 
-  const handleEditTopic = async (moduleId: string, topic: Topic) => {
-    const title = window.prompt(t('modules.topicTitlePlaceholder', 'Enter topic title'), topic.title);
-    if (title === null) return;
-    const description = window.prompt(
-      t('modules.topicDescriptionPlaceholder', 'Enter topic description (optional)'),
-      topic.description || ''
-    );
-    if (description === null) return;
+  const handleEditTopic = (moduleId: string, topic: Topic) => {
+    setEditingTopic({ moduleId, topic, title: topic.title, description: topic.description || '' });
+  };
+
+  const handleSaveTopic = async () => {
+    if (!editingTopic || !editingTopic.title.trim()) return;
     try {
-      const response = await topicsApi.update(courseId, moduleId, topic.id, {
-        title: title.trim() || topic.title,
-        description: description.trim() || undefined,
-      });
-      setModuleTopics((prev) => ({
-        ...prev,
-        [moduleId]: (prev[moduleId] || []).map((t) => (t.id === topic.id ? response.data : t)),
-      }));
+      if (editingTopic.topic) {
+        const response = await topicsApi.update(courseId, editingTopic.moduleId, editingTopic.topic.id, {
+          title: editingTopic.title.trim(),
+          description: editingTopic.description.trim() || undefined,
+        });
+        setModuleTopics((prev) => ({
+          ...prev,
+          [editingTopic.moduleId]: (prev[editingTopic.moduleId] || []).map((tp) =>
+            tp.id === editingTopic.topic!.id ? response.data : tp
+          ),
+        }));
+      } else {
+        const response = await topicsApi.create(courseId, editingTopic.moduleId, {
+          title: editingTopic.title.trim(),
+          description: editingTopic.description.trim() || undefined,
+        });
+        setModuleTopics((prev) => ({
+          ...prev,
+          [editingTopic.moduleId]: [...(prev[editingTopic.moduleId] || []), response.data],
+        }));
+      }
+      setEditingTopic(null);
     } catch {
-      window.alert(t('modules.topicUpdateFailed', 'Failed to update topic.'));
+      // Keep the form open so the user can retry
     }
   };
 
@@ -268,14 +268,14 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
   const checkpointStats = useMemo(() => {
     const moduleStats = displayModules.map((module) => {
       const assignments = module.assignments || [];
-      const requiredAssignments = assignments.filter((assignment) => assignment.requires_submission !== false);
+      const requiredAssignments = assignments.filter((assignment) => assignment.requiresSubmission !== false);
       const totalAssignments = requiredAssignments.length;
       const completedAssignments = requiredAssignments.filter((assignment) => {
         const status = assignmentSubmissionStatus[assignment.id];
         if (isCompletedSubmissionStatus(status)) {
           return true;
         }
-        return Boolean(assignment.submission?.submitted_at || assignment.submission?.graded_at);
+        return Boolean(assignment.submission?.submittedAt || assignment.submission?.gradedAt);
       }).length;
 
       return {
@@ -386,12 +386,23 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
     }
   };
 
+  const isResourceCompleted = (moduleId: string, resourceId: string): boolean => {
+    if (!courseProgress) return false;
+    const modProgress = courseProgress.modules?.find((m) => m.moduleId === moduleId);
+    return modProgress?.items?.some((item) => item.contentId === resourceId) ?? false;
+  };
+
+  const handleMarkResourceComplete = (moduleId: string, resourceId: string) => {
+    markCompleteMutation.mutate({ courseId, moduleId, contentType: 'RESOURCE', contentId: resourceId });
+  };
+
   const renderResource = (
     module: Module,
     resource: Resource,
     dragHandleProps?: DraggableProvidedDragHandleProps | null
   ) => {
-    const isLink = resource.resource_type === 'LINK';
+    const completed = !isInstructor && isResourceCompleted(module.id, resource.id);
+    const isLink = resource.resourceType === 'LINK';
     const ResIcon = {
       TEXT: DocumentTextIcon,
       PDF: DocumentIcon,
@@ -400,7 +411,7 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
       CODE: CodeBracketIcon,
       LINK: LinkIcon,
       OTHER: DocumentIcon,
-    }[resource.resource_type] || DocumentIcon;
+    }[resource.resourceType] || DocumentIcon;
 
     return (
       <div
@@ -425,9 +436,9 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
 
         <ResIcon className="h-5 w-5 flex-shrink-0" style={{ color: 'var(--text-faint)' }} />
         <div className="min-w-0 flex-1">
-          {isLink && resource.external_url ? (
+          {isLink && resource.externalUrl ? (
             <a
-              href={resource.external_url}
+              href={resource.externalUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 truncate font-medium transition-colors"
@@ -451,8 +462,25 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
           )}
         </div>
         <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>
-          {resource.resource_type}
+          {resource.resourceType}
         </span>
+        {!isInstructor && completed && (
+          <CheckCircleIcon className="h-4 w-4 flex-shrink-0" style={{ color: 'var(--fn-success)' }} />
+        )}
+        {!isInstructor && !completed && (
+          <button
+            type="button"
+            className="text-xs px-2 py-1 rounded transition-colors opacity-0 group-hover:opacity-100"
+            style={{ color: 'var(--text-muted)', border: '1px solid var(--border-default)' }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleMarkResourceComplete(module.id, resource.id);
+            }}
+          >
+            {t('progress.markComplete', 'Mark as complete')}
+          </button>
+        )}
         {isInstructor && (
           <div className="flex items-center gap-1">
             <button
@@ -507,14 +535,14 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
             {assignment.title}
           </div>
           <div className="mt-1 flex items-center gap-3 text-sm" style={{ color: 'var(--text-muted)' }}>
-            {assignment.due_date && (
+            {assignment.dueDate && (
               <span className="flex items-center gap-1">
                 <ClockIcon className="h-4 w-4" />
-                {new Date(assignment.due_date).toLocaleDateString()}
+                {new Date(assignment.dueDate).toLocaleDateString()}
               </span>
             )}
             <span>
-              {assignment.max_points} {t('assignments.points')}
+              {assignment.maxPoints} {t('assignments.points')}
             </span>
           </div>
         </div>
@@ -555,6 +583,46 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
     </Link>
   );
 
+  const renderTopicForm = (moduleId: string) => {
+    if (!editingTopic || editingTopic.moduleId !== moduleId) return null;
+    return (
+      <div
+        className="rounded-lg border p-3 space-y-3"
+        style={{ borderColor: 'var(--border-default)', background: 'var(--bg-elevated)' }}
+      >
+        <input
+          className="input w-full"
+          placeholder={t('modules.topicTitlePlaceholder', 'Topic title')}
+          value={editingTopic.title}
+          onChange={(e) => setEditingTopic({ ...editingTopic, title: e.target.value })}
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') void handleSaveTopic();
+            if (e.key === 'Escape') setEditingTopic(null);
+          }}
+        />
+        <input
+          className="input w-full"
+          placeholder={t('modules.topicDescriptionPlaceholder', 'Description (optional)')}
+          value={editingTopic.description}
+          onChange={(e) => setEditingTopic({ ...editingTopic, description: e.target.value })}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') void handleSaveTopic();
+            if (e.key === 'Escape') setEditingTopic(null);
+          }}
+        />
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" size="sm" onClick={() => setEditingTopic(null)}>
+            {t('common.cancel')}
+          </Button>
+          <Button size="sm" onClick={() => void handleSaveTopic()} disabled={!editingTopic.title.trim()}>
+            {editingTopic.topic ? t('common.save') : t('common.create', 'Create')}
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   const renderTopicsAndAssignments = (module: Module) => {
     const topics = moduleTopics[module.id] || [];
     const assignments = module.assignments || [];
@@ -579,13 +647,13 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
 
     // Topics exist — group assignments and resources by topic
     const resources = module.resources || [];
-    const uncategorized = assignments.filter((a) => !a.topic_id || !topics.some((tp) => tp.id === a.topic_id));
-    const uncategorizedResources = resources.filter((r) => !r.topic_id || !topics.some((tp) => tp.id === r.topic_id));
+    const uncategorized = assignments.filter((a) => !a.topicId || !topics.some((tp) => tp.id === a.topicId));
+    const uncategorizedResources = resources.filter((r) => !r.topicId || !topics.some((tp) => tp.id === r.topicId));
     const assignmentsByTopic = new Map<string, Assignment[]>();
     const resourcesByTopic = new Map<string, Resource[]>();
     for (const topic of topics) {
-      assignmentsByTopic.set(topic.id, assignments.filter((a) => a.topic_id === topic.id));
-      resourcesByTopic.set(topic.id, resources.filter((r) => r.topic_id === topic.id));
+      assignmentsByTopic.set(topic.id, assignments.filter((a) => a.topicId === topic.id));
+      resourcesByTopic.set(topic.id, resources.filter((r) => r.topicId === topic.id));
     }
 
     return (
@@ -611,6 +679,9 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
         )}
 
         {/* Topics with their assignments */}
+        {isInstructor && renderTopicForm(module.id) && (
+          <div className="mb-3 pl-2">{renderTopicForm(module.id)}</div>
+        )}
         <Droppable droppableId={`topics-${module.id}`} type="TOPIC" isDropDisabled={!isInstructor}>
           {(provided) => (
             <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-3 pl-2">
@@ -619,6 +690,28 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
                 const topicResources = resourcesByTopic.get(topic.id) || [];
                 const topicItemCount = topicAssignments.length + topicResources.length;
                 const isExpanded = expandedTopics.has(topic.id);
+                const isEditingThisTopic = editingTopic?.topic?.id === topic.id && editingTopic.moduleId === module.id;
+
+                if (isEditingThisTopic) {
+                  return (
+                    <Draggable
+                      key={topic.id}
+                      draggableId={`topic-${topic.id}`}
+                      index={index}
+                      isDragDisabled
+                    >
+                      {(dragProvided) => (
+                        <div
+                          ref={dragProvided.innerRef}
+                          {...dragProvided.draggableProps}
+                          style={dragProvided.draggableProps.style}
+                        >
+                          {renderTopicForm(module.id)}
+                        </div>
+                      )}
+                    </Draggable>
+                  );
+                }
 
                 return (
                   <Draggable
@@ -667,7 +760,7 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  void handleEditTopic(module.id, topic);
+                                  handleEditTopic(module.id, topic);
                                 }}
                                 className="p-0.5 transition-colors"
                                 style={{ color: 'var(--text-faint)' }}
@@ -786,7 +879,7 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
             size="sm"
             onClick={(event) => {
               event.stopPropagation();
-              void handleCreateTopic(module.id);
+              handleCreateTopic(module.id);
             }}
           >
             <PlusIcon className="mr-1 h-4 w-4" />
@@ -808,7 +901,7 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
       {(() => {
         const topics = moduleTopics[module.id] || [];
         const moduleLevelResources = topics.length > 0
-          ? (module.resources || []).filter((r) => !r.topic_id || !topics.some((tp) => tp.id === r.topic_id))
+          ? (module.resources || []).filter((r) => !r.topicId || !topics.some((tp) => tp.id === r.topicId))
           : (module.resources || []);
         if (moduleLevelResources.length === 0) return null;
         return (
@@ -881,6 +974,11 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
 
       {renderTopicsAndAssignments(module)}
 
+      {isInstructor && editingTopic?.moduleId === module.id && !editingTopic.topic &&
+        (moduleTopics[module.id] || []).length === 0 && (
+          <div className="mt-3">{renderTopicForm(module.id)}</div>
+        )}
+
       {(!module.resources || module.resources.length === 0) &&
         (!module.assignments || module.assignments.length === 0) &&
         (!moduleTopics[module.id] || moduleTopics[module.id].length === 0) && (
@@ -940,16 +1038,25 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
             )}
             <div>
               <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{module.title}</h3>
-              {(moduleMeta.topic || moduleMeta.tags.length > 0) && (
+              {moduleMeta.topic && (
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {moduleMeta.topic && `${t('modules.moduleTopic', 'Topic')}: ${moduleMeta.topic}`}
-                  {moduleMeta.topic && moduleMeta.tags.length > 0 ? ' · ' : ''}
-                  {moduleMeta.tags.length > 0 && `${t('modules.moduleTags', 'Tags')}: ${moduleMeta.tags.join(', ')}`}
+                  {`${t('modules.moduleTopic', 'Topic')}: ${moduleMeta.topic}`}
                 </p>
               )}
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {!isInstructor && courseProgress && (() => {
+              const modProgress = courseProgress.modules?.find((m) => m.moduleId === module.id);
+              const totalItems = (module.resources?.length || 0) + (module.assignments?.length || 0);
+              const completedItems = modProgress?.completed ?? 0;
+              if (totalItems === 0) return null;
+              return (
+                <span className="text-xs tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                  {completedItems}/{totalItems}
+                </span>
+              );
+            })()}
             {isInstructor && (
               <Button
                 size="sm"
@@ -961,19 +1068,7 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
                     moduleMeta.topic
                   );
                   if (nextTopic === null) return;
-                  const nextTags = window.prompt(
-                    t('modules.moduleTagsPlaceholder', 'Comma-separated tags'),
-                    moduleMeta.tags.join(', ')
-                  );
-                  if (nextTags === null) return;
-
-                  void onEditModuleStructure(module, {
-                    topic: nextTopic.trim(),
-                    tags: nextTags
-                      .split(',')
-                      .map((tag) => tag.trim())
-                      .filter(Boolean),
-                  });
+                  void onEditModuleStructure(module, { topic: nextTopic.trim() });
                 }}
               >
                 <PencilIcon className="h-4 w-4 mr-1" />
@@ -1005,7 +1100,7 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
                 {checkpointLabel}
               </span>
             )}
-            {module.is_published && (
+            {module.isPublished && (
               <span className="badge badge-success">
                 <CheckCircleIcon className="mr-1 h-4 w-4" />
                 {t('common.published')}
@@ -1066,6 +1161,20 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
                 {checkpointStats.remainingModules} {t('modules.remaining', 'remaining')}
               </span>
             </div>
+            <div
+              className="mt-3 h-2 w-full overflow-hidden rounded-full"
+              style={{ background: 'var(--bg-base)' }}
+            >
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${checkpointStats.totalModules > 0 ? Math.round((checkpointStats.completedModules / checkpointStats.totalModules) * 100) : 0}%`,
+                  background: checkpointStats.completedModules >= checkpointStats.totalModules
+                    ? 'var(--fn-success)'
+                    : 'var(--fn-warning)',
+                }}
+              />
+            </div>
           </CardHeader>
           <CardBody>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -1086,6 +1195,24 @@ export const CourseModulesTab: React.FC<CourseModulesTabProps> = ({
                       ? t('modules.checkpointNoTasks', 'No required tasks')
                       : `${stat.completedAssignments}/${stat.totalAssignments}`}
                   </p>
+                  {stat.totalAssignments > 0 && (
+                    <div
+                      className="mt-2 h-1.5 w-full overflow-hidden rounded-full"
+                      style={{ background: 'var(--bg-base)' }}
+                    >
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${Math.round((stat.completedAssignments / stat.totalAssignments) * 100)}%`,
+                          background: stat.completedAssignments >= stat.totalAssignments
+                            ? 'var(--fn-success)'
+                            : stat.completedAssignments > 0
+                              ? 'var(--fn-warning)'
+                              : 'var(--text-faint)',
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

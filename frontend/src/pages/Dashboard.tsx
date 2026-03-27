@@ -19,6 +19,7 @@ import {
   TeacherTodoDashboardResponse,
 } from '../api/courses';
 import { extractErrorMessage } from '../api/client';
+import { progressApi, ProgressItem } from '../api/progress';
 
 interface DashboardCourse extends Course {
   completion_percentage?: number;
@@ -57,15 +58,65 @@ export const Dashboard: React.FC = () => {
   const [teacherTodo, setTeacherTodo] = useState<TeacherTodoDashboardResponse | null>(null);
   const [studentReminders, setStudentReminders] = useState<StudentContextReminderItem[]>([]);
   const [insightsError, setInsightsError] = useState<string | null>(null);
+  const [progressItems, setProgressItems] = useState<ProgressItem[]>([]);
   const [widgets, setWidgets] = useState<DashboardWidgetConfig[]>(() => {
     const saved = localStorage.getItem('dashboardWidgets');
     return saved ? JSON.parse(saved) : DEFAULT_WIDGETS;
+  });
+
+  const isInstructorRole =
+    user?.role === 'TEACHER' || user?.role === 'TA' || user?.role === 'SUPERADMIN';
+  const isStudentRole = user?.role === 'STUDENT';
+
+  const dashboardCourses = (courses || []) as DashboardCourse[];
+  const semesters = Array.from(
+    new Set(
+      dashboardCourses
+        .map((course) => course.academicYear)
+        .filter((year): year is string => Boolean(year))
+    )
+  ).sort((a, b) => b.localeCompare(a));
+
+  const filteredCourses = dashboardCourses.filter((course) => {
+    const matchesStatus =
+      statusFilter === 'all'
+        ? true
+        : statusFilter === 'archived'
+          ? course.status === 'ARCHIVED'
+          : course.status !== 'ARCHIVED';
+
+    const matchesSemester =
+      semesterFilter === 'all' || course.academicYear === semesterFilter;
+
+    return matchesStatus && matchesSemester;
   });
 
   useEffect(() => {
     fetchCourses();
     fetchNotifications();
   }, [fetchCourses, fetchNotifications]);
+
+  // Fetch progress data across all enrolled courses
+  useEffect(() => {
+    if (!filteredCourses || filteredCourses.length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      const allItems: ProgressItem[] = [];
+      for (const course of filteredCourses.slice(0, 10)) {
+        try {
+          const res = await progressApi.getCourseProgress(course.id);
+          const modules = res.data?.modules || [];
+          for (const mod of modules) {
+            allItems.push(...(mod.items || []));
+          }
+        } catch {
+          // skip courses with no progress data
+        }
+      }
+      if (!cancelled) setProgressItems(allItems);
+    })();
+    return () => { cancelled = true; };
+  }, [filteredCourses]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
@@ -76,10 +127,6 @@ export const Dashboard: React.FC = () => {
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
-
-  const isInstructorRole =
-    user?.role === 'TEACHER' || user?.role === 'TA' || user?.role === 'SUPERADMIN';
-  const isStudentRole = user?.role === 'STUDENT';
 
   useEffect(() => {
     let isMounted = true;
@@ -114,29 +161,6 @@ export const Dashboard: React.FC = () => {
       isMounted = false;
     };
   }, [isInstructorRole, isStudentRole]);
-
-  const dashboardCourses = (courses || []) as DashboardCourse[];
-  const semesters = Array.from(
-    new Set(
-      dashboardCourses
-        .map((course) => course.academicYear)
-        .filter((year): year is string => Boolean(year))
-    )
-  ).sort((a, b) => b.localeCompare(a));
-
-  const filteredCourses = dashboardCourses.filter((course) => {
-    const matchesStatus =
-      statusFilter === 'all'
-        ? true
-        : statusFilter === 'archived'
-          ? course.status === 'ARCHIVED'
-          : course.status !== 'ARCHIVED';
-
-    const matchesSemester =
-      semesterFilter === 'all' || course.academicYear === semesterFilter;
-
-    return matchesStatus && matchesSemester;
-  });
 
   const { deadlines: courseDeadlines, isLoading: deadlinesLoading } = useCourseDeadlines(filteredCourses, {
     enabled: filteredCourses.length > 0,
@@ -180,9 +204,10 @@ export const Dashboard: React.FC = () => {
     deadlines: upcomingDeadlines,
     todayDeadlines,
     notifications: (notifications || []).slice(0, 10),
+    progressItems,
   };
 
-  const firstName = user?.display_name?.split(' ')[0] || user?.display_name;
+  const firstName = user?.displayName?.split(' ')[0] || user?.displayName;
 
   return (
     <Layout>

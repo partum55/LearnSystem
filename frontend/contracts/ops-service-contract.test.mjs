@@ -32,11 +32,11 @@ test('learning-service docker profile must accept both spring datasource and leg
   assert.match(learningDockerConfig, /\$\{SPRING_DATASOURCE_PASSWORD:\$\{DB_PASSWORD:/);
 });
 
-test('marketplace service health checks must use the api context path', () => {
-  const marketplaceSection = extractSection(dockerCompose, 'marketplace-service');
+test('execution service remains internal to backend topology in docker compose', () => {
+  const executionSection = extractSection(dockerCompose, 'execution-service');
 
-  assert.match(marketplaceSection, /http:\/\/localhost:8086\/api\/actuator\/health/);
-  assert.match(runLocalScript, /marketplace-service:8086:\/api\/actuator\/health/);
+  assert.doesNotMatch(executionSection, /ports:/);
+  assert.doesNotMatch(runLocalScript, /execution-service:/);
 });
 
 function extractSection(source, serviceName) {

@@ -20,7 +20,7 @@ interface StudentProgress {
   progress: number;
   grade: number;
   lastActive: string;
-  isStruggling: boolean;
+  struggling: boolean;
 }
 
 const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ courseId }) => {
@@ -70,7 +70,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ courseId }) => 
     );
   }
 
-  const strugglingStudents = students.filter(s => s.isStruggling);
+  const strugglingStudents = students.filter(s => s.struggling);
 
   return (
     <div className="space-y-6">
@@ -187,7 +187,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ courseId }) => 
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {students.map((student) => (
-                <tr key={student.userId} className={student.isStruggling ? 'bg-red-50' : ''}>
+                <tr key={student.userId} className={student.struggling ? 'bg-red-50' : ''}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {student.name}
                   </td>
@@ -215,7 +215,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ courseId }) => 
                     {new Date(student.lastActive).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {student.isStruggling && (
+                    {student.struggling && (
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
                         At Risk
                       </span>

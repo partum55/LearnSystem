@@ -40,6 +40,8 @@ import {
   MathBlockNode,
   MathInlineNode,
   InteractiveWidgetNode,
+  FormFieldNode,
+  RepeatableGroupNode,
 } from './nodes';
 import {
   SlashCommandPalette,
@@ -49,6 +51,7 @@ import {
 import { EditorBubbleToolbar } from './EditorBubbleToolbar';
 import { EditorSidebar, MobileToolsDrawer } from './EditorSidebar';
 import { MarkdownInputRules } from './markdownInputRules';
+import DiagramCreator from '../../components/diagram/DiagramCreator';
 import './block-editor.css';
 
 type EditorMode = 'full' | 'lite';
@@ -150,6 +153,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   const [showEmbedModal, setShowEmbedModal] = useState<false | 'youtube' | 'pdf'>(false);
   const [showCodeBlockModal, setShowCodeBlockModal] = useState(false);
   const [showFootnoteModal, setShowFootnoteModal] = useState(false);
+  const [showDiagramCreator, setShowDiagramCreator] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('blocks');
   const [historyEvents, setHistoryEvents] = useState<string[]>([]);
   const [lastAutoSavedAt, setLastAutoSavedAt] = useState<string | null>(null);
@@ -208,6 +212,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
       MathBlockNode,
       MathInlineNode,
       InteractiveWidgetNode,
+      FormFieldNode,
+      RepeatableGroupNode,
     ],
     editable: !readOnly,
     content: toTiptapDocument(value),
@@ -432,6 +438,19 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     }).run();
   };
 
+  const openDiagramCreator = () => {
+    if (!editor || readOnly) return;
+    setShowDiagramCreator(true);
+  };
+
+  const handleDiagramInsert = (code: string) => {
+    if (!editor) return;
+    editor.chain().focus().insertContent({
+      type: 'mermaid',
+      attrs: { code },
+    }).run();
+  };
+
   const duplicateCurrentBlock = () => {
     if (!editor || readOnly) return;
     const current = editor.getJSON();
@@ -532,7 +551,10 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
       { key: 'youtube', label: 'YouTube Embed', description: 'Embedded video', keywords: ['video', 'embed', 'youtube'], category: 'media', icon: SLASH_COMMAND_ICONS.youtube, execute: () => insertEmbed('youtube') },
       { key: 'pdf', label: 'PDF Embed', description: 'Embedded document', keywords: ['pdf', 'embed'], category: 'media', icon: SLASH_COMMAND_ICONS.pdf, execute: () => insertEmbed('pdf') },
       { key: 'mermaid', label: 'Mermaid Diagram', description: 'Diagram as code', keywords: ['diagram', 'flowchart', 'mermaid'], category: 'code', icon: SLASH_COMMAND_ICONS.mermaid, execute: insertMermaid },
+      { key: 'diagramBuilder', label: 'Diagram Builder', description: 'Visual diagram creator with AI', keywords: ['diagram', 'builder', 'flowchart', 'sequence', 'mindmap', 'pie', 'ai'], category: 'code', icon: SLASH_COMMAND_ICONS.mermaid, execute: openDiagramCreator },
       { key: 'interactiveWidget', label: 'Interactive Widget', description: 'AI-generated interactive element', keywords: ['widget', 'interactive', 'simulation', 'ai', 'html'], category: 'advanced', icon: SLASH_COMMAND_ICONS.interactiveWidget, execute: insertInteractiveWidget },
+      { key: 'formField', label: 'Form Field', description: 'Input field for structured submissions', keywords: ['form', 'input', 'field', 'text'], category: 'advanced', icon: SLASH_COMMAND_ICONS.interactiveWidget, execute: () => editor.chain().focus().insertContent({ type: 'formField', attrs: { fieldId: `field-${Date.now()}`, fieldType: 'text-single', label: 'New Field', required: false, placeholder: '', options: '', validation: '' } }).run() },
+      { key: 'repeatableGroup', label: 'Repeatable Group', description: 'Group of fields that can be repeated', keywords: ['form', 'group', 'repeat'], category: 'advanced', icon: SLASH_COMMAND_ICONS.interactiveWidget, execute: () => editor.chain().focus().insertContent({ type: 'repeatableGroup', attrs: { groupId: `group-${Date.now()}`, label: 'New Group', minItems: 1, maxItems: 5 }, content: [{ type: 'formField', attrs: { fieldId: `field-${Date.now()}`, fieldType: 'text-single', label: 'Field', required: false, placeholder: '', options: '', validation: '' } }] }).run() },
     ];
   }, [editor, mode, readOnly]);
 
@@ -569,6 +591,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
         { key: 'youtube', label: 'YouTube Embed', hint: 'Embedded YouTube video', execute: () => insertEmbed('youtube') },
         { key: 'pdf', label: 'PDF Embed', hint: 'Embedded PDF document', execute: () => insertEmbed('pdf') },
         { key: 'mermaid', label: 'Mermaid Diagram', hint: 'Diagram as code', execute: insertMermaid },
+        { key: 'diagramBuilder', label: 'Diagram Builder', hint: 'Visual builder + AI', execute: openDiagramCreator },
         { key: 'interactiveWidget', label: 'Interactive Widget', hint: 'AI-generated interactive element', execute: insertInteractiveWidget },
       );
     }
@@ -746,6 +769,16 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
       <EmbedModal isOpen={!!showEmbedModal} onClose={() => setShowEmbedModal(false)} onInsert={handleEmbedInsert} defaultProvider={showEmbedModal || 'youtube'} />
       <CodeBlockModal isOpen={showCodeBlockModal} onClose={() => setShowCodeBlockModal(false)} onInsert={handleCodeBlockInsert} />
       <FootnoteModal isOpen={showFootnoteModal} onClose={() => setShowFootnoteModal(false)} onInsert={handleFootnoteInsert} />
+      {showDiagramCreator && (
+        <div className="editor-modal-overlay" onClick={() => setShowDiagramCreator(false)}>
+          <div className="editor-diagram-creator-modal" onClick={e => e.stopPropagation()}>
+            <DiagramCreator
+              onInsert={handleDiagramInsert}
+              onClose={() => setShowDiagramCreator(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

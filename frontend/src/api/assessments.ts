@@ -18,188 +18,170 @@ const compact = <T extends UnknownRecord>(obj: T): T => {
 };
 
 const mapAssignmentFromApi = (raw: UnknownRecord): Assignment => ({
-  ...raw,
   id: String(raw.id ?? ''),
-  course_id: String(raw.courseId ?? raw.course_id ?? raw.course ?? ''),
-  module_id: (raw.moduleId ?? raw.module_id) ? String(raw.moduleId ?? raw.module_id) : undefined,
-  topic_id: (raw.topicId ?? raw.topic_id) ? String(raw.topicId ?? raw.topic_id) : undefined,
-  category_id: (raw.categoryId ?? raw.category_id) ? String(raw.categoryId ?? raw.category_id) : undefined,
-  assignment_type: String(raw.assignmentType ?? raw.assignment_type ?? 'FILE_UPLOAD') as Assignment['assignment_type'],
+  courseId: String(raw.courseId ?? raw.course ?? ''),
+  moduleId: raw.moduleId ? String(raw.moduleId) : undefined,
+  topicId: raw.topicId ? String(raw.topicId) : undefined,
+  categoryId: raw.categoryId ? String(raw.categoryId) : undefined,
+  assignmentType: String(raw.assignmentType ?? 'FILE_UPLOAD') as Assignment['assignmentType'],
   title: String(raw.title ?? ''),
   description: String(raw.description ?? ''),
-  description_format: String(raw.descriptionFormat ?? raw.description_format ?? 'MARKDOWN'),
-  instructions: (raw.instructions as string | undefined) || undefined,
-  instructions_format: String(raw.instructionsFormat ?? raw.instructions_format ?? 'MARKDOWN'),
-  due_date: (raw.dueDate as string | undefined) || (raw.due_date as string | undefined),
-  available_from: (raw.availableFrom as string | undefined) || (raw.available_from as string | undefined),
-  available_until: (raw.availableUntil as string | undefined) || (raw.available_until as string | undefined),
-  max_points: asNumber(raw.maxPoints ?? raw.max_points, 100),
-  submission_types: (raw.submissionTypes as string[] | undefined) || (raw.submission_types as string[] | undefined),
-  allowed_file_types: (raw.allowedFileTypes as string[] | undefined) || (raw.allowed_file_types as string[] | undefined),
-  max_file_size: asNumber(raw.maxFileSize ?? raw.max_file_size, 10485760),
-  max_files: asNumber(raw.maxFiles ?? raw.max_files, 5),
-  programming_language: (raw.programmingLanguage as string | undefined) || (raw.programming_language as string | undefined),
-  auto_grading_enabled: Boolean(raw.autoGradingEnabled ?? raw.auto_grading_enabled),
-  test_cases: (
-    ((raw.testCases as UnknownRecord[] | undefined) || (raw.test_cases as UnknownRecord[] | undefined) || [])
-      .map((testCase) => ({
-        ...testCase,
-        input: String(testCase.input ?? ''),
-        output: String(testCase.output ?? testCase.expected_output ?? ''),
-      }))
-  ),
-  quiz: (raw.quizId as string | undefined) || (raw.quiz_id as string | undefined) || (raw.quiz as string | undefined),
-  external_tool_url: (raw.externalToolUrl as string | undefined) || (raw.external_tool_url as string | undefined),
-  grade_anonymously: Boolean(raw.gradeAnonymously ?? raw.grade_anonymously),
-  peer_review_enabled: Boolean(raw.peerReviewEnabled ?? raw.peer_review_enabled),
-  peer_reviews_required: asNumber(raw.peerReviewsRequired ?? raw.peer_reviews_required, 0),
-  allow_late_submission: Boolean(raw.allowLateSubmission ?? raw.allow_late_submission),
-  late_penalty_percent: asNumber(raw.latePenaltyPercent ?? raw.late_penalty_percent, 0),
-  is_published: Boolean(raw.isPublished ?? raw.is_published),
-  created_at: (raw.createdAt as string | undefined) || (raw.created_at as string) || '',
-  updated_at: (raw.updatedAt as string | undefined) || (raw.updated_at as string) || '',
+  descriptionFormat: String(raw.descriptionFormat ?? 'MARKDOWN'),
+  instructions: raw.instructions as string | undefined,
+  instructionsFormat: String(raw.instructionsFormat ?? 'MARKDOWN'),
+  dueDate: raw.dueDate as string | undefined,
+  availableFrom: raw.availableFrom as string | undefined,
+  availableUntil: raw.availableUntil as string | undefined,
+  maxPoints: asNumber(raw.maxPoints, 100),
+  submissionTypes: raw.submissionTypes as string[] | undefined,
+  allowedFileTypes: raw.allowedFileTypes as string[] | undefined,
+  maxFileSize: asNumber(raw.maxFileSize, 10485760),
+  maxFiles: asNumber(raw.maxFiles, 5),
+  programmingLanguage: raw.programmingLanguage as string | undefined,
+  starterCode: raw.starterCode as string | undefined,
+  autoGradingEnabled: Boolean(raw.autoGradingEnabled),
+  vplConfig: raw.vplConfig as Assignment['vplConfig'],
+  testCases: ((raw.testCases as UnknownRecord[] | undefined) || []).map((tc) => ({
+    ...tc,
+    input: String(tc.input ?? ''),
+    output: String(tc.output ?? tc.expectedOutput ?? ''),
+  })),
+  quiz: (raw.quizId as string | undefined) || (raw.quiz as string | undefined),
+  externalToolUrl: raw.externalToolUrl as string | undefined,
+  externalToolConfig: raw.externalToolConfig as Record<string, unknown> | undefined,
+  gradeAnonymously: Boolean(raw.gradeAnonymously),
+  peerReviewEnabled: Boolean(raw.peerReviewEnabled),
+  peerReviewsRequired: asNumber(raw.peerReviewsRequired, 0),
+  allowLateSubmission: Boolean(raw.allowLateSubmission),
+  latePenaltyPercent: asNumber(raw.latePenaltyPercent, 0),
+  isPublished: Boolean(raw.isPublished),
+  createdAt: raw.createdAt as string || '',
+  updatedAt: raw.updatedAt as string || '',
+  createdBy: raw.createdBy as string | undefined,
+  createdByName: raw.createdByName as string | undefined,
 });
 
 const mapAssignmentToApi = (raw: Partial<Assignment> & UnknownRecord): UnknownRecord => {
-  const quizRef = raw.quizId ?? raw.quiz_id ?? raw.quiz;
+  const quizRef = raw.quiz;
   const quizId = typeof quizRef === 'string' ? quizRef : undefined;
-  const inlineQuiz = (raw.quiz && typeof raw.quiz === 'object' && !Array.isArray(raw.quiz))
-    ? raw.quiz
-    : undefined;
+  const inlineQuiz = (raw.quiz && typeof raw.quiz === 'object' && !Array.isArray(raw.quiz)) ? raw.quiz : undefined;
 
   return compact({
-    courseId: raw.courseId ?? raw.course_id ?? raw.course,
-    moduleId: raw.moduleId ?? raw.module_id ?? raw.module,
-    topicId: raw.topicId ?? raw.topic_id,
-    categoryId: raw.categoryId ?? raw.category_id ?? raw.category,
+    courseId: raw.courseId ?? raw.course,
+    moduleId: raw.moduleId,
+    topicId: raw.topicId,
+    categoryId: raw.categoryId,
     position: raw.position,
-    assignmentType: raw.assignmentType ?? raw.assignment_type,
+    assignmentType: raw.assignmentType,
     title: raw.title,
     description: raw.description,
-    descriptionFormat: raw.descriptionFormat ?? raw.description_format,
+    descriptionFormat: raw.descriptionFormat,
     instructions: raw.instructions,
-    instructionsFormat: raw.instructionsFormat ?? raw.instructions_format,
+    instructionsFormat: raw.instructionsFormat,
     resources: raw.resources,
-    starterCode: raw.starterCode ?? raw.starter_code,
-    programmingLanguage: raw.programmingLanguage ?? raw.programming_language,
-    autoGradingEnabled: raw.autoGradingEnabled ?? raw.auto_grading_enabled,
-    testCases: raw.testCases ?? raw.test_cases,
-    maxPoints: raw.maxPoints ?? raw.max_points,
-    dueDate: raw.dueDate ?? raw.due_date,
-    availableFrom: raw.availableFrom ?? raw.available_from,
-    availableUntil: raw.availableUntil ?? raw.available_until,
-    allowLateSubmission: raw.allowLateSubmission ?? raw.allow_late_submission,
-    latePenaltyPercent: raw.latePenaltyPercent ?? raw.late_penalty_percent,
-    submissionTypes: raw.submissionTypes ?? raw.submission_types,
-    allowedFileTypes: raw.allowedFileTypes ?? raw.allowed_file_types,
-    maxFileSize: raw.maxFileSize ?? raw.max_file_size,
-    maxFiles: raw.maxFiles ?? raw.max_files,
+    starterCode: raw.starterCode,
+    programmingLanguage: raw.programmingLanguage,
+    autoGradingEnabled: raw.autoGradingEnabled,
+    vplConfig: raw.vplConfig,
+    testCases: raw.testCases,
+    maxPoints: raw.maxPoints,
+    dueDate: raw.dueDate,
+    availableFrom: raw.availableFrom,
+    availableUntil: raw.availableUntil,
+    allowLateSubmission: raw.allowLateSubmission,
+    latePenaltyPercent: raw.latePenaltyPercent,
+    submissionTypes: raw.submissionTypes,
+    allowedFileTypes: raw.allowedFileTypes,
+    maxFileSize: raw.maxFileSize,
+    maxFiles: raw.maxFiles,
     quizId,
     quiz: inlineQuiz,
-    externalToolUrl: raw.externalToolUrl ?? raw.external_tool_url,
-    gradeAnonymously: raw.gradeAnonymously ?? raw.grade_anonymously,
-    peerReviewEnabled: raw.peerReviewEnabled ?? raw.peer_review_enabled,
-    peerReviewsRequired: raw.peerReviewsRequired ?? raw.peer_reviews_required,
-    tags: raw.tags,
-    estimatedDuration: raw.estimatedDuration ?? raw.estimated_duration,
-    isTemplate: raw.isTemplate ?? raw.is_template,
-    isArchived: raw.isArchived ?? raw.is_archived,
-    isPublished: raw.isPublished ?? raw.is_published,
+    externalToolUrl: raw.externalToolUrl,
+    externalToolConfig: raw.externalToolConfig,
+    gradeAnonymously: raw.gradeAnonymously,
+    peerReviewEnabled: raw.peerReviewEnabled,
+    peerReviewsRequired: raw.peerReviewsRequired,
+    estimatedDuration: raw.estimatedDuration,
+    isTemplate: raw.isTemplate,
+    isArchived: raw.isArchived,
+    isPublished: raw.isPublished,
   });
 };
 
 const mapQuizFromApi = (raw: UnknownRecord): Quiz => ({
-  ...raw,
   id: String(raw.id ?? ''),
-  course_id: String(raw.courseId ?? raw.course_id ?? raw.course ?? ''),
-  module_id: (raw.moduleId ?? raw.module_id) ? String(raw.moduleId ?? raw.module_id) : undefined,
+  courseId: String(raw.courseId ?? raw.course ?? ''),
+  moduleId: raw.moduleId ? String(raw.moduleId) : undefined,
   title: String(raw.title ?? ''),
-  description: (raw.description as string | undefined) || '',
-  time_limit: (raw.timeLimit as number | undefined) ?? (raw.time_limit as number | undefined),
-  timer_enabled: Boolean(raw.timerEnabled ?? raw.timer_enabled),
-  attempts_allowed:
-    (raw.attemptsAllowed ?? raw.attempts_allowed) === null || (raw.attemptsAllowed ?? raw.attempts_allowed) === undefined
-      ? null
-      : asNumber(raw.attemptsAllowed ?? raw.attempts_allowed, 1),
-  attempt_limit_enabled: Boolean(raw.attemptLimitEnabled ?? raw.attempt_limit_enabled),
-  attempt_score_policy: String(raw.attemptScorePolicy ?? raw.attempt_score_policy ?? 'HIGHEST') as Quiz['attempt_score_policy'],
-  secure_session_enabled: Boolean(raw.secureSessionEnabled ?? raw.secure_session_enabled),
-  secure_require_fullscreen:
-    raw.secureRequireFullscreen === undefined && raw.secure_require_fullscreen === undefined
-      ? undefined
-      : Boolean(raw.secureRequireFullscreen ?? raw.secure_require_fullscreen),
-  randomize_questions: Boolean(raw.shuffleQuestions ?? raw.randomize_questions ?? raw.shuffle_questions),
-  randomize_answers: Boolean(raw.shuffleAnswers ?? raw.randomize_answers ?? raw.shuffle_answers),
+  description: raw.description as string || '',
+  timeLimit: raw.timeLimit as number | undefined,
+  timerEnabled: Boolean(raw.timerEnabled),
+  attemptsAllowed: raw.attemptsAllowed === null || raw.attemptsAllowed === undefined ? null : asNumber(raw.attemptsAllowed, 1),
+  attemptLimitEnabled: Boolean(raw.attemptLimitEnabled),
+  attemptScorePolicy: String(raw.attemptScorePolicy ?? 'HIGHEST') as Quiz['attemptScorePolicy'],
+  secureSessionEnabled: Boolean(raw.secureSessionEnabled),
+  secureRequireFullscreen: raw.secureRequireFullscreen === undefined ? undefined : Boolean(raw.secureRequireFullscreen),
+  randomizeQuestions: Boolean(raw.shuffleQuestions ?? raw.randomizeQuestions),
+  randomizeAnswers: Boolean(raw.shuffleAnswers ?? raw.randomizeAnswers),
   questions: (raw.questions as Question[] | undefined) || [],
   sections: ((raw.sections as UnknownRecord[] | undefined) || []).map((section) => ({
     id: String(section.id ?? ''),
-    quiz_id: String(section.quizId ?? section.quiz_id ?? ''),
+    quizId: String(section.quizId ?? ''),
     title: String(section.title ?? ''),
     position: asNumber(section.position, 0),
-    question_count: asNumber(section.questionCount ?? section.question_count, 0),
+    questionCount: asNumber(section.questionCount, 0),
     rules: ((section.rules as UnknownRecord[] | undefined) || []).map((rule) => ({
       id: String(rule.id ?? ''),
-      question_type: (rule.questionType as string | undefined) || (rule.question_type as string | undefined),
-      difficulty: (rule.difficulty as string | undefined),
-      tag: (rule.tag as string | undefined),
+      questionType: rule.questionType as string | undefined,
+      difficulty: rule.difficulty as string | undefined,
+      tag: rule.tag as string | undefined,
       quota: asNumber(rule.quota, 1),
     })),
   })),
-  created_at: (raw.createdAt as string | undefined) || (raw.created_at as string) || '',
-  updated_at: (raw.updatedAt as string | undefined) || (raw.updated_at as string) || '',
+  createdAt: raw.createdAt as string || '',
+  updatedAt: raw.updatedAt as string || '',
 });
 
 const mapQuestionFromApi = (raw: UnknownRecord): Question => ({
-  ...raw,
   id: String(raw.id ?? ''),
-  course_id: String(raw.courseId ?? raw.course_id ?? ''),
-  topic: (raw.topic as string | undefined) || undefined,
-  difficulty: (raw.difficulty as string | undefined) || undefined,
-  tags: (raw.tags as string[] | undefined) || undefined,
-  type: String(raw.questionType ?? raw.question_type ?? 'short_answer').toLowerCase() as Question['type'],
+  courseId: String(raw.courseId ?? ''),
+  topic: raw.topic as string | undefined,
+  difficulty: raw.difficulty as string | undefined,
+  tags: raw.tags as string[] | undefined,
+  type: String(raw.questionType ?? 'short_answer').toLowerCase() as Question['type'],
   stem: String(raw.stem ?? ''),
-  image_url: (raw.imageUrl as string | undefined) || (raw.image_url as string | undefined),
-  options: (
-    (Array.isArray(raw.options) ? raw.options : undefined)
-      || (((raw.options as UnknownRecord | undefined)?.choices as string[] | undefined))
-      || []
-  ),
-  correct_answer: ((raw.correctAnswer as unknown) ?? raw.correct_answer ?? '') as Question['correct_answer'],
+  imageUrl: raw.imageUrl as string | undefined,
+  options: Array.isArray(raw.options) ? raw.options as string[] : ((raw.options as UnknownRecord | undefined)?.choices as string[] | undefined) || [],
+  correctAnswer: (raw.correctAnswer ?? '') as Question['correctAnswer'],
   points: asNumber(raw.points, 1),
-  latest_version: asNumber(raw.latestVersion ?? raw.latest_version, 0),
+  latestVersion: asNumber(raw.latestVersion, 0),
 });
 
 const mapAttemptQuestionFromApi = (raw: UnknownRecord): QuizAttemptQuestion => ({
   id: String(raw.id ?? ''),
-  attempt_id: String(raw.attemptId ?? raw.attempt_id ?? ''),
-  question_id: String(raw.questionId ?? raw.question_id ?? ''),
-  question_version_id: (raw.questionVersionId ?? raw.question_version_id) ? String(raw.questionVersionId ?? raw.question_version_id) : undefined,
+  attemptId: String(raw.attemptId ?? ''),
+  questionId: String(raw.questionId ?? ''),
+  questionVersionId: raw.questionVersionId ? String(raw.questionVersionId) : undefined,
   position: asNumber(raw.position, 0),
   points: asNumber(raw.points, 0),
-  prompt_snapshot: (raw.promptSnapshot as Record<string, unknown> | undefined) || (raw.prompt_snapshot as Record<string, unknown> | undefined) || {},
-  payload_snapshot: (raw.payloadSnapshot as Record<string, unknown> | undefined) || (raw.payload_snapshot as Record<string, unknown> | undefined) || {},
+  promptSnapshot: raw.promptSnapshot as Record<string, unknown> || {},
+  payloadSnapshot: raw.payloadSnapshot as Record<string, unknown> || {},
 });
 
 const mapAttemptFromApi = (raw: UnknownRecord): QuizAttempt => ({
   id: String(raw.id ?? ''),
-  quiz_id: String(raw.quizId ?? raw.quiz_id ?? ''),
-  user_id: String(raw.userId ?? raw.user_id ?? ''),
-  started_at: String(raw.startedAt ?? raw.started_at ?? ''),
-  submitted_at: (raw.submittedAt as string | undefined) || (raw.submitted_at as string | undefined),
-  answers: (raw.answers as Record<string, unknown> | undefined) || {},
-  auto_score: (raw.autoScore ?? raw.auto_score) !== undefined ? asNumber(raw.autoScore ?? raw.auto_score) : undefined,
-  final_score: (raw.finalScore ?? raw.final_score) !== undefined ? asNumber(raw.finalScore ?? raw.final_score) : undefined,
-  graded_by: (raw.gradedBy ?? raw.graded_by) ? String(raw.gradedBy ?? raw.graded_by) : undefined,
-  expires_at: (raw.expiresAt as string | undefined) || (raw.expires_at as string | undefined),
-  remaining_seconds:
-    (raw.remainingSeconds ?? raw.remaining_seconds) !== undefined
-      ? asNumber(raw.remainingSeconds ?? raw.remaining_seconds)
-      : undefined,
-  timed_out:
-    raw.timedOut === undefined && raw.timed_out === undefined
-      ? undefined
-      : Boolean(raw.timedOut ?? raw.timed_out),
-  proctoring_data: (raw.proctoringData as Record<string, unknown> | undefined) || (raw.proctoring_data as Record<string, unknown> | undefined),
+  quizId: String(raw.quizId ?? ''),
+  userId: String(raw.userId ?? ''),
+  startedAt: String(raw.startedAt ?? ''),
+  submittedAt: raw.submittedAt as string | undefined,
+  answers: raw.answers as Record<string, unknown> || {},
+  autoScore: raw.autoScore !== undefined ? asNumber(raw.autoScore) : undefined,
+  finalScore: raw.finalScore !== undefined ? asNumber(raw.finalScore) : undefined,
+  gradedBy: raw.gradedBy ? String(raw.gradedBy) : undefined,
+  expiresAt: raw.expiresAt as string | undefined,
+  remainingSeconds: raw.remainingSeconds !== undefined ? asNumber(raw.remainingSeconds) : undefined,
+  timedOut: raw.timedOut === undefined ? undefined : Boolean(raw.timedOut),
+  proctoringData: raw.proctoringData as Record<string, unknown> | undefined,
 });
 
 // Assignment API - Spring backend URLs
@@ -327,8 +309,8 @@ export const quizzesApi = {
     const quizIds = Array.from(
       new Set(
         (assignmentsResponse.data.content || [])
-          .filter((item) => String(item.assignmentType ?? item.assignment_type ?? '') === 'QUIZ')
-          .map((item) => item.quizId ?? item.quiz_id)
+          .filter((item) => String(item.assignmentType ?? '') === 'QUIZ')
+          .map((item) => item.quizId)
           .filter((quizId): quizId is string => Boolean(quizId))
           .map((quizId) => String(quizId))
       )
@@ -358,8 +340,8 @@ export const quizzesApi = {
     })),
 
   create: async (data: Partial<Quiz> & UnknownRecord) => {
-    const courseId = String(data.course_id ?? data.courseId ?? data.course ?? '');
-    const moduleId = String(data.module_id ?? data.moduleId ?? data.module ?? '');
+    const courseId = String(data.courseId ?? data.course ?? '');
+    const moduleId = String(data.moduleId ?? data.module ?? '');
     const title = String(data.title ?? '');
     const description = (data.description as string | undefined) || undefined;
     if (!moduleId) {
@@ -377,16 +359,16 @@ export const quizzesApi = {
       quiz: {
         title,
         description,
-        timeLimit: data.time_limit ?? data.timeLimit,
-        attemptsAllowed: data.attempts_allowed ?? data.attemptsAllowed,
-        shuffleQuestions: data.randomize_questions ?? data.shuffleQuestions ?? data.shuffle_questions,
-        shuffleAnswers: data.randomize_answers ?? data.shuffleAnswers ?? data.shuffle_answers,
-        showCorrectAnswers: (data as UnknownRecord).show_correct_answers ?? (data as UnknownRecord).showCorrectAnswers,
-        passPercentage: data.pass_percentage ?? data.passPercentage,
+        timeLimit: data.timeLimit,
+        attemptsAllowed: data.attemptsAllowed,
+        shuffleQuestions: data.randomizeQuestions ?? (data as UnknownRecord).shuffleQuestions,
+        shuffleAnswers: data.randomizeAnswers ?? (data as UnknownRecord).shuffleAnswers,
+        showCorrectAnswers: (data as UnknownRecord).showCorrectAnswers,
+        passPercentage: (data as UnknownRecord).passPercentage,
       },
     }));
 
-    const createdQuizId = assignmentResponse.data.quizId ?? assignmentResponse.data.quiz_id;
+    const createdQuizId = assignmentResponse.data.quizId;
     if (!createdQuizId) {
       throw new Error('Quiz was not created for the assignment');
     }
@@ -401,10 +383,10 @@ export const quizzesApi = {
     apiClient.put<UnknownRecord>(`/assessments/quizzes/${id}`, {
       title: data.title,
       description: data.description,
-      timeLimit: data.time_limit,
-      attemptsAllowed: data.attempts_allowed,
-      shuffleQuestions: data.randomize_questions,
-      shuffleAnswers: data.randomize_answers,
+      timeLimit: data.timeLimit,
+      attemptsAllowed: data.attemptsAllowed,
+      shuffleQuestions: data.randomizeQuestions,
+      shuffleAnswers: data.randomizeAnswers,
     }).then((response) => ({
       ...response,
       data: mapQuizFromApi(response.data),
@@ -447,15 +429,15 @@ export const quizzesApi = {
       ...response,
       data: response.data.map((section) => ({
         id: String(section.id ?? ''),
-        quiz_id: String(section.quizId ?? section.quiz_id ?? ''),
+        quizId: String(section.quizId ?? ''),
         title: String(section.title ?? ''),
         position: asNumber(section.position, 0),
-        question_count: asNumber(section.questionCount ?? section.question_count, 0),
+        questionCount: asNumber(section.questionCount, 0),
         rules: ((section.rules as UnknownRecord[] | undefined) || []).map((rule) => ({
           id: String(rule.id ?? ''),
-          question_type: (rule.questionType as string | undefined) || (rule.question_type as string | undefined),
-          difficulty: (rule.difficulty as string | undefined),
-          tag: (rule.tag as string | undefined),
+          questionType: rule.questionType as string | undefined,
+          difficulty: rule.difficulty as string | undefined,
+          tag: rule.tag as string | undefined,
           quota: asNumber(rule.quota, 1),
         })),
       })) as QuizSection[],
@@ -532,15 +514,15 @@ export const questionsApi = {
 
   create: (data: Partial<Question> & UnknownRecord) =>
     apiClient.post<UnknownRecord>('/assessments/questions', compact({
-      courseId: data.courseId ?? data.course_id ?? data.course,
-      questionType: data.questionType ?? data.question_type ?? data.type,
+      courseId: data.courseId ?? data.course,
+      questionType: data.type,
       topic: data.topic,
       difficulty: data.difficulty,
       tags: data.tags,
       stem: data.stem,
-      imageUrl: data.imageUrl ?? data.image_url,
+      imageUrl: data.imageUrl,
       options: data.options,
-      correctAnswer: data.correctAnswer ?? data.correct_answer,
+      correctAnswer: data.correctAnswer,
       explanation: data.explanation,
       points: data.points,
       metadata: data.metadata,
@@ -551,14 +533,14 @@ export const questionsApi = {
 
   update: (id: string, data: Partial<Question>) =>
     apiClient.put<UnknownRecord>(`/assessments/questions/${id}`, compact({
-      questionType: (data as UnknownRecord).questionType ?? (data as UnknownRecord).question_type ?? data.type,
-      topic: (data as UnknownRecord).topic,
-      difficulty: (data as UnknownRecord).difficulty,
-      tags: (data as UnknownRecord).tags,
+      questionType: data.type,
+      topic: data.topic,
+      difficulty: data.difficulty,
+      tags: data.tags,
       stem: data.stem,
-      imageUrl: (data as UnknownRecord).imageUrl ?? (data as UnknownRecord).image_url,
+      imageUrl: data.imageUrl,
       options: data.options,
-      correctAnswer: (data as UnknownRecord).correctAnswer ?? (data as UnknownRecord).correct_answer,
+      correctAnswer: data.correctAnswer,
       explanation: (data as UnknownRecord).explanation,
       points: data.points,
       metadata: data.metadata,
@@ -574,11 +556,11 @@ export const questionsApi = {
       ...response,
       data: response.data.map((item) => ({
         id: String(item.id ?? ''),
-        question_id: String(item.questionId ?? item.question_id ?? ''),
-        version_number: asNumber(item.versionNumber ?? item.version_number, 0),
-        prompt_doc_json: (item.promptDocJson as Record<string, unknown> | undefined) || (item.prompt_doc_json as Record<string, unknown> | undefined) || {},
-        payload_json: (item.payloadJson as Record<string, unknown> | undefined) || (item.payload_json as Record<string, unknown> | undefined) || {},
-        answer_key_json: (item.answerKeyJson as Record<string, unknown> | undefined) || (item.answer_key_json as Record<string, unknown> | undefined) || {},
+        questionId: String(item.questionId ?? ''),
+        versionNumber: asNumber(item.versionNumber, 0),
+        promptDocJson: item.promptDocJson as Record<string, unknown> || {},
+        payloadJson: item.payloadJson as Record<string, unknown> || {},
+        answerKeyJson: item.answerKeyJson as Record<string, unknown> || {},
       })),
     })),
 

@@ -168,7 +168,6 @@ public class CourseGenerationService {
         sb.append("          \"instructions\": \"Detailed instructions\",\n");
         sb.append("          \"maxPoints\": 100,\n");
         sb.append("          \"submissionTypes\": [\"FILE_UPLOAD\"],\n");
-        sb.append("          \"tags\": [\"homework\"],\n");
         sb.append("          \"estimatedDuration\": \"2h\",\n");
         sb.append("          \"isPublished\": false\n");
         sb.append("        }\n");

@@ -28,9 +28,9 @@ export const ProfileSettings: React.FC = () => {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [profileData, setProfileData] = useState({
-    displayName: user?.display_name || '',
-    firstName: user?.first_name || '',
-    lastName: user?.last_name || '',
+    displayName: user?.displayName || '',
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
     bio: user?.bio || '',
   });
 
@@ -104,9 +104,9 @@ export const ProfileSettings: React.FC = () => {
   useEffect(() => {
     if (user) {
       setProfileData({
-        displayName: user.display_name || '',
-        firstName: user.first_name || '',
-        lastName: user.last_name || '',
+        displayName: user.displayName || '',
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
         bio: user.bio || '',
       });
     }
@@ -612,13 +612,13 @@ export const ProfileSettings: React.FC = () => {
                 >
                   <span style={{ color: 'var(--text-muted)' }}>{t('settings.accountCreated', 'Account Created')}</span>
                   <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+                    {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
                   </span>
                 </div>
                 <div className="flex justify-between py-2">
                   <span style={{ color: 'var(--text-muted)' }}>{t('settings.studentId', 'Student ID')}</span>
                   <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {user?.student_id || 'N/A'}
+                    {user?.studentId || 'N/A'}
                   </span>
                 </div>
               </div>

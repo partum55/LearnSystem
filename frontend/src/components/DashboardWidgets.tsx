@@ -20,11 +20,18 @@ import { DashboardWidgetConfig } from './DashboardBuilder';
 
 /* ─────────────────────────── Types ─────────────────────────── */
 
+interface ProgressItem {
+  contentId: string;
+  contentType: string;
+  completedAt: string;
+}
+
 interface DashboardData {
-  courses?: Array<{ id: string; code: string; title: string; progress?: number }>;
+  courses?: Array<{ id: string; code: string; title: string; progress?: number; grades?: Array<{ score: number; maxPoints: number }> }>;
   deadlines?: Array<{ course: string; courseCode?: string; title?: string; deadline: string; id?: string }>;
   todayDeadlines?: Array<{ course: string; courseCode?: string; title?: string; deadline: string; id?: string; path?: string }>;
-  notifications?: Array<{ id: string; title: string; message: string; created_at: string; read: boolean }>;
+  notifications?: Array<{ id: string; title: string; message: string; createdAt: string; read: boolean }>;
+  progressItems?: ProgressItem[];
   [key: string]: unknown;
 }
 
@@ -51,9 +58,9 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widget, data }) 
     progress: <ProgressWidget data={data} />,
     'recent-assignments': <RecentAssignmentsWidget />,
     'study-groups': <StudyGroupsWidget />,
-    'grade-distribution': <GradeDistributionWidget />,
-    streak: <StreakWidget />,
-    'completed-today': <CompletedTodayWidget />,
+    'grade-distribution': <GradeDistributionWidget data={data} />,
+    streak: <StreakWidget data={data} />,
+    'completed-today': <CompletedTodayWidget data={data} />,
     'quick-links': <QuickLinksWidget />,
   };
 
@@ -372,7 +379,7 @@ const NotificationsWidget: React.FC<{ data?: DashboardData }> = ({ data }) => {
                 <p className="text-xs mt-0.5 line-clamp-1" style={{ color: 'var(--text-muted)' }}>{n.message}</p>
               </div>
               <span className="text-xs flex-shrink-0 mt-0.5" style={{ color: 'var(--text-faint)' }}>
-                {formatDistanceToNow(new Date(n.created_at), { addSuffix: false })}
+                {formatDistanceToNow(new Date(n.createdAt), { addSuffix: false })}
               </span>
             </div>
           ))}
@@ -486,28 +493,63 @@ const StudyGroupsWidget: React.FC = () => {
 
 /* ─────────────────────────── Grade Distribution ─────────────────────────── */
 
-const GradeDistributionWidget: React.FC = () => {
+const GradeDistributionWidget: React.FC<{ data?: DashboardData }> = ({ data }) => {
   const { t } = useTranslation();
-  const grades = [
-    { label: 'A', count: 8, pct: 40 },
-    { label: 'B', count: 6, pct: 30 },
-    { label: 'C', count: 4, pct: 20 },
-    { label: 'D', count: 2, pct: 10 },
-  ];
-  const total = grades.reduce((a, g) => a + g.count, 0);
+
+  const { grades, total } = React.useMemo(() => {
+    const allGrades: number[] = [];
+    for (const course of data?.courses || []) {
+      for (const g of course.grades || []) {
+        if (g.maxPoints > 0) {
+          allGrades.push((g.score / g.maxPoints) * 100);
+        }
+      }
+    }
+
+    const buckets = [
+      { label: 'A', count: 0, min: 90 },
+      { label: 'B', count: 0, min: 80 },
+      { label: 'C', count: 0, min: 70 },
+      { label: 'D', count: 0, min: 60 },
+      { label: 'F', count: 0, min: 0 },
+    ];
+
+    for (const pct of allGrades) {
+      const bucket = buckets.find((b) => pct >= b.min);
+      if (bucket) bucket.count++;
+    }
+
+    const totalCount = allGrades.length;
+    const withPct = buckets.map((b) => ({
+      label: b.label,
+      count: b.count,
+      pct: totalCount > 0 ? Math.round((b.count / totalCount) * 100) : 0,
+    }));
+
+    return { grades: withPct, total: totalCount };
+  }, [data?.courses]);
+
+  if (total === 0) {
+    return (
+      <WidgetShell>
+        <WidgetHeader icon={ChartPieIcon} title={t('dashboard.widgets.gradeDistribution', 'Grade Distribution')} />
+        <EmptyState message={t('dashboard.widgets.noGrades', 'No grades yet')} icon={ChartPieIcon} />
+      </WidgetShell>
+    );
+  }
 
   return (
     <WidgetShell>
       <WidgetHeader icon={ChartPieIcon} title={t('dashboard.widgets.gradeDistribution', 'Grade Distribution')} />
       {/* Horizontal stacked bar */}
       <div className="flex rounded-md overflow-hidden h-6 mb-4" style={{ background: 'var(--bg-overlay)' }}>
-        {grades.map((g, i) => (
+        {grades.filter((g) => g.pct > 0).map((g, i) => (
           <div
             key={g.label}
             className="flex items-center justify-center text-xs font-medium transition-all"
             style={{
               width: `${g.pct}%`,
-              background: `rgba(250,250,250,${0.9 - i * 0.2})`,
+              background: `rgba(250,250,250,${0.9 - i * 0.15})`,
               color: 'var(--bg-base)',
             }}
           >
@@ -515,32 +557,68 @@ const GradeDistributionWidget: React.FC = () => {
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-5 gap-2">
         {grades.map((g) => (
           <div key={g.label} className="text-center">
             <p className="text-lg font-semibold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>{g.count}</p>
-            <p className="text-xs" style={{ color: 'var(--text-faint)' }}>Grade {g.label}</p>
+            <p className="text-xs" style={{ color: 'var(--text-faint)' }}>{g.label}</p>
           </div>
         ))}
       </div>
-      <p className="text-xs text-center mt-3" style={{ color: 'var(--text-faint)' }}>{total} total grades</p>
+      <p className="text-xs text-center mt-3" style={{ color: 'var(--text-faint)' }}>{total} {t('dashboard.widgets.totalGrades', 'total grades')}</p>
     </WidgetShell>
   );
 };
 
 /* ─────────────────────────── Streak ─────────────────────────── */
 
-const StreakWidget: React.FC = () => {
+const StreakWidget: React.FC<{ data?: DashboardData }> = ({ data }) => {
   const { t } = useTranslation();
-  // Week heatmap data (mock)
-  const week = [true, true, true, false, true, true, true];
   const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  const streak = 7;
+
+  const { streak, week } = React.useMemo(() => {
+    const items = data?.progressItems || [];
+    if (items.length === 0) return { streak: 0, week: [false, false, false, false, false, false, false] };
+
+    // Build set of active days (YYYY-MM-DD)
+    const activeDays = new Set<string>();
+    for (const item of items) {
+      if (item.completedAt) {
+        const d = new Date(item.completedAt);
+        activeDays.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+      }
+    }
+
+    // Compute streak ending today
+    const today = new Date();
+    let currentStreak = 0;
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      if (activeDays.has(key)) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+
+    // Build last 7 days activity (Mon=0 ... Sun=6 for display)
+    const weekActivity: boolean[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      weekActivity.push(activeDays.has(key));
+    }
+
+    return { streak: currentStreak, week: weekActivity };
+  }, [data?.progressItems]);
 
   return (
     <WidgetShell>
       <div className="flex flex-col items-center">
-        <FireIcon className="h-5 w-5 mb-1" style={{ color: 'var(--text-primary)' }} />
+        <FireIcon className="h-5 w-5 mb-1" style={{ color: streak > 0 ? 'var(--text-primary)' : 'var(--text-faint)' }} />
         <p className="text-3xl font-semibold leading-none" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>{streak}</p>
         <p className="text-xs mt-1 mb-3" style={{ color: 'var(--text-muted)' }}>{t('dashboard.widgets.daysStreak', 'Day Streak')}</p>
         {/* Week dots */}
@@ -562,20 +640,48 @@ const StreakWidget: React.FC = () => {
 
 /* ─────────────────────────── Completed Today ─────────────────────────── */
 
-const CompletedTodayWidget: React.FC = () => {
+const CompletedTodayWidget: React.FC<{ data?: DashboardData }> = ({ data }) => {
   const { t } = useTranslation();
-  const completed = 3;
-  const total = 5;
+
+  const { completed, total, delta } = React.useMemo(() => {
+    const items = data?.progressItems || [];
+    const todayDeadlines = data?.todayDeadlines || [];
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    const yesterdayDate = new Date(now);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = `${yesterdayDate.getFullYear()}-${String(yesterdayDate.getMonth() + 1).padStart(2, '0')}-${String(yesterdayDate.getDate()).padStart(2, '0')}`;
+
+    const completedToday = items.filter((item) => item.completedAt?.startsWith(todayStr)).length;
+    const completedYesterday = items.filter((item) => item.completedAt?.startsWith(yesterdayStr)).length;
+    const totalDueToday = Math.max(todayDeadlines.length, completedToday);
+
+    return {
+      completed: completedToday,
+      total: totalDueToday || completedToday,
+      delta: completedToday - completedYesterday,
+    };
+  }, [data?.progressItems, data?.todayDeadlines]);
+
+  const pct = total > 0 ? (completed / total) * 100 : 0;
 
   return (
     <WidgetShell>
       <div className="flex flex-col items-center">
-        <ProgressRing value={(completed / total) * 100} size={64} strokeWidth={5} label={`${completed}/${total}`} />
+        <ProgressRing value={pct} size={64} strokeWidth={5} label={total > 0 ? `${completed}/${total}` : '0'} />
         <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>{t('dashboard.widgets.completedToday', 'Completed Today')}</p>
-        <div className="flex items-center gap-1 mt-1">
-          <ArrowTrendingUpIcon className="h-3 w-3" style={{ color: 'var(--fn-success)' }} />
-          <span className="text-xs" style={{ color: 'var(--fn-success)' }}>+2 from yesterday</span>
-        </div>
+        {delta !== 0 && (
+          <div className="flex items-center gap-1 mt-1">
+            <ArrowTrendingUpIcon
+              className="h-3 w-3"
+              style={{ color: delta > 0 ? 'var(--fn-success)' : 'var(--text-faint)', transform: delta < 0 ? 'scaleY(-1)' : undefined }}
+            />
+            <span className="text-xs" style={{ color: delta > 0 ? 'var(--fn-success)' : 'var(--text-faint)' }}>
+              {delta > 0 ? '+' : ''}{delta} {t('dashboard.widgets.fromYesterday', 'from yesterday')}
+            </span>
+          </div>
+        )}
       </div>
     </WidgetShell>
   );

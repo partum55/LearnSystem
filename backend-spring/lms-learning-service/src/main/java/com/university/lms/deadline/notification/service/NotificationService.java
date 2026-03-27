@@ -1,7 +1,9 @@
 package com.university.lms.deadline.notification.service;
 
+import com.university.lms.course.repository.CourseMemberRepository;
 import com.university.lms.deadline.deadline.entity.Deadline;
 import com.university.lms.deadline.deadline.repository.DeadlineRepository;
+import com.university.lms.deadline.notification.dto.WebSocketNotificationDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -19,13 +22,17 @@ public class NotificationService {
 
     private final DeadlineRepository deadlineRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final CourseMemberRepository courseMemberRepository;
 
     @Autowired(required = false)
     private JavaMailSender mailSender;
 
-    public NotificationService(DeadlineRepository deadlineRepository, SimpMessagingTemplate messagingTemplate) {
+    public NotificationService(DeadlineRepository deadlineRepository,
+                               SimpMessagingTemplate messagingTemplate,
+                               CourseMemberRepository courseMemberRepository) {
         this.deadlineRepository = deadlineRepository;
         this.messagingTemplate = messagingTemplate;
+        this.courseMemberRepository = courseMemberRepository;
     }
 
     public void dispatchDueSoon(Long studentGroupId) {
@@ -57,9 +64,24 @@ public class NotificationService {
     }
 
     private void sendWebsocket(Deadline deadline) {
-        messagingTemplate.convertAndSend(
-                "/topic/deadlines/" + deadline.getStudentGroupId(),
-                deadline.getTitle());
+        WebSocketNotificationDto payload = new WebSocketNotificationDto(
+                deadline.getId(),
+                deadline.getTitle(),
+                String.valueOf(deadline.getCourseId()),
+                deadline.getDueAt().toString(),
+                deadline.getType() != null ? deadline.getType().name() : "DEADLINE"
+        );
+
+        // Reconstruct the original courseId UUID from the stored most-significant-bits Long
+        UUID courseUuid = new UUID(deadline.getCourseId(), 0L);
+        List<UUID> enrolledUserIds = courseMemberRepository.findActiveStudentUserIdsByCourseId(courseUuid);
+
+        for (UUID userId : enrolledUserIds) {
+            messagingTemplate.convertAndSendToUser(
+                    userId.toString(),
+                    "/topic/deadlines",
+                    payload);
+        }
+        log.debug("Sent WebSocket notification for deadline {} to {} users", deadline.getTitle(), enrolledUserIds.size());
     }
 }
-

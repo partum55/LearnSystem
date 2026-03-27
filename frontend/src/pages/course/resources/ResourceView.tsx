@@ -115,8 +115,8 @@ const ResourceView: React.FC = () => {
   }, [courseId, moduleId, requestKey, resourceId]);
 
   const info = useMemo(
-    () => typeInfo[s(resource?.resource_type)] || typeInfo.OTHER,
-    [resource?.resource_type]
+    () => typeInfo[s(resource?.resourceType)] || typeInfo.OTHER,
+    [resource?.resourceType]
   );
 
   /* ── Loading / Error states ── */
@@ -152,13 +152,13 @@ const ResourceView: React.FC = () => {
   /* ── Content renderer by type ── */
 
   const renderContent = () => {
-    const rType = s(resource.resource_type);
+    const rType = s(resource.resourceType);
 
     switch (rType) {
       /* ───── TEXT / CODE — Markdown + LaTeX + Syntax Highlighting ───── */
       case 'TEXT':
       case 'CODE': {
-        const raw = s(resource.text_content);
+        const raw = s(resource.textContent);
 
         // Try parsing as CanonicalDocument JSON (new editor format)
         if (raw.startsWith('{') && raw.includes('"type":"doc"')) {
@@ -203,7 +203,7 @@ const ResourceView: React.FC = () => {
 
       /* ───── PDF — Embedded viewer ───── */
       case 'PDF':
-        return resource.file_url ? (
+        return resource.fileUrl ? (
           <div
             className="w-full rounded-lg overflow-hidden"
             style={{
@@ -212,7 +212,7 @@ const ResourceView: React.FC = () => {
             }}
           >
             <iframe
-              src={`${s(resource.file_url)}#toolbar=1&navpanes=0`}
+              src={`${s(resource.fileUrl)}#toolbar=1&navpanes=0`}
               className="w-full h-full"
               title={s(resource.title)}
               style={{ background: '#525659' }}
@@ -224,7 +224,7 @@ const ResourceView: React.FC = () => {
 
       /* ───── LINK — External link card ───── */
       case 'LINK': {
-        const url = s(resource.external_url);
+        const url = s(resource.externalUrl);
         let hostname = '';
         try { hostname = new URL(url).hostname; } catch { hostname = url; }
         return (
@@ -272,7 +272,7 @@ const ResourceView: React.FC = () => {
 
       /* ───── VIDEO — Player ───── */
       case 'VIDEO':
-        return resource.file_url ? (
+        return resource.fileUrl ? (
           <div
             className="w-full rounded-lg overflow-hidden"
             style={{
@@ -284,7 +284,7 @@ const ResourceView: React.FC = () => {
             <video
               controls
               className="w-full h-full"
-              src={s(resource.file_url)}
+              src={s(resource.fileUrl)}
               style={{ outline: 'none' }}
             />
           </div>
@@ -294,7 +294,7 @@ const ResourceView: React.FC = () => {
 
       /* ───── SLIDE / OTHER — Download card ───── */
       default:
-        return resource.file_url ? (
+        return resource.fileUrl ? (
           <div
             className="rounded-lg p-8 flex flex-col items-center gap-4"
             style={{
@@ -312,15 +312,15 @@ const ResourceView: React.FC = () => {
               <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                 {s(resource.title)}
               </p>
-              {resource.file_size && (
+              {resource.fileSize && (
                 <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                  {formatBytes(resource.file_size)}
+                  {formatBytes(resource.fileSize)}
                 </p>
               )}
             </div>
-            {resource.is_downloadable && (
+            {resource.isDownloadable && (
               <a
-                href={s(resource.file_url)}
+                href={s(resource.fileUrl)}
                 download
                 className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors"
                 style={{
@@ -399,17 +399,17 @@ const ResourceView: React.FC = () => {
                 className="flex items-center gap-4 mt-4 text-xs"
                 style={{ color: 'var(--text-faint)' }}
               >
-                {resource.updated_at && (
+                {resource.updatedAt && (
                   <span className="flex items-center gap-1">
                     <ClockIcon className="w-3 h-3" />
-                    {formatDate(resource.updated_at)}
+                    {formatDate(resource.updatedAt)}
                   </span>
                 )}
-                {resource.file_size ? (
-                  <span>{formatBytes(resource.file_size)}</span>
+                {resource.fileSize ? (
+                  <span>{formatBytes(resource.fileSize)}</span>
                 ) : null}
-                {resource.uploaded_by_name && typeof resource.uploaded_by_name === 'string' && (
-                  <span>{resource.uploaded_by_name}</span>
+                {resource.uploadedByName && typeof resource.uploadedByName === 'string' && (
+                  <span>{resource.uploadedByName}</span>
                 )}
               </div>
             </header>
@@ -421,7 +421,7 @@ const ResourceView: React.FC = () => {
             {renderContent()}
 
             {/* Bottom download bar for downloadable resources */}
-            {resource.is_downloadable && resource.file_url && resource.resource_type !== 'LINK' && (
+            {resource.isDownloadable && resource.fileUrl && resource.resourceType !== 'LINK' && (
               <div
                 className="mt-8 rounded-lg px-4 py-3 flex items-center justify-between"
                 style={{
@@ -433,7 +433,7 @@ const ResourceView: React.FC = () => {
                   {'Download this resource'}
                 </span>
                 <a
-                  href={s(resource.file_url)}
+                  href={s(resource.fileUrl)}
                   download
                   className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-colors"
                   style={{
@@ -449,10 +449,10 @@ const ResourceView: React.FC = () => {
             )}
 
             {/* AI Explain Button */}
-            {resource.text_content && (
+            {resource.textContent && (
               <ExplainButton
                 contentType="RESOURCE"
-                contentText={typeof resource.text_content === 'string' ? resource.text_content : String(resource.text_content)}
+                contentText={typeof resource.textContent === 'string' ? resource.textContent : String(resource.textContent)}
               />
             )}
           </div>

@@ -1,3 +1,5 @@
+import { VplConfig } from '../../types';
+
 export type AssignmentEditorTab = 'basic' | 'content' | 'settings' | 'grading' | 'advanced';
 
 export interface AssignmentFormData {
@@ -22,7 +24,6 @@ export interface AssignmentFormData {
   auto_grading_enabled: boolean;
   allow_late_submission: boolean;
   late_penalty_percent: number;
-  tags: string[];
   estimated_duration: number | null;
   prerequisites: string[];
   is_template: boolean;
@@ -50,9 +51,9 @@ export interface AssignmentRequestPayload {
   maxFileSize: number;
   testCases: Array<{ input: string; expected_output: string; points: number }>;
   autoGradingEnabled: boolean;
+  vplConfig?: VplConfig | null;
   allowLateSubmission: boolean;
   latePenaltyPercent: number;
-  tags: string[];
   estimatedDuration: number | null;
   isTemplate: boolean;
   isPublished: boolean;
@@ -105,7 +106,6 @@ export const initialAssignmentFormData: AssignmentFormData = {
   auto_grading_enabled: false,
   allow_late_submission: true,
   late_penalty_percent: 10,
-  tags: [],
   estimated_duration: null,
   prerequisites: [],
   is_template: false,
@@ -135,7 +135,6 @@ export const mapAssignmentResponseToFormData = (
   auto_grading_enabled: Boolean(data.autoGradingEnabled),
   allow_late_submission: Boolean(data.allowLateSubmission),
   late_penalty_percent: Number(data.latePenaltyPercent || 10),
-  tags: (data.tags as string[]) || [],
   estimated_duration: (data.estimatedDuration as number | null) || null,
   prerequisites: [],
   is_template: Boolean(data.isTemplate),
@@ -166,7 +165,6 @@ export const buildAssignmentPayload = (
   autoGradingEnabled: formData.auto_grading_enabled,
   allowLateSubmission: formData.allow_late_submission,
   latePenaltyPercent: formData.late_penalty_percent,
-  tags: formData.tags,
   estimatedDuration: formData.estimated_duration,
   isTemplate: formData.is_template,
   isPublished: false,

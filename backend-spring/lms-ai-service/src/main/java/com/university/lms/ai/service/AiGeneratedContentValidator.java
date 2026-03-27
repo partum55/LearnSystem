@@ -26,7 +26,7 @@ public class AiGeneratedContentValidator {
 
   private static final int MAX_LOG_LENGTH = 2000;
   private static final Set<String> VALID_ASSIGNMENT_TYPES =
-      Set.of("FILE_UPLOAD", "TEXT", "CODE", "QUIZ", "URL", "MANUAL_GRADE", "EXTERNAL");
+      Set.of("FILE_UPLOAD", "TEXT", "CODE", "QUIZ", "URL", "MANUAL_GRADE", "EXTERNAL", "SEMINAR");
   private static final Set<String> VALID_QUESTION_TYPES =
       Set.of(
           "MULTIPLE_CHOICE",
@@ -36,7 +36,8 @@ public class AiGeneratedContentValidator {
           "MATCHING",
           "FILL_BLANK",
           "NUMERICAL",
-          "FORMULA");
+          "CODE",
+          "ORDERING");
   private static final Set<String> VALID_ACTIVITY_TYPES =
       Set.of("lecture", "discussion", "lab", "project", "workshop", "quiz");
   private static final Set<String> VALID_RESOURCE_TYPES =
@@ -388,7 +389,6 @@ public class AiGeneratedContentValidator {
             assignment.setProgrammingLanguage(sanitizeText(assignment.getProgrammingLanguage()));
             assignment.setStarterCode(sanitizeText(assignment.getStarterCode()));
             assignment.setEstimatedDuration(sanitizeText(assignment.getEstimatedDuration()));
-            assignment.setTags(sanitizeStringList(assignment.getTags()));
             assignment.setSubmissionTypes(sanitizeStringList(assignment.getSubmissionTypes()));
             assignment.setAllowedFileTypes(sanitizeStringList(assignment.getAllowedFileTypes()));
           }

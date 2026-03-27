@@ -72,6 +72,13 @@ export const QuizQuestionContent: React.FC<QuizQuestionContentProps> = ({
         </span>
       </div>
 
+      {question.image_url && (
+        <div className="mt-2 mb-4">
+          <img src={question.image_url} alt="" className="max-w-full max-h-96 rounded-lg"
+            style={{ border: '1px solid var(--border-default)' }} />
+        </div>
+      )}
+
       {question.question_type === 'SINGLE_CHOICE' && choices.length > 0 && (
         <div className="space-y-2">
           {choices.map((choice, index) => (

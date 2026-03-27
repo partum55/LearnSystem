@@ -66,7 +66,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource, selected = false,
     >
       <div className="flex items-start gap-3">
         <div style={{ color: selected ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-          {typeIcons[resource.resource_type] || typeIcons.OTHER}
+          {typeIcons[resource.resourceType] || typeIcons.OTHER}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
@@ -79,11 +79,11 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource, selected = false,
           )}
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs" style={{ color: 'var(--text-faint)' }}>
-              {resource.resource_type}
+              {resource.resourceType}
             </span>
-            {resource.file_size && (
+            {resource.fileSize && (
               <span className="text-xs" style={{ color: 'var(--text-faint)' }}>
-                {formatFileSize(resource.file_size)}
+                {formatFileSize(resource.fileSize)}
               </span>
             )}
           </div>

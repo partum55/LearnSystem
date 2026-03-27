@@ -25,6 +25,7 @@ import { CourseSyllabusTab } from './course-detail/CourseSyllabusTab';
 import { CourseDetailTabs } from './course-detail/CourseDetailTabs';
 import { CourseModulesTab } from './course-detail/CourseModulesTab';
 import { PracticeQuizModal } from '../components/PracticeQuizModal';
+import AnalyticsDashboard from '../components/analytics/AnalyticsDashboard';
 import {
   CourseDetailTabId,
   DeleteConfirmationState,
@@ -78,14 +79,17 @@ export const CourseDetail: React.FC = () => {
   const courseId = id || '';
   const isInstructor = user?.role === 'TEACHER' || user?.role === 'SUPERADMIN' || user?.role === 'TA';
   const isSuperAdmin = user?.role === 'SUPERADMIN';
-  const tabs = useMemo(() => getCourseDetailTabs(t), [t]);
+  const tabs = useMemo(
+    () => getCourseDetailTabs(t).filter(tab => tab.id !== 'analytics' || isInstructor),
+    [t, isInstructor]
+  );
 
   // Merge assignments into their respective modules by module_id
   const enrichedModules = useMemo(() => {
     if (!modules || modules.length === 0) return modules;
     return modules.map((mod) => ({
       ...mod,
-      assignments: (assignments || []).filter((a) => a.module_id === mod.id),
+      assignments: (assignments || []).filter((a) => a.moduleId === mod.id),
     }));
   }, [modules, assignments]);
 
@@ -251,7 +255,7 @@ export const CourseDetail: React.FC = () => {
   }, [fetchAnnouncements, fetchAssignments, fetchCourseById, fetchModules, id]);
 
   const handleCreateAnnouncement = useCallback(
-    async (payload: { title: string; content: string; is_pinned?: boolean }) => {
+    async (payload: { title: string; content: string; isPinned?: boolean }) => {
       if (!id) {
         return;
       }
@@ -264,7 +268,7 @@ export const CourseDetail: React.FC = () => {
   const handleUpdateAnnouncement = useCallback(
     async (
       announcementId: string,
-      payload: Partial<{ title: string; content: string; is_pinned?: boolean }>
+      payload: Partial<{ title: string; content: string; isPinned?: boolean }>
     ) => {
       if (!id) {
         return;
@@ -309,12 +313,12 @@ export const CourseDetail: React.FC = () => {
   );
 
   const handleEditModuleStructure = useCallback(
-    async (module: Module, patch: { topic?: string; tags?: string[] }) => {
+    async (module: Module, patch: { topic?: string }) => {
       if (!id) {
         return;
       }
 
-      const currentMeta = (module.content_meta || {}) as Record<string, unknown>;
+      const currentMeta = (module.contentMeta || {}) as Record<string, unknown>;
       const nextMeta: Record<string, unknown> = { ...currentMeta };
 
       if (patch.topic !== undefined) {
@@ -325,16 +329,8 @@ export const CourseDetail: React.FC = () => {
         }
       }
 
-      if (patch.tags !== undefined) {
-        if (patch.tags.length > 0) {
-          nextMeta.tags = patch.tags;
-        } else {
-          delete nextMeta.tags;
-        }
-      }
-
       await modulesApi.update(id, module.id, {
-        content_meta: nextMeta,
+        contentMeta: nextMeta,
       } as Partial<Module>);
       await fetchModules(id);
     },
@@ -580,6 +576,10 @@ export const CourseDetail: React.FC = () => {
 
               {activeTab === 'grades' &&
                 (isInstructor ? <TeacherGradebook courseId={courseId} /> : <CourseGradesTab courseId={courseId} />)}
+
+              {activeTab === 'analytics' && isInstructor && (
+                <AnalyticsDashboard courseId={courseId} />
+              )}
             </TabTransition>
           </div>
 

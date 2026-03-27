@@ -12,8 +12,15 @@ import { Breadcrumbs } from '../components/common/Breadcrumbs';
 import { parseCanonicalDocument } from '../features/editor-core';
 import { DocumentRenderer } from '../features/editor-core/DocumentRenderer';
 import AssignmentSubmissionPanel from '../components/submission/AssignmentSubmissionPanel';
+import SeminarAttendancePanel from '../components/seminar/SeminarAttendancePanel';
 import { ExplainButton } from '../components/ExplainButton';
 import { peerReviewsApi, PeerReview } from '../api/peerReviews';
+import { PeerReviewSubmitModal } from '../components/peerReview/PeerReviewSubmitModal';
+import FormSubmissionRenderer from './submission/FormSubmissionRenderer';
+import VplTaskTab from '../components/vpl/VplTaskTab';
+import VplEditorTab from '../components/vpl/VplEditorTab';
+import VplResultsTab from '../components/vpl/VplResultsTab';
+import { CodeExecutionResult } from '../api/virtualLab';
 
 interface Assignment {
   id: string;
@@ -33,6 +40,10 @@ interface Assignment {
   graded_count: number;
   assignment_type: string;
   programming_language?: string;
+  starter_code?: string;
+  auto_grading_enabled?: boolean;
+  formFields?: Array<{ fieldId: string; fieldType: string; label: string; required: boolean; placeholder: string; options: string }>;
+  repeatableGroups?: Array<{ groupId: string; label: string; minItems: number; maxItems: number; fields: Array<{ fieldId: string; fieldType: string; label: string; required: boolean; placeholder: string; options: string }> }>;
 }
 
 interface Submission {
@@ -62,6 +73,12 @@ export const AssignmentDetail: React.FC = () => {
   const [moduleName, setModuleName] = useState<string>('');
   const [peerReviews, setPeerReviews] = useState<PeerReview[]>([]);
   const [peerReviewLoading, setPeerReviewLoading] = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedReview, setSelectedReview] = useState<PeerReview | null>(null);
+  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [vplTab, setVplTab] = useState<'task' | 'editor' | 'results'>('task');
+  const [vplCode, setVplCode] = useState('');
+  const [vplTestResult, setVplTestResult] = useState<CodeExecutionResult | null>(null);
 
   const isStudent = user?.role === 'STUDENT';
   const isTeacher = user?.role === 'TEACHER' || user?.role === 'SUPERADMIN' || user?.role === 'TA';
@@ -120,6 +137,10 @@ export const AssignmentDetail: React.FC = () => {
         graded_count: Number(data.graded_count || 0),
         assignment_type: String(data.assignmentType || data.assignment_type || ''),
         programming_language: String(data.programmingLanguage || data.programming_language || ''),
+        starter_code: (data.starterCode as string | undefined) || (data.starter_code as string | undefined),
+        auto_grading_enabled: Boolean(data.autoGradingEnabled ?? data.auto_grading_enabled),
+        formFields: Array.isArray(data.formFields) ? data.formFields as Assignment['formFields'] : undefined,
+        repeatableGroups: Array.isArray(data.repeatableGroups) ? data.repeatableGroups as Assignment['repeatableGroups'] : undefined,
       });
     } catch (error) {
       console.error('Failed to fetch assignment:', error);
@@ -185,26 +206,33 @@ export const AssignmentDetail: React.FC = () => {
     }
   };
 
-  const submitPeerReview = async (review: PeerReview) => {
-    const scoreRaw = window.prompt('Overall score (0-100):', review.overallScore?.toString() || '0');
-    if (scoreRaw == null) return;
-    const score = Number(scoreRaw);
-    const feedback = window.prompt('Feedback:', review.overallFeedback || '') || undefined;
-    if (!Number.isFinite(score)) {
-      alert('Invalid score');
-      return;
-    }
+  const openReviewModal = (review: PeerReview) => {
+    setSelectedReview(review);
+    setReviewModalOpen(true);
+  };
 
+  const handleReviewSubmit = async (reviewId: number, score: number, feedback?: string) => {
+    await peerReviewsApi.submitReview({
+      peerReviewId: reviewId,
+      overallScore: score,
+      overallFeedback: feedback,
+    });
+    await fetchPeerReviews();
+  };
+
+  const handleFormSubmit = async (formData: Record<string, unknown>) => {
+    if (!assignmentId) return;
+    setFormSubmitting(true);
     try {
-      await peerReviewsApi.submitReview({
-        peerReviewId: review.id,
-        overallScore: score,
-        overallFeedback: feedback,
+      await api.post(`/submissions`, {
+        assignmentId,
+        content: JSON.stringify(formData),
+        submissionType: 'FORM',
       });
-      await fetchPeerReviews();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to submit peer review';
-      alert(message);
+      console.error('Failed to submit form:', error);
+    } finally {
+      setFormSubmitting(false);
     }
   };
 
@@ -313,13 +341,9 @@ export const AssignmentDetail: React.FC = () => {
                 <Button onClick={openPrintView} variant="secondary">
                   {t('assignment.printFriendly', 'Print view')}
                 </Button>
-                {isStudent && (
+                {isStudent && assignment.assignment_type !== 'VIRTUAL_LAB' && (
                   <>
-                    {assignment.assignment_type === 'VIRTUAL_LAB' ? (
-                      <Button onClick={openVirtualLab}>
-                        {t('assignment.open_virtual_lab')}
-                      </Button>
-                    ) : assignment.assignment_type === 'SEMINAR' ? (
+                    {assignment.assignment_type === 'SEMINAR' ? (
                       <span className="badge">
                         {t('assignment.seminar_no_submission', 'Seminar task: no submission required')}
                       </span>
@@ -393,7 +417,44 @@ export const AssignmentDetail: React.FC = () => {
             )}
           </div>
 
-          {/* Tabs */}
+          {/* VPL 3-tab layout for students */}
+          {isStudent && assignment.assignment_type === 'VIRTUAL_LAB' ? (
+            <>
+              <div className="mb-0" style={{ borderBottom: '1px solid var(--border-default)' }}>
+                <nav className="-mb-px flex space-x-0">
+                  {(['task', 'editor', 'results'] as const).map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setVplTab(tab)}
+                      className="py-4 px-5 border-b-2 font-medium text-sm transition-colors capitalize"
+                      style={vplTab === tab
+                        ? { borderColor: 'var(--text-primary)', color: 'var(--text-primary)' }
+                        : { borderColor: 'transparent', color: 'var(--text-muted)' }
+                      }
+                    >
+                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  ))}
+                </nav>
+              </div>
+
+              {vplTab === 'task' && <VplTaskTab assignment={assignment} />}
+              {vplTab === 'editor' && (
+                <VplEditorTab
+                  assignment={assignment}
+                  code={vplCode}
+                  onCodeChange={setVplCode}
+                  onTestResult={setVplTestResult}
+                  onViewResults={() => setVplTab('results')}
+                />
+              )}
+              {vplTab === 'results' && (
+                <VplResultsTab result={vplTestResult} assignment={assignment} />
+              )}
+            </>
+          ) : (
+            <>
+          {/* Standard tabs */}
           <div className="mb-6" style={{ borderBottom: '1px solid var(--border-default)' }}>
             <nav className="-mb-px flex space-x-8">
               <button
@@ -503,9 +564,9 @@ export const AssignmentDetail: React.FC = () => {
                               variant="secondary"
                               size="sm"
                               className="mt-2"
-                              onClick={() => void submitPeerReview(review)}
+                              onClick={() => openReviewModal(review)}
                             >
-                              Submit Review
+                              {t('peerReview.submitReview', 'Submit Review')}
                             </Button>
                           </div>
                         ))}
@@ -517,8 +578,16 @@ export const AssignmentDetail: React.FC = () => {
             </div>
           )}
 
-          {/* Submissions Tab - Only for Teachers */}
-          {activeTab === 'submissions' && isTeacher && (
+          {/* Seminar Attendance Tab - For Teachers on SEMINAR assignments */}
+          {activeTab === 'submissions' && isTeacher && assignment.assignment_type === 'SEMINAR' && (
+            <SeminarAttendancePanel
+              assignmentId={assignment.id}
+              courseId={assignment.course}
+            />
+          )}
+
+          {/* Submissions Tab - Only for Teachers (non-seminar) */}
+          {activeTab === 'submissions' && isTeacher && assignment.assignment_type !== 'SEMINAR' && (
             <Card>
               <CardHeader>
                 <div className="flex justify-between items-center">
@@ -623,19 +692,46 @@ export const AssignmentDetail: React.FC = () => {
             </Card>
           )}
 
-          {activeTab === 'details' && isStudent && assignment.assignment_type !== 'SEMINAR' && (
+          {activeTab === 'details' && isStudent && assignment.assignment_type === 'FORM' && assignment.formFields && (
+            <Card>
+              <CardHeader>
+                <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  {t('submission.submit_assignment', 'Submit Assignment')}
+                </h2>
+              </CardHeader>
+              <CardBody>
+                <FormSubmissionRenderer
+                  fields={assignment.formFields}
+                  groups={assignment.repeatableGroups || []}
+                  onSubmit={(data) => void handleFormSubmit(data)}
+                  submitting={formSubmitting}
+                />
+              </CardBody>
+            </Card>
+          )}
+
+          {activeTab === 'details' && isStudent && assignment.assignment_type !== 'SEMINAR' && assignment.assignment_type !== 'FORM' && (
             <AssignmentSubmissionPanel
               assignmentId={assignment.id}
               assignmentType={assignment.assignment_type}
               programmingLanguage={assignment.programming_language}
               maxPoints={assignment.max_points}
               latePenaltyPercent={assignment.late_penalty_percent}
-              isVirtualLab={assignment.assignment_type === 'VIRTUAL_LAB'}
+              isVirtualLab={false}
               onOpenVirtualLab={openVirtualLab}
             />
           )}
+            </>
+          )}
         </div>
       </div>
+
+      <PeerReviewSubmitModal
+        open={reviewModalOpen}
+        review={selectedReview}
+        onClose={() => { setReviewModalOpen(false); setSelectedReview(null); }}
+        onSubmit={handleReviewSubmit}
+      />
     </Wrapper>
   );
 };

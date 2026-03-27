@@ -5,6 +5,7 @@ import com.university.lms.common.exception.ResourceNotFoundException;
 import com.university.lms.common.exception.ValidationException;
 import com.university.lms.course.assessment.domain.Assignment;
 import com.university.lms.course.assessment.repository.AssignmentRepository;
+import com.university.lms.course.assessment.service.AutoGradingService;
 import com.university.lms.gradebook.event.SubmissionGradedEvent;
 import com.university.lms.submission.domain.Submission;
 import com.university.lms.submission.domain.SubmissionComment;
@@ -72,6 +73,7 @@ public class SubmissionService {
   private final SubmissionMapper submissionMapper;
   private final ApplicationEventPublisher eventPublisher;
   private final AssignmentRepository assignmentRepository;
+  private final AutoGradingService autoGradingService;
 
   @Transactional(readOnly = true)
   public List<SubmissionResponse> getSubmissionsForAssignment(
@@ -148,6 +150,8 @@ public class SubmissionService {
     transitionToInReview(reloaded, now);
     submissionRepository.save(reloaded);
 
+    triggerAutoGradingIfApplicable(reloaded);
+
     return toResponseForViewer(findSubmission(reloaded.getId()), "STUDENT");
   }
 
@@ -191,6 +195,9 @@ public class SubmissionService {
 
     transitionToInReview(submission, now);
     submissionRepository.save(submission);
+
+    triggerAutoGradingIfApplicable(submission);
+
     return toResponseForViewer(findSubmission(submissionId), requesterRole);
   }
 
@@ -566,6 +573,24 @@ public class SubmissionService {
     if (!StringUtils.hasText(submission.getStudentName()) && StringUtils.hasText(userEmail)) {
       submission.setStudentName(submissionMapper.deriveNameFromEmail(userEmail));
     }
+  }
+
+  private void triggerAutoGradingIfApplicable(Submission submission) {
+    Assignment assignment = assignmentRepository.findById(submission.getAssignmentId()).orElse(null);
+    if (assignment == null) return;
+
+    boolean isVpl = "VIRTUAL_LAB".equals(assignment.getAssignmentType())
+            || "CODE".equals(assignment.getAssignmentType());
+    if (!isVpl || !Boolean.TRUE.equals(assignment.getAutoGradingEnabled())) return;
+
+    String code = submission.getTextAnswer();
+    if (code == null || code.isBlank()) {
+      log.warn("Auto-grading skipped: submission {} has no code content", submission.getId());
+      return;
+    }
+
+    log.info("Triggering auto-grading for submission {}", submission.getId());
+    autoGradingService.gradeSubmission(submission.getId(), submission.getAssignmentId(), code);
   }
 
   private void transitionToInReview(Submission submission, LocalDateTime submittedAt) {

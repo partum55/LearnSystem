@@ -3,14 +3,19 @@ package com.university.lms.deadline.notification.web;
 import com.university.lms.deadline.deadline.entity.Deadline;
 import com.university.lms.deadline.deadline.repository.DeadlineRepository;
 import com.university.lms.deadline.notification.dto.NotificationDto;
+import com.university.lms.deadline.web.support.RequestThrottleGuard;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -24,13 +29,21 @@ import java.util.stream.Collectors;
 public class NotificationController {
 
     private final DeadlineRepository deadlineRepository;
+    private final RequestThrottleGuard requestThrottleGuard;
 
     /**
      * Get all upcoming deadline notifications for the authenticated user.
      * Returns deadlines due within the next 7 days.
      */
     @GetMapping
-    public ResponseEntity<List<NotificationDto>> getNotifications() {
+    public ResponseEntity<List<NotificationDto>> getNotifications(HttpServletRequest request) {
+        if (requestThrottleGuard.isThrottled(request, "notifications:list", 700)) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .header("Retry-After", "1")
+                    .cacheControl(CacheControl.noStore())
+                    .body(Collections.emptyList());
+        }
+
         log.debug("Fetching notifications for upcoming deadlines");
 
         // For now, return all deadlines due in the next 7 days as notifications
@@ -52,10 +65,16 @@ public class NotificationController {
                     .collect(Collectors.toList());
 
             log.debug("Found {} upcoming notifications", notifications.size());
-            return ResponseEntity.ok(notifications);
+            String etag = "\"" + Integer.toHexString(notifications.hashCode()) + "\"";
+            return ResponseEntity.ok()
+                    .cacheControl(CacheControl.maxAge(20, TimeUnit.SECONDS).cachePrivate().mustRevalidate())
+                    .eTag(etag)
+                    .body(notifications);
         } catch (Exception e) {
             log.warn("Error fetching notifications: {}", e.getMessage());
-            return ResponseEntity.ok(Collections.emptyList());
+            return ResponseEntity.ok()
+                    .cacheControl(CacheControl.noStore())
+                    .body(Collections.emptyList());
         }
     }
 
@@ -63,16 +82,29 @@ public class NotificationController {
      * Get notification count for the authenticated user.
      */
     @GetMapping("/count")
-    public ResponseEntity<Long> getNotificationCount() {
+    public ResponseEntity<Long> getNotificationCount(HttpServletRequest request) {
+        if (requestThrottleGuard.isThrottled(request, "notifications:count", 700)) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .header("Retry-After", "1")
+                    .cacheControl(CacheControl.noStore())
+                    .body(0L);
+        }
+
         OffsetDateTime now = OffsetDateTime.now();
         OffsetDateTime weekFromNow = now.plusDays(7);
 
         try {
             long count = deadlineRepository.countByDueAtBetween(now, weekFromNow);
-            return ResponseEntity.ok(count);
+            String etag = "\"count-" + count + "\"";
+            return ResponseEntity.ok()
+                    .cacheControl(CacheControl.maxAge(10, TimeUnit.SECONDS).cachePrivate().mustRevalidate())
+                    .eTag(etag)
+                    .body(count);
         } catch (Exception e) {
             log.warn("Error counting notifications: {}", e.getMessage());
-            return ResponseEntity.ok(0L);
+            return ResponseEntity.ok()
+                    .cacheControl(CacheControl.noStore())
+                    .body(0L);
         }
     }
 }

@@ -52,7 +52,6 @@ public class AssessmentMapper {
             .gradeAnonymously(assignment.getGradeAnonymously())
             .peerReviewEnabled(assignment.getPeerReviewEnabled())
             .peerReviewsRequired(assignment.getPeerReviewsRequired())
-            .tags(assignment.getTags())
             .estimatedDuration(assignment.getEstimatedDuration())
             .isTemplate(assignment.getIsTemplate())
             .isArchived(assignment.getIsArchived())
@@ -89,6 +88,7 @@ public class AssessmentMapper {
             .programmingLanguage(request.getProgrammingLanguage())
             .autoGradingEnabled(request.getAutoGradingEnabled() != null ? request.getAutoGradingEnabled() : false)
             .testCases(request.getTestCases())
+            .vplConfig(request.getVplConfig())
             .maxPoints(request.getMaxPoints() != null ? request.getMaxPoints() : java.math.BigDecimal.valueOf(100))
             .dueDate(request.getDueDate())
             .availableFrom(request.getAvailableFrom())
@@ -104,7 +104,6 @@ public class AssessmentMapper {
             .gradeAnonymously(request.getGradeAnonymously() != null ? request.getGradeAnonymously() : false)
             .peerReviewEnabled(request.getPeerReviewEnabled() != null ? request.getPeerReviewEnabled() : false)
             .peerReviewsRequired(request.getPeerReviewsRequired() != null ? request.getPeerReviewsRequired() : 0)
-            .tags(request.getTags())
             .estimatedDuration(request.getEstimatedDuration())
             .isTemplate(request.getIsTemplate() != null ? request.getIsTemplate() : false)
             .isArchived(false)
@@ -132,6 +131,7 @@ public class AssessmentMapper {
         if (request.getProgrammingLanguage() != null) assignment.setProgrammingLanguage(request.getProgrammingLanguage());
         if (request.getAutoGradingEnabled() != null) assignment.setAutoGradingEnabled(request.getAutoGradingEnabled());
         if (request.getTestCases() != null) assignment.setTestCases(request.getTestCases());
+        if (request.getVplConfig() != null) assignment.setVplConfig(request.getVplConfig());
         if (request.getMaxPoints() != null) assignment.setMaxPoints(request.getMaxPoints());
         if (request.getDueDate() != null) assignment.setDueDate(request.getDueDate());
         if (request.getAvailableFrom() != null) assignment.setAvailableFrom(request.getAvailableFrom());
@@ -147,7 +147,6 @@ public class AssessmentMapper {
         if (request.getGradeAnonymously() != null) assignment.setGradeAnonymously(request.getGradeAnonymously());
         if (request.getPeerReviewEnabled() != null) assignment.setPeerReviewEnabled(request.getPeerReviewEnabled());
         if (request.getPeerReviewsRequired() != null) assignment.setPeerReviewsRequired(request.getPeerReviewsRequired());
-        if (request.getTags() != null) assignment.setTags(request.getTags());
         if (request.getEstimatedDuration() != null) assignment.setEstimatedDuration(request.getEstimatedDuration());
         if (request.getIsArchived() != null) assignment.setIsArchived(request.getIsArchived());
         if (request.getIsPublished() != null) assignment.setIsPublished(request.getIsPublished());

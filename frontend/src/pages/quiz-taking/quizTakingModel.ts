@@ -8,6 +8,7 @@ export interface Question {
     pairs?: Array<{ left: string; right: string }>;
   };
   points: number;
+  image_url?: string;
 }
 
 export interface AttemptQuestion {
@@ -211,6 +212,7 @@ export const mapAttemptQuestions = (apiQuestions: ApiAttemptQuestion[]): Attempt
             pairs: pairsFromOptions,
           },
           points: Number(item.points ?? 0),
+          image_url: typeof payload.imageUrl === 'string' ? payload.imageUrl : undefined,
         },
       };
     })

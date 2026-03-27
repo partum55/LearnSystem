@@ -245,19 +245,6 @@ const SettingsStep: React.FC<SettingsStepProps> = ({ formData, onChange, validat
             className="input w-full"
           />
         </div>
-        <div>
-          <label className="label" htmlFor="wizard-tags">
-            {t('assignment.tags', 'Tags')}
-          </label>
-          <input
-            id="wizard-tags"
-            type="text"
-            value={formData.tags.join(', ')}
-            onChange={(e) => onChange({ tags: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
-            placeholder={t('keyword1, keyword2, keyword3')}
-            className="input w-full"
-          />
-        </div>
       </div>
 
       {/* Prerequisites */}

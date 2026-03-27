@@ -1,6 +1,5 @@
 package com.university.lms.submission.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,9 +18,4 @@ public class SpeedGraderResponse {
 
     private List<SubmissionResponse> ungraded;
     private List<SubmissionResponse> recentlyGraded;
-
-    @JsonProperty("recently_graded")
-    public List<SubmissionResponse> getRecentlyGradedSnake() {
-        return recentlyGraded;
-    }
 }

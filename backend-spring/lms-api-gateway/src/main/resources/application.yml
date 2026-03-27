@@ -23,14 +23,24 @@ spring:
               factor: 2
       routes:
         - id: admin-course-management
-          uri: lb://lms-learning-service
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
           predicates:
             - Path=/api/course-management/**
           filters:
             - RewritePath=/api/course-management(?<segment>/?.*), /api/admin/course-management${segment}
 
+        - id: learning-progress
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/progress/**
+
+        - id: learning-lessons
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/lessons/**
+
         - id: user-service
-          uri: lb://lms-user-service
+          uri: ${USER_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/api/v1/users/**, /api/users/**, /api/v1/auth/**, /api/auth/**
           filters:
@@ -38,14 +48,14 @@ spring:
             - RewritePath=/api/v1/auth(?<segment>/?.*), /api/auth${segment}
 
         - id: learning-courses
-          uri: lb://lms-learning-service
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
           predicates:
             - Path=/api/v1/courses/**, /api/courses/**
           filters:
             - RewritePath=/api/v1/courses(?<segment>/?.*), /api/courses${segment}
 
         - id: learning-quiz-attempts
-          uri: lb://lms-learning-service
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
           predicates:
             - Path=/api/v1/assessments/quiz-attempts/**, /api/assessments/quiz-attempts/**
           filters:
@@ -59,7 +69,7 @@ spring:
                 key-resolver: "#{@userKeyResolver}"
 
         - id: learning-assessments
-          uri: lb://lms-learning-service
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
           predicates:
             - Path=/api/v1/assessments/**, /api/assessments/**
           filters:
@@ -67,36 +77,58 @@ spring:
             - RewritePath=/api/v1/assessments/(?<segment>.*), /api/${segment}
 
         - id: learning-content
-          uri: lb://lms-learning-service
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
           predicates:
             - Path=/api/pages/**, /api/editor/media/**
 
+        - id: learning-virtual-lab
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/virtual-lab/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: ${gateway.vpl-rate-limit.replenish-rate:4}
+                redis-rate-limiter.burstCapacity: ${gateway.vpl-rate-limit.burst-capacity:8}
+                redis-rate-limiter.requestedTokens: ${gateway.vpl-rate-limit.requested-tokens:1}
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: learning-assignments
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/assignments/**
+
         - id: learning-assignment-documents
-          uri: lb://lms-learning-service
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
           predicates:
             - Path=/api/assignments/*/template-document, /api/assignments/*/submissions/clone-template
 
         - id: learning-submission-documents
-          uri: lb://lms-learning-service
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
           predicates:
             - Path=/api/submissions/*/document
 
         - id: learning-submissions
-          uri: lb://lms-learning-service
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
           predicates:
             - Path=/api/v1/submissions/**, /api/submissions/**
           filters:
             - RewritePath=/api/v1/submissions(?<segment>/?.*), /api/submissions${segment}
 
         - id: learning-gradebook
-          uri: lb://lms-learning-service
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
           predicates:
             - Path=/api/v1/gradebook/**, /api/gradebook/**
           filters:
             - RewritePath=/api/v1/gradebook(?<segment>/?.*), /api/gradebook${segment}
 
+        - id: learning-websocket
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/ws/**
+
         - id: learning-deadlines
-          uri: lb://lms-learning-service
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
           predicates:
             - Path=/api/v1/calendar/**, /api/calendar/**, /api/v1/deadlines/**, /api/deadlines/**, /api/v1/notifications/**, /api/notifications/**
           filters:
@@ -105,7 +137,7 @@ spring:
             - RewritePath=/api/v1/notifications(?<segment>/?.*), /api/notifications${segment}
 
         - id: ai-service-v1
-          uri: lb://lms-ai-service
+          uri: ${AI_SERVICE_URL:http://localhost:8085}
           predicates:
             - Path=/api/v1/ai/**
           filters:
@@ -121,7 +153,7 @@ spring:
                 fallbackUri: forward:/fallback/ai
 
         - id: ai-service
-          uri: lb://lms-ai-service
+          uri: ${AI_SERVICE_URL:http://localhost:8085}
           predicates:
             - Path=/api/ai/**
           filters:
@@ -138,7 +170,7 @@ spring:
                 fallbackUri: forward:/fallback/ai
 
         - id: plugin-management
-          uri: lb://lms-learning-service
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
           predicates:
             - Path=/api/plugins/**
           filters:
@@ -149,19 +181,19 @@ spring:
                 methods: GET
 
         - id: marketplace-service
-          uri: lb://lms-marketplace-service
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
           predicates:
             - Path=/api/marketplace/**
 
         - id: learning-risk-analytics
-          uri: lb://lms-learning-service
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
           predicates:
             - Path=/api/analytics/courses/*/at-risk-students, /api/analytics/courses/*/students/*/risk, /api/v1/analytics/courses/*/at-risk-students, /api/v1/analytics/courses/*/students/*/risk
           filters:
             - RewritePath=/api/v1/analytics(?<segment>/?.*), /api/analytics${segment}
 
         - id: analytics-service
-          uri: lb://lms-analytics-service
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
           predicates:
             - Path=/api/v1/analytics/**, /api/analytics/**
           filters:
@@ -193,8 +225,8 @@ gateway:
     burst-capacity: ${AI_RATE_LIMIT_BURST_CAPACITY:20}
     requested-tokens: ${AI_RATE_LIMIT_REQUESTED_TOKENS:1}
   quiz-attempt-rate-limit:
-    replenish-rate: ${QUIZ_ATTEMPT_RATE_LIMIT_REPLENISH_RATE:8}
-    burst-capacity: ${QUIZ_ATTEMPT_RATE_LIMIT_BURST_CAPACITY:12}
+    replenish-rate: ${QUIZ_ATTEMPT_RATE_LIMIT_REPLENISH_RATE:2}
+    burst-capacity: ${QUIZ_ATTEMPT_RATE_LIMIT_BURST_CAPACITY:5}
     requested-tokens: ${QUIZ_ATTEMPT_RATE_LIMIT_REQUESTED_TOKENS:1}
 
 management:
@@ -205,13 +237,6 @@ management:
   endpoint:
     health:
       show-details: when-authorized
-
-eureka:
-  client:
-    serviceUrl:
-      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
-  instance:
-    prefer-ip-address: true
 
 server:
   port: ${SERVER_PORT:8080}

@@ -67,7 +67,7 @@ const ResourceUploadZone: React.FC<ResourceUploadZoneProps> = ({
 
         results.push({
           name: file.name,
-          url: response?.data?.file_url || response?.data?.external_url || '',
+          url: response?.data?.fileUrl || response?.data?.externalUrl || '',
           type: detectResourceType(file.type),
         });
       } catch {

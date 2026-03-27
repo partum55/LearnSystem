@@ -33,9 +33,9 @@ const AIToolbarPlugin: React.FC<AIToolbarPluginProps> = ({
       }
 
       const result = await aiApi.editContent({
-        entity_type: 'ASSIGNMENT',
-        entity_id: '',
-        current_content: action === 'generate' ? '' : currentContent,
+        entityType: 'ASSIGNMENT',
+        entityId: '',
+        currentContent: action === 'generate' ? '' : currentContent,
         prompt: requestPrompt,
         language: 'en',
       });

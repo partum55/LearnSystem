@@ -101,7 +101,7 @@ export const AllGrades: React.FC = () => {
 
       setGradesData({
         student_id: user.id,
-        student_name: user.display_name || user.email,
+        student_name: user.displayName || user.email,
         courses: gradeRows,
       });
     } catch (err: unknown) {

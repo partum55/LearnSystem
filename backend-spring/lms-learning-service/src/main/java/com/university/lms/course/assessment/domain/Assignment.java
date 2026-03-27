@@ -95,10 +95,13 @@ public class Assignment {
     @Builder.Default
     private List<Map<String, Object>> testCases = new ArrayList<>();
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "vpl_config", columnDefinition = "jsonb")
+    private Map<String, Object> vplConfig;
+
     // Points and grading
     @Column(name = "max_points", precision = 6, scale = 2, nullable = false)
-    @Builder.Default
-    private BigDecimal maxPoints = BigDecimal.valueOf(100.00);
+    private BigDecimal maxPoints;
 
     // Dates
     @Column(name = "due_date")
@@ -163,12 +166,6 @@ public class Assignment {
     @Column(name = "peer_reviews_required")
     @Builder.Default
     private Integer peerReviewsRequired = 0;
-
-    // Tags and metadata
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
-    @Builder.Default
-    private List<String> tags = new ArrayList<>();
 
     @Column(name = "estimated_duration")
     private Integer estimatedDuration; // in minutes

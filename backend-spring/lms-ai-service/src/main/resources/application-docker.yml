@@ -26,12 +26,6 @@ spring:
   main:
     web-application-type: servlet
 
-eureka:
-  client:
-    enabled: false
-    register-with-eureka: false
-    fetch-registry: false
-
 # Service URLs for Docker environment
 services:
   learning-service:

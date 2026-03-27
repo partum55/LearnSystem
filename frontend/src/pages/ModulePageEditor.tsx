@@ -83,7 +83,7 @@ const ModulePageEditor: React.FC = () => {
       ]);
 
       setDocument(docResponse.data.document ?? createEmptyDocument());
-      setSchemaVersion(docResponse.data.schema_version || 1);
+      setSchemaVersion(docResponse.data.schemaVersion || 1);
       setToc(tocResponse.data);
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -139,7 +139,7 @@ const ModulePageEditor: React.FC = () => {
         document,
         schemaVersion,
       });
-      setSchemaVersion(response.data.schema_version || schemaVersion);
+      setSchemaVersion(response.data.schemaVersion || schemaVersion);
       const tocResponse = await pageDocumentsApi.getToc(activePageId);
       setToc(tocResponse.data);
       setMessage('Changes saved');
@@ -159,7 +159,7 @@ const ModulePageEditor: React.FC = () => {
     setError(null);
 
     try {
-      if (activePage.is_published) {
+      if (activePage.isPublished) {
         await pageDocumentsApi.unpublish(activePageId);
         setMessage('Page unpublished');
       } else {
@@ -209,7 +209,7 @@ const ModulePageEditor: React.FC = () => {
             onClick={handlePublishToggle}
             disabled={isSaving || !activePage}
           >
-            {activePage?.is_published ? 'Unpublish' : 'Publish'}
+            {activePage?.isPublished ? 'Unpublish' : 'Publish'}
           </button>
         </div>
       </div>
@@ -233,8 +233,8 @@ const ModulePageEditor: React.FC = () => {
               >
                 <div className="text-sm font-medium">{item.title}</div>
                 <div className="text-xs text-[var(--text-muted)]">
-                  {item.is_published ? 'Published' : 'Draft'}
-                  {item.has_unpublished_changes ? ' • Unpublished changes' : ''}
+                  {item.isPublished ? 'Published' : 'Draft'}
+                  {item.hasUnpublishedChanges ? ' • Unpublished changes' : ''}
                 </div>
               </button>
             ))}

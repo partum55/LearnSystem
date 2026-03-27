@@ -40,7 +40,6 @@
       "grading": "Grading",
       "settings": "Settings"
     },
-    "tags": "Tags",
     "test_cases": "Test cases",
     "title": "Title",
     "type": "Type",
@@ -301,10 +300,41 @@
       "progress": "Course progress",
       "quickLinks": "Quick links",
       "recentAssignments": "Recent assignments",
-      "studyGroups": "Study groups"
+      "studyGroups": "Study groups",
+      "noGrades": "No grades yet",
+      "totalGrades": "total grades",
+      "fromYesterday": "from yesterday",
+      "streakEmpty": "Start your streak by completing activities"
     }
   },
   "Description": "Description",
+  "diagram": {
+    "title": "Create Diagram",
+    "aiMode": "AI Prompt",
+    "fieldMode": "Builder",
+    "describePrompt": "Describe your diagram",
+    "promptPlaceholder": "e.g. \"A flowchart showing user authentication flow with login, MFA check, and session creation\"",
+    "generate": "Generate",
+    "generating": "Generating...",
+    "promptHint": "Ctrl+Enter to generate. You can refine the result afterwards.",
+    "aiError": "Failed to generate diagram",
+    "aiEmpty": "AI returned empty result",
+    "diagramType": "Diagram Type",
+    "direction": "Direction",
+    "nodes": "Nodes",
+    "edges": "Connections",
+    "participants": "Participants",
+    "messages": "Messages",
+    "rootTopic": "Central Topic",
+    "chartTitle": "Chart Title",
+    "slices": "Slices",
+    "mermaidCode": "Mermaid Code",
+    "preview": "Preview",
+    "emptyPreview": "Diagram will appear here",
+    "insert": "Insert Diagram",
+    "rawCodeHint": "Use the code editor below to write this diagram type directly in Mermaid syntax.",
+    "createDiagram": "Create Diagram"
+  },
   "email": "Email",
   "EN": "EN",
   "enrollment": {
@@ -483,6 +513,19 @@
     "footer": "© 2024 Ukrainian Catholic University. All rights reserved."
   },
   "Input:": "Input:",
+  "interactiveWidget": {
+    "title": "Interactive Widget",
+    "aiPrompt": "AI Prompt",
+    "code": "Code",
+    "promptHint": "Describe what you want to create — AI will generate an interactive element",
+    "promptPlaceholder": "e.g. A physics simulation showing projectile motion with adjustable angle and velocity...",
+    "generating": "Generating...",
+    "generate": "Generate Widget",
+    "codeHint": "Write your own HTML, CSS, and JavaScript directly",
+    "codePlaceholder": "<html>\n  <body>\n    <h1>Hello World</h1>\n  </body>\n</html>",
+    "createWidget": "Create Widget",
+    "manualWidget": "Custom Widget"
+  },
   "italic": "italic",
   "Java": "Java",
   "JavaScript": "JavaScript",
@@ -612,7 +655,10 @@
   "No data available": "No data available",
   "notifications": {
     "noNotifications": "No notifications",
-    "title": "Notifications"
+    "title": "Notifications",
+    "empty": "No new notifications",
+    "justNow": "just now",
+    "wsConnected": "Live updates active"
   },
   "or drag and drop": "or drag and drop",
   "Pending Grading": "Pending grading",
@@ -1257,5 +1303,76 @@
     "clearLog": "Clear Log",
     "running": "Running...",
     "runAll": "Run Full Setup"
+  },
+  "grading": {
+    "enterPoints": "Enter points",
+    "budgetWarning": "Course total: {{current}}/{{limit}} pts. Adding {{adding}} → {{projected}} total",
+    "pointsRequired": "Max points is required"
+  },
+  "progress": {
+    "title": "Progress",
+    "completed": "Completed",
+    "moduleProgress": "{{completed}}/{{total}} completed",
+    "markComplete": "Mark as complete"
+  },
+  "seminar": {
+    "attendance": "Attendance",
+    "present": "present",
+    "markAllPresent": "Mark all present",
+    "markAllAbsent": "Mark all absent",
+    "student": "Student",
+    "attended": "Attended",
+    "notes": "Notes",
+    "notesPlaceholder": "Optional notes...",
+    "saved": "Attendance saved",
+    "noSubmission": "This is a seminar — attendance is marked by the teacher",
+    "attendanceInfo": "Seminar — attendance marked by teacher"
+  },
+  "lesson": {
+    "notFound": "Lesson not found",
+    "step": "Step",
+    "steps": "Steps",
+    "textStep": "Text",
+    "quizStep": "Quiz",
+    "addText": "Text",
+    "addQuiz": "Quiz",
+    "selectStep": "Select a step to edit, or add a new one",
+    "titlePlaceholder": "Lesson title",
+    "summaryPlaceholder": "Summary (optional)",
+    "quizStepHint": "Quiz questions are stored as JSON. Edit the step content with question data.",
+    "typeAnswer": "Type your answer...",
+    "correct": "Correct!",
+    "incorrect": "Incorrect",
+    "checkAnswers": "Check Answers",
+    "completeAndNext": "Complete & Next",
+    "completeLesson": "Complete Lesson",
+    "progressSummary": "{{completed}}/{{total}} steps completed",
+    "stepsProgress": "{{completed}}/{{total}} steps"
+  },
+  "form": {
+    "addAnother": "Add another",
+    "formField": "Form Field",
+    "repeatableGroup": "Repeatable Group",
+    "configureField": "Configure Form Field"
+  },
+  "qr": {
+    "generate": "Generate QR code",
+    "regenerate": "Regenerate",
+    "expiresIn": "Expires in {{minutes}} min",
+    "expired": "QR code expired"
+  },
+  "peerReview": {
+    "submitReview": "Submit Peer Review",
+    "reviewFor": "Review for",
+    "score": "Score",
+    "feedback": "Feedback",
+    "feedbackPlaceholder": "Provide constructive feedback...",
+    "submit": "Submit Review",
+    "invalidScore": "Score must be between 0 and 100"
+  },
+  "checkin": {
+    "success": "Attendance confirmed",
+    "failed": "Check-in failed",
+    "tokenExpired": "This QR code has expired"
   }
 }

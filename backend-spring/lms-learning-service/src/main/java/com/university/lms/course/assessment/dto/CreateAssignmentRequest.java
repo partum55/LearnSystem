@@ -32,7 +32,7 @@ public class CreateAssignmentRequest {
     private Integer position;
 
     @NotBlank(message = "Assignment type is required")
-    @Pattern(regexp = "^(QUIZ|FILE_UPLOAD|TEXT|CODE|URL|MANUAL_GRADE|EXTERNAL|SEMINAR)$")
+    @Pattern(regexp = "^(QUIZ|FILE_UPLOAD|TEXT|CODE|URL|MANUAL_GRADE|EXTERNAL|SEMINAR|VIRTUAL_LAB)$")
     private String assignmentType;
 
     @NotBlank(message = "Title is required")
@@ -59,8 +59,10 @@ public class CreateAssignmentRequest {
     private Boolean autoGradingEnabled;
     @Builder.Default
     private List<Map<String, Object>> testCases = new ArrayList<>();
+    private Map<String, Object> vplConfig;
 
     // Grading
+    @NotNull(message = "Max points is required")
     @DecimalMin("0.01")
     @DecimalMax("10000.00")
     private BigDecimal maxPoints;
@@ -94,8 +96,6 @@ public class CreateAssignmentRequest {
     @Min(0)
     private Integer peerReviewsRequired;
 
-    @Builder.Default
-    private List<String> tags = new ArrayList<>();
     private Integer estimatedDuration;
 
     private Boolean isTemplate;

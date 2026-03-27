@@ -7,9 +7,13 @@ import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -61,6 +65,14 @@ public class Submission {
 
         @Column(name = "submission_url", length = 1000)
         private String submissionUrl;
+
+        @JdbcTypeCode(SqlTypes.JSON)
+        @Column(name = "form_data", columnDefinition = "jsonb")
+        private Map<String, Object> formData;
+
+        @JdbcTypeCode(SqlTypes.JSON)
+        @Column(name = "auto_grade_result", columnDefinition = "jsonb")
+        private Map<String, Object> autoGradeResult;
 
         @Column(name = "programming_language", length = 50)
         private String programmingLanguage;

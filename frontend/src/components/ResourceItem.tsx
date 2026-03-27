@@ -32,7 +32,7 @@ const resourceTypeIcons: Record<ResourceType, React.ComponentType<{ className?: 
 
 export const ResourceItem: React.FC<ResourceItemProps> = ({ resource, canEdit, onDelete }) => {
   const { t } = useTranslation();
-  const Icon = resourceTypeIcons[resource.resource_type];
+  const Icon = resourceTypeIcons[resource.resourceType];
 
   const formatFileSize = (bytes?: number) => {
     if (!bytes) return '';
@@ -42,17 +42,17 @@ export const ResourceItem: React.FC<ResourceItemProps> = ({ resource, canEdit, o
   };
 
   const handleView = () => {
-    if (resource.resource_type === 'LINK' && resource.external_url) {
-      window.open(resource.external_url, '_blank');
-    } else if (resource.file_url) {
-      window.open(resource.file_url, '_blank');
+    if (resource.resourceType === 'LINK' && resource.externalUrl) {
+      window.open(resource.externalUrl, '_blank');
+    } else if (resource.fileUrl) {
+      window.open(resource.fileUrl, '_blank');
     }
   };
 
   const handleDownload = () => {
-    if (resource.file_url) {
+    if (resource.fileUrl) {
       const link = document.createElement('a');
-      link.href = resource.file_url;
+      link.href = resource.fileUrl;
       link.download = resource.title;
       document.body.appendChild(link);
       link.click();
@@ -89,7 +89,7 @@ export const ResourceItem: React.FC<ResourceItemProps> = ({ resource, canEdit, o
               className="inline-flex items-center px-1.5 py-0.5 rounded text-xs"
               style={{ background: 'var(--bg-overlay)', color: 'var(--text-faint)' }}
             >
-              {t(`resources.types.${resource.resource_type.toLowerCase()}`)}
+              {t(`resources.types.${resource.resourceType.toLowerCase()}`)}
             </span>
           </div>
           {resource.description && (
@@ -98,9 +98,9 @@ export const ResourceItem: React.FC<ResourceItemProps> = ({ resource, canEdit, o
             </p>
           )}
           <div className="mt-0.5 flex items-center gap-3 text-xs" style={{ color: 'var(--text-faint)' }}>
-            {resource.file_size && <span>{formatFileSize(resource.file_size)}</span>}
-            {resource.uploaded_by_name && <span>{resource.uploaded_by_name}</span>}
-            <span>{new Date(resource.created_at).toLocaleDateString()}</span>
+            {resource.fileSize && <span>{formatFileSize(resource.fileSize)}</span>}
+            {resource.uploadedByName && <span>{resource.uploadedByName}</span>}
+            <span>{new Date(resource.createdAt).toLocaleDateString()}</span>
           </div>
         </div>
       </div>
@@ -108,7 +108,7 @@ export const ResourceItem: React.FC<ResourceItemProps> = ({ resource, canEdit, o
         <Button variant="ghost" size="sm" onClick={handleView} title={t('common.view')}>
           <EyeIcon className="h-4 w-4" />
         </Button>
-        {resource.is_downloadable && resource.file_url && (
+        {resource.isDownloadable && resource.fileUrl && (
           <Button variant="ghost" size="sm" onClick={handleDownload} title={t('common.download')}>
             <ArrowDownTrayIcon className="h-4 w-4" />
           </Button>

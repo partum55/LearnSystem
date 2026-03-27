@@ -205,6 +205,10 @@ export const QuizQuestionEditor: React.FC<QuizQuestionEditorProps> = ({
               className="input w-full"
               placeholder="https://example.edu/diagram.png"
             />
+            {question.image_url && (
+              <img src={question.image_url} alt="" className="mt-2 max-h-40 rounded-md"
+                style={{ border: '1px solid var(--border-default)' }} />
+            )}
           </div>
 
           {(question.question_type === 'single_choice' || question.question_type === 'multiple_response') && (

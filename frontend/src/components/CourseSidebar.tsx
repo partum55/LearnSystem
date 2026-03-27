@@ -87,10 +87,10 @@ export const CourseSidebar: React.FC<CourseSidebarProps> = ({ courseId, isOpen =
     const map = new Map<string, Assignment[]>();
     if (assignments) {
       for (const a of assignments) {
-        if (a.module_id) {
-          const list = map.get(a.module_id) || [];
+        if (a.moduleId) {
+          const list = map.get(a.moduleId) || [];
           list.push(a);
-          map.set(a.module_id, list);
+          map.set(a.moduleId, list);
         }
       }
     }
@@ -212,7 +212,7 @@ export const CourseSidebar: React.FC<CourseSidebarProps> = ({ courseId, isOpen =
                     <div className="ml-3 pl-2 mb-1" style={{ borderLeft: '1px solid var(--border-subtle)' }}>
                       {/* Resources */}
                       {modResources.map((res: Resource) => {
-                        const info = resourceTypeInfo[res.resource_type] || resourceTypeInfo.OTHER;
+                        const info = resourceTypeInfo[res.resourceType] || resourceTypeInfo.OTHER;
                         const Icon = info.icon;
                         const resPath = `/courses/${courseId}/modules/${mod.id}/resources/${res.id}`;
                         const active = isActive(resPath);
@@ -255,12 +255,12 @@ export const CourseSidebar: React.FC<CourseSidebarProps> = ({ courseId, isOpen =
                               style={{ color: active ? 'var(--text-primary)' : 'var(--text-faint)' }}
                             />
                             <span className="truncate flex-1">{asn.title}</span>
-                            {asn.due_date && (
+                            {asn.dueDate && (
                               <span
                                 className="text-[9px] flex-shrink-0"
                                 style={{ color: 'var(--text-faint)' }}
                               >
-                                {new Date(asn.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                {new Date(asn.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                               </span>
                             )}
                           </NavLink>

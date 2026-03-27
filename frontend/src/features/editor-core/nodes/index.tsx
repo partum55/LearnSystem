@@ -15,6 +15,10 @@ import { ensureMermaidInitialized } from '../mermaidUtils';
 // Re-export InteractiveWidgetNode from its own file
 export { InteractiveWidgetNode } from './InteractiveWidgetNode';
 
+// Re-export Form Builder nodes
+export { FormFieldNode } from './FormFieldNode';
+export { RepeatableGroupNode } from './RepeatableGroupNode';
+
 // ── Callout ──
 
 export const CalloutNode = Node.create({
@@ -330,7 +334,7 @@ const MermaidBlockView: React.FC<NodeViewProps> = ({ node, updateAttributes, edi
       .render(`mermaid-${mermaidId}`, code)
       .then(({ svg }) => {
         if (!disposed) {
-          setDiagramSvg(svg);
+          setDiagramSvg(DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true } }));
           setRenderError(null);
         }
       })

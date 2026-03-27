@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WizardFormData } from '../wizardTypes';
+import VplTestCaseManager from '../../../components/vpl/VplTestCaseManager';
 import AIReviewPanel from '../../../features/authoring/components/AIReviewPanel';
 import { QuestionDraft, QuestionOption } from '../../../features/authoring/types';
 import { aiApi } from '../../../api/ai';
@@ -80,6 +81,18 @@ const GradingStep: React.FC<GradingStepProps> = ({
   const isCode = formData.assignment_type === 'CODE' || formData.assignment_type === 'VIRTUAL_LAB';
   const [aiLoading, setAiLoading] = useState(false);
   const [quizPreview, setQuizPreview] = useState(false);
+
+  // Point budget tracking
+  const [pointBudget, setPointBudget] = useState<{ totalPoints: number; limit: number; assignments: Array<{ id: string; title: string; maxPoints: number }> } | null>(null);
+
+  React.useEffect(() => {
+    if (!courseId) return;
+    import('../../../api/client').then(({ default: apiClient }) => {
+      apiClient.get<{ totalPoints: number; limit: number; assignments: Array<{ id: string; title: string; maxPoints: number }> }>(
+        `/assessments/assignments/course/${courseId}/point-budget`
+      ).then((res) => setPointBudget(res.data)).catch(() => {});
+    });
+  }, [courseId]);
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -195,21 +208,6 @@ const GradingStep: React.FC<GradingStepProps> = ({
     setDraft({ ...draft, options: draft.options.filter((_, i) => i !== oIndex) });
   };
 
-  const addTestCase = () => {
-    onChange({
-      test_cases: [...formData.test_cases, { input: '', expected_output: '', points: 1 }],
-    });
-  };
-
-  const updateTestCase = (index: number, field: string, value: string | number) => {
-    const updated = [...formData.test_cases];
-    updated[index] = { ...updated[index], [field]: value };
-    onChange({ test_cases: updated });
-  };
-
-  const removeTestCase = (index: number) => {
-    onChange({ test_cases: formData.test_cases.filter((_, i) => i !== index) });
-  };
 
   const handleGenerateQuiz = async () => {
     if (!courseId || !moduleId) return;
@@ -272,13 +270,36 @@ const GradingStep: React.FC<GradingStepProps> = ({
           <input
             id="wizard-max-points"
             type="number"
-            min={1}
-            value={formData.max_points}
-            onChange={(e) => onChange({ max_points: Number(e.target.value) })}
+            min={0.01}
+            step="0.01"
+            value={formData.max_points ?? ''}
+            onChange={(e) => onChange({ max_points: e.target.value ? Number(e.target.value) : null })}
             className={`input w-32 ${validationErrors.max_points ? 'input-error' : ''}`}
+            placeholder={t('grading.enterPoints', 'Enter points')}
           />
           {validationErrors.max_points && (
             <p className="error-text mt-1">{t(`validation.${validationErrors.max_points}`, validationErrors.max_points)}</p>
+          )}
+          {/* Point budget warning */}
+          {pointBudget && formData.max_points != null && (
+            (() => {
+              const projected = pointBudget.totalPoints + formData.max_points;
+              const limit = pointBudget.limit;
+              const color = projected <= limit ? 'var(--fn-success)' : projected <= limit * 1.5 ? 'var(--fn-warning)' : 'var(--fn-error)';
+              return (
+                <div
+                  className="mt-2 text-sm rounded-lg px-3 py-2"
+                  style={{ border: `1px solid ${color}`, color }}
+                >
+                  {t('grading.budgetWarning', 'Course total: {{current}}/{{limit}} pts. Adding {{adding}} → {{projected}} total', {
+                    current: pointBudget.totalPoints,
+                    limit,
+                    adding: formData.max_points,
+                    projected,
+                  })}
+                </div>
+              );
+            })()
           )}
         </div>
       )}
@@ -834,75 +855,12 @@ const GradingStep: React.FC<GradingStepProps> = ({
             </span>
           </label>
 
-          {formData.auto_grading_enabled && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
-                  {t('assignment.test_cases', 'Test cases')}
-                </h3>
-                <button
-                  type="button"
-                  onClick={addTestCase}
-                  className="btn btn-primary px-3 py-1 text-sm"
-                >
-                  {t('assignment.add_test_case', 'Add test case')}
-                </button>
-              </div>
-              {formData.test_cases.map((tc, index) => (
-                <div
-                  key={index}
-                  className="p-3 rounded-lg space-y-2"
-                  style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-                      Test Case {index + 1}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeTestCase(index)}
-                      className="text-xs hover:underline"
-                      style={{ color: 'var(--fn-error)' }}
-                    >
-                      {t('common.delete', 'Delete')}
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <div>
-                      <label className="text-xs" style={{ color: 'var(--text-muted)' }}>Input</label>
-                      <textarea
-                        value={tc.input}
-                        onChange={(e) => updateTestCase(index, 'input', e.target.value)}
-                        className="input w-full text-sm"
-                        rows={2}
-                        style={{ fontFamily: 'var(--font-mono)' }}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs" style={{ color: 'var(--text-muted)' }}>Expected Output</label>
-                      <textarea
-                        value={tc.expected_output}
-                        onChange={(e) => updateTestCase(index, 'expected_output', e.target.value)}
-                        className="input w-full text-sm"
-                        rows={2}
-                        style={{ fontFamily: 'var(--font-mono)' }}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs" style={{ color: 'var(--text-muted)' }}>Points</label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={tc.points}
-                        onChange={(e) => updateTestCase(index, 'points', Number(e.target.value))}
-                        className="input w-full text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <VplTestCaseManager
+            vplConfig={formData.vpl_config}
+            testCases={formData.test_cases}
+            language={formData.programming_language}
+            onChange={(cfg, tcs) => onChange({ vpl_config: cfg, test_cases: tcs })}
+          />
         </div>
       )}
 

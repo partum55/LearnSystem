@@ -17,16 +17,16 @@ const AI_CLIENT_URL = AI_ABSOLUTE_URL.startsWith('http')
 export interface CourseGenerationRequest {
   prompt: string;
   language?: 'uk' | 'en';
-  include_modules?: boolean;
-  include_assignments?: boolean;
-  include_quizzes?: boolean;
-  academic_year?: string;
+  includeModules?: boolean;
+  includeAssignments?: boolean;
+  includeQuizzes?: boolean;
+  academicYear?: string;
 }
 
 export interface CourseEditRequest {
-  entity_type: 'COURSE' | 'MODULE' | 'ASSIGNMENT' | 'QUIZ';
-  entity_id: string;
-  current_content: string;
+  entityType: 'COURSE' | 'MODULE' | 'ASSIGNMENT' | 'QUIZ';
+  entityId: string;
+  currentContent: string;
   prompt: string;
   language?: 'uk' | 'en';
 }
@@ -78,7 +78,6 @@ export interface GeneratedAssignment {
   allowedFileTypes?: string[];
   programmingLanguage?: string;
   starterCode?: string;
-  tags?: string[];
   estimatedDuration?: string;
   isPublished?: boolean;
 }
@@ -100,7 +99,6 @@ export interface GeneratedQuiz {
     questionType?: string;
     points?: number;
     options?: string[];
-    correct_answer?: string | number;
     correctAnswer?: string | number;
     answerOptions?: Array<{ text: string; isCorrect: boolean; feedback?: string }>;
     explanation?: string;
@@ -252,6 +250,28 @@ export const aiApi = {
           // Note: Authorization header is automatically added by apiClient interceptor
         },
       }
+    );
+    return response.data;
+  },
+
+  /**
+   * Confirm and save a user-reviewed generated course to the database.
+   * Uses the already-previewed course payload instead of re-generating.
+   */
+  confirmSave: async (payload: GeneratedCourse): Promise<{
+    courseId: string;
+    modulesCreated: number;
+    assignmentsCreated: number;
+    quizzesCreated: number;
+  }> => {
+    const response = await apiClient.post<{
+      courseId: string;
+      modulesCreated: number;
+      assignmentsCreated: number;
+      quizzesCreated: number;
+    }>(
+      `${AI_CLIENT_URL}/courses/confirm-save`,
+      { payload, confirmed: true }
     );
     return response.data;
   },

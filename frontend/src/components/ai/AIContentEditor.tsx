@@ -54,9 +54,9 @@ export const AIContentEditor: React.FC<AIContentEditorProps> = ({
 
     try {
       const request: CourseEditRequest = {
-        entity_type: entityType,
-        entity_id: entityId,
-        current_content: currentContent,
+        entityType: entityType,
+        entityId: entityId,
+        currentContent: currentContent,
         prompt: editPrompt,
         language,
       };

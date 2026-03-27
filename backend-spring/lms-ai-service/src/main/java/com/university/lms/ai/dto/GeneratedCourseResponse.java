@@ -179,8 +179,6 @@ public class GeneratedCourseResponse {
     @Size(max = 8000)
     private String starterCode;
 
-    private List<String> tags;
-
     @Size(max = 30)
     private String estimatedDuration;
 

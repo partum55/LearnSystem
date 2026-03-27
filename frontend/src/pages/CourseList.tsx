@@ -15,7 +15,6 @@ import {
 import { StaggeredList, StaggeredItem } from '../components/animation';
 import { useCourseStore } from '../store/courseStore';
 import { useAuthStore } from '../store/authStore';
-import { getAccessToken } from '../api/token';
 import { coursesApi } from '../api/courses';
 import { PlusIcon, MagnifyingGlassIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { Course } from '../types';
@@ -375,8 +374,6 @@ export const CourseList: React.FC = () => {
         <AICourseGenerator
           isOpen={showAIGenerator}
           onClose={() => setShowAIGenerator(false)}
-          userId={user?.id}
-          authToken={getAccessToken() || ''}
           onCourseGenerated={(course) => {
             console.log('AI generated course:', course);
             setShowAIGenerator(false);

@@ -329,7 +329,7 @@ public class AssignmentService {
             .programmingLanguage(original.getProgrammingLanguage())
             .autoGradingEnabled(Boolean.TRUE.equals(original.getAutoGradingEnabled()))
             .testCases(copyResourceList(original.getTestCases()))
-            .maxPoints(original.getMaxPoints() != null ? original.getMaxPoints() : BigDecimal.valueOf(100.00))
+            .maxPoints(original.getMaxPoints())
             .dueDate(original.getDueDate())
             .availableFrom(original.getAvailableFrom())
             .availableUntil(original.getAvailableUntil())
@@ -345,7 +345,6 @@ public class AssignmentService {
             .gradeAnonymously(Boolean.TRUE.equals(original.getGradeAnonymously()))
             .peerReviewEnabled(Boolean.TRUE.equals(original.getPeerReviewEnabled()))
             .peerReviewsRequired(original.getPeerReviewsRequired())
-            .tags(copyStringList(original.getTags()))
             .estimatedDuration(original.getEstimatedDuration())
             .isTemplate(Boolean.TRUE.equals(original.getIsTemplate()))
             .isArchived(false)
@@ -359,6 +358,33 @@ public class AssignmentService {
 
         log.info("Assignment duplicated successfully: {} -> {}", id, savedCopy.getId());
         return mapper.toDto(savedCopy);
+    }
+
+    /**
+     * Get the point budget summary for all published assignments in a course.
+     */
+    public Map<String, Object> getPointBudget(UUID courseId) {
+        List<Assignment> published = assignmentRepository.findPublishedByCourse(courseId);
+        BigDecimal totalPoints = published.stream()
+            .map(Assignment::getMaxPoints)
+            .filter(java.util.Objects::nonNull)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<Map<String, Object>> assignments = published.stream()
+            .map(a -> {
+                Map<String, Object> item = new HashMap<>();
+                item.put("id", a.getId());
+                item.put("title", a.getTitle());
+                item.put("maxPoints", a.getMaxPoints());
+                return item;
+            })
+            .collect(Collectors.toList());
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("totalPoints", totalPoints);
+        result.put("limit", 100);
+        result.put("assignments", assignments);
+        return result;
     }
 
     // Helper methods

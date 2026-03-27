@@ -125,16 +125,6 @@ resilience4j:
         timeoutDuration: 60s
         cancelRunningFuture: true
 
-eureka:
-  client:
-    serviceUrl:
-      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
-    register-with-eureka: true
-    fetch-registry: true
-  instance:
-    prefer-ip-address: true
-    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
-
 # Kafka Configuration
 spring.kafka:
   bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
@@ -170,4 +160,3 @@ ai:
     completion-per-million: ${AI_PRICING_COMPLETION:0.10}
   usage:
     monthly-limit-tokens: ${AI_MONTHLY_TOKEN_LIMIT:1000000}
-
