@@ -1,0 +1,27 @@
+# Note: when building via docker-compose (context: ./backend-spring),
+# Docker uses backend-spring/.dockerignore — not this file.
+# This file documents intent and works with per-service build contexts.
+
+# Other services' source (not needed for ai-service build)
+lms-user-service/src/
+lms-learning-service/src/
+lms-api-gateway/src/
+
+# Build artifacts
+*/target/
+.mvn/
+mvnw
+mvnw.cmd
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Git / docs
+.git/
+.gitignore
+*.md
+logs/
+*.log
