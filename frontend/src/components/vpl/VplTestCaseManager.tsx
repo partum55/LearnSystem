@@ -1,5 +1,6 @@
 import React from 'react';
 import { VplConfig } from '../../types';
+import { VPL_CHECK_MODES } from '../../constants/vpl';
 
 interface TestCaseDraft {
   input: string;
@@ -27,8 +28,6 @@ const DEFAULT_VPL_CONFIG: VplConfig = {
   scoringMode: 'weighted',
   maxSubmitAttempts: 0,
 };
-
-const CHECK_MODES = ['EXACT', 'TRIM', 'CONTAINS', 'REGEX'] as const;
 
 const VplTestCaseManager: React.FC<VplTestCaseManagerProps> = ({
   vplConfig, testCases, language, onChange,
@@ -305,7 +304,7 @@ const VplTestCaseManager: React.FC<VplTestCaseManagerProps> = ({
                     onChange={e => updateTestCase(i, { checkMode: e.target.value as TestCaseDraft['checkMode'] })}
                     style={{ ...inputStyle, width: 'auto' }}
                   >
-                    {CHECK_MODES.map(m => (
+                    {VPL_CHECK_MODES.map(m => (
                       <option key={m} value={m}>{m}</option>
                     ))}
                   </select>

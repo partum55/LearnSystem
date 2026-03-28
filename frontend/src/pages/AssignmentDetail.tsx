@@ -89,17 +89,74 @@ export const AssignmentDetail: React.FC = () => {
     : `/assignments/${assignmentId}`;
 
   useEffect(() => {
-    fetchAssignment();
-    fetchSubmissions();
-    void fetchPeerReviews();
+    let isMounted = true;
+    const run = async () => {
+      try {
+        const response = await api.get<Record<string, unknown>>(`/assessments/assignments/${assignmentId}`);
+        if (!isMounted) return;
+        const data = response.data;
+        setAssignment({
+          id: String(data.id || ''),
+          course: String(data.courseId || data.course || ''),
+          title: String(data.title || ''),
+          description: String(data.description || ''),
+          description_format: String(data.descriptionFormat || data.description_format || 'MARKDOWN'),
+          instructions: String(data.instructions || ''),
+          instructions_format: String(data.instructionsFormat || data.instructions_format || 'MARKDOWN'),
+          due_date: String(data.dueDate || ''),
+          available_from: (data.availableFrom as string | null) || null,
+          max_points: Number(data.maxPoints || 0),
+          allow_late_submission: Boolean(data.allowLateSubmission),
+          late_penalty_percent: Number(data.latePenaltyPercent || 0),
+          submission_types: (data.submissionTypes as string[]) || [],
+          submissions_count: Number(data.submissions_count || 0),
+          graded_count: Number(data.graded_count || 0),
+          assignment_type: String(data.assignmentType || data.assignment_type || ''),
+          programming_language: String(data.programmingLanguage || data.programming_language || ''),
+          starter_code: (data.starterCode as string | undefined) || (data.starter_code as string | undefined),
+          auto_grading_enabled: Boolean(data.autoGradingEnabled ?? data.auto_grading_enabled),
+          formFields: Array.isArray(data.formFields) ? data.formFields as Assignment['formFields'] : undefined,
+          repeatableGroups: Array.isArray(data.repeatableGroups) ? data.repeatableGroups as Assignment['repeatableGroups'] : undefined,
+        });
+      } catch (error) {
+        console.error('Failed to fetch assignment:', error);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    void run();
+    api.get<{ results?: Submission[]; content?: Submission[] } | Submission[]>(
+      `/submissions?assignmentId=${assignmentId}`
+    ).then(response => {
+      if (!isMounted) return;
+      const raw = response.data;
+      const submissionsList = Array.isArray(raw) ? raw : raw.results || raw.content || [];
+      setSubmissions(submissionsList);
+    }).catch(error => {
+      console.error('Failed to fetch submissions:', error);
+    });
+    if (assignmentId) {
+      setPeerReviewLoading(true);
+      peerReviewsApi.getAssignmentReviews(assignmentId).then(reviews => {
+        if (!isMounted) return;
+        setPeerReviews(reviews);
+      }).catch(error => {
+        console.error('Failed to fetch peer reviews:', error);
+      }).finally(() => {
+        if (isMounted) setPeerReviewLoading(false);
+      });
+    }
+    return () => { isMounted = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignmentId]);
 
   // Fetch course and module names for breadcrumb context
   useEffect(() => {
+    let isMounted = true;
     if (courseId) {
       api.get<Record<string, unknown>>(`/courses/${courseId}`)
         .then(res => {
+          if (!isMounted) return;
           const d = res.data;
           setCourseName(String(d.titleEn || d.titleUk || d.title || d.code || ''));
         })
@@ -108,59 +165,14 @@ export const AssignmentDetail: React.FC = () => {
     if (courseId && moduleId) {
       api.get<Record<string, unknown>>(`/courses/${courseId}/modules/${moduleId}`)
         .then(res => {
+          if (!isMounted) return;
           const d = res.data;
           setModuleName(String(d.title || ''));
         })
         .catch(() => { /* ignore */ });
     }
+    return () => { isMounted = false; };
   }, [courseId, moduleId]);
-
-  const fetchAssignment = async () => {
-    try {
-      const response = await api.get<Record<string, unknown>>(`/assessments/assignments/${assignmentId}`);
-      const data = response.data;
-      setAssignment({
-        id: String(data.id || ''),
-        course: String(data.courseId || data.course || ''),
-        title: String(data.title || ''),
-        description: String(data.description || ''),
-        description_format: String(data.descriptionFormat || data.description_format || 'MARKDOWN'),
-        instructions: String(data.instructions || ''),
-        instructions_format: String(data.instructionsFormat || data.instructions_format || 'MARKDOWN'),
-        due_date: String(data.dueDate || ''),
-        available_from: (data.availableFrom as string | null) || null,
-        max_points: Number(data.maxPoints || 0),
-        allow_late_submission: Boolean(data.allowLateSubmission),
-        late_penalty_percent: Number(data.latePenaltyPercent || 0),
-        submission_types: (data.submissionTypes as string[]) || [],
-        submissions_count: Number(data.submissions_count || 0),
-        graded_count: Number(data.graded_count || 0),
-        assignment_type: String(data.assignmentType || data.assignment_type || ''),
-        programming_language: String(data.programmingLanguage || data.programming_language || ''),
-        starter_code: (data.starterCode as string | undefined) || (data.starter_code as string | undefined),
-        auto_grading_enabled: Boolean(data.autoGradingEnabled ?? data.auto_grading_enabled),
-        formFields: Array.isArray(data.formFields) ? data.formFields as Assignment['formFields'] : undefined,
-        repeatableGroups: Array.isArray(data.repeatableGroups) ? data.repeatableGroups as Assignment['repeatableGroups'] : undefined,
-      });
-    } catch (error) {
-      console.error('Failed to fetch assignment:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchSubmissions = async () => {
-    try {
-      const response = await api.get<{ results?: Submission[]; content?: Submission[] } | Submission[]>(
-        `/submissions?assignmentId=${assignmentId}`
-      );
-      const raw = response.data;
-      const submissionsList = Array.isArray(raw) ? raw : raw.results || raw.content || [];
-      setSubmissions(submissionsList);
-    } catch (error) {
-      console.error('Failed to fetch submissions:', error);
-    }
-  };
 
   const fetchPeerReviews = async () => {
     if (!assignmentId) return;

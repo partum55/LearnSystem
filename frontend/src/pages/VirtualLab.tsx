@@ -1,18 +1,17 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import { Layout } from '../components';
 import { virtualLabApi } from '../api/virtualLab';
+import { LANG_MAP, VPL_LANGUAGES } from '../constants/vpl';
+import { useResizableSplitPane } from '../hooks/useResizableSplitPane';
+import { safeGetItem, safeSetItem } from '../utils/storage';
 
-const LANGUAGES = [
+const LANGUAGES: Array<{ value: typeof VPL_LANGUAGES[number]; label: string }> = [
   { value: 'python', label: 'Python' },
   { value: 'javascript', label: 'JavaScript' },
   { value: 'java', label: 'Java' },
   { value: 'cpp', label: 'C++' },
-] as const;
-
-const LANG_MAP: Record<string, string> = {
-  python: 'python', javascript: 'javascript', java: 'java', cpp: 'cpp',
-};
+];
 
 const STORAGE_KEY = 'vpl-playground';
 
@@ -23,18 +22,16 @@ const VirtualLab: React.FC = () => {
   const [stdinOpen, setStdinOpen] = useState(false);
   const [output, setOutput] = useState<{ text?: string; isError?: boolean; time?: number; exitCode?: number } | null>(null);
   const [running, setRunning] = useState(false);
-  const [splitPct, setSplitPct] = useState(60);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const dragging = useRef(false);
+  const { splitPct, containerRef, onDragStart } = useResizableSplitPane();
 
   // Persist code per language
   useEffect(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY}-${language}`);
+    const saved = safeGetItem(`${STORAGE_KEY}-${language}`);
     setCode(saved || '');
   }, [language]);
 
   useEffect(() => {
-    localStorage.setItem(`${STORAGE_KEY}-${language}`, code);
+    safeSetItem(`${STORAGE_KEY}-${language}`, code);
   }, [code, language]);
 
   // Cmd/Ctrl+Enter shortcut
@@ -66,24 +63,6 @@ const VirtualLab: React.FC = () => {
     } finally {
       setRunning(false);
     }
-  };
-
-  // Resizable drag
-  const onMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    dragging.current = true;
-    const onMove = (ev: MouseEvent) => {
-      if (!dragging.current || !containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      setSplitPct(Math.max(30, Math.min(80, ((ev.clientX - rect.left) / rect.width) * 100)));
-    };
-    const onUp = () => {
-      dragging.current = false;
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
   };
 
   return (
@@ -189,7 +168,7 @@ const VirtualLab: React.FC = () => {
 
           {/* Drag handle */}
           <div
-            onMouseDown={onMouseDown}
+            onMouseDown={onDragStart}
             className="flex-shrink-0 cursor-col-resize"
             style={{ width: 6, background: 'var(--border-default)' }}
             onMouseEnter={e => (e.currentTarget.style.background = 'var(--border-muted)')}

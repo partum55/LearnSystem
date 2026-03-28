@@ -1,4 +1,5 @@
 import { TFunction } from 'i18next';
+import { safeSessionGetItem } from '../../utils/storage';
 import {
   AcademicCapIcon,
   ChartBarIcon,
@@ -52,7 +53,7 @@ export const getInitialTab = (courseId: string | undefined, urlTab: string | nul
     return 'modules';
   }
 
-  const storedTab = sessionStorage.getItem(`course_${courseId}_tab`);
+  const storedTab = safeSessionGetItem(`course_${courseId}_tab`);
   if (isCourseDetailTabId(storedTab)) {
     return storedTab;
   }
@@ -66,7 +67,7 @@ export const getInitialExpandedModules = (courseId: string | undefined): Set<str
   }
 
   try {
-    const stored = sessionStorage.getItem(`course_${courseId}_expanded`);
+    const stored = safeSessionGetItem(`course_${courseId}_expanded`);
     if (!stored) {
       return new Set();
     }
@@ -84,5 +85,5 @@ export const getCourseDetailTabs = (t: TFunction): CourseDetailTab[] => [
   { id: 'assignments', name: t('assignments.title'), icon: DocumentTextIcon },
   { id: 'members', name: t('courses.students'), icon: UserGroupIcon },
   { id: 'grades', name: t('gradebook.title'), icon: AcademicCapIcon },
-  { id: 'analytics', name: 'Analytics', icon: ChartBarIcon },
+  { id: 'analytics', name: t('course.tabs.analytics'), icon: ChartBarIcon },
 ];

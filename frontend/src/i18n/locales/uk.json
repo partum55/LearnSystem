@@ -1278,7 +1278,10 @@
     "description": "Опис",
     "modules": "Модулі",
     "assignments": "Завдання",
-    "quizzes": "Тести"
+    "quizzes": "Тести",
+    "tabs": {
+      "analytics": "Аналітика"
+    }
   },
   "testLab": {
     "title": "Тестова лабораторія",

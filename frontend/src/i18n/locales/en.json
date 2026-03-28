@@ -1278,7 +1278,10 @@
     "description": "Description",
     "modules": "Modules",
     "assignments": "Assignments",
-    "quizzes": "Quizzes"
+    "quizzes": "Quizzes",
+    "tabs": {
+      "analytics": "Analytics"
+    }
   },
   "testLab": {
     "title": "Test Lab",

@@ -133,9 +133,15 @@ public class ExecutionServiceClient {
         body.put("pylint_enabled", request.pylintEnabled());
         body.put("pylint_min_score", request.pylintMinScore());
 
-        if ("io".equals(request.mode()) && request.testCases() != null) {
+        if ("io".equals(request.mode())) {
+            if (request.testCases() == null || request.testCases().isEmpty()) {
+                throw new IllegalArgumentException("IO mode requires at least one test case");
+            }
             body.put("test_cases", request.testCases());
-        } else if ("framework".equals(request.mode()) && request.testCode() != null) {
+        } else if ("framework".equals(request.mode())) {
+            if (request.testCode() == null || request.testCode().isBlank()) {
+                throw new IllegalArgumentException("Framework mode requires test code");
+            }
             body.put("test_code", request.testCode());
         }
 

@@ -3,7 +3,9 @@ package com.university.lms.course.assessment.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.university.lms.course.assessment.domain.Assignment;
+import com.university.lms.course.assessment.domain.ScoringMode;
 import com.university.lms.course.assessment.domain.VplConfig;
+import com.university.lms.course.assessment.domain.VplMode;
 import com.university.lms.course.assessment.domain.VplTestCase;
 import com.university.lms.course.assessment.dto.execution.ExecutionRequest;
 import com.university.lms.course.assessment.dto.execution.ExecutionResponse;
@@ -81,15 +83,29 @@ public class AutoGradingService {
 
         } catch (ExecutionServiceUnavailableException e) {
             log.error("Execution service unavailable for submission {}", submissionId, e);
-            // Leave in IN_REVIEW for manual grading
+            markGradingFailed(submissionId, "Execution service unavailable");
         } catch (Exception e) {
             log.error("Auto-grading failed for submission {}", submissionId, e);
-            // Leave unchanged for manual grading
+            markGradingFailed(submissionId, "Auto-grading error: " + e.getMessage());
+        }
+    }
+
+    private void markGradingFailed(UUID submissionId, String reason) {
+        try {
+            Submission submission = submissionRepository.findById(submissionId).orElse(null);
+            if (submission != null) {
+                submission.setStatus("GRADING_FAILED");
+                submission.setFeedback("Auto-grading failed: " + reason);
+                submissionRepository.save(submission);
+                log.warn("Submission {} marked as GRADING_FAILED: {}", submissionId, reason);
+            }
+        } catch (Exception ex) {
+            log.error("Failed to mark submission {} as GRADING_FAILED", submissionId, ex);
         }
     }
 
     private ExecutionRequest buildRequest(VplConfig config, List<VplTestCase> testCases, String studentCode) {
-        if ("framework".equals(config.mode())) {
+        if (VplMode.FRAMEWORK == VplMode.fromValue(config.mode())) {
             // Framework mode: concatenate all test code
             String combinedTestCode = testCases.stream()
                     .map(tc -> tc.getTestCode() != null ? tc.getTestCode() : "")
@@ -146,7 +162,7 @@ public class AutoGradingService {
 
         double percent = results.scorePercent();
 
-        if ("all_or_nothing".equals(scoringMode)) {
+        if (ScoringMode.ALL_OR_NOTHING == ScoringMode.fromValue(scoringMode)) {
             percent = percent >= 100.0 ? 100.0 : 0.0;
         }
 

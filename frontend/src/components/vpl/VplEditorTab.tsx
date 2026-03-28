@@ -1,7 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import { virtualLabApi, CodeExecutionResult } from '../../api/virtualLab';
 import api from '../../api/client';
+import { LANG_MAP } from '../../constants/vpl';
+import { useResizableSplitPane } from '../../hooks/useResizableSplitPane';
+import { safeGetItem, safeSetItem } from '../../utils/storage';
 
 interface VplEditorAssignment {
   id: string;
@@ -19,12 +22,6 @@ interface VplEditorTabProps {
   onViewResults: () => void;
 }
 
-const LANG_MAP: Record<string, string> = {
-  python: 'python', python3: 'python',
-  javascript: 'javascript', js: 'javascript',
-  java: 'java', cpp: 'cpp', 'c++': 'cpp',
-};
-
 const VplEditorTab: React.FC<VplEditorTabProps> = ({
   assignment, code, onCodeChange, onTestResult, onViewResults,
 }) => {
@@ -40,14 +37,12 @@ const VplEditorTab: React.FC<VplEditorTabProps> = ({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [stdin, setStdin] = useState('');
   const [stdinOpen, setStdinOpen] = useState(false);
-  const [splitPct, setSplitPct] = useState(60);
   const [rightTab, setRightTab] = useState<'output' | 'tests'>('output');
-  const containerRef = useRef<HTMLDivElement>(null);
-  const dragging = useRef(false);
+  const { splitPct, containerRef, onDragStart } = useResizableSplitPane();
 
   // Persist code in localStorage
   useEffect(() => {
-    const saved = localStorage.getItem(`vpl-code-${assignment.id}`);
+    const saved = safeGetItem(`vpl-code-${assignment.id}`);
     if (saved && !code) {
       onCodeChange(saved);
     } else if (assignment.starter_code && !code) {
@@ -57,7 +52,7 @@ const VplEditorTab: React.FC<VplEditorTabProps> = ({
   }, [assignment.id]);
 
   useEffect(() => {
-    if (code) localStorage.setItem(`vpl-code-${assignment.id}`, code);
+    if (code) safeSetItem(`vpl-code-${assignment.id}`, code);
   }, [code, assignment.id]);
 
   // Keyboard shortcut: Cmd/Ctrl+Enter → Run
@@ -137,25 +132,6 @@ const VplEditorTab: React.FC<VplEditorTabProps> = ({
     } finally {
       setSubmitting(false);
     }
-  };
-
-  // Resizable drag handlers
-  const onMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    dragging.current = true;
-    const onMove = (ev: MouseEvent) => {
-      if (!dragging.current || !containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const pct = ((ev.clientX - rect.left) / rect.width) * 100;
-      setSplitPct(Math.max(30, Math.min(80, pct)));
-    };
-    const onUp = () => {
-      dragging.current = false;
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
   };
 
   const outputContent = runResult?.output || runResult?.error;
@@ -303,7 +279,7 @@ const VplEditorTab: React.FC<VplEditorTabProps> = ({
 
         {/* Drag handle */}
         <div
-          onMouseDown={onMouseDown}
+          onMouseDown={onDragStart}
           className="flex-shrink-0 cursor-col-resize flex items-center justify-center group"
           style={{ width: 6, background: 'var(--border-default)', transition: 'background 0.15s' }}
           onMouseEnter={e => (e.currentTarget.style.background = 'var(--border-muted)')}

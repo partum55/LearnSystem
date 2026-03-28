@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -96,14 +97,15 @@ public class VplTestCaseService {
         validateAssignmentExists(assignmentId);
 
         List<VplTestCase> testCases = testCaseRepository.findByAssignmentIdOrderByPositionAsc(assignmentId);
+        Map<UUID, VplTestCase> lookup = testCases.stream()
+                .collect(java.util.stream.Collectors.toMap(VplTestCase::getId, tc -> tc));
 
         for (int i = 0; i < orderedIds.size(); i++) {
             UUID id = orderedIds.get(i);
-            VplTestCase testCase = testCases.stream()
-                    .filter(tc -> tc.getId().equals(id))
-                    .findFirst()
-                    .orElseThrow(() -> new ResourceNotFoundException("VplTestCase", "id", id));
-
+            VplTestCase testCase = lookup.get(id);
+            if (testCase == null) {
+                throw new ResourceNotFoundException("VplTestCase", "id", id);
+            }
             testCase.setPosition(i);
             testCaseRepository.save(testCase);
         }

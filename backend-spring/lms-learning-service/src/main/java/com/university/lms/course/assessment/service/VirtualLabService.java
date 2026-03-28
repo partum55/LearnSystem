@@ -139,44 +139,15 @@ public class VirtualLabService {
 
     private List<TestCaseResult> runTestCases(String code, String language, List<Map<String, Object>> testCases) {
         List<TestCaseResult> results = new ArrayList<>();
-
         for (int index = 0; index < testCases.size(); index++) {
-            Map<String, Object> testCase = testCases.get(index);
-            String name = asString(testCase.get("name"), "Test case " + (index + 1));
-            String input = asString(testCase.get("input"), "");
-            String expectedOutput = asString(testCase.get("expectedOutput"), "");
-            double points = asDouble(testCase.get("points"), 0.0);
-
-            try {
-                CodeExecutionResult executionResult = executeProgram(code, language, input);
-                String actualOutput = asString(executionResult.getOutput(), "").trim();
-                String expected = expectedOutput.trim();
-                boolean passed = expected.equals(actualOutput) && Boolean.TRUE.equals(executionResult.getSuccess());
-
-                results.add(TestCaseResult.builder()
-                        .name(name)
-                        .input(input)
-                        .expectedOutput(expected)
-                        .actualOutput(actualOutput)
-                        .passed(passed)
-                        .error(executionResult.getError())
-                        .points(passed ? points : 0.0)
-                        .build());
-            } catch (ExecutionServiceUnavailableException ex) {
-                throw new RuntimeException("Execution service unavailable. Is it running?");
-            } catch (Exception ex) {
-                log.error("Error running test case {}", name, ex);
-                results.add(TestCaseResult.builder()
-                        .name(name)
-                        .input(input)
-                        .expectedOutput(expectedOutput)
-                        .passed(false)
-                        .error(ex.getMessage())
-                        .points(0.0)
-                        .build());
-            }
+            Map<String, Object> tc = testCases.get(index);
+            results.add(runSingleTestCase(
+                    code, language, index,
+                    asString(tc.get("name"), null),
+                    asString(tc.get("input"), ""),
+                    asString(tc.get("expectedOutput"), ""),
+                    asDouble(tc.get("points"), 0.0)));
         }
-
         return results;
     }
 
@@ -185,39 +156,46 @@ public class VirtualLabService {
         List<TestCaseResult> results = new ArrayList<>();
         for (int index = 0; index < testCases.size(); index++) {
             com.university.lms.course.assessment.domain.VplTestCase tc = testCases.get(index);
-            String name = tc.getName() != null ? tc.getName() : "Test case " + (index + 1);
-            String input = tc.getInput() != null ? tc.getInput() : "";
-            String expectedOutput = tc.getExpectedOutput() != null ? tc.getExpectedOutput() : "";
-            double points = tc.getWeight() != null ? tc.getWeight() : 1.0;
-            try {
-                CodeExecutionResult executionResult = executeProgram(code, language, input);
-                String actualOutput = asString(executionResult.getOutput(), "").trim();
-                String expected = expectedOutput.trim();
-                boolean passed = expected.equals(actualOutput) && Boolean.TRUE.equals(executionResult.getSuccess());
-                results.add(TestCaseResult.builder()
-                        .name(name)
-                        .input(input)
-                        .expectedOutput(expected)
-                        .actualOutput(actualOutput)
-                        .passed(passed)
-                        .error(executionResult.getError())
-                        .points(passed ? points : 0.0)
-                        .build());
-            } catch (ExecutionServiceUnavailableException ex) {
-                throw new RuntimeException("Execution service unavailable. Is it running?");
-            } catch (Exception ex) {
-                log.error("Error running test case {}", name, ex);
-                results.add(TestCaseResult.builder()
-                        .name(name)
-                        .input(input)
-                        .expectedOutput(expectedOutput)
-                        .passed(false)
-                        .error(ex.getMessage())
-                        .points(0.0)
-                        .build());
-            }
+            results.add(runSingleTestCase(
+                    code, language, index,
+                    tc.getName(),
+                    tc.getInput() != null ? tc.getInput() : "",
+                    tc.getExpectedOutput() != null ? tc.getExpectedOutput() : "",
+                    tc.getWeight() != null ? tc.getWeight() : 1.0));
         }
         return results;
+    }
+
+    private TestCaseResult runSingleTestCase(String code, String language, int index,
+            String name, String input, String expectedOutput, double points) {
+        String resolvedName = name != null ? name : "Test case " + (index + 1);
+        try {
+            CodeExecutionResult executionResult = executeProgram(code, language, input);
+            String actualOutput = asString(executionResult.getOutput(), "").trim();
+            String expected = expectedOutput.trim();
+            boolean passed = expected.equals(actualOutput) && Boolean.TRUE.equals(executionResult.getSuccess());
+            return TestCaseResult.builder()
+                    .name(resolvedName)
+                    .input(input)
+                    .expectedOutput(expected)
+                    .actualOutput(actualOutput)
+                    .passed(passed)
+                    .error(executionResult.getError())
+                    .points(passed ? points : 0.0)
+                    .build();
+        } catch (ExecutionServiceUnavailableException ex) {
+            throw new RuntimeException("Execution service unavailable. Is it running?");
+        } catch (Exception ex) {
+            log.error("Error running test case {}", resolvedName, ex);
+            return TestCaseResult.builder()
+                    .name(resolvedName)
+                    .input(input)
+                    .expectedOutput(expectedOutput)
+                    .passed(false)
+                    .error(ex.getMessage())
+                    .points(0.0)
+                    .build();
+        }
     }
 
     private String asString(Object value, String fallback) {

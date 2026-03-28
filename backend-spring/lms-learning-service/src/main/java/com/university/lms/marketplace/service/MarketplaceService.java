@@ -12,7 +12,7 @@ import com.university.lms.marketplace.dto.PublishPluginRequest;
 import com.university.lms.marketplace.repository.MarketplacePluginRepository;
 import com.university.lms.marketplace.repository.MarketplacePluginVersionRepository;
 import com.university.lms.marketplace.repository.MarketplaceReviewRepository;
-import jakarta.persistence.EntityNotFoundException;
+import com.university.lms.common.exception.ResourceNotFoundException;
 import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -34,6 +34,7 @@ import org.springframework.stereotype.Service;
 public class MarketplaceService {
 
   private static final int RECENT_REVIEWS_PREVIEW = 5;
+  private static final int MAX_VERSION_HISTORY = 50;
 
   private final MarketplacePluginRepository pluginRepository;
   private final MarketplacePluginVersionRepository versionRepository;
@@ -64,7 +65,8 @@ public class MarketplaceService {
 
   public List<MarketplacePluginVersionDto> getVersionHistory(String pluginId) {
     MarketplacePlugin plugin = requirePluginByPluginId(pluginId);
-    return versionRepository.findByMarketplacePluginIdOrderByPublishedAtDesc(plugin.getId()).stream()
+    Pageable limit = PageRequest.of(0, MAX_VERSION_HISTORY, Sort.by(Sort.Direction.DESC, "publishedAt"));
+    return versionRepository.findByMarketplacePluginId(plugin.getId(), limit).stream()
         .map(this::toVersionDto)
         .toList();
   }
@@ -147,7 +149,7 @@ public class MarketplaceService {
   private MarketplacePlugin requirePluginByPluginId(String pluginId) {
     return pluginRepository
         .findByPluginId(pluginId)
-        .orElseThrow(() -> new EntityNotFoundException("Plugin not found: " + pluginId));
+        .orElseThrow(() -> new ResourceNotFoundException("Plugin", "pluginId", pluginId));
   }
 
   private void recalculateRating(MarketplacePlugin plugin) {

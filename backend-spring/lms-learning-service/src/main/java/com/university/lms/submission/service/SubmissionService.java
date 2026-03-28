@@ -737,6 +737,9 @@ public class SubmissionService {
   }
 
   private BigDecimal roundScore(BigDecimal score) {
+    if (score.compareTo(BigDecimal.ZERO) < 0) {
+      return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+    }
     return score.setScale(2, RoundingMode.HALF_UP);
   }
 

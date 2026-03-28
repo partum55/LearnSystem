@@ -33,6 +33,7 @@ import {
   getInitialExpandedModules,
   getInitialTab,
 } from './course-detail/courseDetailModel';
+import { safeSessionSetItem } from '../utils/storage';
 
 export const CourseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -98,7 +99,7 @@ export const CourseDetail: React.FC = () => {
       setActiveTab(tab);
       setSearchParams({ tab });
       if (id) {
-        sessionStorage.setItem(`course_${id}_tab`, tab);
+        safeSessionSetItem(`course_${id}_tab`, tab);
       }
     },
     [id, setSearchParams]
@@ -108,17 +109,8 @@ export const CourseDetail: React.FC = () => {
     if (!id) {
       return;
     }
-    sessionStorage.setItem(`course_${id}_expanded`, JSON.stringify([...expandedModules]));
+    safeSessionSetItem(`course_${id}_expanded`, JSON.stringify([...expandedModules]));
   }, [expandedModules, id]);
-
-  useEffect(() => {
-    if (!id) {
-      return;
-    }
-    void fetchCourseById(id);
-    void fetchModules(id);
-    void fetchAssignments(id);
-  }, [id, fetchAssignments, fetchCourseById, fetchModules]);
 
   const fetchAnnouncements = useCallback(async (targetCourseId: string) => {
     setIsLoadingAnnouncements(true);
@@ -136,8 +128,15 @@ export const CourseDetail: React.FC = () => {
     if (!id) {
       return;
     }
-    void fetchAnnouncements(id);
-  }, [fetchAnnouncements, id]);
+    void Promise.all([
+      fetchCourseById(id),
+      fetchModules(id),
+      fetchAssignments(id),
+      fetchAnnouncements(id),
+    ]).catch(err => {
+      console.error('Failed to load course data:', err);
+    });
+  }, [id, fetchAssignments, fetchCourseById, fetchModules, fetchAnnouncements]);
 
   const handleModuleCreated = useCallback(() => {
     if (!id) {
