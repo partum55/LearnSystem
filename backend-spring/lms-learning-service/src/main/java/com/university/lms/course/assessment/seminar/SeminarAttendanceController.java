@@ -62,7 +62,7 @@ public class SeminarAttendanceController {
             @PathVariable String token,
             @RequestParam(required = false) String baseUrl) {
         String checkinUrl = (baseUrl != null ? baseUrl : "")
-                + "/assignments/" + id + "/checkin?token=" + token;
+                + "/assignments/" + id + "/attendance/checkin?token=" + token;
         byte[] image = attendanceService.generateQrImage(checkinUrl);
         return ResponseEntity.ok()
                 .contentType(MediaType.IMAGE_PNG)
