@@ -31,12 +31,9 @@ RUN add-apt-repository ppa:deadsnakes/ppa \
 
 RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.14
 
-RUN python3.14 -m pip install --no-cache-dir \
-    pytest \
-    pylint \
-    pytest-json-report \
-    fastapi \
-    pydantic
+COPY requirements.txt /tmp/requirements.txt
+RUN python3.14 -m pip install --no-cache-dir --upgrade pip \
+    && python3.14 -m pip install --no-cache-dir -r /tmp/requirements.txt
 
 # ==========================================
 # 4. Java 21
@@ -58,10 +55,10 @@ RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
 RUN node --version && jest --version
 
 # ==========================================
-# 6. GCC 13 with C++20 support
+# 6. G++ with C++20 support
 # ==========================================
 RUN apt-get update && apt-get install -y \
-    g++-13 cmake libgtest-dev \
+    g++ cmake libgtest-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN cd /usr/src/googletest \
@@ -69,8 +66,7 @@ RUN cd /usr/src/googletest \
     && make \
     && make install
 
-RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100 \
-    && g++ --version
+RUN g++ --version
 
 # ==========================================
 # 7. Extra JARs

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNowStrict, isToday } from 'date-fns';
@@ -20,6 +20,8 @@ import {
 } from '../api/courses';
 import { extractErrorMessage } from '../api/client';
 import { progressApi, ProgressItem } from '../api/progress';
+import { DEFAULT_DASHBOARD_WIDGETS, DASHBOARD_WIDGETS_STORAGE_KEY } from '../constants/dashboard';
+import { safeGetItem } from '../utils/storage';
 
 interface DashboardCourse extends Course {
   completion_percentage?: number;
@@ -27,18 +29,6 @@ interface DashboardCourse extends Course {
 
 type DashboardStatusFilter = 'active' | 'archived' | 'all';
 
-const DEFAULT_WIDGETS: DashboardWidgetConfig[] = [
-  { id: 'stats-1', type: 'stats', title: 'Statistics', visible: true, order: 0, size: 'full' },
-  { id: 'courses-1', type: 'courses', title: 'My Courses', visible: true, order: 1, size: 'medium' },
-  { id: 'due-today-1', type: 'due-today', title: 'Due Today', visible: true, order: 2, size: 'medium' },
-  { id: 'deadlines-1', type: 'deadlines', title: 'Upcoming Deadlines', visible: true, order: 3, size: 'medium' },
-  { id: 'notifications-1', type: 'notifications', title: 'Recent Activity', visible: true, order: 4, size: 'medium' },
-  { id: 'progress-1', type: 'progress', title: 'Course Progress', visible: true, order: 5, size: 'medium' },
-  { id: 'streak-1', type: 'streak', title: 'Learning Streak', visible: true, order: 6, size: 'small' },
-  { id: 'completed-1', type: 'completed-today', title: 'Completed Today', visible: true, order: 7, size: 'small' },
-  { id: 'calendar-1', type: 'calendar', title: 'Calendar', visible: true, order: 8, size: 'medium' },
-  { id: 'grades-1', type: 'grade-distribution', title: 'Grade Distribution', visible: true, order: 9, size: 'medium' },
-];
 
 const getGreeting = (): string => {
   const h = new Date().getHours();
@@ -60,67 +50,70 @@ export const Dashboard: React.FC = () => {
   const [insightsError, setInsightsError] = useState<string | null>(null);
   const [progressItems, setProgressItems] = useState<ProgressItem[]>([]);
   const [widgets, setWidgets] = useState<DashboardWidgetConfig[]>(() => {
-    const saved = localStorage.getItem('dashboardWidgets');
-    return saved ? JSON.parse(saved) : DEFAULT_WIDGETS;
+    try {
+      const saved = safeGetItem(DASHBOARD_WIDGETS_STORAGE_KEY);
+      return saved ? (JSON.parse(saved) as DashboardWidgetConfig[]) : DEFAULT_DASHBOARD_WIDGETS;
+    } catch {
+      return DEFAULT_DASHBOARD_WIDGETS;
+    }
   });
 
   const isInstructorRole =
     user?.role === 'TEACHER' || user?.role === 'TA' || user?.role === 'SUPERADMIN';
   const isStudentRole = user?.role === 'STUDENT';
 
-  const dashboardCourses = (courses || []) as DashboardCourse[];
-  const semesters = Array.from(
-    new Set(
-      dashboardCourses
-        .map((course) => course.academicYear)
-        .filter((year): year is string => Boolean(year))
-    )
-  ).sort((a, b) => b.localeCompare(a));
+  const semesters = useMemo(() => {
+    const all = (courses || []) as DashboardCourse[];
+    return Array.from(
+      new Set(all.map((c) => c.academicYear).filter((y): y is string => Boolean(y)))
+    ).sort((a, b) => b.localeCompare(a));
+  }, [courses]);
 
-  const filteredCourses = dashboardCourses.filter((course) => {
-    const matchesStatus =
-      statusFilter === 'all'
-        ? true
-        : statusFilter === 'archived'
-          ? course.status === 'ARCHIVED'
-          : course.status !== 'ARCHIVED';
-
-    const matchesSemester =
-      semesterFilter === 'all' || course.academicYear === semesterFilter;
-
-    return matchesStatus && matchesSemester;
-  });
+  const filteredCourses = useMemo(() => {
+    const all = (courses || []) as DashboardCourse[];
+    return all.filter((course) => {
+      const matchesStatus =
+        statusFilter === 'all'
+          ? true
+          : statusFilter === 'archived'
+            ? course.status === 'ARCHIVED'
+            : course.status !== 'ARCHIVED';
+      return matchesStatus && (semesterFilter === 'all' || course.academicYear === semesterFilter);
+    });
+  }, [courses, statusFilter, semesterFilter]);
 
   useEffect(() => {
     fetchCourses();
     fetchNotifications();
   }, [fetchCourses, fetchNotifications]);
 
-  // Fetch progress data across all enrolled courses
+  // Fetch progress data across all enrolled courses in parallel
   useEffect(() => {
-    if (!filteredCourses || filteredCourses.length === 0) return;
+    if (filteredCourses.length === 0) return;
     let cancelled = false;
+    const toFetch = filteredCourses.slice(0, 10);
     void (async () => {
+      const results = await Promise.allSettled(
+        toFetch.map((c) => progressApi.getCourseProgress(c.id))
+      );
+      if (cancelled) return;
       const allItems: ProgressItem[] = [];
-      for (const course of filteredCourses.slice(0, 10)) {
-        try {
-          const res = await progressApi.getCourseProgress(course.id);
-          const modules = res.data?.modules || [];
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          const modules = result.value.data?.modules || [];
           for (const mod of modules) {
             allItems.push(...(mod.items || []));
           }
-        } catch {
-          // skip courses with no progress data
         }
       }
-      if (!cancelled) setProgressItems(allItems);
+      setProgressItems(allItems);
     })();
     return () => { cancelled = true; };
-  }, [filteredCourses]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filteredCourses]);
 
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'dashboardWidgets' && e.newValue) {
+      if (e.key === DASHBOARD_WIDGETS_STORAGE_KEY && e.newValue) {
         setWidgets(JSON.parse(e.newValue));
       }
     };

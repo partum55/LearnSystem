@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+pydantic
+pytest
+pylint
+pytest-json-report

@@ -116,7 +116,7 @@ Markers: `@pytest.mark.smoke`, `.critical`, `.auth`, `.course`, `.quiz`, `.assig
 
 Tech: Java 21, Spring Boot 3.2.2, Spring Cloud 2023.0.0, PostgreSQL, Redis, Flyway, Lombok, MapStruct.
 
-### Execution Service (`execution-service/`)
+### Execution Service (`backend-spring/execution-service/`)
 
 Standalone Python/FastAPI microservice for sandboxed code execution. Not part of the Spring ecosystem.
 

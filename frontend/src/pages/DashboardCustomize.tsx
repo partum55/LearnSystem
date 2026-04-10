@@ -1,62 +1,37 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Layout } from '../components';
 import { DashboardBuilder, DashboardWidgetConfig } from '../components/DashboardBuilder';
 import { Button } from '../components/Button';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
-
-const DEFAULT_WIDGETS: DashboardWidgetConfig[] = [
-  { id: 'stats-1', type: 'stats', title: 'Statistics Overview', visible: true, order: 0, size: 'full' },
-  { id: 'courses-1', type: 'courses', title: 'My Courses', visible: true, order: 1, size: 'medium' },
-  { id: 'due-today-1', type: 'due-today', title: 'Due Today', visible: true, order: 2, size: 'medium' },
-  { id: 'deadlines-1', type: 'deadlines', title: 'Upcoming Deadlines', visible: true, order: 3, size: 'medium' },
-  { id: 'notifications-1', type: 'notifications', title: 'Recent Activity', visible: true, order: 4, size: 'medium' },
-];
+import { DEFAULT_DASHBOARD_WIDGETS, DASHBOARD_WIDGETS_STORAGE_KEY } from '../constants/dashboard';
+import { safeGetItem, safeSetItem } from '../utils/storage';
 
 export const DashboardCustomize: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [widgets, setWidgets] = useState<DashboardWidgetConfig[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
+  const [widgets, setWidgets] = useState<DashboardWidgetConfig[]>(() => {
     try {
-      const saved = localStorage.getItem('dashboardWidgets');
-      setWidgets(saved ? JSON.parse(saved) : DEFAULT_WIDGETS);
+      const saved = safeGetItem(DASHBOARD_WIDGETS_STORAGE_KEY);
+      return saved ? (JSON.parse(saved) as DashboardWidgetConfig[]) : DEFAULT_DASHBOARD_WIDGETS;
     } catch {
-      setWidgets(DEFAULT_WIDGETS);
-    } finally {
-      setLoading(false);
+      return DEFAULT_DASHBOARD_WIDGETS;
     }
-  }, []);
+  });
 
   const handleSave = (updatedWidgets: DashboardWidgetConfig[]) => {
-    try {
-      localStorage.setItem('dashboardWidgets', JSON.stringify(updatedWidgets));
-      setWidgets(updatedWidgets);
-      alert(t('dashboard.builder.saved', 'Dashboard layout saved successfully!'));
-    } catch {
-      alert(t('dashboard.builder.saveFailed', 'Failed to save dashboard layout'));
-    }
+    safeSetItem(DASHBOARD_WIDGETS_STORAGE_KEY, JSON.stringify(updatedWidgets));
+    setWidgets(updatedWidgets);
+    alert(t('dashboard.builder.saved', 'Dashboard layout saved successfully!'));
   };
 
   const handleReset = () => {
     if (window.confirm(t('dashboard.builder.resetConfirm', 'Reset to default layout?'))) {
-      localStorage.removeItem('dashboardWidgets');
-      setWidgets(DEFAULT_WIDGETS);
+      localStorage.removeItem(DASHBOARD_WIDGETS_STORAGE_KEY);
+      setWidgets(DEFAULT_DASHBOARD_WIDGETS);
     }
   };
-
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center h-96">
-          <div className="animate-spin rounded-full h-8 w-8" style={{ borderBottom: '2px solid var(--text-primary)' }} />
-        </div>
-      </Layout>
-    );
-  }
 
   return (
     <Layout>

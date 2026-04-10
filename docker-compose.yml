@@ -74,7 +74,7 @@ services:
     container_name: lms-user-service
     restart: always
     environment:
-      - SPRING_PROFILES_ACTIVE=docker,supabase
+      - SPRING_PROFILES_ACTIVE=docker
       - SERVER_PORT=8081
       - SPRING_DATASOURCE_URL=jdbc:postgresql://${SUPABASE_DB_HOST:-postgres}:${SUPABASE_DB_PORT:-5432}/${SUPABASE_DB_NAME:-lms_db}
       - SPRING_DATASOURCE_USERNAME=${SUPABASE_DB_USER:-lms_user}
@@ -115,9 +115,9 @@ services:
     container_name: lms-learning-service
     restart: always
     environment:
-      - SPRING_PROFILES_ACTIVE=docker,supabase
+      - SPRING_PROFILES_ACTIVE=docker
       - SERVER_PORT=8089
-      # Provide both datasource env styles because docker and supabase profiles can be active together.
+      # Provide both datasource env styles because service code reads both naming schemes.
       - SPRING_DATASOURCE_URL=jdbc:postgresql://${SUPABASE_DB_HOST:-postgres}:${SUPABASE_DB_PORT:-5432}/${SUPABASE_DB_NAME:-lms_db}
       - SPRING_DATASOURCE_USERNAME=${SUPABASE_DB_USER:-lms_user}
       - SPRING_DATASOURCE_PASSWORD=${SUPABASE_DB_PASSWORD:-lms_password_local}
@@ -160,7 +160,7 @@ services:
     container_name: lms-ai-service
     restart: always
     environment:
-      - SPRING_PROFILES_ACTIVE=docker,supabase
+      - SPRING_PROFILES_ACTIVE=docker
       - SERVER_PORT=8085
       # AI service uses DB_URL/DB_USERNAME/DB_PASSWORD (not SPRING_DATASOURCE_*)
       - DB_URL=jdbc:postgresql://${SUPABASE_DB_HOST:-postgres}:${SUPABASE_DB_PORT:-5432}/${SUPABASE_DB_NAME:-lms_db}
@@ -271,7 +271,7 @@ services:
   # ==========================================
 
   execution-service:
-    build: ./execution-service
+    build: ./backend-spring/execution-service
     container_name: lms-execution-service
     privileged: true
     networks:
