@@ -19,17 +19,26 @@ Prefix variables with `NEXT_PUBLIC_` to make them available in the browser.
 | `NEXT_PUBLIC_APP_URL` | Same as `APP_URL` |
 | `NEXT_PUBLIC_API_URL` | Same as `API_URL` |
 | `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Your Supabase anonymous key |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Your Supabase publishable key (`sb_publishable_...`) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | (Alias) Same as publishable key |
 
 ## Java Microservices (Backend)
 
 | Variable | Description |
 | :--- | :--- |
-| `SUPABASE_DB_URL` | JDBC connection string to Supabase Postgres |
-| `SUPABASE_DB_USER` | Postgres user (usually `postgres`) |
+| `SUPABASE_URL` | Your Supabase project URL |
+| `SUPABASE_JWKS_URL` | URL to Supabase JWKS (`https://<ref>.supabase.co/auth/v1/.well-known/jwks.json`) |
+| `SUPABASE_SECRET_KEY` | Your Supabase secret key (`sb_secret_...`) — **NEVER expose to frontend** |
+| `SUPABASE_DB_URL` | JDBC connection string to Supabase Postgres (from Connect dashboard) |
+| `SUPABASE_DB_USER` | Postgres user (from Connect dashboard) |
 | `SUPABASE_DB_PASSWORD` | Postgres password |
-| `SUPABASE_JWT_SECRET` | Secret used to validate Supabase JWTs |
 | `FRONTEND_URL` | URL of the frontend (for CORS) |
+
+### Legacy / Deprecated Variables
+
+- `SUPABASE_JWT_SECRET`: Used for legacy HMAC validation. New code uses JWKS.
+- `SUPABASE_SERVICE_ROLE_KEY`: Replaced by `SUPABASE_SECRET_KEY`.
+- `SUPABASE_ANON_KEY`: Replaced by `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 
 ## Internal Service Discovery (Production)
 

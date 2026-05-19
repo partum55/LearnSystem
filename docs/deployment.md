@@ -17,8 +17,11 @@ LearnSystem is designed for a split deployment model to ensure scalability and p
 ## 1. Supabase Setup
 
 1. Create a new project at [Supabase](https://supabase.com).
-2. Note your **Project URL** and **Anon Key**.
-3. In **Settings > API**, find your **JWT Secret** (required for the Java backend).
+2. Go to **Settings > API**:
+   - Note your **Project URL**.
+   - Note your **Publishable key** (`sb_publishable_...`).
+   - Note your **Secret key** (`sb_secret_...`).
+3. Construct your **JWKS URL**: `https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json`
 4. Run migrations from the root:
    ```bash
    supabase link --project-ref your-project-ref
@@ -36,7 +39,7 @@ LearnSystem is designed for a split deployment model to ensure scalability and p
    - `NEXT_PUBLIC_APP_URL`: `https://app.learnsystem.app`
    - `NEXT_PUBLIC_API_URL`: `https://api.learnsystem.app/api`
    - `NEXT_PUBLIC_SUPABASE_URL`: (From Supabase)
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: (From Supabase)
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: (From Supabase)
 5. Deploy.
 
 ---
@@ -68,6 +71,7 @@ Ensure your domain's A record points to the Droplet's IP.
 
 - [ ] Hibernate `ddl-auto` is set to `validate`.
 - [ ] No internal microservices (User, Learning, AI) have public `ports:` in Docker Compose.
-- [ ] `SUPABASE_JWT_SECRET` is set correctly to match Supabase Auth.
+- [ ] `SUPABASE_JWKS_URL` is set correctly.
+- [ ] `SUPABASE_SECRET_KEY` is kept private and not exposed to frontend.
 - [ ] CORS allowed origins in the Gateway match `https://app.learnsystem.app`.
 - [ ] All sensitive files in Supabase Storage are protected by RLS or Java-controlled permits.

@@ -16,9 +16,9 @@ cp .env.example .env.local
 
 Important variables:
 
-- `NEXT_PUBLIC_SUPABASE_URL` (`https://your-project-ref.supabase.co`)
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` (server-only)
+- `NEXT_PUBLIC_SUPABASE_URL` (`https://aarkyaevxuhlkefayzro.supabase.co`)
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SECRET_KEY` (server-only)
 - `NEXT_PUBLIC_API_URL` (optional compatibility endpoint, default `/api`)
 - `NEXT_PUBLIC_AI_SERVICE_URL` (optional compatibility endpoint, default `/api/ai`)
 

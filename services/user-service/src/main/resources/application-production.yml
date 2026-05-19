@@ -57,8 +57,11 @@ spring:
     enabled: false
     # Schema managed exclusively by Supabase migrations.
 
-jwt:
-  secret: ${SUPABASE_JWT_SECRET}
+# Supabase Configuration
+supabase:
+  url: ${SUPABASE_URL}
+  jwks-url: ${SUPABASE_JWKS_URL}
+  secret-key: ${SUPABASE_SECRET_KEY}
 
 security:
   cors:

@@ -55,9 +55,11 @@ spring:
     # Schema managed exclusively by Supabase migrations.
     # Java service uses ddl-auto: validate only.
 
-# JWT Configuration
-jwt:
-  secret: ${SUPABASE_JWT_SECRET:CHANGE-ME-set-a-secure-jwt-secret-in-env-vars}
+# Supabase Configuration
+supabase:
+  url: ${SUPABASE_URL:https://aarkyaevxuhlkefayzro.supabase.co}
+  jwks-url: ${SUPABASE_JWKS_URL:https://aarkyaevxuhlkefayzro.supabase.co/auth/v1/.well-known/jwks.json}
+  secret-key: ${SUPABASE_SECRET_KEY:}
 
 # Server Configuration
 server:

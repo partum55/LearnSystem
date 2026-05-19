@@ -157,7 +157,9 @@ REQUIRED_VARS=(
     SUPABASE_DB_URL
     SUPABASE_DB_USER
     SUPABASE_DB_PASSWORD
-    SUPABASE_JWT_SECRET
+    SUPABASE_SECRET_KEY
+    NEXT_PUBLIC_SUPABASE_URL
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
     SPRING_PROFILES_ACTIVE
     FRONTEND_URL
     LLAMA_API_KEY
@@ -339,6 +341,8 @@ header "6. Supabase format"
 SUPA_URL="${ENV_VARS[SUPABASE_URL]:-}"
 SUPA_JWKS="${ENV_VARS[SUPABASE_JWKS_URL]:-}"
 SUPA_DB="${ENV_VARS[SUPABASE_DB_URL]:-}"
+SUPA_SECRET="${ENV_VARS[SUPABASE_SECRET_KEY]:-}"
+SUPA_PUB="${ENV_VARS[NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY]:-}"
 
 if [[ "$SUPA_URL" =~ ^https://[a-z0-9]+\.supabase\.co$ ]]; then
     pass "SUPABASE_URL format valid"
@@ -356,6 +360,18 @@ if [[ "$SUPA_DB" == "jdbc:postgresql://"* ]]; then
     pass "SUPABASE_DB_URL is JDBC PostgreSQL format"
 else
     fail "SUPABASE_DB_URL must start with jdbc:postgresql:// (got: $SUPA_DB)"
+fi
+
+if [[ "$SUPA_SECRET" == "sb_secret_"* ]]; then
+    pass "SUPABASE_SECRET_KEY format valid (sb_secret_...)"
+else
+    warn "SUPABASE_SECRET_KEY format unexpected — should start with sb_secret_"
+fi
+
+if [[ "$SUPA_PUB" == "sb_publishable_"* ]]; then
+    pass "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY format valid (sb_publishable_...)"
+else
+    warn "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY format unexpected — should start with sb_publishable_"
 fi
 
 # ==========================================

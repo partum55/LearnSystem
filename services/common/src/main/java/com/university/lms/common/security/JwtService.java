@@ -1,27 +1,20 @@
 package com.university.lms.common.security;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.JwtParser;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.UnsupportedJwtException;
-import io.jsonwebtoken.security.Keys;
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.stereotype.Service;
+import jakarta.annotation.PostConstruct;
 
-import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
-import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 
 /**
- * Supabase JWT validation service shared across Java services.
+ * Supabase JWT validation service using JWKS.
+ * Shared across Java services to validate tokens issued by Supabase Auth.
  */
 @Service
 @Slf4j
@@ -30,33 +23,33 @@ public class JwtService {
     private static final String CLAIM_USER_ID = "userId";
     private static final String CLAIM_SUB = "sub";
     private static final String CLAIM_ROLE = "role";
-    @Value("${jwt.secret}")
-    private String jwtSecret;
 
-    private SecretKey signingKey;
-    private JwtParser jwtParser;
+    @Value("${supabase.jwks-url:https://aarkyaevxuhlkefayzro.supabase.co/auth/v1/.well-known/jwks.json}")
+    private String jwksUrl;
+
+    private JwtDecoder jwtDecoder;
 
     @PostConstruct
     public void initialize() {
-        if (jwtSecret == null || jwtSecret.isBlank()) {
-            throw new IllegalStateException("JWT secret must not be blank. For Supabase integration, use the JWT Secret from settings.");
+        if (jwksUrl != null && !jwksUrl.isBlank()) {
+            try {
+                this.jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwksUrl).build();
+                log.info("Initialized JwtService with JWKS URL: {}", jwksUrl);
+            } catch (Exception e) {
+                log.error("Failed to initialize JwtDecoder with JWKS URL {}: {}", jwksUrl, e.getMessage());
+            }
+        } else {
+            log.error("SUPABASE_JWKS_URL is not configured. JWT validation will fail.");
         }
-
-        byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
-        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
-        
-        this.jwtParser = Jwts.parser()
-                .verifyWith(signingKey)
-                .build();
     }
 
     /**
      * Extract user email from a Supabase token.
      */
     public String extractUsername(String token) {
-        return extractClaim(token, claims -> {
-            String email = claims.get("email", String.class);
-            return email != null && !email.isBlank() ? email : claims.getSubject();
+        return extractClaim(token, jwt -> {
+            String email = jwt.getClaimAsString("email");
+            return email != null && !email.isBlank() ? email : jwt.getSubject();
         });
     }
 
@@ -64,21 +57,23 @@ public class JwtService {
      * Extract user ID from token. Supports both 'userId' and 'sub' (Supabase).
      */
     public UUID extractUserId(String token) {
-        String userId = extractClaim(token, claims -> {
-            String id = claims.get(CLAIM_USER_ID, String.class);
+        String userId = extractClaim(token, jwt -> {
+            // First check for custom 'userId' claim
+            String id = jwt.getClaimAsString(CLAIM_USER_ID);
             if (id == null || id.isBlank()) {
-                id = claims.get(CLAIM_SUB, String.class);
+                // Fallback to standard OIDC 'sub' claim (which Supabase uses for UID)
+                id = jwt.getSubject();
             }
             return id;
         });
 
         if (userId == null || userId.isBlank()) {
-            throw new JwtException("Token is missing user identifier claim (userId or sub)");
+            throw new RuntimeException("Token is missing user identifier claim (userId or sub)");
         }
         try {
             return UUID.fromString(userId);
         } catch (IllegalArgumentException e) {
-            throw new JwtException("Token contains invalid user identifier", e);
+            throw new RuntimeException("Token contains invalid user identifier: " + userId);
         }
     }
 
@@ -86,10 +81,10 @@ public class JwtService {
      * Extract user role from token. Supports standard 'role' claim and Supabase 'app_metadata.role'.
      */
     public String extractRole(String token) {
-        return extractClaim(token, claims -> {
-            String role = claims.get(CLAIM_ROLE, String.class);
+        return extractClaim(token, jwt -> {
+            String role = jwt.getClaimAsString(CLAIM_ROLE);
             if (role == null) {
-                Map<String, Object> appMetadata = claims.get("app_metadata", Map.class);
+                Map<String, Object> appMetadata = jwt.getClaimAsMap("app_metadata");
                 if (appMetadata != null) {
                     role = (String) appMetadata.get("role");
                 }
@@ -99,76 +94,30 @@ public class JwtService {
     }
 
     /**
-     * Extract expiration date from token.
+     * Extract specific claim from token using a resolver function.
      */
-    public Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
-    }
-
-    /**
-     * Extract specific claim from token.
-     */
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
-    }
-
-    /**
-     * Extract all claims from token.
-     */
-    private Claims extractAllClaims(String token) {
-        if (token == null || token.isBlank()) {
-            throw new JwtException("JWT token must not be blank");
+    public <T> T extractClaim(String token, Function<Jwt, T> claimsResolver) {
+        if (jwtDecoder == null) {
+            throw new IllegalStateException("JwtDecoder is not initialized. Check SUPABASE_JWKS_URL.");
         }
-
-        try {
-            return jwtParser.parseSignedClaims(token).getPayload();
-        } catch (ExpiredJwtException e) {
-            log.debug("JWT token is expired: {}", e.getMessage());
-            throw e;
-        } catch (UnsupportedJwtException e) {
-            log.debug("JWT token is unsupported: {}", e.getMessage());
-            throw e;
-        } catch (MalformedJwtException e) {
-            log.debug("Invalid JWT token: {}", e.getMessage());
-            throw e;
-        } catch (SecurityException e) {
-            log.debug("Invalid JWT signature: {}", e.getMessage());
-            throw e;
-        } catch (IllegalArgumentException e) {
-            log.debug("JWT claims are invalid: {}", e.getMessage());
-            throw e;
-        }
-    }
-
-    /**
-     * Check if token is expired.
-     */
-    public boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
-
-    /**
-     * Validate token format and signature.
-     */
-    public boolean validateToken(String token) {
-        return tryExtractClaims(token) != null;
+        final Jwt jwt = jwtDecoder.decode(token);
+        return claimsResolver.apply(jwt);
     }
 
     /**
      * Validate a Supabase access token signature and required subject.
      */
     public boolean validateAccessToken(String token) {
-        Claims claims = tryExtractClaims(token);
-        return claims != null && claims.getSubject() != null && !claims.getSubject().isBlank();
-    }
-
-    private Claims tryExtractClaims(String token) {
+        if (jwtDecoder == null) {
+            log.error("JwtDecoder not initialized; cannot validate token.");
+            return false;
+        }
         try {
-            return extractAllClaims(token);
-        } catch (JwtException | IllegalArgumentException e) {
+            Jwt jwt = jwtDecoder.decode(token);
+            return jwt.getSubject() != null && !jwt.getSubject().isBlank();
+        } catch (Exception e) {
             log.debug("JWT validation failed: {}", e.getMessage());
-            return null;
+            return false;
         }
     }
 }

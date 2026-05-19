@@ -52,9 +52,11 @@ llama:
     timeout: 120000  # 2 minutes for long generations
     max-retries: 3
 
-# JWT Configuration (for common JwtService)
-jwt:
-  secret: ${SUPABASE_JWT_SECRET:CHANGE-ME-set-the-supabase-jwt-secret}
+# Supabase Configuration
+supabase:
+  url: ${SUPABASE_URL:https://aarkyaevxuhlkefayzro.supabase.co}
+  jwks-url: ${SUPABASE_JWKS_URL:https://aarkyaevxuhlkefayzro.supabase.co/auth/v1/.well-known/jwks.json}
+  secret-key: ${SUPABASE_SECRET_KEY:}
   issuer: supabase
 
 # Other services

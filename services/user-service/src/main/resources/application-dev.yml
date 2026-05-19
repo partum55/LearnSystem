@@ -32,9 +32,11 @@ spring:
   flyway:
     enabled: false
 
-# JWT Configuration (less secure defaults for development)
-jwt:
-  secret: CHANGE-ME-set-a-secure-jwt-secret-in-env-vars
+# Supabase Configuration
+supabase:
+  url: ${SUPABASE_URL:https://aarkyaevxuhlkefayzro.supabase.co}
+  jwks-url: ${SUPABASE_JWKS_URL:https://aarkyaevxuhlkefayzro.supabase.co/auth/v1/.well-known/jwks.json}
+  secret-key: ${SUPABASE_SECRET_KEY:}
 
 # Security Configuration
 security:

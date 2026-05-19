@@ -142,7 +142,7 @@ build_and_start() {
 wait_for_health() {
     log "Waiting for services to become healthy..."
 
-    local services=("lms-user-service" "lms-learning-service" "lms-ai-service" "lms-api-gateway" "lms-frontend" "lms-execution-service")
+    local services=("lms-user-service" "lms-learning-service" "lms-ai-service" "lms-api-gateway" "lms-execution-service")
     local max_wait=300
     local elapsed=0
     local interval=10
@@ -187,10 +187,11 @@ print_summary() {
     echo -e "${GREEN}  Deployment Complete!${NC}"
     echo -e "${GREEN}========================================${NC}"
     echo ""
-    echo "  Frontend:     http://${ip}:3000"
-    echo "  API Gateway:  http://${ip}:8080"
-    echo "  Eureka:       http://${ip}:8761"
+    echo "  API (via Caddy):  https://api.learnsystem.app"
+    echo "  API Gateway:      http://${ip}:8080 (internal/admin only)"
+    echo "  Eureka:           http://${ip}:8761 (internal only)"
     echo ""
+    echo "  Note: Frontend should be deployed to Vercel pointing to the API URL above."
     echo "Useful commands:"
     echo "  cd $REPO_DIR"
     echo "  docker compose -f $COMPOSE_FILE --env-file $ENV_FILE ps          # status"

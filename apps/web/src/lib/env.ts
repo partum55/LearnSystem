@@ -8,5 +8,5 @@ export const publicEnv = {
   vapidPublicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '',
   pdfEmbedAllowlist: process.env.NEXT_PUBLIC_PDF_EMBED_ALLOWLIST || '',
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+  supabasePublishableKey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
 };

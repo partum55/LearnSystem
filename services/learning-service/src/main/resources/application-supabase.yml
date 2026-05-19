@@ -59,10 +59,11 @@ security:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,https://localhost:3000,http://localhost:5173,https://localhost:5173}
 
-# JWT Configuration
-jwt:
-  secret: ${SUPABASE_JWT_SECRET:CHANGE-ME-set-the-supabase-jwt-secret}
-  issuer: supabase
+# Supabase Configuration
+supabase:
+  url: ${SUPABASE_URL:https://aarkyaevxuhlkefayzro.supabase.co}
+  jwks-url: ${SUPABASE_JWKS_URL:https://aarkyaevxuhlkefayzro.supabase.co/auth/v1/.well-known/jwks.json}
+  secret-key: ${SUPABASE_SECRET_KEY:}
 
 submission:
   storage:

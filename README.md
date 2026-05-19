@@ -29,7 +29,7 @@ A modern, scalable learning management system built with Next.js, Supabase, and 
 **1. Copy and fill the env template:**
 ```bash
 cp config/env/.env.local.example config/env/.env.local
-# edit config/env/.env.local — fill in your Supabase secrets and Groq API key
+# edit config/env/.env.local — fill in your Supabase Publishable/Secret keys and Groq API key
 ```
 
 **2. Start the backend:**
