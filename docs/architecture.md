@@ -26,7 +26,7 @@ graph TD
 - **Communication:** Sends authorized requests to the Gateway using Supabase JWT.
 
 ### Application Layer (`services/`)
-- **Technology:** Java 21, Spring Boot 3.2.
+- **Technology:** Java 25, Spring Boot 3.2.
 - **Gateway:** Unified entry point for all domain logic. Validates Supabase JWTs.
 - **Microservices:**
     - `user-service`: User profile and role management.

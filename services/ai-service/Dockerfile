@@ -1,5 +1,5 @@
 # ── Stage 1: Build ───────────────────────────────────────────────────────────
-FROM maven:3.9-eclipse-temurin-21-alpine AS build
+FROM maven:3.9-eclipse-temurin-25-alpine AS build
 WORKDIR /build
 
 # 1. Modules — copy ALL pom.xml files first (cached until any dep changes)
@@ -23,13 +23,13 @@ RUN --mount=type=cache,target=/root/.m2/repository \
     mvn clean package -pl ai-service -am -DskipTests -B
 
 # ── Stage 2: Extract layers ───────────────────────────────────────────────────
-FROM eclipse-temurin:21-jre-alpine AS extractor
+FROM eclipse-temurin:25-jre-alpine AS extractor
 WORKDIR /extractor
 COPY --from=build /build/ai-service/target/*.jar app.jar
 RUN java -Djarmode=layertools -jar app.jar extract
 
 # ── Stage 3: Runtime ─────────────────────────────────────────────────────────
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:25-jre-alpine
 
 # 1. Environment — system packages
 RUN apk add --no-cache curl

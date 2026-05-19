@@ -244,7 +244,7 @@ def health():
         "languages": ["python", "java", "javascript", "cpp"],
         "versions": {
             "python": "3.14.3",
-            "java": "21",
+            "java": "25",
             "node": "24",
             "cpp": "GCC 13 / C++20",
         },
@@ -268,7 +268,7 @@ def languages():
         {
             "name": "java",
             "display_name": "Java",
-            "version": "21",
+            "version": "25",
             "test_framework": "junit",
             "supports_pylint": False,
         },

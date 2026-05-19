@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This repository contains a multi-service LMS. `frontend/` is the React 18 + TypeScript + Vite app; source lives in `frontend/src`, with pages in `src/pages`, shared UI in `src/components`, API clients in `src/api`, and hooks in `src/queries` and `src/mutations`. `backend-spring/` is a Java 21 multi-module Maven project with services such as `lms-user-service`, `lms-learning-service`, `lms-ai-service`, and `lms-api-gateway`. `execution-service/` contains the Python code runner. `e2e-tests/` contains Playwright/pytest browser tests. Deployment files live in `docker-compose.yml`, `k8s/`, `deploy.sh`, and `run-local.sh`.
+This repository contains a multi-service LMS. `apps/web/` is the Next.js app. `services/` is a Java 25 multi-module Maven project with services such as `user-service`, `learning-service`, `ai-service`, and `gateway`. `services/execution-service/` contains the Python code runner.
 
 ## Build, Test, and Development Commands
 

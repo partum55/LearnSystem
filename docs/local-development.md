@@ -5,7 +5,7 @@ This guide explains how to run the LearnSystem project locally while connecting 
 ## 1. Prerequisites
 - [Node.js](https://nodejs.org/) (v20+ recommended)
 - [Docker](https://www.docker.com/) & Docker Compose
-- Java 21 & Maven (Optional: if you want to run backend services via IDE instead of Docker)
+- Java 25 & Maven (Optional: if you want to run backend services via IDE instead of Docker)
 - A Supabase Project (Create one at [supabase.com](https://supabase.com))
 
 ## 2. Supabase Dashboard Setup

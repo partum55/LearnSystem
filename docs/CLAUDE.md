@@ -114,7 +114,7 @@ Markers: `@pytest.mark.smoke`, `.critical`, `.auth`, `.course`, `.quiz`, `.assig
 - **lms-api-gateway** — Route predicates in `application.yml`, circuit breaker, rate limiting
 - **lms-eureka-server** — Netflix Eureka
 
-Tech: Java 21, Spring Boot 3.2.2, Spring Cloud 2023.0.0, PostgreSQL, Redis, Flyway, Lombok, MapStruct.
+Tech: Java 25, Spring Boot 3.2.2, Spring Cloud 2023.0.0, PostgreSQL, Redis, Flyway, Lombok, MapStruct.
 
 ### Execution Service (`execution-service/`)
 
@@ -123,7 +123,7 @@ Standalone Python/FastAPI microservice for sandboxed code execution. Not part of
 - **`main.py`** — FastAPI app, endpoints: `POST /execute` (with test cases), `POST /execute/raw` (stdin), `GET /health`, `GET /languages`
 - **`isolate_runner.py`** — Isolate sandbox wrapper (process isolation)
 - **`box_pool.py`** — Box pool management (up to 100 concurrent sandboxes)
-- **`language_registry.py`** — Language configs (Python 3.14, Java 21, Node.js 24/JS, GCC 13/C++)
+- **`language_registry.py`** — Language configs (Python 3.14, Java 25, Node.js 24/JS, GCC 13/C++)
 - **`test_runner.py`** — I/O and framework test execution (pytest, JUnit, Jest, GTest)
 - **`pylint_runner.py`** — Python code quality checks
 
@@ -177,7 +177,7 @@ Dark monochrome design using CSS custom properties in `design-system.css`:
 
 ### Dockerfiles
 - `Dockerfile` — Generic service builder
-- `Dockerfile.learning` — Learning service with Java 21 + Python support for plugin runtime
+- `Dockerfile.learning` — Learning service with Java 25 + Python support for plugin runtime
 - `Dockerfile.local` — Local development variant
 
 ### Docker Memory Limits
@@ -212,7 +212,7 @@ GitHub Actions workflows in `.github/workflows/`:
 
 ## Environment Setup
 
-Prerequisites: Docker + Docker Compose, Node.js 22+, npm 10+, Java 21, Maven 3.9+.
+Prerequisites: Docker + Docker Compose, Node.js 22+, npm 10+, Java 25, Maven 3.9+.
 
 Key env vars: `LLAMA_API_KEY` (Groq), `JWT_SECRET`, `AES_ENCRYPTION_KEY`, `INTERNAL_SERVICE_TOKEN`, `SUPABASE_DB_URL` (production), `POSTGRES_PASSWORD` (dev), `VITE_API_URL` (default `/api`), `GATEWAY_CORS_ALLOWED_ORIGINS`.
 

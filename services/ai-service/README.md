@@ -269,7 +269,7 @@ mvn spring-boot:run
 
 ## Вимоги
 
-- Java 21
+- Java 25
 - Spring Boot 3.2.2
 - Ollama з моделлю Llama 3.1
 - Learning Service (порт 8089)

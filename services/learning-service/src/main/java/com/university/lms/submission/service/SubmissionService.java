@@ -11,17 +11,7 @@ import com.university.lms.submission.domain.Submission;
 import com.university.lms.submission.domain.SubmissionComment;
 import com.university.lms.submission.domain.SubmissionFile;
 import com.university.lms.submission.domain.SubmissionGradeAudit;
-import com.university.lms.submission.dto.AddCommentRequest;
-import com.university.lms.submission.dto.BulkPublishGradesRequest;
-import com.university.lms.submission.dto.BulkPublishGradesResponse;
-import com.university.lms.submission.dto.CreateSubmissionRequest;
-import com.university.lms.submission.dto.GradeDraftRequest;
-import com.university.lms.submission.dto.PublishGradeRequest;
-import com.university.lms.submission.dto.ReviewQueueResponse;
-import com.university.lms.submission.dto.SpeedGraderResponse;
-import com.university.lms.submission.dto.SubmissionResponse;
-import com.university.lms.submission.dto.SubmitSubmissionRequest;
-import com.university.lms.submission.dto.UpdateSubmissionDraftRequest;
+import com.university.lms.submission.dto.*;
 import com.university.lms.submission.repository.SubmissionCommentRepository;
 import com.university.lms.submission.repository.SubmissionFileRepository;
 import com.university.lms.submission.repository.SubmissionGradeAuditRepository;
@@ -153,6 +143,49 @@ public class SubmissionService {
     triggerAutoGradingIfApplicable(reloaded);
 
     return toResponseForViewer(findSubmission(reloaded.getId()), "STUDENT");
+  }
+
+  @Transactional
+  public SubmissionResponse submitWithFiles(
+      SupabaseSubmissionRequest request, UUID userId, String userEmail) {
+
+    Submission submission = findOrCreateSubmission(request.getAssignmentId(), userId, userEmail);
+    ensureStudentIdentity(submission, userEmail);
+
+    if (StringUtils.hasText(request.getContent())) {
+      submission.setTextAnswer(request.getContent());
+    }
+
+    LocalDateTime now = LocalDateTime.now();
+    String previousStatus = normalize(submission.getStatus(), STATUS_DRAFT);
+    if (!STATUS_DRAFT.equals(previousStatus)) {
+      submission.setSubmissionVersion(nextSubmissionVersion(submission.getSubmissionVersion()));
+      submission.setLastResubmittedAt(now);
+    }
+
+    transitionToInReview(submission, now);
+    Submission saved = submissionRepository.save(submission);
+
+    if (request.getFiles() != null && !request.getFiles().isEmpty()) {
+      for (SupabaseSubmissionRequest.SupabaseFileMetadata fileMeta : request.getFiles()) {
+        SubmissionFile file =
+            SubmissionFile.builder()
+                .submission(saved)
+                .filename(fileMeta.getFileName())
+                .fileUrl("") // To be set below
+                .storagePath(fileMeta.getPath())
+                .contentType(fileMeta.getContentType())
+                .fileSize(fileMeta.getFileSize())
+                .build();
+
+        SubmissionFile savedFile = submissionFileRepository.save(file);
+        savedFile.setFileUrl("/submissions/" + saved.getId() + "/files/" + savedFile.getId());
+        submissionFileRepository.save(savedFile);
+      }
+    }
+
+    triggerAutoGradingIfApplicable(saved);
+    return toResponseForViewer(findSubmission(saved.getId()), "STUDENT");
   }
 
   @Transactional

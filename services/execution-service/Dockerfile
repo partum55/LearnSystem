@@ -39,10 +39,10 @@ RUN python3.14 -m pip install --no-cache-dir \
     pydantic
 
 # ==========================================
-# 4. Java 21
+# 4. Java 25
 # ==========================================
 RUN apt-get update && apt-get install -y \
-    openjdk-21-jdk maven \
+    openjdk-25-jdk maven \
     && rm -rf /var/lib/apt/lists/*
 
 RUN java -version && mvn -version

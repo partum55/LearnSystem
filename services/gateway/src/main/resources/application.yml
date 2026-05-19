@@ -42,11 +42,12 @@ spring:
         - id: learning-courses
           uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
           predicates:
-            - Path=/api/courses/**
+            - Path=/api/v1/courses/**, /api/courses/**
           filters:
+            - RewritePath=/api/v1/courses(?<segment>/?.*), /api/courses${segment}
             - RewritePath=/api/(?<segment>.*), /api/${segment}
 
-        - id: user-profile
+        - id: user-service
           uri: ${USER_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/api/users/**

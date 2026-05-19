@@ -74,6 +74,19 @@ public class SubmissionController {
         return ResponseEntity.status(201).body(submission);
     }
 
+    @PostMapping(consumes = "multipart/form-data")
+    public ResponseEntity<SubmissionResponse> createMultipart(
+            @RequestParam UUID assignmentId,
+            @RequestParam(required = false) String content,
+            @RequestPart(value = "files", required = false) List<MultipartFile> files,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userEmail") String userEmail) {
+
+        SubmissionResponse submission =
+                submissionService.createAndSubmit(assignmentId, content, files, userId, userEmail);
+        return ResponseEntity.status(201).body(submission);
+    }
+
     @PostMapping(path = "/submit-v2")
     public ResponseEntity<SubmissionResponse> submitWithSupabaseFiles(
             @Valid @RequestBody SupabaseSubmissionRequest request,

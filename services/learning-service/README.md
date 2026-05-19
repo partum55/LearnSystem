@@ -138,7 +138,7 @@ LOG_LEVEL=INFO
 ## 🧪 Running the Service
 
 ### Prerequisites
-- Java 21
+- Java 25
 - PostgreSQL 15+
 - Redis 7+
 - Maven 3.9+
