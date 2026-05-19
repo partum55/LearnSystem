@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import '../index.css';
 import { Providers } from '../components/Providers';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const metadata: Metadata = {
   title: 'Learning Management System',
@@ -12,6 +13,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="uk">
       <body className="antialiased">
         <Providers>{children}</Providers>
+        <SpeedInsights />
       </body>
     </html>
   );
