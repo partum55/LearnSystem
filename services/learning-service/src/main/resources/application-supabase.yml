@@ -30,12 +30,8 @@ spring:
     open-in-view: false
 
   flyway:
-    enabled: true
-    baseline-on-migrate: true
-    baseline-version: 0
-    locations: classpath:db/migration
-    table: course_flyway_schema_history
-    schemas: public
+    enabled: false
+    # Schema managed exclusively by Supabase migrations.
 
   data:
     redis:
@@ -57,12 +53,6 @@ spring:
       use-key-prefix: true
       key-prefix: "course:cache:"
 
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8080}
-          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8080/.well-known/jwks.json}
 
 # Security Configuration
 security:
@@ -73,26 +63,10 @@ security:
 jwt:
   secret: ${SUPABASE_JWT_SECRET:CHANGE-ME-set-the-supabase-jwt-secret}
   issuer: supabase
-  expiration: ${JWT_EXPIRATION:86400000}
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION:2592000000}
 
 submission:
   storage:
     path: ${SUBMISSION_STORAGE_PATH:/tmp/lms-submissions}
-
-deadline:
-  ingestion:
-    cron: ${DEADLINE_INGESTION_CRON:0 */10 * * * *}
-
-workload:
-  snapshot:
-    cron: ${WORKLOAD_SNAPSHOT_CRON:0 0 * * * *}
-
-notification:
-  dispatch:
-    cron: ${NOTIFICATION_DISPATCH_CRON:0 */15 * * * *}
-  thresholds:
-    overload-minutes: ${NOTIFICATION_OVERLOAD_MINUTES:240}
 
 server:
   port: ${PORT:8089}

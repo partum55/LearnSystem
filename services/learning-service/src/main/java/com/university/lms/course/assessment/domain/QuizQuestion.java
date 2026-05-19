@@ -10,7 +10,7 @@ import java.util.UUID;
  * Association between Quiz and Questions with position and point overrides.
  */
 @Entity
-@Table(name = "quiz_questions",
+@Table(schema = "assessment", name = "quiz_questions",
     uniqueConstraints = {
         @UniqueConstraint(name = "uk_quiz_question", columnNames = {"quiz_id", "question_id"})
     },

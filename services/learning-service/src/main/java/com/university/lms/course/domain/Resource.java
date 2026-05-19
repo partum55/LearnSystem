@@ -16,8 +16,7 @@ import org.hibernate.type.SqlTypes;
  * flexible metadata.
  */
 @Entity
-@Table(
-    name = "resources",
+@Table(schema = "learning", name = "resources",
     indexes = {
       @Index(name = "idx_resource_module", columnList = "module_id"),
       @Index(name = "idx_resource_type", columnList = "resource_type")

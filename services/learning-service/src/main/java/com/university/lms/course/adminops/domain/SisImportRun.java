@@ -24,7 +24,7 @@ import org.hibernate.type.SqlTypes;
 
 /** Stores SIS import preview/apply/rollback state and payloads. */
 @Entity
-@Table(name = "sis_import_runs")
+@Table(schema = "operations", name = "sis_import_runs")
 @Getter
 @Setter
 @NoArgsConstructor

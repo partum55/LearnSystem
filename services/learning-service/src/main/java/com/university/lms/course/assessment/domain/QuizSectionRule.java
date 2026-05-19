@@ -8,8 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 
 /** Selector rule inside quiz sections (tag/difficulty/type + quota). */
 @Entity
-@Table(
-    name = "quiz_section_rules",
+@Table(schema = "assessment", name = "quiz_section_rules",
     indexes = {@Index(name = "idx_quiz_section_rules_section", columnList = "section_id")})
 @Getter
 @Setter

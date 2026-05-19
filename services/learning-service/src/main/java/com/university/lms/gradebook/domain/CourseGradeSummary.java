@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @Entity
-@Table(name = "course_grade_summaries",
+@Table(schema = "grading", name = "course_grade_summaries",
         uniqueConstraints = @UniqueConstraint(name = "uk_course_grade_summary_course_student",
                 columnNames = {"course_id", "student_id"}),
         indexes = {

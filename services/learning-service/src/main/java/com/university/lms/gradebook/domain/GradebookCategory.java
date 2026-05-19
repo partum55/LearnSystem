@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "gradebook_categories", uniqueConstraints = {
+@Table(schema = "grading", name = "gradebook_categories", uniqueConstraints = {
         @UniqueConstraint(name = "uk_gradebook_category_course_name", columnNames = {"course_id", "name"})
 })
 @Getter

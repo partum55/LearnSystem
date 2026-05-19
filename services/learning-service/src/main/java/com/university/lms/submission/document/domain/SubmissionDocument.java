@@ -15,7 +15,7 @@ import org.hibernate.type.SqlTypes;
 
 /** Canonical student submission document for the lite editor. */
 @Entity
-@Table(name = "submission_documents")
+@Table(schema = "assessment", name = "submission_documents")
 @Getter
 @Setter
 @NoArgsConstructor

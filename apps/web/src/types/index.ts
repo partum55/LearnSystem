@@ -243,6 +243,36 @@ export interface VplTestCase {
   position: number;
 }
 
+export type ExecutionStatus = 'queued' | 'running' | 'passed' | 'failed' | 'error' | 'timeout';
+
+export interface ExecutionRun {
+  id: string;
+  submissionId?: string;
+  assignmentId: string;
+  userId: string;
+  language: string;
+  status: ExecutionStatus;
+  startedAt?: string;
+  completedAt?: string;
+  timeMs?: number;
+  memoryMb?: number;
+  pylintScore?: number;
+  createdAt: string;
+}
+
+export interface ExecutionTestResult {
+  id: string;
+  runId: string;
+  testCaseId?: string;
+  name: string;
+  passed: boolean;
+  expectedOutput?: string;
+  actualOutput?: string;
+  pointsAwarded?: number;
+  errorMessage?: string;
+  position: number;
+}
+
 // Assignment types
 export type AssignmentType =
   | 'QUIZ'
@@ -421,7 +451,10 @@ export type NotificationType =
   | 'assignment_due'
   | 'grade_posted'
   | 'announcement'
-  | 'course_update';
+  | 'course_update'
+  | 'submission_graded'
+  | 'peer_review_assigned'
+  | 'system';
 
 export interface Notification {
   id: string;
@@ -448,23 +481,6 @@ export interface EngagementStats {
   dailyActiveUsers: number;
   weeklyActiveUsers: number;
   avgTimeSpent: number;
-}
-
-// Plugin types
-export type PluginType = 'ACTIVITY' | 'REPORT' | 'BLOCK' | 'INTEGRATION' | 'THEME';
-export type PluginStatus = 'ENABLED' | 'DISABLED' | 'ERROR';
-
-export interface InstalledPlugin {
-  pluginId: string;
-  name: string;
-  version: string;
-  description: string;
-  author: string;
-  type: PluginType;
-  status: PluginStatus;
-  permissions: string[];
-  config: Record<string, string>;
-  installedAt: string;
 }
 
 // API Response types

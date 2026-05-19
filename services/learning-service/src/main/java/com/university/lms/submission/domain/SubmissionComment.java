@@ -11,7 +11,7 @@ import java.util.UUID;
  * Inline/general comment on submission.
  */
 @Entity
-@Table(name = "submission_comments", indexes = {
+@Table(schema = "assessment", name = "submission_comments", indexes = {
         @Index(name = "idx_submission_comments_submission", columnList = "submission_id"),
         @Index(name = "idx_submission_comments_created", columnList = "created_at")
 })

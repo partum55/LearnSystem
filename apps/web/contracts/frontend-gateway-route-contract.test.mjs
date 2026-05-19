@@ -9,14 +9,8 @@ const __dirname = path.dirname(__filename);
 const FRONTEND_DIR = path.resolve(__dirname, '..');
 const FRONTEND_SRC_DIR = path.join(FRONTEND_DIR, 'src');
 const GATEWAY_CONFIG_FILES = [
-  path.resolve(
-    FRONTEND_DIR,
-    '../backend-spring/lms-api-gateway/src/main/resources/application.yml',
-  ),
-  path.resolve(
-    FRONTEND_DIR,
-    '../backend-spring/lms-api-gateway/src/main/resources/application-docker.yml',
-  ),
+  path.resolve(FRONTEND_DIR, '../../services/gateway/src/main/resources/application.yml'),
+  path.resolve(FRONTEND_DIR, '../../services/gateway/src/main/resources/application-docker.yml'),
 ];
 
 const EXCLUDED_SOURCE_FILES = new Set([
@@ -25,8 +19,7 @@ const EXCLUDED_SOURCE_FILES = new Set([
 ]);
 
 const LOCAL_GATEWAY_PATTERNS = ['/api/admin/**'];
-const REQUIRED_FRONTEND_PREFIXES = ['/submissions', '/notifications'];
-const REQUIRED_DEADLINE_PREFIXES = ['/calendar', '/deadlines'];
+const REQUIRED_FRONTEND_PREFIXES = ['/courses'];
 
 test('frontend API endpoints must match gateway route contracts', () => {
   const frontendEndpoints = collectFrontendApiEndpoints();
@@ -53,7 +46,7 @@ test('frontend API endpoints must match gateway route contracts', () => {
   }
 });
 
-test('frontend must keep submissions and deadline-related integrations', () => {
+test('frontend must keep required gateway integrations', () => {
   const frontendEndpoints = collectFrontendApiEndpoints();
   const paths = new Set(frontendEndpoints.map(({ endpoint }) => normalizeEndpoint(endpoint)));
 
@@ -63,13 +56,6 @@ test('frontend must keep submissions and deadline-related integrations', () => {
       `Missing frontend integration endpoint for ${prefix}`,
     );
   }
-
-  assert.ok(
-    [...paths].some((endpoint) =>
-      REQUIRED_DEADLINE_PREFIXES.some((prefix) => endpoint.startsWith(prefix)),
-    ),
-    'Missing deadline integration endpoint. Expected at least one /calendar or /deadlines endpoint.',
-  );
 });
 
 function collectFrontendApiEndpoints() {
@@ -91,22 +77,34 @@ function collectFrontendApiEndpoints() {
     }
   }
 
-  endpoints.push(...extractCalendarSubscriptionEndpoint());
-
   return dedupeEndpoints(endpoints);
 }
 
 function extractApiClientAliases(source) {
   const aliases = new Set();
-  const importPatterns = [
+  const defaultImportPatterns = [
     /import\s+([A-Za-z_$][\w$]*)\s+from\s+['"][^'"]*\/api\/client['"]/g,
     /import\s+([A-Za-z_$][\w$]*)\s+from\s+['"]\.\/client['"]/g,
   ];
+  const namedImportPatterns = [
+    /import\s+\{([^}]+)\}\s+from\s+['"][^'"]*\/api\/client['"]/g,
+    /import\s+\{([^}]+)\}\s+from\s+['"]\.\/client['"]/g,
+  ];
 
-  for (const pattern of importPatterns) {
+  for (const pattern of defaultImportPatterns) {
     let match;
     while ((match = pattern.exec(source)) !== null) {
       aliases.add(match[1]);
+    }
+  }
+
+  for (const pattern of namedImportPatterns) {
+    let match;
+    while ((match = pattern.exec(source)) !== null) {
+      for (const specifier of match[1].split(',')) {
+        const [imported, local] = specifier.split(/\s+as\s+/).map((part) => part.trim());
+        if (imported === 'apiClient') aliases.add(local || imported);
+      }
     }
   }
   return aliases;
@@ -125,27 +123,6 @@ function extractApiCallEndpoints(source, aliases) {
   }
 
   return endpoints;
-}
-
-function extractCalendarSubscriptionEndpoint() {
-  const calendarPage = path.join(FRONTEND_SRC_DIR, 'pages/CalendarPage.tsx');
-  if (!fs.existsSync(calendarPage)) return [];
-
-  const source = fs.readFileSync(calendarPage, 'utf8');
-  const calendarPattern = /\/api\/calendar\/student\/\$\{[^}]+\}\/subscribe/;
-  assert.match(
-    source,
-    calendarPattern,
-    `${relative(calendarPage)} must keep calendar subscription URL integration`,
-  );
-
-  return [
-    {
-      file: calendarPage,
-      endpoint: '/calendar/student/__param__/subscribe',
-      gatewayPath: '/api/calendar/student/__param__/subscribe',
-    },
-  ];
 }
 
 function normalizeEndpoint(endpoint) {

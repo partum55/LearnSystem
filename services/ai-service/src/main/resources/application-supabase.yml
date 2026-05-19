@@ -27,11 +27,8 @@ spring:
 
   # Flyway Configuration
   flyway:
-    enabled: true
-    baseline-on-migrate: true
-    baseline-version: 0
-    locations: classpath:db/migration
-    table: ai_flyway_schema_history
+    enabled: false
+    # Schema managed exclusively by Supabase migrations.
 
   # Redis Configuration
   data:
@@ -59,8 +56,6 @@ llama:
 jwt:
   secret: ${SUPABASE_JWT_SECRET:CHANGE-ME-set-the-supabase-jwt-secret}
   issuer: supabase
-  expiration: ${JWT_EXPIRATION:86400000}
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION:2592000000}
 
 # Other services
 services:

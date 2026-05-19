@@ -2,9 +2,6 @@ package com.university.lms.course.contract;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.university.lms.deadline.calendar.web.CalendarController;
-import com.university.lms.deadline.deadline.web.DeadlineController;
-import com.university.lms.deadline.notification.web.NotificationController;
 import com.university.lms.submission.web.SubmissionController;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -34,9 +31,6 @@ class LearningEndpointContractTest {
   @Test
   void controllersMustExposeExpectedBasePaths() {
     assertBasePath(SubmissionController.class, "/submissions");
-    assertBasePath(DeadlineController.class, "/deadlines");
-    assertBasePath(CalendarController.class, "/calendar");
-    assertBasePath(NotificationController.class, "/notifications");
   }
 
   @Test
@@ -46,20 +40,6 @@ class LearningEndpointContractTest {
     assertMethodPath(SubmissionController.class, "submit", "/{submissionId}/submit");
     assertMethodPath(SubmissionController.class, "grade", "/{submissionId}/grade");
     assertMethodPath(SubmissionController.class, "getSpeedgraderQueue", "/speedgrader");
-  }
-
-  @Test
-  void deadlineAndCalendarControllersMustExposeSchedulingRoutes() {
-    assertMethodPath(DeadlineController.class, "getDeadlinesForGroup", "/group/{studentGroupId}");
-    assertMethodPath(CalendarController.class, "getMonth", "/student/{studentGroupId}/month");
-    assertMethodPath(CalendarController.class, "getConflicts", "/student/{studentGroupId}/conflicts");
-    assertMethodPath(CalendarController.class, "downloadIcs", "/student/{studentGroupId}/ics");
-  }
-
-  @Test
-  void notificationControllerMustExposeListAndCountRoutes() {
-    assertMethodPath(NotificationController.class, "getNotifications", "");
-    assertMethodPath(NotificationController.class, "getNotificationCount", "/count");
   }
 
   private static void assertBasePath(Class<?> controllerClass, String expectedPath) {

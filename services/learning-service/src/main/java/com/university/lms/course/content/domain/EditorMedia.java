@@ -8,8 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 
 /** Metadata for files uploaded by the canonical editor (image/pdf). */
 @Entity
-@Table(
-    name = "editor_media",
+@Table(schema = "learning", name = "editor_media",
     indexes = {
       @Index(name = "idx_editor_media_uploaded_by_created_at", columnList = "uploaded_by, created_at")
     })

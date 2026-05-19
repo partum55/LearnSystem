@@ -11,8 +11,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 /** Section definition for quota-based randomized quiz question selection. */
 @Entity
-@Table(
-    name = "quiz_sections",
+@Table(schema = "assessment", name = "quiz_sections",
     indexes = {
       @Index(name = "idx_quiz_sections_quiz_position", columnList = "quiz_id, position")
     })

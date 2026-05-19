@@ -3,6 +3,7 @@ package com.university.lms.ai.repository;
 import com.university.lms.ai.domain.entity.AIGenerationLog;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,17 +12,17 @@ import org.springframework.stereotype.Repository;
 
 /** Repository for AIGenerationLog entity. */
 @Repository
-public interface AIGenerationLogRepository extends JpaRepository<AIGenerationLog, String> {
+public interface AIGenerationLogRepository extends JpaRepository<AIGenerationLog, UUID> {
 
   /** Find logs by user ID */
-  Page<AIGenerationLog> findByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
+  Page<AIGenerationLog> findByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
 
   /** Find logs by content type */
   Page<AIGenerationLog> findByContentTypeOrderByCreatedAtDesc(
       String contentType, Pageable pageable);
 
   /** Find logs by course ID */
-  List<AIGenerationLog> findByCourseIdOrderByCreatedAtDesc(String courseId);
+  List<AIGenerationLog> findByCourseIdOrderByCreatedAtDesc(UUID courseId);
 
   /** Find logs within a date range */
   List<AIGenerationLog> findByCreatedAtBetweenOrderByCreatedAtDesc(Instant start, Instant end);
@@ -44,7 +45,7 @@ public interface AIGenerationLogRepository extends JpaRepository<AIGenerationLog
   /** Get user's total token usage */
   @Query(
       "SELECT SUM(l.promptTokens + l.completionTokens) FROM AIGenerationLog l WHERE l.userId = :userId")
-  Long getTotalTokenUsageByUser(String userId);
+  Long getTotalTokenUsageByUser(UUID userId);
 
   /** Count failures by provider */
   @Query(

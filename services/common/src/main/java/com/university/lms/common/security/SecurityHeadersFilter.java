@@ -74,8 +74,7 @@ public class SecurityHeadersFilter extends OncePerRequestFilter {
 
     private boolean isSensitiveEndpoint(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.startsWith("/api/auth/")
-                || path.startsWith("/api/users/")
+        return path.startsWith("/api/users/")
                 || path.startsWith("/api/admin/")
                 || path.startsWith("/api/actuator/")
                 || path.startsWith("/actuator/");

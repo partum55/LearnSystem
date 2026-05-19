@@ -11,6 +11,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -46,8 +47,8 @@ public class AIAuditService {
               .completionTokens(response.getCompletionTokens())
               .latencyMs(response.getLatencyMs())
               .success(true)
-              .userId(userId)
-              .courseId(courseId)
+              .userId(parseUuid(userId))
+              .courseId(parseUuid(courseId))
               .build();
 
       logRepository.save(logEntry);
@@ -82,8 +83,8 @@ public class AIAuditService {
               .provider(provider != null ? provider : "unknown")
               .success(false)
               .errorMessage(truncateMessage(errorMessage, 1000))
-              .userId(userId)
-              .courseId(courseId)
+              .userId(parseUuid(userId))
+              .courseId(parseUuid(courseId))
               .build();
 
       logRepository.save(logEntry);
@@ -115,7 +116,7 @@ public class AIAuditService {
 
   /** Get total token usage for a user. */
   public Long getTotalTokenUsage(String userId) {
-    Long usage = logRepository.getTotalTokenUsageByUser(userId);
+    Long usage = logRepository.getTotalTokenUsageByUser(parseUuid(userId));
     return usage != null ? usage : 0L;
   }
 
@@ -145,7 +146,7 @@ public class AIAuditService {
   public List<AIGenerationLog> getRecentLogsForUser(String userId, int limit) {
     return logRepository
         .findByUserIdOrderByCreatedAtDesc(
-            userId, org.springframework.data.domain.PageRequest.of(0, limit))
+            parseUuid(userId), org.springframework.data.domain.PageRequest.of(0, limit))
         .getContent();
   }
 
@@ -158,6 +159,13 @@ public class AIAuditService {
   public List<AIGenerationLog> getLogsLastHours(int hours) {
     Instant start = Instant.now().minus(hours, ChronoUnit.HOURS);
     return logRepository.findByCreatedAtBetweenOrderByCreatedAtDesc(start, Instant.now());
+  }
+
+  private UUID parseUuid(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    return UUID.fromString(value);
   }
 
   private String truncateMessage(String message, int maxLength) {

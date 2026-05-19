@@ -54,12 +54,6 @@ spring:
       use-key-prefix: true
       key-prefix: "course:cache:"
 
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8080}
-          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8080/.well-known/jwks.json}
 
 # Feign Configuration
 feign:
@@ -114,8 +108,6 @@ logging:
 # JWT Configuration
 jwt:
   secret: ${SUPABASE_JWT_SECRET:CHANGE-ME-set-a-secure-jwt-secret-in-env-vars}
-  expiration: ${JWT_EXPIRATION:86400000}
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION:2592000000}
 
 # Eureka Client Configuration
 eureka:

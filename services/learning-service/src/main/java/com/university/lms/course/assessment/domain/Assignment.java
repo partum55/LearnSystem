@@ -16,7 +16,7 @@ import java.util.*;
  * Supports quizzes, file uploads, text submissions, code submissions, and more.
  */
 @Entity
-@Table(name = "assignments", indexes = {
+@Table(schema = "assessment", name = "assignments", indexes = {
     @Index(name = "idx_assignment_course", columnList = "course_id"),
     @Index(name = "idx_assignment_module", columnList = "module_id"),
     @Index(name = "idx_assignment_type", columnList = "assignment_type"),

@@ -9,8 +9,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 /** Optional organizational sub-section within a module. */
 @Entity
-@Table(
-    name = "topics",
+@Table(schema = "learning", name = "topics",
     indexes = {@Index(name = "idx_topics_module_position", columnList = "module_id, position")})
 @Getter
 @Setter

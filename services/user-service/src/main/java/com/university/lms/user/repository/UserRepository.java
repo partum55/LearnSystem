@@ -44,16 +44,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByStudentId(String studentId);
 
     /**
-     * Find user by email verification token.
-     */
-    Optional<User> findByEmailVerificationTokenAndIsDeletedFalse(String token);
-
-    /**
-     * Find user by password reset token.
-     */
-    Optional<User> findByPasswordResetTokenAndIsDeletedFalse(String token);
-
-    /**
      * Count not-deleted users by role.
      */
     long countByRoleAndIsDeletedFalse(UserRole role);

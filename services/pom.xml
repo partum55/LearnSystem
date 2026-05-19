@@ -25,7 +25,7 @@
         <jjwt.version>0.12.3</jjwt.version>
         <postgresql.version>42.7.1</postgresql.version>
         <flyway.version>10.4.1</flyway.version>
-        <lombok.version>1.18.30</lombok.version>
+        <lombok.version>1.18.42</lombok.version>
         <mapstruct.version>1.5.5.Final</mapstruct.version>
         <micrometer.version>1.12.2</micrometer.version>
     </properties>

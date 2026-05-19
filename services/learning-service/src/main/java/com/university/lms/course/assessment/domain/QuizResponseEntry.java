@@ -12,8 +12,7 @@ import org.hibernate.type.SqlTypes;
 
 /** Per-question response captured for a quiz attempt question snapshot. */
 @Entity
-@Table(
-    name = "quiz_responses",
+@Table(schema = "assessment", name = "quiz_responses",
     indexes = {@Index(name = "idx_quiz_responses_attempt", columnList = "attempt_id")},
     uniqueConstraints = {
       @UniqueConstraint(name = "uk_quiz_response_attempt_question", columnNames = {"attempt_question_id"})

@@ -12,7 +12,7 @@
 
     <artifactId>learning-service</artifactId>
     <name>LMS Learning Service</name>
-    <description>Combined learning domain service (courses, assessments, gradebook, submissions, deadlines)</description>
+    <description>Combined learning domain service (courses, assessments, gradebook, submissions)</description>
 
     <dependencies>
         <!-- Internal Dependencies -->

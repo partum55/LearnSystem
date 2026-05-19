@@ -15,7 +15,7 @@ import java.util.UUID;
  * Quiz/Test entity.
  */
 @Entity
-@Table(name = "quizzes", indexes = {
+@Table(schema = "assessment", name = "quizzes", indexes = {
         @Index(name = "idx_quiz_course", columnList = "course_id")
 })
 @Getter

@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "lesson_step_progress")
+@Table(schema = "learning", name = "lesson_step_progress")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class LessonStepProgress {
     @Id

@@ -21,7 +21,7 @@ import org.hibernate.type.SqlTypes;
 
 /** Audit entry for SIS and admin bulk operations. */
 @Entity
-@Table(name = "sis_audit_logs")
+@Table(schema = "operations", name = "sis_audit_logs")
 @Getter
 @Setter
 @NoArgsConstructor

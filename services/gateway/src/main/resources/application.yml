@@ -49,7 +49,7 @@ spring:
         - id: user-profile
           uri: ${USER_SERVICE_URL:http://localhost:8081}
           predicates:
-            - Path=/api/users/**, /api/auth/**
+            - Path=/api/users/**
           filters:
             - RewritePath=/api/(?<segment>.*), /api/${segment}
 
@@ -120,21 +120,6 @@ spring:
             - Path=/api/v1/gradebook/**, /api/gradebook/**
           filters:
             - RewritePath=/api/v1/gradebook(?<segment>/?.*), /api/gradebook${segment}
-
-        - id: learning-websocket
-          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
-          predicates:
-            - Path=/ws/**
-
-        - id: learning-deadlines
-          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
-          predicates:
-            - Path=/api/v1/calendar/**, /api/calendar/**, /api/v1/deadlines/**, /api/deadlines/**, /api/v1/notifications/**, /api/notifications/**
-          filters:
-            - RewritePath=/api/v1/calendar(?<segment>/?.*), /api/calendar${segment}
-            - RewritePath=/api/v1/deadlines(?<segment>/?.*), /api/deadlines${segment}
-            - RewritePath=/api/v1/notifications(?<segment>/?.*), /api/notifications${segment}
-
         - id: ai-service-v1
           uri: ${AI_SERVICE_URL:http://localhost:8085}
           predicates:

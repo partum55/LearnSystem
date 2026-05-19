@@ -12,7 +12,7 @@ import org.hibernate.type.SqlTypes;
 
 /** Published snapshot document for student-visible page rendering. */
 @Entity
-@Table(name = "page_published_documents")
+@Table(schema = "learning", name = "page_published_documents")
 @Getter
 @Setter
 @NoArgsConstructor

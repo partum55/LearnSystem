@@ -18,7 +18,7 @@ import java.util.Locale;
 import java.util.UUID;
 
 /**
- * Base JWT authentication filter with token blacklist and audit logging.
+ * Base Supabase JWT authentication filter with audit logging.
  * Services should extend this and implement getUserDetails() for their specific user lookup.
  */
 @Slf4j
@@ -28,15 +28,12 @@ public abstract class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     protected final JwtService jwtService;
-    protected final JwtTokenBlacklistService tokenBlacklistService;
     protected final SecurityAuditLogger auditLogger;
 
     protected JwtAuthenticationFilter(
             JwtService jwtService,
-            JwtTokenBlacklistService tokenBlacklistService,
             SecurityAuditLogger auditLogger) {
         this.jwtService = jwtService;
-        this.tokenBlacklistService = tokenBlacklistService;
         this.auditLogger = auditLogger;
     }
 
@@ -52,14 +49,6 @@ public abstract class JwtAuthenticationFilter extends OncePerRequestFilter {
             String jwt = extractJwtFromRequest(request);
 
             if (jwt != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                // Check if token is blacklisted
-                if (tokenBlacklistService.isBlacklisted(jwt)) {
-                    log.warn("Attempt to use blacklisted token from IP: {}", clientIp);
-                    auditLogger.logInvalidTokenAttempt(clientIp, "Token is blacklisted");
-                    sendUnauthorizedResponse(response, "Token has been revoked");
-                    return;
-                }
-
                 // Validate token
                 if (jwtService.validateAccessToken(jwt)) {
                     UUID userId = jwtService.extractUserId(jwt);

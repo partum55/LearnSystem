@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "grade_histories", indexes = {
+@Table(schema = "grading", name = "grade_histories", indexes = {
         @Index(name = "idx_grade_history_entry", columnList = "gradebook_entry_id"),
         @Index(name = "idx_grade_history_changed_at", columnList = "changed_at")
 })

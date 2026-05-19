@@ -4,16 +4,17 @@ import lombok.Data;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Data
 public class PeerReviewDto {
-    private Long id;
-    private Long assignmentId;
-    private Long reviewerUserId;
+    private UUID id;
+    private UUID assignmentId;
+    private UUID reviewerUserId;
     private String reviewerName; // Only shown if not anonymous
-    private Long revieweeUserId;
+    private UUID revieweeUserId;
     private String revieweeName;
-    private Long submissionId;
+    private UUID submissionId;
     private Boolean isAnonymous;
     private String status;
     private Double overallScore;

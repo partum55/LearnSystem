@@ -10,8 +10,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 /** Module-scoped page node for hierarchical block-editor content trees. */
 @Entity
-@Table(
-    name = "module_pages",
+@Table(schema = "learning", name = "module_pages",
     indexes = {
       @Index(
           name = "idx_module_pages_module_parent_position",

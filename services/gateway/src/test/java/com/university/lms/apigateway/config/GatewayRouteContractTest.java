@@ -77,21 +77,6 @@ class GatewayRouteContractTest {
 
     assertLearningRoute(
         routes,
-        "learning-deadlines",
-        expectedLearningUri(resourceName),
-        Set.of(
-            "/api/v1/calendar/**",
-            "/api/calendar/**",
-            "/api/v1/deadlines/**",
-            "/api/deadlines/**",
-            "/api/v1/notifications/**",
-            "/api/notifications/**"));
-
-    assertLearningRoute(
-        routes, "plugin-management", expectedLearningUri(resourceName), Set.of("/api/plugins/**"));
-
-    assertLearningRoute(
-        routes,
         "learning-risk-analytics",
         expectedLearningUri(resourceName),
         Set.of(
@@ -101,7 +86,6 @@ class GatewayRouteContractTest {
             "/api/v1/analytics/courses/*/students/*/risk"));
 
     assertRouteUri(routes, "analytics-service", expectedLearningUri(resourceName));
-    assertRouteUri(routes, "marketplace-service", expectedLearningUri(resourceName));
     assertRouteUri(routes, "user-service", expectedUserUri(resourceName));
   }
 
@@ -119,21 +103,6 @@ class GatewayRouteContractTest {
     assertThat(invalidPatterns)
         .as("Path predicates cannot contain `**/` with Spring PathPattern parser")
         .isEmpty();
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = {"application.yml", "application-docker.yml"})
-  void marketplaceRouteMustPointToLearningService(String resourceName) {
-    List<Map<String, Object>> routes = loadRoutes(resourceName);
-
-    Map<String, Object> route =
-        routes.stream()
-            .filter(candidate -> "marketplace-service".equals(candidate.get("id")))
-            .findFirst()
-            .orElseThrow(() -> new AssertionError("Missing gateway route: marketplace-service"));
-
-    assertThat(route.get("uri")).isEqualTo(expectedLearningUri(resourceName));
-    assertThat(extractPathPatterns(route)).contains("/api/marketplace/**");
   }
 
   private static void assertLearningRoute(

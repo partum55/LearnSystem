@@ -7,21 +7,22 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.UUID;
 
 @Repository
-public interface PeerReviewRepository extends JpaRepository<PeerReview, Long> {
+public interface PeerReviewRepository extends JpaRepository<PeerReview, UUID> {
     
-    List<PeerReview> findByAssignmentId(Long assignmentId);
+    List<PeerReview> findByAssignmentId(UUID assignmentId);
     
-    List<PeerReview> findByReviewerUserId(Long reviewerUserId);
+    List<PeerReview> findByReviewerUserId(UUID reviewerUserId);
     
-    List<PeerReview> findByRevieweeUserId(Long revieweeUserId);
+    List<PeerReview> findByRevieweeUserId(UUID revieweeUserId);
     
-    List<PeerReview> findBySubmissionId(Long submissionId);
+    List<PeerReview> findBySubmissionId(UUID submissionId);
     
     @Query("SELECT pr FROM PeerReview pr WHERE pr.assignmentId = :assignmentId AND pr.status = 'PENDING'")
-    List<PeerReview> findPendingReviewsByAssignment(@Param("assignmentId") Long assignmentId);
+    List<PeerReview> findPendingReviewsByAssignment(@Param("assignmentId") UUID assignmentId);
     
     @Query("SELECT COUNT(pr) FROM PeerReview pr WHERE pr.reviewerUserId = :userId AND pr.assignmentId = :assignmentId")
-    Long countByReviewerAndAssignment(@Param("userId") Long userId, @Param("assignmentId") Long assignmentId);
+    Long countByReviewerAndAssignment(@Param("userId") UUID userId, @Param("assignmentId") UUID assignmentId);
 }

@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.Set;
@@ -142,7 +143,7 @@ public class PromptABTestService {
             .experimentName(experimentName)
             .variantName(variantName)
             .promptTemplateName(promptTemplateName)
-            .userId(userId)
+            .userId(parseUuid(userId))
             .success(success)
             .latencyMs(latencyMs)
             .totalTokens(totalTokens)
@@ -158,11 +159,18 @@ public class PromptABTestService {
         success);
   }
 
+  private UUID parseUuid(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    return UUID.fromString(value);
+  }
+
   /** Record user rating for an experiment result. */
   @Transactional
   public void recordUserRating(String resultId, int rating) {
     abTestRepository
-        .findById(resultId)
+        .findById(UUID.fromString(resultId))
         .ifPresent(
             result -> {
               result.setUserRating(rating);

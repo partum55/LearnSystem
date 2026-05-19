@@ -12,8 +12,7 @@ import org.hibernate.type.SqlTypes;
 
 /** Immutable version snapshot for question-bank entries. */
 @Entity
-@Table(
-    name = "question_bank_versions",
+@Table(schema = "assessment", name = "question_bank_versions",
     indexes = {@Index(name = "idx_question_versions_question", columnList = "question_id, version_number DESC")},
     uniqueConstraints = {
       @UniqueConstraint(name = "uk_question_version", columnNames = {"question_id", "version_number"})

@@ -40,8 +40,6 @@ public class UserDto implements Serializable {
     private String bio;
     @JsonProperty("isActive")
     private boolean isActive;
-    @JsonProperty("isStaff")
-    private boolean isStaff;
     private boolean emailVerified;
     private Map<String, Object> preferences;
 

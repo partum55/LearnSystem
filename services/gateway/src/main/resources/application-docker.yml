@@ -30,10 +30,9 @@ spring:
         - id: user-service
           uri: ${USER_SERVICE_URL:http://user-service:8081}
           predicates:
-            - Path=/api/v1/users/**, /api/users/**, /api/v1/auth/**, /api/auth/**
+            - Path=/api/v1/users/**, /api/users/**
           filters:
             - RewritePath=/api/v1/users(?<segment>/?.*), /api/users${segment}
-            - RewritePath=/api/v1/auth(?<segment>/?.*), /api/auth${segment}
 
         - id: learning-courses
           uri: ${LEARNING_SERVICE_URL:http://learning-service:8089}
@@ -109,21 +108,6 @@ spring:
             - Path=/api/v1/gradebook/**, /api/gradebook/**
           filters:
             - RewritePath=/api/v1/gradebook(?<segment>/?.*), /api/gradebook${segment}
-
-        - id: learning-websocket
-          uri: ${LEARNING_SERVICE_URL:http://learning-service:8089}
-          predicates:
-            - Path=/ws/**
-
-        - id: learning-deadlines
-          uri: ${LEARNING_SERVICE_URL:http://learning-service:8089}
-          predicates:
-            - Path=/api/v1/calendar/**, /api/calendar/**, /api/v1/deadlines/**, /api/deadlines/**, /api/v1/notifications/**, /api/notifications/**
-          filters:
-            - RewritePath=/api/v1/calendar(?<segment>/?.*), /api/calendar${segment}
-            - RewritePath=/api/v1/deadlines(?<segment>/?.*), /api/deadlines${segment}
-            - RewritePath=/api/v1/notifications(?<segment>/?.*), /api/notifications${segment}
-
         - id: ai-service-v1
           uri: ${AI_SERVICE_URL:http://ai-service:8085}
           predicates:
@@ -156,23 +140,6 @@ spring:
               args:
                 name: aiServiceCircuitBreaker
                 fallbackUri: forward:/fallback/ai
-
-        - id: plugin-management
-          uri: ${LEARNING_SERVICE_URL:http://learning-service:8089}
-          predicates:
-            - Path=/api/plugins/**
-          filters:
-            - name: Retry
-              args:
-                retries: 1
-                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
-                methods: GET
-
-        - id: marketplace-service
-          uri: ${LEARNING_SERVICE_URL:http://learning-service:8089}
-          predicates:
-            - Path=/api/marketplace/**
-
         - id: learning-risk-analytics
           uri: ${LEARNING_SERVICE_URL:http://learning-service:8089}
           predicates:

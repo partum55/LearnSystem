@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "gradebook_entries",
+@Table(schema = "grading", name = "gradebook_entries",
         uniqueConstraints = @UniqueConstraint(name = "uk_gradebook_entry_course_student_assignment",
                 columnNames = {"course_id", "student_id", "assignment_id"}),
         indexes = {

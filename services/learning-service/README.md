@@ -252,7 +252,7 @@ mvn test -Dtest=CourseServiceTest
 ## 🤝 Related Services
 
 - **lms-user-service** - User authentication and management
-- **lms-learning-service** - Courses, assessments, gradebook, submissions, and deadlines
+- **lms-learning-service** - Courses, assessments, gradebook, and submissions
 - **lms-ai-service** - AI-powered course and assessment generation
 - **lms-analytics-service** - Cross-domain analytics and reporting
 

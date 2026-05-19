@@ -12,7 +12,7 @@ import org.hibernate.type.SqlTypes;
 
 /** Canonical draft document storage for a module page. */
 @Entity
-@Table(name = "page_documents")
+@Table(schema = "learning", name = "page_documents")
 @Getter
 @Setter
 @NoArgsConstructor

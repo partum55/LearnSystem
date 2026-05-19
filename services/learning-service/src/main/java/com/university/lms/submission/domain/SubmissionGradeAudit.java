@@ -15,8 +15,7 @@ import org.hibernate.annotations.CreationTimestamp;
  * Internal audit record for score/feedback mutations on a submission.
  */
 @Entity
-@Table(
-    name = "submission_grade_audit",
+@Table(schema = "grading", name = "submission_grade_audit",
     indexes = {
       @Index(name = "idx_submission_grade_audit_submission", columnList = "submission_id, changed_at")
     })

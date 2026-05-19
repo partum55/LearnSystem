@@ -3,13 +3,14 @@ package com.university.lms.ai.repository;
 import com.university.lms.ai.domain.entity.PromptABTest;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 /** Repository for PromptABTest entity. */
 @Repository
-public interface PromptABTestRepository extends JpaRepository<PromptABTest, String> {
+public interface PromptABTestRepository extends JpaRepository<PromptABTest, UUID> {
 
   /** Find all results for an experiment. */
   List<PromptABTest> findByExperimentNameOrderByCreatedAtDesc(String experimentName);

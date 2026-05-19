@@ -54,15 +54,11 @@ spring:
       cache-null-values: false
 
   flyway:
-    enabled: true
-    baseline-on-migrate: true
-    locations: classpath:db/migration
-    validate-on-migrate: true
+    enabled: false
+    # Schema managed exclusively by Supabase migrations.
 
 jwt:
   secret: ${SUPABASE_JWT_SECRET}
-  expiration: ${JWT_EXPIRATION:3600000}
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 
 security:
   cors:

@@ -36,18 +36,13 @@ spring:
         format_sql: true
 
   flyway:
-    enabled: true
-    baseline-on-migrate: true
-    baseline-version: 0
-    locations: classpath:db/migration
-    table: user_flyway_schema_history
-    validate-on-migrate: true
+    enabled: false
+    # Schema managed exclusively by Supabase migrations.
 
 # JWT Configuration
 jwt:
   secret: ${SUPABASE_JWT_SECRET:CHANGE-ME-set-the-supabase-jwt-secret}
   issuer: supabase
-  expiration: ${JWT_EXPIRATION:86400000} # 24 hours
 
 # Server Configuration
 server:

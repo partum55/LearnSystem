@@ -1,7 +1,6 @@
 package com.university.lms.ai.security;
 
 import com.university.lms.common.security.JwtService;
-import com.university.lms.common.security.JwtTokenBlacklistService;
 import com.university.lms.common.security.SecurityAuditLogger;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -15,9 +14,8 @@ public class JwtAuthenticationFilter
 
   public JwtAuthenticationFilter(
       JwtService jwtService,
-      JwtTokenBlacklistService tokenBlacklistService,
       SecurityAuditLogger auditLogger) {
-    super(jwtService, tokenBlacklistService, auditLogger);
+    super(jwtService, auditLogger);
   }
 
   @Override

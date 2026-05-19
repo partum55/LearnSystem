@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @Entity
-@Table(name = "lesson_content_blocks")
+@Table(schema = "learning", name = "lesson_content_blocks")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class LessonStep {
     @Id

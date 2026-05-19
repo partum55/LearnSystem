@@ -6,7 +6,7 @@ import { Button } from '../../../components';
 import { AcademicCapIcon, PlusIcon } from '@heroicons/react/24/outline';
 
 export default function CoursesPage() {
-  const { data: courses, isLoading, error } = useCoursesQuery();
+  const { data: courses = [], isLoading, error } = useCoursesQuery();
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-20">Loading courses...</div>;
@@ -33,7 +33,7 @@ export default function CoursesPage() {
         </Button>
       </div>
 
-      {!courses || courses.length === 0 ? (
+      {courses.length === 0 ? (
         <div className="text-center py-20 border rounded-lg" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
           <AcademicCapIcon className="h-10 w-10 mx-auto mb-4" style={{ color: 'var(--text-faint)' }} />
           <h3 className="text-lg font-medium mb-1">No courses found</h3>
@@ -50,14 +50,14 @@ export default function CoursesPage() {
                     {course.code}
                   </span>
                   <span className="text-[10px] font-medium" style={{ color: 'var(--text-faint)' }}>
-                    {course.academic_year}
+                    {course.academicYear}
                   </span>
                 </div>
                 <h3 className="text-lg font-semibold mb-2" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
-                  {course.title_uk}
+                  {course.titleUk}
                 </h3>
                 <p className="text-sm line-clamp-2 mb-4" style={{ color: 'var(--text-muted)' }}>
-                  {course.description_uk || 'No description provided.'}
+                  {course.descriptionUk || 'No description provided.'}
                 </p>
               </div>
               <div className="mt-auto pt-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>

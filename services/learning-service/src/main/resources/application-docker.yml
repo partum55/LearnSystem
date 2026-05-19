@@ -11,16 +11,12 @@ spring:
       port: ${SPRING_DATA_REDIS_PORT:6379}
 
   flyway:
-    enabled: true
-    baseline-on-migrate: true
-    baseline-version: 0
-    locations: classpath:db/migration
-    table: course_flyway_schema_history
-    validate-on-migrate: false
+    enabled: false
+    # Schema managed exclusively by Supabase migrations.
 
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
 
 # Disable CORS - handled by API Gateway
 security:

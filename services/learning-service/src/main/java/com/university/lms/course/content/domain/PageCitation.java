@@ -8,8 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 
 /** Indexed citation metadata extracted from canonical page documents. */
 @Entity
-@Table(
-    name = "page_citations",
+@Table(schema = "learning", name = "page_citations",
     indexes = {
       @Index(name = "idx_page_citations_page", columnList = "page_id"),
       @Index(name = "idx_page_citations_type", columnList = "citation_type")

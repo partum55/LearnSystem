@@ -17,8 +17,7 @@ import org.hibernate.annotations.UpdateTimestamp;
  * model with all features preserved.
  */
 @Entity
-@Table(
-    name = "courses",
+@Table(schema = "learning", name = "courses",
     indexes = {
       @Index(name = "idx_course_code", columnList = "code"),
       @Index(name = "idx_course_owner", columnList = "owner_id"),

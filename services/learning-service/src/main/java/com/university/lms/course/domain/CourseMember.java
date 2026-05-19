@@ -13,8 +13,7 @@ import org.hibernate.annotations.UpdateTimestamp;
  * information.
  */
 @Entity
-@Table(
-    name = "course_members",
+@Table(schema = "learning", name = "course_members",
     uniqueConstraints = {
       @UniqueConstraint(
           name = "uk_course_user",

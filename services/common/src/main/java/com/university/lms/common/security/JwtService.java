@@ -15,40 +15,23 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.Date;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
 
 /**
- * JWT token generation and validation service.
- * Shared across all microservices for consistent token handling.
- * Compatible with Supabase JWTs (HS256).
+ * Supabase JWT validation service shared across Java services.
  */
 @Service
 @Slf4j
 public class JwtService {
 
-    private static final String CLAIM_TOKEN_TYPE = "type";
     private static final String CLAIM_USER_ID = "userId";
     private static final String CLAIM_SUB = "sub";
     private static final String CLAIM_ROLE = "role";
-    private static final String TOKEN_TYPE_ACCESS = "access";
-    private static final String TOKEN_TYPE_REFRESH = "refresh";
-
     @Value("${jwt.secret}")
     private String jwtSecret;
-
-    @Value("${jwt.issuer:supabase}")
-    private String expectedIssuer;
-
-    @Value("${jwt.expiration:86400000}") // 24 hours default
-    private Long jwtExpiration;
-
-    @Value("${jwt.refresh-expiration:2592000000}") // 30 days default
-    private Long refreshTokenExpiration;
 
     private SecretKey signingKey;
     private JwtParser jwtParser;
@@ -68,50 +51,13 @@ public class JwtService {
     }
 
     /**
-     * Generate access token with custom claims.
-     */
-    public String generateToken(Map<String, Object> claims, String subject) {
-        Map<String, Object> tokenClaims = claims == null ? new HashMap<>() : new HashMap<>(claims);
-        tokenClaims.put(CLAIM_TOKEN_TYPE, TOKEN_TYPE_ACCESS);
-        return createToken(tokenClaims, subject, jwtExpiration);
-    }
-
-    /**
-     * Generate refresh token with custom claims.
-     */
-    public String generateRefreshToken(Map<String, Object> claims, String subject) {
-        Map<String, Object> tokenClaims = claims == null ? new HashMap<>() : new HashMap<>(claims);
-        tokenClaims.put(CLAIM_TOKEN_TYPE, TOKEN_TYPE_REFRESH);
-        return createToken(tokenClaims, subject, refreshTokenExpiration);
-    }
-
-    /**
-     * Create JWT token with claims.
-     */
-    private String createToken(Map<String, Object> claims, String subject, Long expiration) {
-        Objects.requireNonNull(claims, "claims must not be null");
-        if (subject == null || subject.isBlank()) {
-            throw new IllegalArgumentException("JWT subject must not be blank");
-        }
-
-        long ttl = expiration != null && expiration > 0 ? expiration : jwtExpiration;
-        Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + ttl);
-
-        return Jwts.builder()
-                .claims(claims)
-                .subject(subject)
-                .issuedAt(now)
-                .expiration(expiryDate)
-                .signWith(signingKey)
-                .compact();
-    }
-
-    /**
-     * Extract username (email/subject) from token.
+     * Extract user email from a Supabase token.
      */
     public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
+        return extractClaim(token, claims -> {
+            String email = claims.get("email", String.class);
+            return email != null && !email.isBlank() ? email : claims.getSubject();
+        });
     }
 
     /**
@@ -150,13 +96,6 @@ public class JwtService {
             }
             return role;
         });
-    }
-
-    /**
-     * Extract token type (access/refresh) from token.
-     */
-    public String extractTokenType(String token) {
-        return extractClaim(token, claims -> claims.get(CLAIM_TOKEN_TYPE, String.class));
     }
 
     /**
@@ -217,21 +156,11 @@ public class JwtService {
     }
 
     /**
-     * Validate access token signature and type.
+     * Validate a Supabase access token signature and required subject.
      */
     public boolean validateAccessToken(String token) {
         Claims claims = tryExtractClaims(token);
-        // Supabase access tokens don't have our internal "type" claim.
-        // If it's a valid Supabase token, we'll treat it as an access token if it has a sub.
-        return claims != null && (TOKEN_TYPE_ACCESS.equals(claims.get(CLAIM_TOKEN_TYPE, String.class)) || claims.getSubject() != null);
-    }
-
-    /**
-     * Validate refresh token signature and type.
-     */
-    public boolean validateRefreshToken(String token) {
-        Claims claims = tryExtractClaims(token);
-        return claims != null && TOKEN_TYPE_REFRESH.equals(claims.get(CLAIM_TOKEN_TYPE, String.class));
+        return claims != null && claims.getSubject() != null && !claims.getSubject().isBlank();
     }
 
     private Claims tryExtractClaims(String token) {
@@ -241,12 +170,5 @@ public class JwtService {
             log.debug("JWT validation failed: {}", e.getMessage());
             return null;
         }
-    }
-
-    /**
-     * Get token expiration time in milliseconds.
-     */
-    public Long getExpirationTime() {
-        return jwtExpiration;
     }
 }

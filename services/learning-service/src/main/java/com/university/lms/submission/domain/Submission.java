@@ -21,7 +21,7 @@ import java.util.UUID;
  * Submission aggregate root.
  */
 @Entity
-@Table(name = "submissions", indexes = {
+@Table(schema = "assessment", name = "submissions", indexes = {
                 @Index(name = "idx_submissions_assignment", columnList = "assignment_id"),
                 @Index(name = "idx_submissions_user", columnList = "user_id"),
                 @Index(name = "idx_submissions_status", columnList = "status"),

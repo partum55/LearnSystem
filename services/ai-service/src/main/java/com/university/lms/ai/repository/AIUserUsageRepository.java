@@ -2,6 +2,7 @@ package com.university.lms.ai.repository;
 
 import com.university.lms.ai.domain.entity.AIUserUsage;
 import java.util.List;
+import java.util.UUID;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -9,13 +10,13 @@ import org.springframework.stereotype.Repository;
 
 /** Repository for AIUserUsage entity. */
 @Repository
-public interface AIUserUsageRepository extends JpaRepository<AIUserUsage, String> {
+public interface AIUserUsageRepository extends JpaRepository<AIUserUsage, UUID> {
 
   /** Find usage for a user in a specific period. */
-  Optional<AIUserUsage> findByUserIdAndUsagePeriod(String userId, String usagePeriod);
+  Optional<AIUserUsage> findByUserIdAndUsagePeriod(UUID userId, String usagePeriod);
 
   /** Find all usage records for a user. */
-  List<AIUserUsage> findByUserIdOrderByUsagePeriodDesc(String userId);
+  List<AIUserUsage> findByUserIdOrderByUsagePeriodDesc(UUID userId);
 
   /** Find all usage for a specific period. */
   List<AIUserUsage> findByUsagePeriodOrderByTotalTokensDesc(String usagePeriod);
@@ -38,5 +39,5 @@ public interface AIUserUsageRepository extends JpaRepository<AIUserUsage, String
   Long getTotalRequestsForPeriod(String period);
 
   /** Check if user exists in period. */
-  boolean existsByUserIdAndUsagePeriod(String userId, String usagePeriod);
+  boolean existsByUserIdAndUsagePeriod(UUID userId, String usagePeriod);
 }

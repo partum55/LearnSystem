@@ -7,12 +7,13 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * Represents a peer review assignment
  */
 @Entity
-@Table(name = "peer_reviews")
+@Table(schema = "assessment", name = "peer_reviews")
 @Data
 @Builder
 @NoArgsConstructor
@@ -20,20 +21,20 @@ import java.time.LocalDateTime;
 public class PeerReview {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @Column(name = "assignment_id", nullable = false)
-    private Long assignmentId;
+    private UUID assignmentId;
 
     @Column(name = "reviewer_user_id", nullable = false)
-    private Long reviewerUserId;
+    private UUID reviewerUserId;
 
     @Column(name = "reviewee_user_id", nullable = false)
-    private Long revieweeUserId;
+    private UUID revieweeUserId;
 
     @Column(name = "submission_id", nullable = false)
-    private Long submissionId;
+    private UUID submissionId;
 
     @Column(name = "is_anonymous", nullable = false)
     @Builder.Default

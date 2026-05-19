@@ -2,6 +2,7 @@ package com.university.lms.ai.domain.entity;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.UUID;
 import lombok.*;
 
 /**
@@ -9,8 +10,7 @@ import lombok.*;
  * deployment.
  */
 @Entity
-@Table(
-    name = "prompt_templates",
+@Table(schema = "ai", name = "prompt_templates",
     indexes = {@Index(name = "idx_prompt_name_active", columnList = "name, active")})
 @Data
 @NoArgsConstructor
@@ -20,7 +20,7 @@ public class PromptTemplate {
 
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
-  private String id;
+  private UUID id;
 
   /** Unique template name (e.g., "course.generation.v2", "quiz.creation") */
   @Column(nullable = false, unique = true, length = 100)

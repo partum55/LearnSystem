@@ -1,7 +1,6 @@
 package com.university.lms.analytics.security;
 
 import com.university.lms.common.security.JwtService;
-import com.university.lms.common.security.JwtTokenBlacklistService;
 import com.university.lms.common.security.SecurityAuditLogger;
 import org.springframework.stereotype.Component;
 
@@ -15,9 +14,8 @@ import java.util.UUID;
 public class JwtAuthenticationFilter extends com.university.lms.common.security.JwtAuthenticationFilter {
 
     public JwtAuthenticationFilter(JwtService jwtService,
-                                   JwtTokenBlacklistService tokenBlacklistService,
                                    SecurityAuditLogger auditLogger) {
-        super(jwtService, tokenBlacklistService, auditLogger);
+        super(jwtService, auditLogger);
     }
 
     @Override

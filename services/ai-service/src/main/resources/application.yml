@@ -26,11 +26,8 @@ spring:
 
   # Flyway Configuration
   flyway:
-    enabled: true
-    baseline-on-migrate: true
-    baseline-version: 0
-    locations: classpath:db/migration
-    table: ai_flyway_schema_history
+    enabled: false
+    # Schema managed exclusively by Supabase migrations.
 
   # Redis Configuration
   data:
@@ -61,8 +58,6 @@ security:
 # JWT Configuration (for common JwtService)
 jwt:
   secret: ${SUPABASE_JWT_SECRET:CHANGE-ME-set-a-secure-jwt-secret-in-env-vars}
-  expiration: ${JWT_EXPIRATION:86400000}
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION:2592000000}
 
 # Other services
 services:

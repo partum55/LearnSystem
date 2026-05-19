@@ -16,14 +16,13 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * User entity - maps directly from Django's User model.
- * Primary entity for Identity & Access Management.
+ * Application profile for a Supabase Auth user.
  */
 @Entity
-@Table(name = "users", indexes = {
-        @Index(name = "idx_user_email", columnList = "email"),
-        @Index(name = "idx_user_role", columnList = "role"),
-        @Index(name = "idx_user_student_id", columnList = "student_id")
+@Table(schema = "public", name = "users", indexes = {
+        @Index(name = "idx_users_email", columnList = "email"),
+        @Index(name = "idx_users_role", columnList = "role"),
+        @Index(name = "idx_users_student_id", columnList = "student_id")
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
@@ -66,9 +65,6 @@ public class User {
     @Builder.Default
     private String theme = "light";
 
-    @Column(name = "password_hash", length = 255)
-    private String passwordHash;
-
     @Column(name = "avatar_url")
     private String avatarUrl;
 
@@ -79,10 +75,6 @@ public class User {
     @Builder.Default
     private boolean isActive = true;
 
-    @Column(name = "is_staff")
-    @Builder.Default
-    private boolean isStaff = false;
-
     @Column(name = "is_deleted")
     @Builder.Default
     private boolean isDeleted = false;
@@ -90,15 +82,6 @@ public class User {
     @Column(name = "email_verified")
     @Builder.Default
     private boolean emailVerified = false;
-
-    @Column(name = "email_verification_token", length = 255)
-    private String emailVerificationToken;
-
-    @Column(name = "password_reset_token", length = 255)
-    private String passwordResetToken;
-
-    @Column(name = "password_reset_expires")
-    private LocalDateTime passwordResetExpires;
 
     /**
      * User preferences stored as JSONB for flexibility.
@@ -152,12 +135,4 @@ public class User {
         return role == UserRole.TEACHER || role == UserRole.SUPERADMIN;
     }
 
-    /**
-     * Check if the password reset token is still valid.
-     */
-    public boolean isPasswordResetTokenValid() {
-        return passwordResetToken != null
-                && passwordResetExpires != null
-                && passwordResetExpires.isAfter(LocalDateTime.now());
-    }
 }

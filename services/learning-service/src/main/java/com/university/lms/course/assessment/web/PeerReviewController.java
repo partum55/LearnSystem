@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * REST controller for peer review operations
@@ -27,12 +28,12 @@ public class PeerReviewController {
      */
     @PostMapping("/assignments/{assignmentId}/assign")
     public ResponseEntity<List<PeerReviewDto>> assignReviewers(
-            @PathVariable Long assignmentId,
-            @RequestParam List<Long> submitterUserIds,
+            @PathVariable UUID assignmentId,
+            @RequestParam List<UUID> submissionIds,
             @RequestParam(defaultValue = "2") Integer reviewsPerSubmission) {
         log.info("Auto-assigning reviewers for assignment {}", assignmentId);
         List<PeerReviewDto> reviews = peerReviewService.assignPeerReviewers(
-                assignmentId, submitterUserIds, reviewsPerSubmission);
+                assignmentId, submissionIds, reviewsPerSubmission);
         return ResponseEntity.ok(reviews);
     }
 
@@ -40,7 +41,7 @@ public class PeerReviewController {
      * Get all peer reviews for an assignment
      */
     @GetMapping("/assignments/{assignmentId}")
-    public ResponseEntity<List<PeerReviewDto>> getAssignmentReviews(@PathVariable Long assignmentId) {
+    public ResponseEntity<List<PeerReviewDto>> getAssignmentReviews(@PathVariable UUID assignmentId) {
         log.info("Getting peer reviews for assignment {}", assignmentId);
         List<PeerReviewDto> reviews = peerReviewService.getPeerReviewsByAssignment(assignmentId);
         return ResponseEntity.ok(reviews);
@@ -50,7 +51,7 @@ public class PeerReviewController {
      * Get peer reviews assigned to a reviewer
      */
     @GetMapping("/reviewer/{reviewerUserId}")
-    public ResponseEntity<List<PeerReviewDto>> getReviewerReviews(@PathVariable Long reviewerUserId) {
+    public ResponseEntity<List<PeerReviewDto>> getReviewerReviews(@PathVariable UUID reviewerUserId) {
         log.info("Getting peer reviews for reviewer {}", reviewerUserId);
         List<PeerReviewDto> reviews = peerReviewService.getPeerReviewsByReviewer(reviewerUserId);
         return ResponseEntity.ok(reviews);
@@ -60,7 +61,7 @@ public class PeerReviewController {
      * Get peer reviews for a reviewee
      */
     @GetMapping("/reviewee/{revieweeUserId}")
-    public ResponseEntity<List<PeerReviewDto>> getRevieweeReviews(@PathVariable Long revieweeUserId) {
+    public ResponseEntity<List<PeerReviewDto>> getRevieweeReviews(@PathVariable UUID revieweeUserId) {
         log.info("Getting peer reviews for reviewee {}", revieweeUserId);
         List<PeerReviewDto> reviews = peerReviewService.getPeerReviewsByReviewee(revieweeUserId);
         return ResponseEntity.ok(reviews);
@@ -80,7 +81,7 @@ public class PeerReviewController {
      * Calculate aggregate score for a submission
      */
     @GetMapping("/submissions/{submissionId}/aggregate-score")
-    public ResponseEntity<Double> getAggregateScore(@PathVariable Long submissionId) {
+    public ResponseEntity<Double> getAggregateScore(@PathVariable UUID submissionId) {
         log.info("Calculating aggregate score for submission {}", submissionId);
         Double score = peerReviewService.calculateAggregateScore(submissionId);
         return ResponseEntity.ok(score);

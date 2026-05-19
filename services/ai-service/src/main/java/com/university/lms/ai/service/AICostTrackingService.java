@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,12 +48,13 @@ public class AICostTrackingService {
     }
 
     try {
+      UUID parsedUserId = parseUuid(userId);
       String currentPeriod = AIUserUsage.currentPeriod();
 
       AIUserUsage usage =
           usageRepository
-              .findByUserIdAndUsagePeriod(userId, currentPeriod)
-              .orElseGet(() -> AIUserUsage.createForUser(userId));
+              .findByUserIdAndUsagePeriod(parsedUserId, currentPeriod)
+              .orElseGet(() -> AIUserUsage.createForUser(parsedUserId));
 
       usage.addTokens(promptTokens, completionTokens);
       usage.updateCost(promptPricePerMillion, completionPricePerMillion);
@@ -79,12 +81,13 @@ public class AICostTrackingService {
     }
 
     try {
+      UUID parsedUserId = parseUuid(userId);
       String currentPeriod = AIUserUsage.currentPeriod();
 
       AIUserUsage usage =
           usageRepository
-              .findByUserIdAndUsagePeriod(userId, currentPeriod)
-              .orElseGet(() -> AIUserUsage.createForUser(userId));
+              .findByUserIdAndUsagePeriod(parsedUserId, currentPeriod)
+              .orElseGet(() -> AIUserUsage.createForUser(parsedUserId));
 
       usage.recordFailure();
       usageRepository.save(usage);
@@ -96,12 +99,12 @@ public class AICostTrackingService {
 
   /** Get current period usage for a user. */
   public Optional<AIUserUsage> getCurrentUsage(String userId) {
-    return usageRepository.findByUserIdAndUsagePeriod(userId, AIUserUsage.currentPeriod());
+    return usageRepository.findByUserIdAndUsagePeriod(parseUuid(userId), AIUserUsage.currentPeriod());
   }
 
   /** Get all usage history for a user. */
   public List<AIUserUsage> getUserHistory(String userId) {
-    return usageRepository.findByUserIdOrderByUsagePeriodDesc(userId);
+    return usageRepository.findByUserIdOrderByUsagePeriodDesc(parseUuid(userId));
   }
 
   /** Check if user has exceeded their monthly token limit. */
@@ -116,6 +119,10 @@ public class AICostTrackingService {
     return getCurrentUsage(userId)
         .map(usage -> Math.max(0, monthlyTokenLimit - usage.getTotalTokens()))
         .orElse(monthlyTokenLimit);
+  }
+
+  private UUID parseUuid(String value) {
+    return UUID.fromString(value);
   }
 
   /** Get top users by usage for current period. */

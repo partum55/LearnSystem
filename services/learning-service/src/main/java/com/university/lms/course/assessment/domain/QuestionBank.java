@@ -17,7 +17,7 @@ import java.util.UUID;
  * Question bank entity for storing reusable questions.
  */
 @Entity
-@Table(name = "question_bank", indexes = {
+@Table(schema = "assessment", name = "question_bank", indexes = {
     @Index(name = "idx_question_course", columnList = "course_id"),
     @Index(name = "idx_question_type", columnList = "question_type"),
     @Index(name = "idx_question_created_by", columnList = "created_by"),

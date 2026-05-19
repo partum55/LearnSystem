@@ -1,9 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { courseService } from '../services/courseService';
-import { Database } from '../types/supabase';
-
-type CourseRow = Database['public']['Tables']['courses']['Row'];
-type CourseInsert = Database['public']['Tables']['courses']['Insert'];
+import { courseService, type CourseCreatePayload, type CourseUpdatePayload } from '../services/courseService';
 
 export const courseKeys = {
   all: ['courses'] as const,
@@ -33,7 +29,7 @@ export function useCreateCourseMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CourseInsert) => courseService.createCourse(data),
+    mutationFn: (data: CourseCreatePayload) => courseService.createCourse(data),
     onSuccess: (newCourse) => {
       queryClient.invalidateQueries({ queryKey: courseKeys.all });
       queryClient.setQueryData(courseKeys.detail(newCourse.id), newCourse);
@@ -45,7 +41,7 @@ export function useUpdateCourseMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Database['public']['Tables']['courses']['Update'] }) =>
+    mutationFn: ({ id, data }: { id: string; data: CourseUpdatePayload }) =>
       courseService.updateCourse(id, data),
     onSuccess: (updatedCourse, { id }) => {
       queryClient.setQueryData(courseKeys.detail(id), updatedCourse);

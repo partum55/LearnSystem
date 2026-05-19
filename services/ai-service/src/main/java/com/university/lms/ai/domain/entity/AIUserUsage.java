@@ -3,13 +3,13 @@ package com.university.lms.ai.domain.entity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 import java.time.YearMonth;
 import lombok.*;
 
 /** Entity for tracking AI token usage and costs per user. */
 @Entity
-@Table(
-    name = "ai_user_usage",
+@Table(schema = "ai", name = "ai_user_usage",
     indexes = {
       @Index(name = "idx_ai_user_usage_user_period", columnList = "user_id, usage_period"),
       @Index(name = "idx_ai_user_usage_period", columnList = "usage_period")
@@ -22,11 +22,11 @@ public class AIUserUsage {
 
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
-  private String id;
+  private UUID id;
 
   /** User ID */
-  @Column(name = "user_id", nullable = false, length = 36)
-  private String userId;
+  @Column(name = "user_id", nullable = false)
+  private UUID userId;
 
   /** Usage period (YYYY-MM format) */
   @Column(name = "usage_period", nullable = false, length = 7)
@@ -107,7 +107,7 @@ public class AIUserUsage {
   }
 
   /** Create a new usage record for a user and current period */
-  public static AIUserUsage createForUser(String userId) {
+  public static AIUserUsage createForUser(UUID userId) {
     return AIUserUsage.builder().userId(userId).usagePeriod(currentPeriod()).build();
   }
 }

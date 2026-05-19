@@ -2,12 +2,12 @@ package com.university.lms.ai.domain.entity;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.UUID;
 import lombok.*;
 
 /** Entity for tracking A/B test results for prompts. */
 @Entity
-@Table(
-    name = "ai_prompt_ab_test",
+@Table(schema = "ai", name = "ai_prompt_ab_test",
     indexes = {
       @Index(name = "idx_ab_test_experiment", columnList = "experiment_name"),
       @Index(name = "idx_ab_test_variant", columnList = "variant_name"),
@@ -21,7 +21,7 @@ public class PromptABTest {
 
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
-  private String id;
+  private UUID id;
 
   /** Name of the experiment */
   @Column(name = "experiment_name", nullable = false, length = 100)
@@ -36,8 +36,8 @@ public class PromptABTest {
   private String promptTemplateName;
 
   /** User ID (for user-level analysis) */
-  @Column(name = "user_id", length = 36)
-  private String userId;
+  @Column(name = "user_id")
+  private UUID userId;
 
   /** Whether generation was successful */
   @Column(nullable = false)

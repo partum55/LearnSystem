@@ -29,12 +29,8 @@ spring:
     open-in-view: false
 
   flyway:
-    enabled: true
-    baseline-on-migrate: true
-    baseline-version: 0
-    locations: classpath:db/migration
-    table: course_flyway_schema_history
-    schemas: public
+    enabled: false
+    # Schema managed exclusively by Supabase migrations.
 
   data:
     redis:
@@ -64,8 +60,6 @@ security:
 # JWT Configuration
 jwt:
   secret: ${SUPABASE_JWT_SECRET:CHANGE-ME-set-a-secure-jwt-secret-in-env-vars}
-  expiration: ${JWT_EXPIRATION:86400000}
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION:2592000000}
 
 submission:
   storage:
@@ -86,20 +80,6 @@ editor:
     max-file-size-bytes: ${EDITOR_MEDIA_MAX_FILE_SIZE_BYTES:10485760}
     allowed-mime-types: ${EDITOR_MEDIA_ALLOWED_MIME_TYPES:image/png,image/jpeg,image/gif,image/webp,application/pdf}
     allowed-extensions: ${EDITOR_MEDIA_ALLOWED_EXTENSIONS:png,jpg,jpeg,gif,webp,pdf}
-
-deadline:
-  ingestion:
-    cron: ${DEADLINE_INGESTION_CRON:0 */10 * * * *}
-
-workload:
-  snapshot:
-    cron: ${WORKLOAD_SNAPSHOT_CRON:0 0 * * * *}
-
-notification:
-  dispatch:
-    cron: ${NOTIFICATION_DISPATCH_CRON:0 */15 * * * *}
-  thresholds:
-    overload-minutes: ${NOTIFICATION_OVERLOAD_MINUTES:240}
 
 server:
   port: ${PORT:8089}

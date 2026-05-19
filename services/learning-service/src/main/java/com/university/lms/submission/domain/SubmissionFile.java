@@ -11,7 +11,7 @@ import java.util.UUID;
  * File attached to a submission.
  */
 @Entity
-@Table(name = "submission_files", indexes = {
+@Table(schema = "assessment", name = "submission_files", indexes = {
         @Index(name = "idx_submission_files_submission", columnList = "submission_id")
 })
 @Getter

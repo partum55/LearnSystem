@@ -10,33 +10,17 @@ spring:
       host: ${SPRING_DATA_REDIS_HOST:redis}
       port: ${SPRING_DATA_REDIS_PORT:6379}
 
-  mail:
-    enabled: false
-
   flyway:
-    enabled: true
-    baseline-on-migrate: true
-    baseline-version: 0
-    locations: classpath:db/migration
-    table: user_flyway_schema_history
-    validate-on-migrate: false
+    enabled: false
+    # Schema managed exclusively by Supabase migrations.
 
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
 
 # Disable CORS - API Gateway handles CORS for all services
 security:
   cors:
     enabled: false
 
-management:
-  health:
-    mail:
-      enabled: false
 
-app:
-  bootstrap-admin:
-    enabled: ${BOOTSTRAP_ADMIN_ENABLED:false}
-    email: ${BOOTSTRAP_ADMIN_EMAIL:admin@ucu.edu.ua}
-    password: ${BOOTSTRAP_ADMIN_PASSWORD:admin123}

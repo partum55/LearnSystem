@@ -20,7 +20,6 @@ public interface UserMapper {
      * Convert User entity to UserDto.
      */
     @Mapping(target = "isActive", source = "active")
-    @Mapping(target = "isStaff", source = "staff")
     UserDto toDto(User user);
 
     /**
@@ -32,13 +31,8 @@ public interface UserMapper {
     @Mapping(target = "studentId", ignore = true)
     @Mapping(target = "role", ignore = true)
     @Mapping(target = "active", ignore = true)
-    @Mapping(target = "staff", ignore = true)
     @Mapping(target = "deleted", ignore = true)
     @Mapping(target = "emailVerified", ignore = true)
-    @Mapping(target = "emailVerificationToken", ignore = true)
-    @Mapping(target = "passwordHash", ignore = true)
-    @Mapping(target = "passwordResetToken", ignore = true)
-    @Mapping(target = "passwordResetExpires", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     void updateUserFromRequest(UpdateUserRequest request, @MappingTarget User user);

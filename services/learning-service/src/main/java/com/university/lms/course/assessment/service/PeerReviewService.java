@@ -4,6 +4,8 @@ import com.university.lms.course.assessment.domain.PeerReview;
 import com.university.lms.course.assessment.dto.PeerReviewDto;
 import com.university.lms.course.assessment.dto.SubmitPeerReviewRequest;
 import com.university.lms.course.assessment.repository.PeerReviewRepository;
+import com.university.lms.submission.domain.Submission;
+import com.university.lms.submission.repository.SubmissionRepository;
 import com.university.lms.common.exception.ResourceNotFoundException;
 import com.university.lms.common.exception.ValidationException;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -27,6 +32,7 @@ import java.util.stream.Collectors;
 public class PeerReviewService {
 
     private final PeerReviewRepository peerReviewRepository;
+    private final SubmissionRepository submissionRepository;
 
     /**
      * Automatically assign peer reviewers for submitted assignments
@@ -34,37 +40,52 @@ public class PeerReviewService {
      */
     @Transactional
     public List<PeerReviewDto> assignPeerReviewers(
-            Long assignmentId, List<Long> submitterUserIds, Integer reviewsPerSubmission) {
-        if (submitterUserIds == null || submitterUserIds.isEmpty()) {
-            throw new ValidationException("Submitter user IDs are required");
+            UUID assignmentId, List<UUID> submissionIds, Integer reviewsPerSubmission) {
+        if (submissionIds == null || submissionIds.isEmpty()) {
+            throw new ValidationException("Submission IDs are required");
         }
         int reviewsRequired = reviewsPerSubmission == null ? 2 : reviewsPerSubmission;
         if (reviewsRequired < 1) {
             throw new ValidationException("Reviews per submission must be greater than zero");
         }
 
-        log.info("Auto-assigning peer reviewers for assignment {} with {} submitters",
-                assignmentId, submitterUserIds.size());
+        List<Submission> submissions = submissionRepository.findByIdIn(submissionIds);
+        if (submissions.size() != submissionIds.size()) {
+            throw new ValidationException("All peer review submissions must exist");
+        }
+        if (submissions.stream().anyMatch(submission -> !assignmentId.equals(submission.getAssignmentId()))) {
+            throw new ValidationException("All peer review submissions must belong to the assignment");
+        }
 
-        if (submitterUserIds.size() < 2) {
-            log.warn("Not enough submitters for peer review assignment");
+        log.info("Auto-assigning peer reviewers for assignment {} with {} submissions",
+                assignmentId, submissions.size());
+
+        if (submissions.size() < 2) {
+            log.warn("Not enough submissions for peer review assignment");
             return Collections.emptyList();
+        }
+
+        Map<UUID, Submission> submissionsByUserId = submissions.stream()
+                .collect(Collectors.toMap(Submission::getUserId, Function.identity()));
+        if (submissionsByUserId.size() != submissions.size()) {
+            throw new ValidationException("Each peer review submission must belong to a distinct user");
         }
 
         List<PeerReview> peerReviews = new ArrayList<>();
 
         // Shuffle to randomize assignments
-        List<Long> shuffledUsers = new ArrayList<>(submitterUserIds);
+        List<UUID> shuffledUsers = new ArrayList<>(submissionsByUserId.keySet());
         Collections.shuffle(shuffledUsers);
 
         // For each submission, assign reviewers
         for (int i = 0; i < shuffledUsers.size(); i++) {
-            Long revieweeUserId = shuffledUsers.get(i);
+            UUID revieweeUserId = shuffledUsers.get(i);
+            Submission revieweeSubmission = submissionsByUserId.get(revieweeUserId);
 
             // Assign N reviewers for this submission
             for (int j = 1; j <= reviewsRequired && j < shuffledUsers.size(); j++) {
                 int reviewerIndex = (i + j) % shuffledUsers.size();
-                Long reviewerUserId = shuffledUsers.get(reviewerIndex);
+                UUID reviewerUserId = shuffledUsers.get(reviewerIndex);
 
                 // Don't assign self-review
                 if (!reviewerUserId.equals(revieweeUserId)) {
@@ -72,7 +93,7 @@ public class PeerReviewService {
                             .assignmentId(assignmentId)
                             .reviewerUserId(reviewerUserId)
                             .revieweeUserId(revieweeUserId)
-                            .submissionId(0L) // Will be updated when submissions are created
+                            .submissionId(revieweeSubmission.getId())
                             .isAnonymous(true)
                             .status(PeerReview.PeerReviewStatus.PENDING)
                             .build();
@@ -92,7 +113,7 @@ public class PeerReviewService {
     /**
      * Get all peer reviews for an assignment
      */
-    public List<PeerReviewDto> getPeerReviewsByAssignment(Long assignmentId) {
+    public List<PeerReviewDto> getPeerReviewsByAssignment(UUID assignmentId) {
         return peerReviewRepository.findByAssignmentId(assignmentId).stream()
                 .map(this::toPeerReviewDto)
                 .collect(Collectors.toList());
@@ -101,7 +122,7 @@ public class PeerReviewService {
     /**
      * Get peer reviews assigned to a specific reviewer
      */
-    public List<PeerReviewDto> getPeerReviewsByReviewer(Long reviewerUserId) {
+    public List<PeerReviewDto> getPeerReviewsByReviewer(UUID reviewerUserId) {
         return peerReviewRepository.findByReviewerUserId(reviewerUserId).stream()
                 .map(this::toPeerReviewDto)
                 .collect(Collectors.toList());
@@ -110,7 +131,7 @@ public class PeerReviewService {
     /**
      * Get peer reviews for a specific reviewee (student being reviewed)
      */
-    public List<PeerReviewDto> getPeerReviewsByReviewee(Long revieweeUserId) {
+    public List<PeerReviewDto> getPeerReviewsByReviewee(UUID revieweeUserId) {
         return peerReviewRepository.findByRevieweeUserId(revieweeUserId).stream()
                 .map(this::toPeerReviewDto)
                 .collect(Collectors.toList());
@@ -140,7 +161,7 @@ public class PeerReviewService {
     /**
      * Calculate aggregate peer review score for a submission
      */
-    public Double calculateAggregateScore(Long submissionId) {
+    public Double calculateAggregateScore(UUID submissionId) {
         List<PeerReview> reviews = peerReviewRepository.findBySubmissionId(submissionId);
 
         if (reviews.isEmpty()) {

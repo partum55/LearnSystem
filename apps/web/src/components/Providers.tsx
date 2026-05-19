@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import '../i18n/config';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 

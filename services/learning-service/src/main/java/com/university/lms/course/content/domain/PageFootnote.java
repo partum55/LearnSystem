@@ -12,8 +12,7 @@ import org.hibernate.type.SqlTypes;
 
 /** Indexed footnote records extracted from canonical page documents. */
 @Entity
-@Table(
-    name = "page_footnotes",
+@Table(schema = "learning", name = "page_footnotes",
     indexes = {
       @Index(name = "idx_page_footnotes_page", columnList = "page_id"),
       @Index(name = "idx_page_footnotes_ordinal", columnList = "page_id, ordinal")

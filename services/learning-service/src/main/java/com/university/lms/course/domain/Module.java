@@ -14,8 +14,7 @@ import org.hibernate.type.SqlTypes;
  * metadata.
  */
 @Entity
-@Table(
-    name = "modules",
+@Table(schema = "learning", name = "modules",
     indexes = {@Index(name = "idx_module_course_position", columnList = "course_id, position")})
 @Getter
 @Setter

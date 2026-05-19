@@ -36,19 +36,10 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     private final SecurityAuditLogger auditLogger;
 
     private static final Map<String, RateLimit> RATE_LIMITS = Map.of(
-            "/auth/login", new RateLimit(50, Duration.ofMinutes(1)),
-            "/auth/register", new RateLimit(20, Duration.ofMinutes(1)),
-            "/auth/forgot-password", new RateLimit(10, Duration.ofMinutes(1)),
-            "/auth/reset-password", new RateLimit(10, Duration.ofMinutes(1)),
             DEFAULT_ENDPOINT, new RateLimit(200, Duration.ofMinutes(1))
     );
 
-    private static final List<String> ENDPOINT_PRIORITY = List.of(
-            "/auth/login",
-            "/auth/register",
-            "/auth/forgot-password",
-            "/auth/reset-password"
-    );
+    private static final List<String> ENDPOINT_PRIORITY = List.of();
 
     @Override
     protected void doFilterInternal(

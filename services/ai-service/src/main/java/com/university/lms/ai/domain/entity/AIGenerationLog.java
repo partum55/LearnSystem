@@ -2,12 +2,12 @@ package com.university.lms.ai.domain.entity;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.UUID;
 import lombok.*;
 
 /** Entity for logging AI generation requests for audit and analytics. */
 @Entity
-@Table(
-    name = "ai_generation_logs",
+@Table(schema = "ai", name = "ai_generation_logs",
     indexes = {
       @Index(name = "idx_ai_generation_logs_user", columnList = "user_id"),
       @Index(name = "idx_ai_generation_logs_created", columnList = "created_at"),
@@ -21,7 +21,7 @@ public class AIGenerationLog {
 
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
-  private String id;
+  private UUID id;
 
   /** Type of content generated (course, module, quiz, assignment, explanation) */
   @Column(name = "content_type", nullable = false, length = 50)
@@ -62,12 +62,12 @@ public class AIGenerationLog {
   private String errorMessage;
 
   /** User who initiated the request */
-  @Column(name = "user_id", length = 36)
-  private String userId;
+  @Column(name = "user_id")
+  private UUID userId;
 
   /** Related course ID */
-  @Column(name = "course_id", length = 36)
-  private String courseId;
+  @Column(name = "course_id")
+  private UUID courseId;
 
   /** Created timestamp */
   @Column(name = "created_at", updatable = false)
@@ -96,9 +96,16 @@ public class AIGenerationLog {
         .completionTokens(completionTokens)
         .latencyMs(latencyMs)
         .success(true)
-        .userId(userId)
-        .courseId(courseId)
+        .userId(parseUuid(userId))
+        .courseId(parseUuid(courseId))
         .build();
+  }
+
+  private static UUID parseUuid(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    return UUID.fromString(value);
   }
 
   /** Create a failure log entry */
@@ -109,8 +116,8 @@ public class AIGenerationLog {
         .provider(provider != null ? provider : "unknown")
         .success(false)
         .errorMessage(errorMessage)
-        .userId(userId)
-        .courseId(courseId)
+        .userId(parseUuid(userId))
+        .courseId(parseUuid(courseId))
         .build();
   }
 }

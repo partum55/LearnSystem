@@ -15,7 +15,7 @@ import org.hibernate.type.SqlTypes;
 
 /** Canonical assignment starter document authored by instructors. */
 @Entity
-@Table(name = "assignment_template_documents")
+@Table(schema = "assessment", name = "assignment_template_documents")
 @Getter
 @Setter
 @NoArgsConstructor

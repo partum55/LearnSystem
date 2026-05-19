@@ -13,8 +13,7 @@ import org.hibernate.type.SqlTypes;
 
 /** Frozen question snapshot selected at attempt start. */
 @Entity
-@Table(
-    name = "quiz_attempt_questions",
+@Table(schema = "assessment", name = "quiz_attempt_questions",
     indexes = {
       @Index(name = "idx_quiz_attempt_questions_attempt", columnList = "attempt_id, position"),
       @Index(name = "idx_quiz_attempt_questions_question", columnList = "question_id")

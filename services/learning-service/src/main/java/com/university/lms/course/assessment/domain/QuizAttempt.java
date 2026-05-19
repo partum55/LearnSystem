@@ -16,7 +16,7 @@ import java.util.UUID;
  * Student attempt at a quiz with answers and scoring.
  */
 @Entity
-@Table(name = "quiz_attempts",
+@Table(schema = "assessment", name = "quiz_attempts",
     uniqueConstraints = {
         @UniqueConstraint(name = "uk_quiz_user_attempt", columnNames = {"quiz_id", "user_id", "attempt_number"})
     },

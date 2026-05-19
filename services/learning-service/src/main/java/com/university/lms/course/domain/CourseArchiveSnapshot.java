@@ -12,8 +12,7 @@ import org.hibernate.type.SqlTypes;
 
 /** Immutable archived-course content snapshot. */
 @Entity
-@Table(
-    name = "course_archive_snapshots",
+@Table(schema = "operations", name = "course_archive_snapshots",
     indexes = {
       @Index(name = "idx_archive_course_id", columnList = "course_id"),
       @Index(name = "idx_archive_created_at", columnList = "created_at")

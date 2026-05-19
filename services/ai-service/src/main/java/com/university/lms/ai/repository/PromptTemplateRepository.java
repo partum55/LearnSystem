@@ -2,6 +2,7 @@ package com.university.lms.ai.repository;
 
 import com.university.lms.ai.domain.entity.PromptTemplate;
 import java.util.List;
+import java.util.UUID;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -9,7 +10,7 @@ import org.springframework.stereotype.Repository;
 
 /** Repository for PromptTemplate entity. */
 @Repository
-public interface PromptTemplateRepository extends JpaRepository<PromptTemplate, String> {
+public interface PromptTemplateRepository extends JpaRepository<PromptTemplate, UUID> {
 
   /** Find an active template by name. */
   Optional<PromptTemplate> findByNameAndActiveTrue(String name);
