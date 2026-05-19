@@ -1,0 +1,225 @@
+spring:
+  application:
+    name: lms-api-gateway
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  cloud:
+    gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials Access-Control-Allow-Methods Access-Control-Allow-Headers, RETAIN_UNIQUE
+        - name: Retry
+          args:
+            retries: 3
+            statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+            methods: GET
+            backoff:
+              firstBackoff: 100ms
+              maxBackoff: 500ms
+              factor: 2
+      routes:
+        - id: admin-course-management
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/course-management/**
+          filters:
+            - RewritePath=/api/course-management(?<segment>/?.*), /api/admin/course-management${segment}
+
+        - id: learning-progress
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/progress/**
+
+        - id: learning-lessons
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/lessons/**
+
+        - id: learning-courses
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/courses/**
+          filters:
+            - RewritePath=/api/(?<segment>.*), /api/${segment}
+
+        - id: user-profile
+          uri: ${USER_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/users/**, /api/auth/**
+          filters:
+            - RewritePath=/api/(?<segment>.*), /api/${segment}
+
+        - id: learning-quiz-attempts
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/v1/assessments/quiz-attempts/**, /api/assessments/quiz-attempts/**
+          filters:
+            - RewritePath=/api/assessments/quiz-attempts/(?<segment>.*), /api/quiz-attempts/${segment}
+            - RewritePath=/api/v1/assessments/quiz-attempts/(?<segment>.*), /api/quiz-attempts/${segment}
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: ${gateway.quiz-attempt-rate-limit.replenish-rate:8}
+                redis-rate-limiter.burstCapacity: ${gateway.quiz-attempt-rate-limit.burst-capacity:12}
+                redis-rate-limiter.requestedTokens: ${gateway.quiz-attempt-rate-limit.requested-tokens:1}
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: learning-assessments
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/v1/assessments/**, /api/assessments/**
+          filters:
+            - RewritePath=/api/assessments/(?<segment>.*), /api/${segment}
+            - RewritePath=/api/v1/assessments/(?<segment>.*), /api/${segment}
+
+        - id: learning-content
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/pages/**, /api/editor/media/**
+
+        - id: learning-virtual-lab
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/virtual-lab/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: ${gateway.vpl-rate-limit.replenish-rate:4}
+                redis-rate-limiter.burstCapacity: ${gateway.vpl-rate-limit.burst-capacity:8}
+                redis-rate-limiter.requestedTokens: ${gateway.vpl-rate-limit.requested-tokens:1}
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: learning-assignments
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/assignments/**
+
+        - id: learning-assignment-documents
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/assignments/*/template-document, /api/assignments/*/submissions/clone-template
+
+        - id: learning-submission-documents
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/submissions/*/document
+
+        - id: learning-submissions
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/v1/submissions/**, /api/submissions/**
+          filters:
+            - RewritePath=/api/v1/submissions(?<segment>/?.*), /api/submissions${segment}
+
+        - id: learning-gradebook
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/v1/gradebook/**, /api/gradebook/**
+          filters:
+            - RewritePath=/api/v1/gradebook(?<segment>/?.*), /api/gradebook${segment}
+
+        - id: learning-websocket
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/ws/**
+
+        - id: learning-deadlines
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/v1/calendar/**, /api/calendar/**, /api/v1/deadlines/**, /api/deadlines/**, /api/v1/notifications/**, /api/notifications/**
+          filters:
+            - RewritePath=/api/v1/calendar(?<segment>/?.*), /api/calendar${segment}
+            - RewritePath=/api/v1/deadlines(?<segment>/?.*), /api/deadlines${segment}
+            - RewritePath=/api/v1/notifications(?<segment>/?.*), /api/notifications${segment}
+
+        - id: ai-service-v1
+          uri: ${AI_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/v1/ai/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: ${gateway.ai-rate-limit.replenish-rate:10}
+                redis-rate-limiter.burstCapacity: ${gateway.ai-rate-limit.burst-capacity:20}
+                redis-rate-limiter.requestedTokens: ${gateway.ai-rate-limit.requested-tokens:1}
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: aiServiceCircuitBreaker
+                fallbackUri: forward:/fallback/ai
+
+        - id: ai-service
+          uri: ${AI_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/ai/**
+          filters:
+            - RewritePath=/api/ai/(?<segment>.*), /api/v1/ai/${segment}
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: ${gateway.ai-rate-limit.replenish-rate:10}
+                redis-rate-limiter.burstCapacity: ${gateway.ai-rate-limit.burst-capacity:20}
+                redis-rate-limiter.requestedTokens: ${gateway.ai-rate-limit.requested-tokens:1}
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: aiServiceCircuitBreaker
+                fallbackUri: forward:/fallback/ai
+
+        - id: learning-risk-analytics
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/analytics/courses/*/at-risk-students, /api/analytics/courses/*/students/*/risk, /api/v1/analytics/courses/*/at-risk-students, /api/v1/analytics/courses/*/students/*/risk
+          filters:
+            - RewritePath=/api/v1/analytics(?<segment>/?.*), /api/analytics${segment}
+
+        - id: analytics-service
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/v1/analytics/**, /api/analytics/**
+          filters:
+            - RewritePath=/api/v1/analytics(?<segment>/?.*), /api/analytics${segment}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      aiServiceCircuitBreaker:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+  timelimiter:
+    instances:
+      aiServiceCircuitBreaker:
+        timeoutDuration: 60s
+
+gateway:
+  cors:
+    allowed-origins: ${GATEWAY_CORS_ALLOWED_ORIGINS:http://localhost:3000,https://localhost:3000,http://localhost:8080,https://localhost:8080,http://localhost:5173,https://localhost:5173}
+    allowed-methods: ${GATEWAY_CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,PATCH,OPTIONS,HEAD}
+    allowed-headers: ${GATEWAY_CORS_ALLOWED_HEADERS:Authorization,Content-Type,Accept,X-Requested-With}
+    exposed-headers: ${GATEWAY_CORS_EXPOSED_HEADERS:Authorization,Content-Type,X-Total-Count,X-Page-Number,X-Page-Size}
+    allow-credentials: ${GATEWAY_CORS_ALLOW_CREDENTIALS:true}
+    max-age-seconds: ${GATEWAY_CORS_MAX_AGE_SECONDS:3600}
+  ai-rate-limit:
+    replenish-rate: ${AI_RATE_LIMIT_REPLENISH_RATE:10}
+    burst-capacity: ${AI_RATE_LIMIT_BURST_CAPACITY:20}
+    requested-tokens: ${AI_RATE_LIMIT_REQUESTED_TOKENS:1}
+  quiz-attempt-rate-limit:
+    replenish-rate: ${QUIZ_ATTEMPT_RATE_LIMIT_REPLENISH_RATE:2}
+    burst-capacity: ${QUIZ_ATTEMPT_RATE_LIMIT_BURST_CAPACITY:5}
+    requested-tokens: ${QUIZ_ATTEMPT_RATE_LIMIT_REQUESTED_TOKENS:1}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+
+server:
+  port: ${SERVER_PORT:8080}

@@ -1,0 +1,162 @@
+spring:
+  application:
+    name: lms-user-service
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/lms_db}
+    username: ${SPRING_DATASOURCE_USERNAME:lms_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:lms_password}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+
+  # Mail Configuration
+  mail:
+    enabled: ${SPRING_MAIL_ENABLED:false}  # Set to true in production
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+      timeout: 60000ms
+      connect-timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+
+  cache:
+    type: ${SPRING_CACHE_TYPE:simple}
+    redis:
+      time-to-live: 300000 # 5 minutes
+      cache-null-values: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
+    table: user_flyway_schema_history
+    validate-on-migrate: true
+
+# JWT Configuration
+jwt:
+  secret: ${SUPABASE_JWT_SECRET:CHANGE-ME-set-a-secure-jwt-secret-in-env-vars}
+  expiration: ${JWT_EXPIRATION:86400000} # 24 hours
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:2592000000} # 30 days
+
+# Server Configuration
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+  health:
+    mail:
+      enabled: false
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.university.lms: ${LOG_LEVEL:DEBUG}
+    com.university.lms.user.security: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/lms-user-service.log
+
+# Application Configuration
+app:
+  bootstrap-admin:
+    enabled: ${BOOTSTRAP_ADMIN_ENABLED:true}
+    email: ${BOOTSTRAP_ADMIN_EMAIL:admin@ucu.edu.ua}
+    password: ${BOOTSTRAP_ADMIN_PASSWORD:admin123}
+  mail:
+    from: ${APP_MAIL_FROM:noreply@lms.ucu.edu.ua}
+    base-url: ${APP_BASE_URL:https://localhost:3000}
+  email:
+    from: ${EMAIL_FROM:noreply@lms.ucu.edu.ua}
+    verification-url: ${EMAIL_VERIFICATION_URL:https://localhost:3000/verify-email}
+    reset-password-url: ${EMAIL_RESET_PASSWORD_URL:https://localhost:3000/reset-password}
+  logging:
+    name: logs/lms-user-service.log
+    max-size: 10MB
+    max-history: 30
+    total-size-cap: 1GB
+  encryption:
+    key: ${AES_ENCRYPTION_KEY:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}  # Base64 32-byte key
+  oauth:
+    google:
+      client-id: ${GOOGLE_OAUTH_CLIENT_ID:}
+      client-secret: ${GOOGLE_OAUTH_CLIENT_SECRET:}
+      redirect-uri: ${GOOGLE_OAUTH_REDIRECT_URI:http://localhost:8080/api/auth/oauth2/google/callback}
+      frontend-success-uri: ${GOOGLE_OAUTH_FRONTEND_SUCCESS_URI:http://localhost:3000/auth/google/callback}
+      frontend-failure-uri: ${GOOGLE_OAUTH_FRONTEND_FAILURE_URI:http://localhost:3000/login}
+      allowed-domains: ${GOOGLE_OAUTH_ALLOWED_DOMAINS:${GOOGLE_OAUTH_ALLOWED_DOMAIN:ucu.edu.ua}}
+
+security:
+  internal-token: ${INTERNAL_SERVICE_TOKEN:}
+  cors:
+    enabled: ${SECURITY_CORS_ENABLED:false}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,https://localhost:3000}

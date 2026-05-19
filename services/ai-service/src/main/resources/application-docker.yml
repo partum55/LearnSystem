@@ -1,0 +1,32 @@
+# Docker profile for ai-service
+spring:
+  datasource:
+    url: ${SUPABASE_DB_URL:jdbc:postgresql://postgres:5432/lms_db}
+    username: ${SUPABASE_DB_USER:lms_user}
+    password: ${SUPABASE_DB_PASSWORD:lms_password}
+
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
+    table: ai_flyway_schema_history
+    validate-on-migrate: false
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+  # Disable WebFlux auto-configuration to prevent conflict with Eureka
+  main:
+    web-application-type: servlet
+
+# Service URLs for Docker environment
+services:
+  learning-service:
+    url: http://learning-service:8089

@@ -210,3 +210,37 @@ marimo/_lsp/
 __marimo__/
 
 .vscode/
+
+# ==========================================
+# LearnSystem — project-specific additions
+# ==========================================
+
+# Next.js build output
+.next/
+out/
+
+# Java / Maven build artifacts
+**/target/
+*.jar
+*.war
+*.class
+
+# Node
+node_modules/
+npm-debug.log*
+
+# AI agent skills (installed locally via npx skills add)
+.agents/
+
+# Claude Code symlinked skills
+.claude/skills/
+
+# Real env files (examples are safe to commit; filled files are not)
+config/env/.env.local
+config/env/.env.production
+infra/docker/.env.local
+infra/docker/.env.production
+
+# OS
+.DS_Store
+Thumbs.db

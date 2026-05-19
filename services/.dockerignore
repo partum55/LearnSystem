@@ -1,0 +1,12 @@
+target/
+*.jar
+.git/
+.gitignore
+.idea/
+*.iml
+.mvn/
+mvnw
+mvnw.cmd
+**/target/
+**/node_modules/
+**/.next/
