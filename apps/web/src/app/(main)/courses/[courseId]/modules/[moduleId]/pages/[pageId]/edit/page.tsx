@@ -1,6 +1,6 @@
 'use client';
 import { use } from 'react';
-import ModulePageEditor from '@/views/ModulePageEditor';
+import ModulePageEditor from '@/features/lesson/views/ModulePageEditor';
 export default function Page({ params }: { params: Promise<{ courseId: string; moduleId: string; pageId: string }> }) {
   const resolvedParams = use(params);
 }
