@@ -1,5 +1,5 @@
 'use client';
-import Landing from '@/views/Landing';
+import Landing from '@/features/landing/views/Landing';
 
 export default function Page() {
   return <Landing />;
