@@ -2,7 +2,6 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import enTranslations from './locales/en.json';
 import ukTranslations from './locales/uk.json';
-
 const resources = {
   en: {
     translation: enTranslations,
@@ -11,21 +10,14 @@ const resources = {
     translation: ukTranslations,
   },
 };
-
-const initialLanguage =
-  typeof window !== 'undefined' ? window.localStorage.getItem('language') || 'uk' : 'uk';
-
-if (!i18n.isInitialized) {
-  i18n
-    .use(initReactI18next)
-    .init({
-      resources,
-      lng: initialLanguage,
-      fallbackLng: 'uk',
-      interpolation: {
-        escapeValue: false,
-      },
-    });
-}
-
+i18n
+  .use(initReactI18next)
+  .init({
+    resources,
+    lng: 'uk', // Default to 'uk', will be updated on client by RootInitializer/UIStore
+    fallbackLng: 'uk',
+    interpolation: {
+      escapeValue: false,
+    },
+  });
 export default i18n;

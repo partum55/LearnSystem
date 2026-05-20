@@ -1,9 +1,6 @@
-import { redirect } from 'next/navigation';
-import { createSupabaseServerClient } from '../lib/supabase/server';
+'use client';
+import Landing from '@/views/Landing';
 
-export default async function AppEntryPage() {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  redirect(user ? '/dashboard' : '/login');
+export default function Page() {
+  return <Landing />;
 }

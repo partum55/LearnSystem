@@ -1,0 +1,208 @@
+.obsidian-mdx-editor {
+  --accentColor: var(--text-primary);
+  --accentBase: var(--bg-base);
+  --bgColor: var(--bg-elevated);
+  --basePageBg: var(--bg-surface);
+  --borderColor: var(--border-default);
+  --fontFamily: var(--font-body);
+  --monoFontFamily: var(--font-mono);
+}
+
+/* Root editor container */
+.obsidian-mdx-editor .mdxeditor {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Toolbar */
+.obsidian-mdx-editor [class*="toolbar"] {
+  background: var(--bg-surface) !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+.obsidian-mdx-editor [class*="toolbar"] button {
+  color: var(--text-secondary) !important;
+  border-radius: 4px !important;
+}
+
+.obsidian-mdx-editor [class*="toolbar"] button:hover {
+  background: var(--bg-active) !important;
+  color: var(--text-primary) !important;
+}
+
+.obsidian-mdx-editor [class*="toolbar"] button[data-active="true"],
+.obsidian-mdx-editor [class*="toolbar"] button[aria-pressed="true"] {
+  background: var(--bg-active) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Separator in toolbar */
+.obsidian-mdx-editor [class*="toolbarGroupOfGroups"] [role="separator"] {
+  background: var(--border-subtle) !important;
+}
+
+/* Editor content area */
+.obsidian-mdx-editor [class*="contentEditable"],
+.obsidian-mdx-editor .mdxeditor-rich-text-editor {
+  background: var(--bg-elevated) !important;
+  color: var(--text-primary) !important;
+  font-family: var(--font-body) !important;
+  padding: 16px !important;
+  min-height: 200px;
+}
+
+.obsidian-mdx-editor [class*="contentEditable"] [data-placeholder]::before {
+  color: var(--text-faint) !important;
+}
+
+/* Headings */
+.obsidian-mdx-editor h1 {
+  font-family: var(--font-display);
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.obsidian-mdx-editor h2 {
+  font-family: var(--font-display);
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.obsidian-mdx-editor h3 {
+  font-family: var(--font-display);
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Links */
+.obsidian-mdx-editor a {
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Code blocks */
+.obsidian-mdx-editor pre {
+  background: var(--bg-overlay) !important;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 12px;
+  overflow-x: auto;
+}
+
+.obsidian-mdx-editor code {
+  font-family: var(--font-mono) !important;
+  font-size: 0.875rem;
+}
+
+.obsidian-mdx-editor :not(pre) > code {
+  background: var(--bg-overlay);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.875em;
+}
+
+/* Blockquotes */
+.obsidian-mdx-editor blockquote {
+  border-left: 3px solid var(--border-strong);
+  padding-left: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin: 8px 0;
+}
+
+/* Tables */
+.obsidian-mdx-editor table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+}
+
+.obsidian-mdx-editor th,
+.obsidian-mdx-editor td {
+  border: 1px solid var(--border-default);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.obsidian-mdx-editor th {
+  background: var(--bg-surface);
+  font-weight: 600;
+}
+
+/* Lists */
+.obsidian-mdx-editor ul,
+.obsidian-mdx-editor ol {
+  padding-left: 24px;
+  margin: 8px 0;
+}
+
+.obsidian-mdx-editor li {
+  margin: 4px 0;
+}
+
+/* Horizontal rule */
+.obsidian-mdx-editor hr {
+  border: none;
+  border-top: 1px solid var(--border-default);
+  margin: 16px 0;
+}
+
+/* Diff source view */
+.obsidian-mdx-editor [class*="diffSourceWrapper"] {
+  background: var(--bg-elevated) !important;
+}
+
+.obsidian-mdx-editor [class*="diffSourceWrapper"] textarea {
+  background: var(--bg-elevated) !important;
+  color: var(--text-primary) !important;
+  font-family: var(--font-mono) !important;
+}
+
+/* Dialog/popup overrides */
+.obsidian-mdx-editor [class*="dialogContent"] {
+  background: var(--bg-overlay) !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: 8px !important;
+  color: var(--text-primary) !important;
+}
+
+.obsidian-mdx-editor [class*="dialogContent"] input {
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--border-default) !important;
+  color: var(--text-primary) !important;
+  border-radius: 4px !important;
+  padding: 6px 8px !important;
+}
+
+.obsidian-mdx-editor [class*="dialogContent"] button {
+  background: var(--bg-active) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: 4px !important;
+}
+
+/* Popover menus */
+.obsidian-mdx-editor [class*="selectTrigger"],
+.obsidian-mdx-editor [class*="selectContent"] {
+  background: var(--bg-overlay) !important;
+  border: 1px solid var(--border-default) !important;
+  color: var(--text-primary) !important;
+}
+
+.obsidian-mdx-editor [class*="selectItem"]:hover {
+  background: var(--bg-active) !important;
+}

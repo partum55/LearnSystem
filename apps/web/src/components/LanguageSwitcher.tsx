@@ -1,14 +1,19 @@
-'use client';
-
+"use client";
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAuthStore } from '../store/authStore';
 
 export const LanguageSwitcher: React.FC = () => {
   const { i18n } = useTranslation();
+  const { updateUserPreferences, isAuthenticated } = useAuthStore();
 
   const changeLanguage = async (lng: 'en' | 'uk') => {
     await i18n.changeLanguage(lng);
-    localStorage.setItem('language', lng);
+    if (isAuthenticated) {
+      await updateUserPreferences(lng, undefined);
+    } else {
+      localStorage.setItem('language', lng);
+    }
   };
 
   return (

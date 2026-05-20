@@ -1,3 +1,4 @@
+"use client";
 import React, { forwardRef } from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

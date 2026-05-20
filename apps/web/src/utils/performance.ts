@@ -1,14 +1,13 @@
 /**
  * Performance utilities for production optimization
  */
-import { isDev, isProd, publicEnv } from '../lib/env';
 
 /**
  * Remove console.log in production
  * Import and call this in index.tsx before rendering
  */
 export function disableConsoleInProduction(): void {
-  if (isProd) {
+  if (process.env.NODE_ENV === "production") {
     // Preserve console.error and console.warn for debugging
     const noop = () => { };
 
@@ -36,7 +35,7 @@ export function disableConsoleInProduction(): void {
  */
 export function preloadCriticalResources(): void {
   // Preconnect to API server
-  const apiUrl = publicEnv.apiUrl;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL;
   if (apiUrl) {
     const link = document.createElement('link');
     link.rel = 'preconnect';
@@ -49,7 +48,7 @@ export function preloadCriticalResources(): void {
  * Register service worker for offline support (PWA)
  */
 export function registerServiceWorker(): void {
-  if ('serviceWorker' in navigator && isProd) {
+  if ('serviceWorker' in navigator && process.env.NODE_ENV === "production") {
     window.addEventListener('load', () => {
       navigator.serviceWorker
         .register('/service-worker.js')
@@ -152,7 +151,7 @@ export function createIntersectionObserver(
  * Memory usage monitoring (development only)
  */
 export function logMemoryUsage(): void {
-  if (isDev && 'memory' in performance) {
+  if (process.env.NODE_ENV === "development" && 'memory' in performance) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const memory = (performance as any).memory;
     console.log('Memory:', {

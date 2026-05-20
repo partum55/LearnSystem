@@ -1,5 +1,4 @@
 // Service Worker registration utility
-import { isProd, publicEnv } from '../lib/env';
 
 const isLocalhost = Boolean(
   window.location.hostname === 'localhost' ||
@@ -12,11 +11,14 @@ interface Config {
   onUpdate?: (registration: ServiceWorkerRegistration) => void;
 }
 
-const PUBLIC_BASE_URL = '';
-const VAPID_PUBLIC_KEY = publicEnv.vapidPublicKey;
+const PUBLIC_BASE_URL = ""?.replace(/\/$/, '') || '';
+const VAPID_PUBLIC_KEY =
+  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
+  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
+  '';
 
 export function register(config?: Config) {
-  if (isProd && 'serviceWorker' in navigator) {
+  if (process.env.NODE_ENV === "production" && 'serviceWorker' in navigator) {
     const publicUrl = new URL(PUBLIC_BASE_URL || '/', window.location.href);
 
     if (publicUrl.origin !== window.location.origin) {

@@ -1,3 +1,4 @@
+"use client";
 import { InputHTMLAttributes, forwardRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';

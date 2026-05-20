@@ -1,0 +1,231 @@
+"use client";
+import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Button } from '../Button';
+import { Modal } from '../Modal';
+import apiClient, { extractErrorMessage } from '../../api/client';
+
+interface AIContentGeneratorProps {
+  type: 'quiz' | 'assignment' | 'module';
+  onGenerate: (content: unknown) => void; // Keep unknown as content structure varies widely
+}
+
+export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ type, onGenerate }) => {
+  const { t, i18n } = useTranslation();
+  const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [previewJson, setPreviewJson] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [topic, setTopic] = useState('');
+  const [difficulty, setDifficulty] = useState('medium');
+  const [questionCount, setQuestionCount] = useState(10);
+  const [weekDuration, setWeekDuration] = useState(4);
+
+  const handleGenerate = async () => {
+    if (!topic.trim()) {
+      alert(t('ai.generator.topicRequired', 'Please enter a topic'));
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setPreviewError(null);
+    try {
+      // Use versioned API endpoint
+      const endpoint = `/v1/ai/generate/${type}`;
+      const requestBody: Record<string, unknown> = {
+        topic,
+        language: i18n.language === 'uk' ? 'uk' : 'en',
+        difficulty,
+      };
+
+      if (type === 'quiz') {
+        requestBody.questionCount = questionCount;
+      } else if (type === 'module') {
+        requestBody.weekDuration = weekDuration;
+      }
+
+      // Use apiClient instead of raw fetch
+      const data = await apiClient.post(endpoint, requestBody);
+      setPreviewJson(JSON.stringify(data, null, 2));
+    } catch (err) {
+      console.error('Error generating content:', err);
+      setError(extractErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReject = () => {
+    setPreviewJson(null);
+    setPreviewError(null);
+  };
+
+  const handleConfirm = () => {
+    if (!previewJson) {
+      return;
+    }
+    try {
+      const parsed = JSON.parse(previewJson);
+      onGenerate(parsed);
+      setIsOpen(false);
+      setTopic('');
+      setPreviewJson(null);
+      setPreviewError(null);
+    } catch (err) {
+      setPreviewError(extractErrorMessage(err));
+    }
+  };
+
+  const handleClose = () => {
+    setIsOpen(false);
+    setTopic('');
+    setError(null);
+    setPreviewJson(null);
+    setPreviewError(null);
+  };
+
+  return (
+    <>
+      <Button
+        onClick={() => setIsOpen(true)}
+        variant="primary"
+        className="flex items-center gap-2"
+      >
+        <span>✨</span>
+        <span>{t(`ai.generator.${type}`, `Generate ${type} with AI`)}</span>
+      </Button>
+
+      <Modal
+        isOpen={isOpen}
+        onClose={handleClose}
+        title={
+          previewJson
+            ? t('ai.generator.previewTitle', 'Review AI output before saving')
+            : t(`ai.generator.${type}Title`, `Generate ${type} with AI`)
+        }
+      >
+        <div className="space-y-4">
+          {error && (
+            <div className="p-3 rounded-lg text-sm" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', color: 'var(--fn-error)' }}>
+              {error}
+            </div>
+          )}
+          {previewError && (
+            <div className="p-3 rounded-lg text-sm" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', color: 'var(--fn-error)' }}>
+              {previewError}
+            </div>
+          )}
+          {previewJson ? (
+            <>
+              <div className="space-y-2">
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                  {t(
+                    'ai.generator.previewDescription',
+                    'Review and edit the exact AI output. Content is not saved until you confirm.'
+                  )}
+                </p>
+                <textarea
+                  value={previewJson}
+                  onChange={(e) => setPreviewJson(e.target.value)}
+                  className="input w-full h-80 text-xs"
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                />
+              </div>
+              <div className="flex gap-3 justify-end mt-6">
+                <Button onClick={handleReject} variant="secondary" disabled={loading}>
+                  {t('ai.generator.reject', 'Reject')}
+                </Button>
+                <Button onClick={handleConfirm} variant="primary" disabled={loading}>
+                  {t('ai.generator.confirm', 'Confirm & Use')}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="label block mb-2">
+                  {t('ai.generator.topic', 'Topic')}
+                </label>
+                <textarea
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  className="input w-full"
+                  rows={3}
+                  placeholder={t('ai.generator.topicPlaceholder', 'Describe what you want to create...')}
+                />
+              </div>
+
+              <div>
+                <label className="label block mb-2">
+                  {t('ai.generator.difficulty', 'Difficulty')}
+                </label>
+                <select
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value)}
+                  className="input w-full"
+                >
+                  <option value="easy">{t('difficulty.easy', 'Easy')}</option>
+                  <option value="medium">{t('difficulty.medium', 'Medium')}</option>
+                  <option value="hard">{t('difficulty.hard', 'Hard')}</option>
+                </select>
+              </div>
+
+              {type === 'quiz' && (
+                <div>
+                  <label className="label block mb-2">
+                    {t('ai.generator.questionCount', 'Number of Questions')}
+                  </label>
+                  <input
+                    type="number"
+                    value={questionCount}
+                    onChange={(e) => setQuestionCount(parseInt(e.target.value))}
+                    min={5}
+                    max={50}
+                    className="input w-full"
+                  />
+                </div>
+              )}
+
+              {type === 'module' && (
+                <div>
+                  <label className="label block mb-2">
+                    {t('ai.generator.weekDuration', 'Duration (weeks)')}
+                  </label>
+                  <input
+                    type="number"
+                    value={weekDuration}
+                    onChange={(e) => setWeekDuration(parseInt(e.target.value))}
+                    min={1}
+                    max={16}
+                    className="input w-full"
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end mt-6">
+                <Button
+                  onClick={handleClose}
+                  variant="secondary"
+                  disabled={loading}
+                >
+                  {t('common.cancel', 'Cancel')}
+                </Button>
+                <Button
+                  onClick={handleGenerate}
+                  variant="primary"
+                  disabled={loading || !topic.trim()}
+                >
+                  {loading ? t('common.generating', 'Generating...') : t('common.generate', 'Generate')}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
+    </>
+  );
+};
+
+export default AIContentGenerator;
