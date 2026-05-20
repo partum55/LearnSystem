@@ -1,58 +1,70 @@
 "use client";
-import React, { ButtonHTMLAttributes } from 'react';
-import clsx from 'clsx';
+import React, { forwardRef } from 'react';
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  children?: React.ReactNode;
+  variant?: 'primary' | 'secondary' | 'accent' | 'outline' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
   fullWidth?: boolean;
-  children?: React.ReactNode;
 }
 
-export const Button: React.FC<ButtonProps> = ({
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({
   children,
   variant = 'primary',
   size = 'md',
   isLoading = false,
   fullWidth = false,
-  className,
+  className = '',
   disabled,
   ...props
-}) => {
-  const variantClasses: Record<string, string> = {
+}, ref) => {
+  const variantClasses = {
     primary: 'btn-primary',
     secondary: 'btn-secondary',
-    danger: 'btn-danger',
+    accent: 'btn-accent',
+    outline: 'btn-outline',
     ghost: 'btn-ghost',
+    danger: 'btn-danger',
   };
 
-  const sizeClasses: Record<string, string> = {
+  const sizeClasses = {
     sm: 'btn-sm',
     md: 'btn-md',
     lg: 'btn-lg',
   };
 
+  const classes = [
+    'btn',
+    variantClasses[variant],
+    sizeClasses[size],
+    fullWidth && 'btn-full',
+    className,
+  ].filter(Boolean).join(' ');
+
   return (
     <button
-      className={clsx(
-        'btn',
-        variantClasses[variant],
-        sizeClasses[size],
-        fullWidth && 'btn-full',
-        className
-      )}
+      ref={ref}
+      className={classes}
       disabled={disabled || isLoading}
       {...props}
     >
       {isLoading && (
         <svg
+          role="status"
           className="animate-spin -ml-1 mr-2 h-4 w-4"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
         >
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
           <path
             className="opacity-75"
             fill="currentColor"
@@ -63,4 +75,8 @@ export const Button: React.FC<ButtonProps> = ({
       {children}
     </button>
   );
-};
+});
+
+Button.displayName = 'Button';
+
+export default Button;

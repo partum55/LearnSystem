@@ -1,9 +1,9 @@
 "use client";
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import Button from './ButtonEnhanced';
+import { Button } from './Button';
 
-describe('ButtonEnhanced', () => {
+describe('Button', () => {
   test('renders button with correct text', () => {
     render(<Button>Click me</Button>);
     expect(screen.getByText('Click me')).toBeInTheDocument();
