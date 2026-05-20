@@ -1,5 +1,5 @@
 'use client';
-import DashboardCustomize from '@/views/DashboardCustomize';
+import DashboardCustomize from '@/features/dashboard/views/DashboardCustomize';
 export default function Page() {
   return <DashboardCustomize />;
 }
