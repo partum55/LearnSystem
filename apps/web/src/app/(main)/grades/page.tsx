@@ -1,5 +1,5 @@
 'use client';
-import { AllGrades } from '@/views/AllGrades';
+import { AllGrades } from '@/features/grades/views/AllGrades';
 export default function Page() {
   return <AllGrades />;
 }

@@ -1,5 +1,5 @@
 'use client';
-import StudentGradebook from '@/views/StudentGradebook';
+import StudentGradebook from '@/features/grades/views/StudentGradebook';
 export default function Page() {
   return <StudentGradebook />;
 }

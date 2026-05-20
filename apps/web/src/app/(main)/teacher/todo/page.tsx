@@ -1,5 +1,5 @@
 'use client';
-import TeacherTodoDashboard from '@/views/TeacherTodoDashboard';
+import TeacherTodoDashboard from '@/features/teacher/views/TeacherTodoDashboard';
 export default function Page() {
   return <TeacherTodoDashboard />;
 }

@@ -1,5 +1,5 @@
 'use client';
-import SpeedGrader from '@/views/SpeedGrader';
+import SpeedGrader from '@/features/grades/views/SpeedGrader';
 export default function Page() {
   return <SpeedGrader />;
 }
