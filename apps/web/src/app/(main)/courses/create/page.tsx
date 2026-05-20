@@ -1,5 +1,5 @@
 'use client';
-import CourseCreate from '@/views/CourseCreate';
+import CourseCreate from '@/features/courses/views/CourseCreate';
 export default function Page() {
   return <CourseCreate />;
 }
