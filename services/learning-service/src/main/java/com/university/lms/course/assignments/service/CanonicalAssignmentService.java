@@ -2,6 +2,12 @@ package com.university.lms.course.assignments.service;
 
 import com.university.lms.course.assignments.dto.AssignmentDetailDto;
 import com.university.lms.course.assignments.dto.AssignmentRequest;
+import com.university.lms.course.assignments.dto.FileAssignmentSettingsDto;
+import com.university.lms.course.assignments.dto.FormAssignmentSettingsDto;
+import com.university.lms.course.assignments.dto.QuizAssignmentSettingsDto;
+import com.university.lms.course.assignments.dto.RteAssignmentSettingsDto;
+import com.university.lms.course.assignments.dto.SeminarAssignmentSettingsDto;
+import com.university.lms.course.assignments.dto.VplAssignmentSettingsDto;
 import com.university.lms.course.assessment.domain.Assignment;
 import com.university.lms.course.assessment.domain.Quiz;
 import com.university.lms.course.assessment.domain.QuizAttempt;
@@ -21,12 +27,16 @@ import com.university.lms.gradebook.domain.GradebookEntry;
 import com.university.lms.gradebook.repository.GradebookEntryRepository;
 import com.university.lms.submission.domain.Submission;
 import com.university.lms.submission.domain.SubmissionFile;
+import com.university.lms.submission.domain.SubmissionVersion;
 import com.university.lms.submission.repository.SubmissionRepository;
+import com.university.lms.submission.repository.SubmissionVersionRepository;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -40,6 +50,7 @@ public class CanonicalAssignmentService {
   private final AssignmentRepository assignmentRepository;
   private final ModuleRepository moduleRepository;
   private final SubmissionRepository submissionRepository;
+  private final SubmissionVersionRepository submissionVersionRepository;
   private final QuizRepository quizRepository;
   private final QuizAttemptRepository quizAttemptRepository;
   private final GradebookEntryRepository gradebookEntryRepository;
@@ -69,6 +80,8 @@ public class CanonicalAssignmentService {
     accessService.requireTeacher(courseId, userId);
     requireModuleInCourse(courseId, moduleId);
     String legacyType = AssignmentTypeMapper.toLegacy(request.type());
+    Map<String, Object> settings = settingsFor(request);
+    validateAssignmentRequest(request.type(), settings);
     Assignment assignment = Assignment.builder()
         .courseId(courseId)
         .moduleId(moduleId)
@@ -81,12 +94,12 @@ public class CanonicalAssignmentService {
         .dueDate(request.dueDate())
         .isPublished(Boolean.TRUE.equals(request.visible()))
         .createdBy(userId)
-        .externalToolConfig(canonicalSettings(request.settings()))
+        .externalToolConfig(canonicalSettings(settings))
         .build();
-    applySettings(assignment, request.type(), request.settings());
+    applySettings(assignment, request.type(), settings);
     assignment = assignmentRepository.save(assignment);
     if ("quiz".equalsIgnoreCase(request.type())) {
-      Quiz quiz = createQuizForAssignment(courseId, userId, assignment, request.settings());
+      Quiz quiz = createQuizForAssignment(courseId, userId, assignment, settings);
       assignment.setQuizId(quiz.getId());
       assignment = assignmentRepository.save(assignment);
     }
@@ -98,6 +111,8 @@ public class CanonicalAssignmentService {
   public AssignmentDetailDto updateAssignment(UUID assignmentId, UUID userId, AssignmentRequest request) {
     Assignment assignment = requireAssignment(assignmentId);
     accessService.requireTeacher(assignment.getCourseId(), userId);
+    Map<String, Object> settings = settingsFor(request);
+    validateAssignmentRequest(request.type(), settings);
     assignment.setAssignmentType(AssignmentTypeMapper.toLegacy(request.type()));
     assignment.setTitle(request.title());
     assignment.setDescription(request.description() == null ? "" : request.description());
@@ -110,8 +125,8 @@ public class CanonicalAssignmentService {
     if (request.visible() != null) {
       assignment.setIsPublished(request.visible());
     }
-    assignment.setExternalToolConfig(canonicalSettings(request.settings()));
-    applySettings(assignment, request.type(), request.settings());
+    assignment.setExternalToolConfig(canonicalSettings(settings));
+    applySettings(assignment, request.type(), settings);
     assignment = assignmentRepository.save(assignment);
     gradebookService.ensureGradebookEntriesForAssignment(assignment);
     return assignmentMapper.toDetail(assignment, findQuiz(assignment), null, null, null, 0);
@@ -145,6 +160,7 @@ public class CanonicalAssignmentService {
     if (!assignment.acceptsLateSubmission()) {
       throw ApiException.conflict("DEADLINE_CLOSED", "The assignment deadline has passed");
     }
+    Map<String, Object> settings = canonicalSettingsOf(assignment);
     Submission submission = submissionRepository.findByAssignmentIdAndUserId(assignmentId, userId)
         .orElseGet(() -> Submission.builder()
             .assignmentId(assignmentId)
@@ -156,7 +172,8 @@ public class CanonicalAssignmentService {
     if (submission.getPublishedAt() != null) {
       throw ApiException.conflict("GRADE_ALREADY_PUBLISHED", "Published submissions cannot be changed");
     }
-    applySubmissionContent(submission, type, request);
+    validateResubmissionAllowed(submission, settings);
+    applySubmissionContent(submission, type, request, assignment, settings);
     submission.setStatus(assignment.isOverdue() ? "LATE" : "SUBMITTED");
     submission.setSubmittedAt(LocalDateTime.now());
     submission.setLastResubmittedAt(existingSubmission ? LocalDateTime.now() : null);
@@ -165,6 +182,15 @@ public class CanonicalAssignmentService {
         ? (submission.getSubmissionVersion() == null ? 2 : submission.getSubmissionVersion() + 1)
         : 1);
     submission = submissionRepository.save(submission);
+    submissionVersionRepository.save(SubmissionVersion.builder()
+        .submissionId(submission.getId())
+        .assignmentId(submission.getAssignmentId())
+        .userId(submission.getUserId())
+        .versionNumber(submission.getSubmissionVersion())
+        .status(submission.getStatus())
+        .content(submissionContent(submission))
+        .submittedAt(submission.getSubmittedAt())
+        .build());
     gradebookService.markSubmitted(assignment, submission);
     return toSubmissionDto(submission);
   }
@@ -194,10 +220,11 @@ public class CanonicalAssignmentService {
             submission.getStudentEmail()),
         assignmentMapper.toDetail(assignment, findQuiz(assignment), submission, null, entry, 0),
         submissionContent(submission),
-        submission.getDraftGrade() == null ? null : new com.university.lms.course.assignments.dto.GradePreviewDto(
-            submission.getDraftGrade(), assignment.getMaxPoints(), "draft", submission.getDraftFeedback()),
-        submission.getPublishedGrade() == null ? null : new com.university.lms.course.assignments.dto.GradePreviewDto(
-            submission.getPublishedGrade(), assignment.getMaxPoints(), "published", submission.getPublishedFeedback()),
+        entry == null || entry.getDraftScore() == null ? null : new com.university.lms.course.assignments.dto.GradePreviewDto(
+            entry.getDraftScore(), assignment.getMaxPoints(), "draft", entry.getDraftComment()),
+        entry == null || !entry.isPublishedGrade() || entry.getPublishedFinalScore() == null ? null
+            : new com.university.lms.course.assignments.dto.GradePreviewDto(
+                entry.getPublishedFinalScore(), assignment.getMaxPoints(), "published", entry.getPublishedFinalComment()),
         Map.of());
   }
 
@@ -214,7 +241,7 @@ public class CanonicalAssignmentService {
     submission.setDraftFeedback(request.comment());
     submission.setGraderId(userId);
     submission.setGradedAt(LocalDateTime.now());
-    submission.setStatus("GRADED");
+    submission.setStatus("IN_REVIEW");
     submissionRepository.save(submission);
     gradebookService.saveDraft(assignment, submission, request.points(), request.comment(), userId);
     return reviewSubmission(submissionId, userId);
@@ -226,11 +253,14 @@ public class CanonicalAssignmentService {
         .orElseThrow(() -> ApiException.notFound("Submission"));
     Assignment assignment = requireAssignment(submission.getAssignmentId());
     accessService.requireTeacher(assignment.getCourseId(), userId);
-    if (submission.getDraftGrade() == null) {
+    GradebookEntry entry = gradebookEntryRepository
+        .findByAssignmentIdAndStudentId(assignment.getId(), submission.getUserId())
+        .orElse(null);
+    if (entry == null || entry.getDraftScore() == null) {
       throw ApiException.conflict("NO_DRAFT_GRADE", "Save a draft grade before publishing");
     }
-    submission.setPublishedGrade(submission.getDraftGrade());
-    submission.setPublishedFeedback(submission.getDraftFeedback());
+    submission.setPublishedGrade(entry.getDraftScore());
+    submission.setPublishedFeedback(entry.getDraftComment());
     submission.setPublishedBy(userId);
     submission.setPublishedAt(LocalDateTime.now());
     submission.setStatus("PUBLISHED");
@@ -258,6 +288,106 @@ public class CanonicalAssignmentService {
         .filter(java.util.Objects::nonNull)
         .max(Integer::compareTo)
         .orElse(0) + 1;
+  }
+
+  private Map<String, Object> settingsFor(AssignmentRequest request) {
+    String type = request.type() == null ? "" : request.type().toLowerCase();
+    return switch (type) {
+      case "file_submission" -> fileSettings(request.fileSettings());
+      case "rte_submission" -> rteSettings(request.rteSettings());
+      case "form" -> formSettings(request.formSettings());
+      case "quiz" -> quizSettings(request.quizSettings());
+      case "vpl" -> vplSettings(request.vplSettings());
+      case "seminar" -> seminarSettings(request.seminarSettings());
+      default -> throw ApiException.badRequest("INVALID_ASSIGNMENT_TYPE", "Unsupported assignment type");
+    };
+  }
+
+  private Map<String, Object> fileSettings(FileAssignmentSettingsDto settings) {
+    Map<String, Object> value = new HashMap<>();
+    value.put("allowedFileTypes", settings == null || settings.allowedFileTypes() == null
+        ? List.of()
+        : settings.allowedFileTypes());
+    value.put("maxFiles", settings == null || settings.maxFiles() == null ? 5 : settings.maxFiles());
+    value.put("maxFileSizeMb", settings == null || settings.maxFileSizeMb() == null ? 10 : settings.maxFileSizeMb());
+    value.put("allowEditAfterSubmit", settings == null || !Boolean.FALSE.equals(settings.allowEditAfterSubmit()));
+    value.put("allowDeleteAfterSubmit", settings != null && Boolean.TRUE.equals(settings.allowDeleteAfterSubmit()));
+    value.put("allowResubmission", settings == null || !Boolean.FALSE.equals(settings.allowResubmission()));
+    return value;
+  }
+
+  private Map<String, Object> rteSettings(RteAssignmentSettingsDto settings) {
+    Map<String, Object> value = new HashMap<>();
+    value.put("minWords", settings == null ? null : settings.minWords());
+    value.put("maxWords", settings == null ? null : settings.maxWords());
+    value.put("allowEditAfterSubmit", settings == null || !Boolean.FALSE.equals(settings.allowEditAfterSubmit()));
+    value.put("allowResubmission", settings == null || !Boolean.FALSE.equals(settings.allowResubmission()));
+    return value;
+  }
+
+  private Map<String, Object> formSettings(FormAssignmentSettingsDto settings) {
+    Map<String, Object> value = new HashMap<>();
+    value.put("fields", settings == null || settings.fields() == null ? List.of() : settings.fields());
+    value.put("allowEditAfterSubmit", settings == null || !Boolean.FALSE.equals(settings.allowEditAfterSubmit()));
+    value.put("allowResubmission", settings == null || !Boolean.FALSE.equals(settings.allowResubmission()));
+    return value;
+  }
+
+  private Map<String, Object> quizSettings(QuizAssignmentSettingsDto settings) {
+    Map<String, Object> value = new HashMap<>();
+    value.put("attemptLimit", settings == null || settings.attemptLimit() == null ? 1 : settings.attemptLimit());
+    value.put("timeLimitMinutes", settings == null ? null : settings.timeLimitMinutes());
+    value.put("canReviewAttempts", settings == null || !Boolean.FALSE.equals(settings.canReviewAttempts()));
+    value.put("showCorrectAnswers", settings != null && Boolean.TRUE.equals(settings.showCorrectAnswers()));
+    value.put("showScoreAfterSubmit", settings == null || !Boolean.FALSE.equals(settings.showScoreAfterSubmit()));
+    value.put("shuffleQuestions", settings != null && Boolean.TRUE.equals(settings.shuffleQuestions()));
+    value.put("gradingMode", settings == null || settings.gradingMode() == null ? "auto" : settings.gradingMode());
+    return value;
+  }
+
+  private Map<String, Object> vplSettings(VplAssignmentSettingsDto settings) {
+    Map<String, Object> value = new HashMap<>();
+    value.put("language", settings == null ? null : settings.language());
+    value.put("runtime", settings == null ? null : settings.runtime());
+    value.put("templateCode", settings == null ? null : settings.templateCode());
+    value.put("visibleTests", settings == null || settings.visibleTests() == null ? List.of() : settings.visibleTests());
+    value.put("hiddenTestsReference", settings == null ? null : settings.hiddenTestsReference());
+    value.put("timeLimit", settings == null ? null : settings.timeLimit());
+    value.put("memoryLimit", settings == null ? null : settings.memoryLimit());
+    value.put("gradingMode", settings == null || settings.gradingMode() == null ? "manual" : settings.gradingMode());
+    return value;
+  }
+
+  private Map<String, Object> seminarSettings(SeminarAssignmentSettingsDto settings) {
+    Map<String, Object> value = new HashMap<>();
+    value.put("requiresSubmission", false);
+    value.put("manualGradeOnly", settings == null || !Boolean.FALSE.equals(settings.manualGradeOnly()));
+    return value;
+  }
+
+  private void validateAssignmentRequest(String type, Map<String, Object> settings) {
+    if ("vpl".equalsIgnoreCase(type) && isBlank((String) settings.get("language"))) {
+      throw ApiException.badRequest("VPL_LANGUAGE_REQUIRED", "VPL assignments require a language");
+    }
+    if ("quiz".equalsIgnoreCase(type) && intSetting(settings, "attemptLimit", 1) < 1) {
+      throw ApiException.badRequest("QUIZ_ATTEMPT_LIMIT_REQUIRED", "Quiz attemptLimit must be at least 1");
+    }
+    if ("rte_submission".equalsIgnoreCase(type)) {
+      Integer minWords = integerSetting(settings, "minWords");
+      Integer maxWords = integerSetting(settings, "maxWords");
+      if (minWords != null && maxWords != null && minWords > maxWords) {
+        throw ApiException.badRequest("INVALID_WORD_LIMITS", "minWords cannot be greater than maxWords");
+      }
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> canonicalSettingsOf(Assignment assignment) {
+    Map<String, Object> config = assignment.getExternalToolConfig() == null
+        ? Map.of()
+        : assignment.getExternalToolConfig();
+    Object settings = config.get("canonicalSettings");
+    return settings instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of();
   }
 
   private Map<String, Object> canonicalSettings(Map<String, Object> settings) {
@@ -298,6 +428,20 @@ public class CanonicalAssignmentService {
       return number.intValue();
     }
     return defaultValue;
+  }
+
+  private Integer integerSetting(Map<String, Object> settings, String key) {
+    Object value = settings.get(key);
+    return value instanceof Number number ? number.intValue() : null;
+  }
+
+  private boolean booleanSetting(Map<String, Object> settings, String key, boolean defaultValue) {
+    Object value = settings.get(key);
+    return value instanceof Boolean bool ? bool : defaultValue;
+  }
+
+  private boolean isBlank(String value) {
+    return value == null || value.isBlank();
   }
 
   private Quiz createQuizForAssignment(
@@ -341,14 +485,42 @@ public class CanonicalAssignmentService {
     return quizAttemptRepository.countByQuizIdAndUserId(assignment.getQuizId(), userId);
   }
 
-  private void applySubmissionContent(Submission submission, String type, SubmissionRequest request) {
+  private void validateResubmissionAllowed(Submission submission, Map<String, Object> settings) {
+    if (submission.getId() == null || submission.getSubmittedAt() == null) {
+      return;
+    }
+    if (!booleanSetting(settings, "allowResubmission", true)) {
+      throw ApiException.conflict("RESUBMISSION_NOT_ALLOWED", "This assignment does not allow resubmission");
+    }
+  }
+
+  private void applySubmissionContent(
+      Submission submission,
+      String type,
+      SubmissionRequest request,
+      Assignment assignment,
+      Map<String, Object> settings) {
     submission.getFiles().clear();
     switch (type) {
       case "file_submission" -> {
         if (request.files() == null || request.files().isEmpty()) {
           throw ApiException.badRequest("FILES_REQUIRED", "At least one file is required");
         }
+        int maxFiles = intSetting(settings, "maxFiles", assignment.getMaxFiles() == null ? 5 : assignment.getMaxFiles());
+        if (request.files().size() > maxFiles) {
+          throw ApiException.badRequest("TOO_MANY_FILES", "Submitted file count exceeds maxFiles");
+        }
+        long maxFileSize = assignment.getMaxFileSize() == null ? Long.MAX_VALUE : assignment.getMaxFileSize();
+        List<String> allowedFileTypes = assignment.getAllowedFileTypes() == null
+            ? List.of()
+            : assignment.getAllowedFileTypes();
         for (SubmissionRequest.FileSubmissionItemDto file : request.files()) {
+          if (file.fileSize() != null && file.fileSize() > maxFileSize) {
+            throw ApiException.badRequest("FILE_TOO_LARGE", "One or more files exceed maxFileSizeMb");
+          }
+          if (!allowedFileTypes.isEmpty() && !allowedFileTypes.contains(file.contentType())) {
+            throw ApiException.badRequest("FILE_TYPE_NOT_ALLOWED", "One or more files use a disallowed content type");
+          }
           submission.getFiles().add(SubmissionFile.builder()
               .submission(submission)
               .filename(file.fileName())
@@ -363,15 +535,72 @@ public class CanonicalAssignmentService {
         if (request.text() == null || request.text().isBlank()) {
           throw ApiException.badRequest("TEXT_REQUIRED", "Submission text is required");
         }
+        int words = wordCount(request.text());
+        Integer minWords = integerSetting(settings, "minWords");
+        Integer maxWords = integerSetting(settings, "maxWords");
+        if (minWords != null && words < minWords) {
+          throw ApiException.badRequest("TEXT_TOO_SHORT", "Submission text is below minWords");
+        }
+        if (maxWords != null && words > maxWords) {
+          throw ApiException.badRequest("TEXT_TOO_LONG", "Submission text exceeds maxWords");
+        }
         submission.setTextAnswer(request.text());
       }
-      case "form" -> submission.setFormData(request.answers());
+      case "form" -> {
+        if (request.answers() == null) {
+          throw ApiException.badRequest("FORM_ANSWERS_REQUIRED", "Form answers are required");
+        }
+        validateFormAnswers(settings, request.answers());
+        submission.setFormData(request.answers());
+      }
       case "vpl" -> {
+        if (isBlank(request.programmingLanguage())) {
+          throw ApiException.badRequest("PROGRAMMING_LANGUAGE_REQUIRED", "Programming language is required");
+        }
+        if (isBlank(request.code())) {
+          throw ApiException.badRequest("CODE_REQUIRED", "Code is required");
+        }
+        String configuredLanguage = assignment.getProgrammingLanguage();
+        if (!isBlank(configuredLanguage) && !configuredLanguage.equalsIgnoreCase(request.programmingLanguage())) {
+          throw ApiException.badRequest("PROGRAMMING_LANGUAGE_MISMATCH", "Submission language does not match assignment language");
+        }
         submission.setProgrammingLanguage(request.programmingLanguage());
         submission.setTextAnswer(request.code());
-        submission.setAutoGradeResult(Map.of("executionStatus", "pending", "vplBoundary", "vpl-service"));
+        submission.setAutoGradeResult(Map.of(
+            "executionStatus", "pending",
+            "vplBoundary", "vpl-service",
+            "executionResultReference", Objects.toString(request.executionResultReference(), null)));
       }
       default -> throw ApiException.badRequest("INVALID_SUBMISSION_TYPE", "Unsupported submission type");
+    }
+  }
+
+  private int wordCount(String text) {
+    String trimmed = text == null ? "" : text.trim();
+    return trimmed.isEmpty() ? 0 : trimmed.split("\\s+").length;
+  }
+
+  @SuppressWarnings("unchecked")
+  private void validateFormAnswers(Map<String, Object> settings, Map<String, Object> answers) {
+    Object fieldsValue = settings.get("fields");
+    if (!(fieldsValue instanceof List<?> fields)) {
+      return;
+    }
+    List<String> missing = new ArrayList<>();
+    for (Object fieldValue : fields) {
+      if (!(fieldValue instanceof Map<?, ?> field)) {
+        continue;
+      }
+      Object required = field.get("required");
+      Object name = field.get("name");
+      Object id = field.get("id");
+      String key = Objects.toString(name == null ? id : name, "");
+      if (Boolean.TRUE.equals(required) && (key.isBlank() || !answers.containsKey(key) || answers.get(key) == null)) {
+        missing.add(key);
+      }
+    }
+    if (!missing.isEmpty()) {
+      throw ApiException.badRequest("REQUIRED_FORM_FIELDS_MISSING", "Required form fields are missing: " + missing);
     }
   }
 

@@ -2,7 +2,10 @@ package com.university.lms.course.contract;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.university.lms.submission.web.SubmissionController;
+import com.university.lms.course.assignments.controller.CanonicalAssignmentController;
+import com.university.lms.course.courses.controller.CanonicalCourseController;
+import com.university.lms.course.gradebook.controller.CanonicalGradebookController;
+import com.university.lms.course.quizzes.controller.CanonicalQuizAttemptController;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -13,6 +16,7 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.config.YamlPropertiesFactoryBean;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.util.ClassUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,16 +34,37 @@ class LearningEndpointContractTest {
 
   @Test
   void controllersMustExposeExpectedBasePaths() {
-    assertBasePath(SubmissionController.class, "/submissions");
+    assertBasePath(CanonicalCourseController.class, "/v1/courses");
+    assertBasePath(CanonicalAssignmentController.class, "/v1");
+    assertBasePath(CanonicalQuizAttemptController.class, "/v1");
+    assertBasePath(CanonicalGradebookController.class, "/v1/courses/{courseId}/gradebook");
   }
 
   @Test
-  void submissionControllerMustExposeCoreRoutes() {
-    assertMethodPath(SubmissionController.class, "createDraft", "");
-    assertMethodPath(SubmissionController.class, "createMultipart", "");
-    assertMethodPath(SubmissionController.class, "submit", "/{submissionId}/submit");
-    assertMethodPath(SubmissionController.class, "grade", "/{submissionId}/grade");
-    assertMethodPath(SubmissionController.class, "getSpeedgraderQueue", "/speedgrader");
+  void canonicalControllersMustExposeCoreRoutes() {
+    assertMethodPath(CanonicalCourseController.class, "myActiveCourses", "/my-active");
+    assertMethodPath(CanonicalCourseController.class, "overview", "/{courseId}/overview");
+    assertMethodPath(CanonicalCourseController.class, "modules", "/{courseId}/modules");
+    assertMethodPath(CanonicalCourseController.class, "myGradebook", "/{courseId}/gradebook/me");
+    assertMethodPath(CanonicalAssignmentController.class, "submitFile", "/assignments/{assignmentId}/submissions/file");
+    assertMethodPath(CanonicalAssignmentController.class, "submitRte", "/assignments/{assignmentId}/submissions/rte");
+    assertMethodPath(CanonicalAssignmentController.class, "submitForm", "/assignments/{assignmentId}/submissions/form");
+    assertMethodPath(CanonicalAssignmentController.class, "submitVpl", "/assignments/{assignmentId}/submissions/vpl");
+    assertMethodPath(CanonicalAssignmentController.class, "saveDraft", "/submissions/{submissionId}/grade-draft");
+    assertMethodPath(CanonicalAssignmentController.class, "publish", "/submissions/{submissionId}/publish-grade");
+    assertMethodPath(CanonicalQuizAttemptController.class, "start", "/assignments/{assignmentId}/quiz-attempts");
+    assertMethodPath(CanonicalQuizAttemptController.class, "submit", "/quiz-attempts/{attemptId}/submit");
+    assertMethodPath(CanonicalQuizAttemptController.class, "review", "/quiz-attempts/{attemptId}/review");
+  }
+
+  @Test
+  void learningServiceMustNotExposeLegacyExecutionOrSubmissionControllers() {
+    assertThat(ClassUtils.isPresent(
+        "com.university.lms.course.assessment.web.VirtualLabController",
+        getClass().getClassLoader())).isFalse();
+    assertThat(ClassUtils.isPresent(
+        "com.university.lms.submission.web.SubmissionController",
+        getClass().getClassLoader())).isFalse();
   }
 
   private static void assertBasePath(Class<?> controllerClass, String expectedPath) {

@@ -28,7 +28,7 @@ public class CanonicalAssignmentMapper {
         assignment.getMaxPoints(),
         assignment.getDueDate(),
         Boolean.TRUE.equals(assignment.getIsPublished()) ? "visible" : "hidden",
-        toGradePreview(grade));
+        toPublishedGradePreview(grade));
   }
 
   public AssignmentDetailDto toDetail(
@@ -57,7 +57,7 @@ public class CanonicalAssignmentMapper {
             submission == null ? null : submission.getId(),
             latestAttempt == null ? null : latestAttempt.getId(),
             submission == null ? null : submission.getSubmittedAt(),
-            toGradePreview(grade),
+            toPublishedGradePreview(grade),
             canSubmit(type, assignment, submission, attemptsUsed, attemptLimit),
             canEdit(assignment, submission),
             false,
@@ -73,23 +73,23 @@ public class CanonicalAssignmentMapper {
     settings.put("allowLateSubmission", Boolean.TRUE.equals(assignment.getAllowLateSubmission()));
     settings.put("availableFrom", assignment.getAvailableFrom());
     settings.put("availableUntil", assignment.getAvailableUntil());
-    settings.put("allowResubmission", true);
+    settings.put("allowResubmission", booleanNestedSetting(assignment, "allowResubmission", true));
     switch (type) {
       case "file_submission" -> {
         settings.put("allowedFileTypes", safeList(assignment.getAllowedFileTypes()));
         settings.put("maxFiles", assignment.getMaxFiles());
         settings.put("maxFileSizeMb", assignment.getMaxFileSize() == null ? null : assignment.getMaxFileSize() / 1024 / 1024);
-        settings.put("allowEditAfterSubmit", true);
-        settings.put("allowDeleteAfterSubmit", false);
+        settings.put("allowEditAfterSubmit", booleanNestedSetting(assignment, "allowEditAfterSubmit", true));
+        settings.put("allowDeleteAfterSubmit", booleanNestedSetting(assignment, "allowDeleteAfterSubmit", false));
       }
       case "rte_submission" -> {
         settings.put("minWords", nestedSetting(assignment, "minWords"));
         settings.put("maxWords", nestedSetting(assignment, "maxWords"));
-        settings.put("allowEditAfterSubmit", true);
+        settings.put("allowEditAfterSubmit", booleanNestedSetting(assignment, "allowEditAfterSubmit", true));
       }
       case "form" -> {
         settings.put("fields", nestedSetting(assignment, "fields"));
-        settings.put("allowEditAfterSubmit", true);
+        settings.put("allowEditAfterSubmit", booleanNestedSetting(assignment, "allowEditAfterSubmit", true));
       }
       case "quiz" -> {
         settings.put("attemptLimit", quiz == null ? null : quiz.getAttemptsAllowed());
@@ -131,6 +131,17 @@ public class CanonicalAssignmentMapper {
         entry.getNotes());
   }
 
+  public GradePreviewDto toPublishedGradePreview(GradebookEntry entry) {
+    if (entry == null || !entry.isPublishedGrade() || entry.getPublishedFinalScore() == null) {
+      return null;
+    }
+    return new GradePreviewDto(
+        entry.getPublishedFinalScore(),
+        entry.getMaxScore(),
+        "published",
+        entry.getPublishedFinalComment());
+  }
+
   private List<String> safeList(List<String> values) {
     return values == null ? List.of() : values;
   }
@@ -145,12 +156,17 @@ public class CanonicalAssignmentMapper {
     return vplConfig.get(key);
   }
 
+  private boolean booleanNestedSetting(Assignment assignment, String key, boolean defaultValue) {
+    Object value = nestedSetting(assignment, key);
+    return value instanceof Boolean bool ? bool : defaultValue;
+  }
+
   private String state(
       String type,
       Submission submission,
       QuizAttempt latestAttempt,
       GradebookEntry grade) {
-    if (grade != null && grade.getFinalScore() != null) {
+    if (grade != null && grade.isPublishedGrade() && grade.getPublishedFinalScore() != null) {
       return "graded";
     }
     if ("seminar".equals(type)) {

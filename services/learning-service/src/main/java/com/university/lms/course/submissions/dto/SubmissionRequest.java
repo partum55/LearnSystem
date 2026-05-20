@@ -9,6 +9,7 @@ public record SubmissionRequest(
     String url,
     String programmingLanguage,
     String code,
+    String executionResultReference,
     List<FileSubmissionItemDto> files,
     Map<String, Object> answers
 ) {

@@ -33,6 +33,12 @@ public class CanonicalQuizAttemptService {
   public QuizAttemptStartDto start(UUID assignmentId, UUID userId) {
     Assignment assignment = requireQuizAssignment(assignmentId);
     accessService.requireStudent(assignment.getCourseId(), userId);
+    if (!assignment.isAvailable()) {
+      throw ApiException.conflict("ASSIGNMENT_NOT_AVAILABLE", "Quiz assignment is not available");
+    }
+    if (!assignment.acceptsLateSubmission()) {
+      throw ApiException.conflict("DEADLINE_CLOSED", "The quiz deadline has passed");
+    }
     Quiz quiz = quizRepository.findById(assignment.getQuizId())
         .orElseThrow(() -> ApiException.notFound("Quiz"));
     quizAttemptRepository.findInProgressAttempt(quiz.getId(), userId)

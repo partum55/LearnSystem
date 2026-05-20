@@ -4,9 +4,9 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.Valid;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Map;
 
 public record AssignmentRequest(
     @NotNull String type,
@@ -17,5 +17,10 @@ public record AssignmentRequest(
     @PositiveOrZero Integer order,
     LocalDateTime dueDate,
     Boolean visible,
-    Map<String, Object> settings
+    @Valid FileAssignmentSettingsDto fileSettings,
+    @Valid RteAssignmentSettingsDto rteSettings,
+    @Valid FormAssignmentSettingsDto formSettings,
+    @Valid QuizAssignmentSettingsDto quizSettings,
+    @Valid VplAssignmentSettingsDto vplSettings,
+    @Valid SeminarAssignmentSettingsDto seminarSettings
 ) {}

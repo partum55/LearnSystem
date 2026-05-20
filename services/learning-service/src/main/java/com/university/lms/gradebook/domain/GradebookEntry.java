@@ -68,6 +68,30 @@ public class GradebookEntry {
     @Column(name = "submission_id")
     private UUID submissionId;
 
+    @Column(name = "draft_score", precision = 6, scale = 2)
+    private BigDecimal draftScore;
+
+    @Column(name = "draft_comment", columnDefinition = "TEXT")
+    private String draftComment;
+
+    @Column(name = "draft_graded_by")
+    private UUID draftGradedBy;
+
+    @Column(name = "draft_graded_at")
+    private LocalDateTime draftGradedAt;
+
+    @Column(name = "published_score", precision = 6, scale = 2)
+    private BigDecimal publishedScore;
+
+    @Column(name = "published_comment", columnDefinition = "TEXT")
+    private String publishedComment;
+
+    @Column(name = "published_by")
+    private UUID publishedBy;
+
+    @Column(name = "published_at")
+    private LocalDateTime publishedAt;
+
     @Column(name = "override_score", precision = 6, scale = 2)
     private BigDecimal overrideScore;
 
@@ -95,8 +119,27 @@ public class GradebookEntry {
         return overrideScore != null ? overrideScore : score;
     }
 
+    public BigDecimal getPublishedFinalScore() {
+        if (overrideScore != null) {
+            return overrideScore;
+        }
+        return publishedScore != null ? publishedScore : score;
+    }
+
+    public String getPublishedFinalComment() {
+        return publishedComment != null ? publishedComment : notes;
+    }
+
+    public boolean isPublishedGrade() {
+        return status == GradeStatus.PUBLISHED || status == GradeStatus.GRADED;
+    }
+
+    public boolean hasDraftGrade() {
+        return draftScore != null || status == GradeStatus.DRAFT;
+    }
+
     public void calculatePercentage() {
-        BigDecimal finalScore = getFinalScore();
+        BigDecimal finalScore = isPublishedGrade() ? getPublishedFinalScore() : draftScore;
         if (finalScore != null && maxScore != null && maxScore.compareTo(BigDecimal.ZERO) > 0) {
             this.percentage = finalScore.divide(maxScore, 4, java.math.RoundingMode.HALF_UP)
                     .multiply(BigDecimal.valueOf(100))

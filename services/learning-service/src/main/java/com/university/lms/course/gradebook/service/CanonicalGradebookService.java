@@ -54,7 +54,7 @@ public class CanonicalGradebookService {
         .findByCourseIdAndStudentId(courseId, userId)
         .stream()
         .filter(entry -> entry.getAssignmentId() != null)
-        .filter(entry -> entry.getStatus() == GradeStatus.GRADED)
+        .filter(GradebookEntry::isPublishedGrade)
         .collect(Collectors.toMap(GradebookEntry::getAssignmentId, Function.identity(), (a, b) -> a));
     List<StudentGradebookDto.ModuleGradeDto> modules = moduleRepository.findByCourseIdOrderByPositionAsc(courseId)
         .stream()
@@ -123,14 +123,16 @@ public class CanonicalGradebookService {
       if (!assignment.getCourseId().equals(courseId)) {
         throw ApiException.badRequest("ASSIGNMENT_COURSE_MISMATCH", "Assignment is outside this course");
       }
+      requireActiveStudent(courseId, cell.studentId());
       if (cell.points().compareTo(assignment.getMaxPoints()) > 0) {
         throw ApiException.badRequest("GRADE_EXCEEDS_MAX_POINTS", "Grade cannot exceed maxPoints");
       }
       GradebookEntry entry = findOrCreateEntry(assignment, cell.studentId());
-      entry.setScore(cell.points());
-      entry.setNotes(cell.comment());
-      entry.setStatus(GradeStatus.SUBMITTED);
-      entry.setGradedAt(LocalDateTime.now());
+      entry.setDraftScore(cell.points());
+      entry.setDraftComment(cell.comment());
+      entry.setDraftGradedBy(userId);
+      entry.setDraftGradedAt(LocalDateTime.now());
+      entry.setStatus(GradeStatus.DRAFT);
       gradebookEntryRepository.save(entry);
     }
   }
@@ -144,9 +146,12 @@ public class CanonicalGradebookService {
         .filter(entry -> request.studentIds() == null || request.studentIds().contains(entry.getStudentId()))
         .toList();
     for (GradebookEntry entry : entries) {
-      if (entry.getFinalScore() != null) {
-        entry.setStatus(GradeStatus.GRADED);
-        entry.setGradedAt(LocalDateTime.now());
+      if (entry.getDraftScore() != null) {
+        entry.setPublishedScore(entry.getDraftScore());
+        entry.setPublishedComment(entry.getDraftComment());
+        entry.setPublishedBy(userId);
+        entry.setPublishedAt(LocalDateTime.now());
+        entry.setStatus(GradeStatus.PUBLISHED);
       }
     }
     gradebookEntryRepository.saveAll(entries);
@@ -183,29 +188,40 @@ public class CanonicalGradebookService {
       UUID gradedBy) {
     GradebookEntry entry = findOrCreateEntry(assignment, submission.getUserId());
     entry.setSubmissionId(submission.getId());
-    entry.setScore(points);
-    entry.setNotes(comment);
-    entry.setStatus(GradeStatus.SUBMITTED);
-    entry.setGradedAt(LocalDateTime.now());
+    entry.setDraftScore(points);
+    entry.setDraftComment(comment);
+    entry.setDraftGradedBy(gradedBy);
+    entry.setDraftGradedAt(LocalDateTime.now());
+    entry.setStatus(GradeStatus.DRAFT);
     gradebookEntryRepository.save(entry);
   }
 
   public void publish(Assignment assignment, Submission submission, UUID publishedBy) {
     GradebookEntry entry = findOrCreateEntry(assignment, submission.getUserId());
     entry.setSubmissionId(submission.getId());
-    entry.setScore(submission.getPublishedGrade());
-    entry.setNotes(submission.getPublishedFeedback());
-    entry.setStatus(GradeStatus.GRADED);
-    entry.setGradedAt(LocalDateTime.now());
+    entry.setPublishedScore(submission.getDraftGrade());
+    entry.setPublishedComment(submission.getDraftFeedback());
+    entry.setPublishedBy(publishedBy);
+    entry.setPublishedAt(LocalDateTime.now());
+    entry.setStatus(GradeStatus.PUBLISHED);
     gradebookEntryRepository.save(entry);
   }
 
   public void recordQuizAttempt(Assignment assignment, QuizAttempt attempt) {
     GradebookEntry entry = findOrCreateEntry(assignment, attempt.getUserId());
-    entry.setScore(attempt.getFinalScore());
-    entry.setStatus(GradeStatus.GRADED);
-    entry.setGradedAt(LocalDateTime.now());
+    entry.setPublishedScore(attempt.getFinalScore());
+    entry.setPublishedComment("Auto-scored quiz attempt " + attempt.getAttemptNumber());
+    entry.setPublishedAt(LocalDateTime.now());
+    entry.setStatus(GradeStatus.PUBLISHED);
     gradebookEntryRepository.save(entry);
+  }
+
+  private void requireActiveStudent(UUID courseId, UUID studentId) {
+    CourseMember member = courseMemberRepository.findByCourseIdAndUserId(courseId, studentId)
+        .orElseThrow(() -> ApiException.badRequest("STUDENT_NOT_ENROLLED", "Student is not enrolled in this course"));
+    if (!member.isActive() || !member.isStudent()) {
+      throw ApiException.badRequest("STUDENT_NOT_ACTIVE", "Gradebook cells can only be edited for active students");
+    }
   }
 
   private GradebookEntry findOrCreateEntry(Assignment assignment, UUID studentId) {
@@ -228,16 +244,18 @@ public class CanonicalGradebookService {
       Assignment assignment,
       GradebookEntry entry,
       Submission submission) {
-    boolean published = entry != null && entry.getStatus() == GradeStatus.GRADED;
+    boolean published = entry != null && entry.isPublishedGrade();
     return new TeacherGradebookDto.GradeCellDto(
         studentId,
         assignment.getId(),
         submission == null ? null : submission.getId(),
-        entry == null || published ? null : entry.getFinalScore(),
-        entry == null || !published ? null : entry.getFinalScore(),
+        entry == null ? null : entry.getDraftScore(),
+        entry == null || !published ? null : entry.getPublishedFinalScore(),
         assignment.getMaxPoints(),
         entry == null ? "not_submitted" : entry.getStatus().name().toLowerCase(),
-        entry == null ? null : entry.getNotes());
+        entry == null
+            ? null
+            : (published ? entry.getPublishedFinalComment() : entry.getDraftComment()));
   }
 
   private StudentGradebookDto.ModuleGradeDto studentModule(
@@ -252,10 +270,10 @@ public class CanonicalGradebookService {
               assignment.getId(),
               assignment.getTitle(),
               com.university.lms.course.assignments.service.AssignmentTypeMapper.toCanonical(assignment.getAssignmentType()),
-              entry == null ? null : entry.getFinalScore(),
+              entry == null ? null : entry.getPublishedFinalScore(),
               assignment.getMaxPoints(),
               entry == null ? "not_published" : entry.getStatus().name().toLowerCase(),
-              entry == null ? null : entry.getNotes());
+              entry == null ? null : entry.getPublishedFinalComment());
         })
         .toList();
     return new StudentGradebookDto.ModuleGradeDto(module.getId(), module.getTitle(), totalAssignments(grades), grades);

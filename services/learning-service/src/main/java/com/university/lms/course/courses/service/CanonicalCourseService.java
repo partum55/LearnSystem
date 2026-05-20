@@ -113,6 +113,7 @@ public class CanonicalCourseService {
     List<GradebookEntry> grades = gradebookEntryRepository.findByCourseIdAndStudentId(courseId, userId);
     Map<UUID, GradebookEntry> gradesByAssignment = grades.stream()
         .filter(entry -> entry.getAssignmentId() != null)
+        .filter(GradebookEntry::isPublishedGrade)
         .collect(Collectors.toMap(GradebookEntry::getAssignmentId, entry -> entry, (a, b) -> a));
     List<CourseModuleDto> modules = moduleRepository.findByCourseIdOrderByPositionAsc(courseId)
         .stream()
@@ -205,16 +206,18 @@ public class CanonicalCourseService {
 
   private boolean hasGradeOrSubmission(UUID assignmentId, UUID userId) {
     return gradebookEntryRepository.findByAssignmentIdAndStudentId(assignmentId, userId)
-        .map(GradebookEntry::getFinalScore)
+        .filter(GradebookEntry::isPublishedGrade)
+        .map(GradebookEntry::getPublishedFinalScore)
         .isPresent();
   }
 
   private List<String> recentFeedback(UUID courseId, UUID userId) {
     return gradebookEntryRepository.findByCourseIdAndStudentId(courseId, userId).stream()
-        .filter(entry -> entry.getNotes() != null && !entry.getNotes().isBlank())
+        .filter(GradebookEntry::isPublishedGrade)
+        .filter(entry -> entry.getPublishedFinalComment() != null && !entry.getPublishedFinalComment().isBlank())
         .sorted(Comparator.comparing(GradebookEntry::getUpdatedAt).reversed())
         .limit(5)
-        .map(GradebookEntry::getNotes)
+        .map(GradebookEntry::getPublishedFinalComment)
         .toList();
   }
 
@@ -227,7 +230,8 @@ public class CanonicalCourseService {
     }
     long completed = gradebookEntryRepository.findByCourseIdAndStudentId(courseId, userId).stream()
         .filter(entry -> entry.getAssignmentId() != null)
-        .filter(entry -> entry.getFinalScore() != null)
+        .filter(GradebookEntry::isPublishedGrade)
+        .filter(entry -> entry.getPublishedFinalScore() != null)
         .count();
     return BigDecimal.valueOf(completed)
         .divide(BigDecimal.valueOf(assignments.size()), 4, RoundingMode.HALF_UP)
@@ -238,10 +242,11 @@ public class CanonicalCourseService {
   private Double courseGrade(UUID courseId, UUID userId) {
     List<GradebookEntry> entries = gradebookEntryRepository.findByCourseIdAndStudentId(courseId, userId)
         .stream()
-        .filter(entry -> entry.getFinalScore() != null)
+        .filter(GradebookEntry::isPublishedGrade)
+        .filter(entry -> entry.getPublishedFinalScore() != null)
         .toList();
     BigDecimal points = entries.stream()
-        .map(GradebookEntry::getFinalScore)
+        .map(GradebookEntry::getPublishedFinalScore)
         .reduce(BigDecimal.ZERO, BigDecimal::add);
     BigDecimal max = entries.stream()
         .map(GradebookEntry::getMaxScore)
