@@ -1,5 +1,5 @@
-import apiClient from './client';
-import { VplTestCase } from '../types';
+import apiClient from '@/api/client';
+import { VplTestCase } from '@/api/types';
 
 export interface RunCodeRequest {
   language: string;

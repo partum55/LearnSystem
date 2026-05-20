@@ -1,6 +1,6 @@
-import apiClient from './client';
-import { User } from '../types';
-import { PageResponse } from './types';
+import apiClient from '@/api/client';
+import { User } from '@/api/types';
+import { PageResponse } from '@/api/types';
 
 interface ApiUser {
   id: string;

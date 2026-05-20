@@ -1,6 +1,6 @@
-import apiClient from '../../../api/client';
+import apiClient from '@/api/client';
 import { marked } from 'marked';
-import { AuthoringEndpoints, AuthoringResponse, TaskDraft, ValidationResult, PreviewPayload } from '../types';
+import { AuthoringEndpoints, AuthoringResponse, TaskDraft, ValidationResult, PreviewPayload } from '@/api/types';
 
 type UnknownRecord = Record<string, unknown>;
 type AuthoringApiResult<T> = Promise<{ data: AuthoringResponse<T> }>;

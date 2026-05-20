@@ -1,5 +1,5 @@
-import apiClient from './client';
-import { CanonicalDocument, CanonicalDocumentPayload, ModulePage, TocItem } from '../types';
+import apiClient from '@/api/client';
+import { CanonicalDocument, CanonicalDocumentPayload, ModulePage, TocItem } from '@/api/types';
 
 type UnknownRecord = Record<string, unknown>;
 

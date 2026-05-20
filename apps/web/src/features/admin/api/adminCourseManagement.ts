@@ -2,9 +2,9 @@
  * Admin Course Management API — JSON import/export + deep entity management.
  * SUPERADMIN only endpoints for full system control.
  */
-import apiClient from './client';
-import { PageResponse } from './types';
-import { Module, Resource } from '../types';
+import apiClient from '@/api/client';
+import { PageResponse } from '@/api/types';
+import { Module, Resource } from '@/api/types';
 
 // ==================== TYPES ====================
 

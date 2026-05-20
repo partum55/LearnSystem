@@ -1,7 +1,7 @@
-import apiClient from './client';
-import { PageResponse } from './types';
+import apiClient from '@/api/client';
+import { PageResponse } from '@/api/types';
 
-export type { PageResponse } from './types';
+export type { PageResponse } from '@/api/types';
 
 export interface ServiceStatus {
   serviceName: string;

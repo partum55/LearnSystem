@@ -1,4 +1,4 @@
-import apiClient from './client';
+import apiClient from '@/api/client';
 import { AxiosProgressEvent } from 'axios';
 import {
   Assignment,
@@ -9,8 +9,8 @@ import {
   Resource,
   ResourceCreateData,
   Topic,
-} from '../types';
-import { PageResponse } from './types';
+} from '@/api/types';
+import { PageResponse } from '@/api/types';
 
 export interface CoursePublishChecklistItem {
   key: string;

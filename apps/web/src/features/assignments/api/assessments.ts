@@ -1,6 +1,6 @@
-import apiClient from './client';
-import { Assignment, Quiz, Question, QuizSection, QuizAttemptQuestion, QuizAttempt } from '../types';
-import { PageResponse } from './types';
+import apiClient from '@/api/client';
+import { Assignment, Quiz, Question, QuizSection, QuizAttemptQuestion, QuizAttempt } from '@/api/types';
+import { PageResponse } from '@/api/types';
 
 type UnknownRecord = Record<string, unknown>;
 

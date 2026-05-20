@@ -1,5 +1,5 @@
-import apiClient from './client';
-import { getSupabaseBrowserClient } from '../lib/supabase/browser';
+import apiClient from '@/api/client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
 // Use API gateway for AI calls - the gateway routes /api/ai/** to the AI service
 // The gateway rewrites /api/ai/** to /api/v1/ai/** before forwarding to AI service

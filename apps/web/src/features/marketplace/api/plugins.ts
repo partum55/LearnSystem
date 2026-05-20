@@ -1,5 +1,5 @@
-import apiClient from './client';
-import type { InstalledPlugin, PluginType, PluginStatus } from '../plugins/types';
+import apiClient from '@/api/client';
+import type { InstalledPlugin, PluginType, PluginStatus } from '@/plugins/types';
 
 // Re-export the canonical types so consumers can import from one place.
 export type { InstalledPlugin, PluginType, PluginStatus };

@@ -1,4 +1,4 @@
-import apiClient from './client';
+import apiClient from '@/api/client';
 
 export const authRecoveryApi = {
   forgotPassword: async (email: string) => {
