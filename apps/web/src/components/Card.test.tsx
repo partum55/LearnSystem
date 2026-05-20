@@ -1,9 +1,9 @@
 "use client";
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import Card from './CardEnhanced';
+import Card from './Card';
 
-describe('CardEnhanced', () => {
+describe('Card', () => {
   test('renders card with children', () => {
     render(
       <Card>

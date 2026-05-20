@@ -1,9 +1,9 @@
 "use client";
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import Input from './InputEnhanced';
+import { Input } from './Input';
 
-describe('InputEnhanced', () => {
+describe('Input', () => {
   test('renders input with label', () => {
     render(<Input label="Email" />);
     expect(screen.getByLabelText('Email')).toBeInTheDocument();
