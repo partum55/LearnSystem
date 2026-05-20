@@ -120,7 +120,7 @@ public class SecurityConfig {
                           response
                               .getWriter()
                               .write(
-                                  "{\"error\":\"Unauthorized\",\"message\":\"Authentication required\"}");
+                                  "{\"message\":\"Authentication required\",\"code\":\"UNAUTHENTICATED\",\"fieldErrors\":{}}");
                         })
                     .accessDeniedHandler(
                         (request, response, accessDeniedException) -> {
@@ -128,7 +128,7 @@ public class SecurityConfig {
                           response.setContentType("application/json");
                           response
                               .getWriter()
-                              .write("{\"error\":\"Forbidden\",\"message\":\"Access denied\"}");
+                              .write("{\"message\":\"Access denied\",\"code\":\"FORBIDDEN\",\"fieldErrors\":{}}");
                         }));
 
     return http.build();

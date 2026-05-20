@@ -1,0 +1,408 @@
+package com.university.lms.course.assignments.service;
+
+import com.university.lms.course.assignments.dto.AssignmentDetailDto;
+import com.university.lms.course.assignments.dto.AssignmentRequest;
+import com.university.lms.course.assessment.domain.Assignment;
+import com.university.lms.course.assessment.domain.Quiz;
+import com.university.lms.course.assessment.domain.QuizAttempt;
+import com.university.lms.course.assessment.repository.AssignmentRepository;
+import com.university.lms.course.assessment.repository.QuizAttemptRepository;
+import com.university.lms.course.assessment.repository.QuizRepository;
+import com.university.lms.course.common.error.ApiException;
+import com.university.lms.course.common.security.CourseAccessService;
+import com.university.lms.course.domain.Module;
+import com.university.lms.course.gradebook.service.CanonicalGradebookService;
+import com.university.lms.course.repository.ModuleRepository;
+import com.university.lms.course.submissions.dto.GradeDraftRequest;
+import com.university.lms.course.submissions.dto.SubmissionDto;
+import com.university.lms.course.submissions.dto.SubmissionRequest;
+import com.university.lms.course.submissions.dto.SubmissionReviewDto;
+import com.university.lms.gradebook.domain.GradebookEntry;
+import com.university.lms.gradebook.repository.GradebookEntryRepository;
+import com.university.lms.submission.domain.Submission;
+import com.university.lms.submission.domain.SubmissionFile;
+import com.university.lms.submission.repository.SubmissionRepository;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class CanonicalAssignmentService {
+  private final AssignmentRepository assignmentRepository;
+  private final ModuleRepository moduleRepository;
+  private final SubmissionRepository submissionRepository;
+  private final QuizRepository quizRepository;
+  private final QuizAttemptRepository quizAttemptRepository;
+  private final GradebookEntryRepository gradebookEntryRepository;
+  private final CanonicalAssignmentMapper assignmentMapper;
+  private final CanonicalGradebookService gradebookService;
+  private final CourseAccessService accessService;
+
+  @Transactional(readOnly = true)
+  public AssignmentDetailDto getAssignment(UUID assignmentId, UUID userId) {
+    Assignment assignment = requireAssignment(assignmentId);
+    accessService.requireActiveMember(assignment.getCourseId(), userId);
+    return assignmentMapper.toDetail(
+        assignment,
+        findQuiz(assignment),
+        submissionRepository.findByAssignmentIdAndUserId(assignmentId, userId).orElse(null),
+        latestAttempt(assignment, userId),
+        gradebookEntryRepository.findByAssignmentIdAndStudentId(assignmentId, userId).orElse(null),
+        countAttempts(assignment, userId));
+  }
+
+  @Transactional
+  public AssignmentDetailDto createAssignment(
+      UUID courseId,
+      UUID moduleId,
+      UUID userId,
+      AssignmentRequest request) {
+    accessService.requireTeacher(courseId, userId);
+    requireModuleInCourse(courseId, moduleId);
+    String legacyType = AssignmentTypeMapper.toLegacy(request.type());
+    Assignment assignment = Assignment.builder()
+        .courseId(courseId)
+        .moduleId(moduleId)
+        .assignmentType(legacyType)
+        .title(request.title())
+        .description(request.description() == null ? "" : request.description())
+        .instructions(request.instructions())
+        .maxPoints(request.maxPoints())
+        .position(request.order() == null ? nextAssignmentPosition(moduleId) : request.order())
+        .dueDate(request.dueDate())
+        .isPublished(Boolean.TRUE.equals(request.visible()))
+        .createdBy(userId)
+        .externalToolConfig(canonicalSettings(request.settings()))
+        .build();
+    applySettings(assignment, request.type(), request.settings());
+    assignment = assignmentRepository.save(assignment);
+    if ("quiz".equalsIgnoreCase(request.type())) {
+      Quiz quiz = createQuizForAssignment(courseId, userId, assignment, request.settings());
+      assignment.setQuizId(quiz.getId());
+      assignment = assignmentRepository.save(assignment);
+    }
+    gradebookService.ensureGradebookEntriesForAssignment(assignment);
+    return assignmentMapper.toDetail(assignment, findQuiz(assignment), null, null, null, 0);
+  }
+
+  @Transactional
+  public AssignmentDetailDto updateAssignment(UUID assignmentId, UUID userId, AssignmentRequest request) {
+    Assignment assignment = requireAssignment(assignmentId);
+    accessService.requireTeacher(assignment.getCourseId(), userId);
+    assignment.setAssignmentType(AssignmentTypeMapper.toLegacy(request.type()));
+    assignment.setTitle(request.title());
+    assignment.setDescription(request.description() == null ? "" : request.description());
+    assignment.setInstructions(request.instructions());
+    assignment.setMaxPoints(request.maxPoints());
+    if (request.order() != null) {
+      assignment.setPosition(request.order());
+    }
+    assignment.setDueDate(request.dueDate());
+    if (request.visible() != null) {
+      assignment.setIsPublished(request.visible());
+    }
+    assignment.setExternalToolConfig(canonicalSettings(request.settings()));
+    applySettings(assignment, request.type(), request.settings());
+    assignment = assignmentRepository.save(assignment);
+    gradebookService.ensureGradebookEntriesForAssignment(assignment);
+    return assignmentMapper.toDetail(assignment, findQuiz(assignment), null, null, null, 0);
+  }
+
+  @Transactional
+  public void deleteAssignment(UUID assignmentId, UUID userId) {
+    Assignment assignment = requireAssignment(assignmentId);
+    accessService.requireTeacher(assignment.getCourseId(), userId);
+    assignment.setIsArchived(true);
+    assignment.setIsPublished(false);
+    assignmentRepository.save(assignment);
+  }
+
+  @Transactional
+  public SubmissionDto submit(
+      UUID assignmentId,
+      UUID userId,
+      String expectedType,
+      SubmissionRequest request) {
+    Assignment assignment = requireAssignment(assignmentId);
+    accessService.requireStudent(assignment.getCourseId(), userId);
+    String type = AssignmentTypeMapper.toCanonical(assignment.getAssignmentType());
+    if (!expectedType.equals(type)) {
+      throw ApiException.badRequest(
+          "WRONG_SUBMISSION_ENDPOINT", "Use the " + type + " submission endpoint for this assignment");
+    }
+    if (!AssignmentTypeMapper.requiresStudentSubmission(type)) {
+      throw ApiException.conflict("SUBMISSION_NOT_ALLOWED", "This assignment does not accept direct submissions");
+    }
+    if (!assignment.acceptsLateSubmission()) {
+      throw ApiException.conflict("DEADLINE_CLOSED", "The assignment deadline has passed");
+    }
+    Submission submission = submissionRepository.findByAssignmentIdAndUserId(assignmentId, userId)
+        .orElseGet(() -> Submission.builder()
+            .assignmentId(assignmentId)
+            .userId(userId)
+            .status("DRAFT")
+            .submissionVersion(1)
+            .build());
+    boolean existingSubmission = submission.getId() != null;
+    if (submission.getPublishedAt() != null) {
+      throw ApiException.conflict("GRADE_ALREADY_PUBLISHED", "Published submissions cannot be changed");
+    }
+    applySubmissionContent(submission, type, request);
+    submission.setStatus(assignment.isOverdue() ? "LATE" : "SUBMITTED");
+    submission.setSubmittedAt(LocalDateTime.now());
+    submission.setLastResubmittedAt(existingSubmission ? LocalDateTime.now() : null);
+    submission.setIsLate(assignment.isOverdue());
+    submission.setSubmissionVersion(existingSubmission
+        ? (submission.getSubmissionVersion() == null ? 2 : submission.getSubmissionVersion() + 1)
+        : 1);
+    submission = submissionRepository.save(submission);
+    gradebookService.markSubmitted(assignment, submission);
+    return toSubmissionDto(submission);
+  }
+
+  @Transactional(readOnly = true)
+  public Page<SubmissionDto> listSubmissions(UUID assignmentId, UUID userId, Pageable pageable) {
+    Assignment assignment = requireAssignment(assignmentId);
+    accessService.requireTeacher(assignment.getCourseId(), userId);
+    return submissionRepository.findReviewQueue(assignmentId, null, null, pageable)
+        .map(this::toSubmissionDto);
+  }
+
+  @Transactional(readOnly = true)
+  public SubmissionReviewDto reviewSubmission(UUID submissionId, UUID userId) {
+    Submission submission = submissionRepository.findById(submissionId)
+        .orElseThrow(() -> ApiException.notFound("Submission"));
+    Assignment assignment = requireAssignment(submission.getAssignmentId());
+    accessService.requireTeacher(assignment.getCourseId(), userId);
+    GradebookEntry entry = gradebookEntryRepository
+        .findByAssignmentIdAndStudentId(assignment.getId(), submission.getUserId())
+        .orElse(null);
+    return new SubmissionReviewDto(
+        submission.getId(),
+        new SubmissionReviewDto.StudentDto(
+            submission.getUserId(),
+            submission.getStudentName(),
+            submission.getStudentEmail()),
+        assignmentMapper.toDetail(assignment, findQuiz(assignment), submission, null, entry, 0),
+        submissionContent(submission),
+        submission.getDraftGrade() == null ? null : new com.university.lms.course.assignments.dto.GradePreviewDto(
+            submission.getDraftGrade(), assignment.getMaxPoints(), "draft", submission.getDraftFeedback()),
+        submission.getPublishedGrade() == null ? null : new com.university.lms.course.assignments.dto.GradePreviewDto(
+            submission.getPublishedGrade(), assignment.getMaxPoints(), "published", submission.getPublishedFeedback()),
+        Map.of());
+  }
+
+  @Transactional
+  public SubmissionReviewDto saveDraftGrade(UUID submissionId, UUID userId, GradeDraftRequest request) {
+    Submission submission = submissionRepository.findById(submissionId)
+        .orElseThrow(() -> ApiException.notFound("Submission"));
+    Assignment assignment = requireAssignment(submission.getAssignmentId());
+    accessService.requireTeacher(assignment.getCourseId(), userId);
+    if (request.points().compareTo(assignment.getMaxPoints()) > 0) {
+      throw ApiException.badRequest("GRADE_EXCEEDS_MAX_POINTS", "Grade cannot exceed maxPoints");
+    }
+    submission.setDraftGrade(request.points());
+    submission.setDraftFeedback(request.comment());
+    submission.setGraderId(userId);
+    submission.setGradedAt(LocalDateTime.now());
+    submission.setStatus("GRADED");
+    submissionRepository.save(submission);
+    gradebookService.saveDraft(assignment, submission, request.points(), request.comment(), userId);
+    return reviewSubmission(submissionId, userId);
+  }
+
+  @Transactional
+  public void publishGrade(UUID submissionId, UUID userId) {
+    Submission submission = submissionRepository.findById(submissionId)
+        .orElseThrow(() -> ApiException.notFound("Submission"));
+    Assignment assignment = requireAssignment(submission.getAssignmentId());
+    accessService.requireTeacher(assignment.getCourseId(), userId);
+    if (submission.getDraftGrade() == null) {
+      throw ApiException.conflict("NO_DRAFT_GRADE", "Save a draft grade before publishing");
+    }
+    submission.setPublishedGrade(submission.getDraftGrade());
+    submission.setPublishedFeedback(submission.getDraftFeedback());
+    submission.setPublishedBy(userId);
+    submission.setPublishedAt(LocalDateTime.now());
+    submission.setStatus("PUBLISHED");
+    submissionRepository.save(submission);
+    gradebookService.publish(assignment, submission, userId);
+  }
+
+  private Assignment requireAssignment(UUID assignmentId) {
+    return assignmentRepository.findById(assignmentId)
+        .filter(a -> !Boolean.TRUE.equals(a.getIsArchived()))
+        .orElseThrow(() -> ApiException.notFound("Assignment"));
+  }
+
+  private void requireModuleInCourse(UUID courseId, UUID moduleId) {
+    Module module = moduleRepository.findById(moduleId)
+        .orElseThrow(() -> ApiException.notFound("Module"));
+    if (!module.getCourse().getId().equals(courseId)) {
+      throw ApiException.badRequest("MODULE_COURSE_MISMATCH", "Module does not belong to the course");
+    }
+  }
+
+  private int nextAssignmentPosition(UUID moduleId) {
+    return assignmentRepository.findByModuleIdOrderByPositionAsc(moduleId).stream()
+        .map(Assignment::getPosition)
+        .filter(java.util.Objects::nonNull)
+        .max(Integer::compareTo)
+        .orElse(0) + 1;
+  }
+
+  private Map<String, Object> canonicalSettings(Map<String, Object> settings) {
+    Map<String, Object> config = new HashMap<>();
+    config.put("canonicalSettings", settings == null ? Map.of() : settings);
+    return config;
+  }
+
+  @SuppressWarnings("unchecked")
+  private void applySettings(Assignment assignment, String canonicalType, Map<String, Object> settings) {
+    Map<String, Object> value = settings == null ? Map.of() : settings;
+    switch (canonicalType.toLowerCase()) {
+      case "file_submission" -> {
+        assignment.setAllowedFileTypes((List<String>) value.getOrDefault("allowedFileTypes", List.of()));
+        assignment.setMaxFiles(intSetting(value, "maxFiles", 5));
+        assignment.setMaxFileSize((long) intSetting(value, "maxFileSizeMb", 10) * 1024L * 1024L);
+        assignment.setSubmissionTypes(List.of("FILE"));
+      }
+      case "rte_submission" -> assignment.setSubmissionTypes(List.of("RTE"));
+      case "form" -> assignment.setSubmissionTypes(List.of("FORM"));
+      case "vpl" -> {
+        assignment.setProgrammingLanguage((String) value.get("language"));
+        assignment.setStarterCode((String) value.get("templateCode"));
+        assignment.setVplConfig(value);
+        assignment.setSubmissionTypes(List.of("VPL"));
+        assignment.setAutoGradingEnabled("auto".equals(value.get("gradingMode")));
+      }
+      case "seminar" -> assignment.setSubmissionTypes(List.of());
+      case "quiz" -> assignment.setSubmissionTypes(List.of("QUIZ"));
+      default -> {
+      }
+    }
+  }
+
+  private int intSetting(Map<String, Object> settings, String key, int defaultValue) {
+    Object value = settings.get(key);
+    if (value instanceof Number number) {
+      return number.intValue();
+    }
+    return defaultValue;
+  }
+
+  private Quiz createQuizForAssignment(
+      UUID courseId,
+      UUID userId,
+      Assignment assignment,
+      Map<String, Object> settings) {
+    Map<String, Object> value = settings == null ? Map.of() : settings;
+    return quizRepository.save(Quiz.builder()
+        .courseId(courseId)
+        .title(assignment.getTitle())
+        .description(assignment.getDescription())
+        .attemptsAllowed(intSetting(value, "attemptLimit", 1))
+        .timeLimit(intSetting(value, "timeLimitMinutes", 0) == 0 ? null : intSetting(value, "timeLimitMinutes", 0))
+        .timerEnabled(value.containsKey("timeLimitMinutes"))
+        .showCorrectAnswers(Boolean.TRUE.equals(value.get("showCorrectAnswers")))
+        .shuffleQuestions(Boolean.TRUE.equals(value.get("shuffleQuestions")))
+        .createdBy(userId)
+        .build());
+  }
+
+  private Quiz findQuiz(Assignment assignment) {
+    if (assignment.getQuizId() == null) {
+      return null;
+    }
+    return quizRepository.findById(assignment.getQuizId()).orElse(null);
+  }
+
+  private QuizAttempt latestAttempt(Assignment assignment, UUID userId) {
+    if (assignment.getQuizId() == null) {
+      return null;
+    }
+    return quizAttemptRepository.findFirstByQuizIdAndUserIdOrderByAttemptNumberDesc(
+        assignment.getQuizId(), userId).orElse(null);
+  }
+
+  private long countAttempts(Assignment assignment, UUID userId) {
+    if (assignment.getQuizId() == null) {
+      return 0;
+    }
+    return quizAttemptRepository.countByQuizIdAndUserId(assignment.getQuizId(), userId);
+  }
+
+  private void applySubmissionContent(Submission submission, String type, SubmissionRequest request) {
+    submission.getFiles().clear();
+    switch (type) {
+      case "file_submission" -> {
+        if (request.files() == null || request.files().isEmpty()) {
+          throw ApiException.badRequest("FILES_REQUIRED", "At least one file is required");
+        }
+        for (SubmissionRequest.FileSubmissionItemDto file : request.files()) {
+          submission.getFiles().add(SubmissionFile.builder()
+              .submission(submission)
+              .filename(file.fileName())
+              .fileUrl(file.fileUrl())
+              .storagePath(file.fileUrl())
+              .contentType(file.contentType())
+              .fileSize(file.fileSize() == null ? 0L : file.fileSize())
+              .build());
+        }
+      }
+      case "rte_submission" -> {
+        if (request.text() == null || request.text().isBlank()) {
+          throw ApiException.badRequest("TEXT_REQUIRED", "Submission text is required");
+        }
+        submission.setTextAnswer(request.text());
+      }
+      case "form" -> submission.setFormData(request.answers());
+      case "vpl" -> {
+        submission.setProgrammingLanguage(request.programmingLanguage());
+        submission.setTextAnswer(request.code());
+        submission.setAutoGradeResult(Map.of("executionStatus", "pending", "vplBoundary", "vpl-service"));
+      }
+      default -> throw ApiException.badRequest("INVALID_SUBMISSION_TYPE", "Unsupported submission type");
+    }
+  }
+
+  private Map<String, Object> submissionContent(Submission submission) {
+    Map<String, Object> content = new HashMap<>();
+    content.put("text", submission.getTextAnswer());
+    content.put("url", submission.getSubmissionUrl());
+    content.put("formAnswers", submission.getFormData());
+    content.put("programmingLanguage", submission.getProgrammingLanguage());
+    content.put("autoGradeResult", submission.getAutoGradeResult());
+    content.put("files", submission.getFiles().stream()
+        .map(file -> {
+          Map<String, Object> item = new HashMap<>();
+          item.put("id", file.getId());
+          item.put("fileName", file.getFilename());
+          item.put("fileUrl", file.getFileUrl());
+          item.put("contentType", file.getContentType());
+          item.put("fileSize", file.getFileSize());
+          return item;
+        })
+        .toList());
+    return content;
+  }
+
+  private SubmissionDto toSubmissionDto(Submission submission) {
+    return new SubmissionDto(
+        submission.getId(),
+        submission.getAssignmentId(),
+        submission.getUserId(),
+        submission.getStatus().toLowerCase(),
+        submission.getSubmittedAt(),
+        submission.getSubmissionVersion() == null ? 1 : submission.getSubmissionVersion());
+  }
+}

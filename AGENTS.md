@@ -1,69 +1,75 @@
 <claude-mem-context>
 # Memory Context
 
-# [LearnSystem] recent context, 2026-05-19 8:11pm GMT+3
+# [LearnSystem] recent context, 2026-05-20 4:08pm GMT+3
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (21,159t read) | 1,036,368t work | 98% savings
+Stats: 50 obs (14,473t read) | 155,444t work | 91% savings
 
-### May 19, 2026
-228 3:48a 🔴 Fixed env template variable name mismatch: NEXT_PUBLIC_SUPABASE_ANON_KEY renamed to NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in config/env/.env.local.example
-229 " 🔴 config/env/.env.production.example also updated: ANON_KEY renamed to PUBLISHABLE_KEY for consistency with frontend code
-S28 LearnSystem Supabase quickstart verification + Docker infrastructure overhaul — confirmed existing Supabase setup is complete, then installed Supabase agent skills (May 19, 3:48 AM)
-S27 LearnSystem Docker infrastructure overhaul — triggered by failed ./scripts/dev-all.sh build due to missing libseccomp-dev in execution-service Dockerfile (May 19, 3:48 AM)
-230 3:49a 🔵 apps/web Supabase setup confirmed complete: @supabase/ssr installed, browser/server clients exist and use PUBLISHABLE_KEY
-231 3:50a 🔵 apps/web/.env.local is already populated with real Supabase credentials using PUBLISHABLE_KEY — frontend is ready to run
-232 " ✅ Installed Supabase agent skills into LearnSystem project: supabase and supabase-postgres-best-practices
-S29 Supabase migrations push for LearnSystem — linked CLI, fixed uuid_generate_v4 bug, pushed all 8 migrations to remote database successfully (May 19, 3:50 AM)
-233 " 🔵 LearnSystem has 8 Supabase migrations covering users, learning, QR attendance, VPL autograding, AI, marketplace, RLS, and storage
-234 " 🔵 Supabase CLI v2.98.2 installed; local project_id is "learnsystem" (not linked to remote project ref)
-235 3:51a 🔵 Supabase CLI authenticated; LearnSystem project (aarkyaevxuhlkefayzro) visible but not yet linked in local config
-236 " ✅ Supabase CLI linked to LearnSystem project (aarkyaevxuhlkefayzro); config.toml needs major_version = 17 update
-237 " 🔵 Two migrations use uuid_generate_v4() which requires uuid-ossp extension — should be gen_random_uuid() for modern PostgreSQL
-238 " 🔴 Fixed uuid_generate_v4() → gen_random_uuid() in users.sql and ai.sql migrations
-239 3:53a 🔵 Old backend-spring architecture confirmed: included lms-eureka-server, lms-common, and full Spring Cloud stack — all deleted in restructure
-240 3:54a 🔵 Pre-commit audit: .gitignore missing .next/ and .agents/; git tracks old frontend/ and e2e-tests/ env examples as deleted
-241 " 🔵 apps/web/.gitignore is a Vite template, not Next.js — missing .next/ entry causing build artifacts to appear untracked
-242 " 🔵 Entire apps/web/ Next.js frontend is untracked — never committed to git; full source, routes, components, and contracts all new
-243 " 🔵 apps/web/.gitignore confirmed: 28-line Vite template without .next/ — Next.js build output unprotected at both root and app level
-244 " 🔵 Root .gitignore is 213 lines long, Python-focused template ending with Cursor/Marimo entries — has no Next.js, Java, Maven, or Spring Boot entries
-245 " ✅ Root .gitignore expanded with LearnSystem-specific section covering Next.js, Java/Maven, agent skills, and explicit env file paths
-246 3:55a 🔵 Gitignore verification: all env files and .next/ confirmed ignored, but .agents/ NOT IGNORED despite pattern being added
-247 " 🔵 git add -A reveals frontend/ was RENAMED to apps/web/ — git detected content moves; 1137 total staged changes
-248 3:56a ✅ Mega commit e09eb0d landed: 1137 files changed, entire repo restructure committed to main
-S30 LearnSystem repo restructure committed to main — 1137-file mega commit covering Docker consolidation, frontend rename, backend removal, DB migrations, and gitignore fixes (May 19, 3:56 AM)
-249 3:40p 🔵 LearnSystem Supabase Migration Structure Discovered
-250 " 🔵 Java Microservices Architecture Mapped
-251 " 🔵 users Table Duplicates auth.users — Violates Supabase Auth Pattern
-252 " 🔵 Learning Migration Contains 20+ Tables With Schema Issues
-253 " 🔵 QR Attendance Domain Exists Outside Target Architecture Scope
-254 " 🔵 Marketplace Plugin Tables Exist With No Backend/Frontend Support in Target Architecture
-255 " 🔵 RLS Policies Established But Allow Direct Frontend Writes to Critical Domain Tables
-256 3:42p 🔵 Supabase and Java Flyway Are Two Parallel Migration Systems
-257 " 🔵 Deadline and WorkloadSnapshot Entities Use Long/BIGINT — Type Mismatch With UUID System
-258 " 🔵 Full Learning Migration Has 40+ Tables Including Plugins and Legacy Domains
-259 " 🔵 Notifications, General Audit Logs, and File Metadata Tables Are Missing From Schema
-260 " 🔵 Frontend Supabase Type Definitions Expose password_hash — Security Concern
-261 " 🔵 Storage Buckets Defined With Three Buckets and Correct Path-Based Policies
-262 " 🔵 user-service Has Its Own Standalone users Table With Full Auth Logic
-263 3:43p 🔵 Deadline Module Contains WebSocket Notifications, Calendar Export, and Conflict Detection
-264 3:44p 🔵 AI Service Uses String UUID PKs — Source of VARCHAR(36) Column Type in AI Tables
-265 " 🔵 file Package in learning-service Is a Single FilePermitController Endpoint
-266 " 🔵 analytics-service Has Flyway Disabled — Reads From Shared Tables Created by Other Services
-277 3:45p ⚖️ LearnSystem Database Schema Redesign Plan Created
-267 4:03p 🔵 LearnSystem Web App Build-Blocking TypeScript Error in Courses Page
-268 " 🔵 All Bash Execution Blocked by bwrap Sandbox Permission Error
-269 4:04p 🔵 bwrap Sandbox Bypassed via require_escalated Permission Flag
-270 " 🔵 LearnSystem Web App Full Stack Identified: Next.js 16 + React 19 + Supabase + TanStack Query
-271 " 🔵 courses/page.tsx Root Cause: useCoursesQuery Returns Untyped Data
-272 " 🔵 src/middleware.ts Is a Supabase Auth Guard — Needs Rename to proxy.ts
-273 " 🔵 useCoursesQuery Returns Untyped TanStack Query Result — Fix Path Identified
-274 4:05p 🔵 Type Mismatch: API Returns camelCase Course but Template Uses snake_case Fields
-275 " 🔵 Java CourseDto Serializes camelCase — Template Snake_case Access is a Runtime Bug
-276 4:06p 🔵 PageResponse.content Is the Courses Array — courseService.getMyCourses() Returns Wrong Shape
+### May 20, 2026
+S35 LearnSystem frontend refactor — clarifying questions in progress, Q1 presented (architecture choice), awaiting user response (May 20, 2:41 AM)
+S32 LearnSystem frontend refactor planning — clarifying questions phase started, first question asked about views/ vs features/ architecture approach (May 20, 2:41 AM)
+S36 LearnSystem frontend refactor clarifying questions — Q3 corrected (proxy.ts is valid Next.js 16), Q4 asked about courseStore migration scope (May 20, 2:41 AM)
+S37 LearnSystem frontend refactor clarifying questions — Q4 answered (courseStore separate track), Q5 asked about domain migration priority order (May 20, 2:44 AM)
+S38 LearnSystem frontend refactor — 3 structural approaches proposed, Approach A (full feature-sliced) recommended, awaiting user selection (May 20, 2:45 AM)
+S39 LearnSystem frontend refactor — Approach A selected (full feature-sliced), Task 3 complete, Task 4 (present design) now starting (May 20, 2:45 AM)
+S40 LearnSystem frontend refactor — Design Section 1 presented: exact file mapping from current structure to target feature-sliced architecture (May 20, 2:46 AM)
+S41 LearnSystem frontend refactor — Design Section 2 presented: 9-batch migration plan, awaiting user approval (May 20, 2:46 AM)
+S42 LearnSystem frontend refactor — design spec written, committed, and presented for user review before writing-plans handoff (May 20, 2:47 AM)
+S43 LearnSystem frontend refactor — spec approved, writing-plans skill now starting to generate implementation plan (May 20, 2:50 AM)
+338 2:41p 🔄 9 Domain Hook Files Moved from queries/mutations/hooks/ into Feature Domain hooks/ Directories
+339 " 🔵 Hook Import Fix Incomplete: 3 AI Hooks Import Non-existent ../api/client; useAIStreaming Has Broken Supabase Import
+340 " 🔵 All Remaining Hook Relative Imports Confirmed as Valid Intra-Domain Imports
+341 " 🔄 Task 7 Complete: Domain Hook Files Migrated to Feature Folders — Committed 793868c
+342 2:42p 🔵 Task 8: 58+ View Files Have Broken Imports Referencing Moved API/Query Paths
+343 " 🔄 Bulk Sed: All Views/Components API Relative Imports Rewritten to @/features/ Absolute Paths
+344 2:43p 🔄 Bulk Sed: All queries/ and mutations/ Imports Rewritten to @/features/ Hook Paths
+345 " 🟣 Phase 2 Complete: Zero TypeScript Module Errors After API/Hooks Migration
+346 " 🔄 Task 8 Complete: All Broken Imports Fixed After API/Hooks Migration — Committed 1709cf8
+347 " 🔄 Task 9: Auth/Landing Views Moved, 7 page.tsx Files Need Import Updates
+348 2:44p 🔄 Task 9: Auth/Landing page.tsx Imports Updated to @/features/ Paths
+349 " 🔴 TypeScript Clean After Auth/Landing View Migration
+350 " 🔵 Phase 3 View Migration Plan: Tasks 10-13 Cover Dashboard, Courses, Assignments, Quiz
+351 " 🔵 Remaining src/views/ Inventory: 39 Files/Dirs Still to Migrate in Phase 3
+352 " 🔵 sed with Escaped Next.js Route Group Parentheses Failed — Dashboard Imports Not Updated
+353 2:45p 🔴 Dashboard Page.tsx Imports Committed Without Fix — @/views/Dashboard Still Broken in app/(main)/dashboard/
+354 " 🔄 Task 11: 10 Courses View Files/Dirs Moved to features/courses/views/
+355 2:46p 🔵 Fix for (main) Route Group sed Issue: Use `find src/app -name "page.tsx" | xargs sed -i`
+356 " 🔄 Task 11 Complete: Courses Views Committed — 619bbf3
+357 " 🔄 Task 12: 6 Assignment View Items Moved to features/assignments/views/
+358 2:47p 🔄 Task 12 Complete: Assignments Views Committed — f7e3225
+359 " 🔵 Broken LessonPlayer page.tsx: Imports LessonPlayer But Has No Return Statement
+360 " 🔄 Task 13: Quiz View Files Moved to features/quiz/views/
+361 " 🔄 Task 13: Quiz Page.tsx Imports Fixed and Committed
+362 " 🔄 Task 13 Complete: Quiz Views Committed — 48e0293
+363 " 🔄 Task 14: Lesson Views Moved — lesson/ Directory and ModulePageEditor.tsx to features/lesson/views/
+364 " 🔵 LessonPlayer page.tsx Confirmed: Imports @/views/lesson/LessonPlayer Without Return
+365 2:48p 🔴 Fixed: LessonPlayer Page.tsx Missing Return Statement — Now Returns &lt;LessonPlayer /&gt;
+366 " 🔄 Task 14: TypeScript Clean After Lesson Migration and LessonPlayer Fix
+367 2:49p 🔄 Task 14 Complete: Lesson Views and LessonPlayer Fix Committed — 15d17e1
+368 " 🔄 Task 15: Grades and Teacher Views Moved to Feature Domains
+370 " 🔄 Task 15: Grades/Teacher page.tsx Imports Updated to @/features/ Paths
+371 " 🔄 Task 15 Complete: Grades/Teacher Views Committed — ea64ae4
+369 2:50p 🔵 Grades/Teacher Page Routes Confirmed: AllGrades Uses Named Import, 5 Files to Update
+372 2:51p ✅ Tasks 17-22 Bulk-Marked Completed; Task 23 (Final Remaining Views) Now In Progress
+373 2:52p 🔄 Task 16: All Remaining View Files Moved — src/views/ Now Empty
+374 2:53p 🔵 10 @/views/ Imports Remaining — All for Task 16 Domains, Dashboard Imports Resolved
+375 " 🔄 Phase 3 Complete: Zero @/views/ Imports Remain Anywhere in the Codebase
+377 " 🔄 Task 16 Complete: Final View Migration Committed — 7f687ae; Phase 3 Fully Done
+378 " 🔵 Phase 4 Plan: Components Migration Covers 3 Tasks — courses, assignments/quiz, dashboard/AI/virtual-lab
+376 2:54p 🔄 Phase 3 TypeScript Check Passes — Zero Errors After Full View Migration
+380 " 🔄 Phase 4 Component Moves Partially Executed: 30+ Components Staged Across courses/assignments/AI Feature Domains
+379 2:55p 🔵 src/components/ Full Inventory Before Phase 4: Unexpected Subdirectories Not in Migration Plan
+381 2:57p 🔄 Phase 4 Nearly Complete: analytics/ Was Last Remaining Domain Component, Now Moved to admin Feature
+382 " 🔄 Phase 4 Complete: Zero TypeScript Errors After Component Moves; components/index.ts Barrel Reduced to Shared UI Only
+383 " 🔄 Phase 4 Complete: 50 Domain Components Moved to Feature Domains — Committed 22eb1be
+384 3:09p 🔵 Phase 5 Plan: Feature Domain Barrel Files + useCourseQueries Exports Confirmed
+385 " 🟣 Phase 5 Complete: 16 Feature Domain Barrel index.ts Files Written
+386 " 🔵 pnpm tsc Must Be Run from apps/web — Fails with ERR_PNPM_NO_IMPORTER_MANIFEST_FOUND from Monorepo Root
+387 " 🟣 Phase 6: Domain-Local Type Files Created for courses and assignments
 
-Access 1036k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 155k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
