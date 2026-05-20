@@ -1,5 +1,5 @@
 'use client';
-import Profile from '@/views/Profile';
+import Profile from '@/features/profile/views/Profile';
 export default function Page() {
   return <Profile />;
 }

@@ -1,5 +1,5 @@
 'use client';
-import ProfileSettings from '@/views/ProfileSettings';
+import ProfileSettings from '@/features/profile/views/ProfileSettings';
 export default function Page() {
   return <ProfileSettings />;
 }

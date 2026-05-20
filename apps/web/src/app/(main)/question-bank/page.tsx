@@ -1,5 +1,5 @@
 'use client';
-import QuestionBank from '@/views/QuestionBank';
+import QuestionBank from '@/features/question-bank/views/QuestionBank';
 export default function Page() {
   return <QuestionBank />;
 }
