@@ -16,7 +16,7 @@ import {
 import { StaggeredList, StaggeredItem } from '../components/animation';
 import { useCourseStore } from '../store/courseStore';
 import { useAuthStore } from '../store/authStore';
-import { coursesApi } from '../api/courses';
+import { coursesApi } from '@/features/courses/api/courses';
 import { PlusIcon, MagnifyingGlassIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { Course } from '../types';
 

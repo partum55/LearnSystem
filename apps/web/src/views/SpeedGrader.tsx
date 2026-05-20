@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation';
 import { Button, Card, CardBody, CardHeader, Loading } from '../components';
 import apiClient from '../api/client';
-import { submissionsApi } from '../api/assessments';
+import { submissionsApi } from '@/features/assignments/api/assessments';
 import { GradingSuggestionPanel } from '../components/GradingSuggestionPanel';
 import { PlagiarismCheckPanel } from '../components/PlagiarismCheckPanel';
 import { RichContentRenderer } from '../components/common/RichContentRenderer';

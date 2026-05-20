@@ -8,7 +8,7 @@ import {
   DocumentTextIcon,
   UserCircleIcon,
 } from '@heroicons/react/24/outline';
-import { coursesApi, CoursePreviewResponse } from '../api/courses';
+import { coursesApi, CoursePreviewResponse } from '@/features/courses/api/courses';
 import { extractErrorMessage } from '../api/client';
 import { Loading } from '../components';
 

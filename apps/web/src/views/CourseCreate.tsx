@@ -8,7 +8,7 @@ import { Input } from '../components/Input';
 import { Button } from '../components/Button';
 import { Breadcrumbs } from '../components/common/Breadcrumbs';
 import { useCourseStore } from '../store/courseStore';
-import { coursesApi } from '../api/courses';
+import { coursesApi } from '@/features/courses/api/courses';
 import { SyllabusBuilder } from '../components/SyllabusBuilder';
 
 const isHexColor = (value: string) =>

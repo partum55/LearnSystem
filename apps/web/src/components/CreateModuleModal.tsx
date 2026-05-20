@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Modal } from '../components/Modal';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
-import { modulesApi } from '../api/courses';
+import { modulesApi } from '@/features/courses/api/courses';
 import { extractErrorMessage } from '../api/client';
 
 interface CreateModuleModalProps {

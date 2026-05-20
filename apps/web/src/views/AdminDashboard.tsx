@@ -20,7 +20,7 @@ import {
   unpublishAdminCourse,
   updateAdminCourse,
   updateAdminUser,
-} from '../api/admin';
+} from '@/features/admin/api/admin';
 import { extractErrorMessage } from '../api/client';
 import {
   ArrowPathIcon,

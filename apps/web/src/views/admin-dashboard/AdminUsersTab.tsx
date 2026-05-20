@@ -7,7 +7,7 @@ import {
   TrashIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline';
-import { AdminUser } from '../../api/admin';
+import { AdminUser } from '@/features/admin/api/admin';
 import { Loading } from '../../components/Loading';
 import {
   CreateUserForm,

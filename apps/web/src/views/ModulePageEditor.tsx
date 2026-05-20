@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BlockEditor, createEmptyDocument } from '../features/editor-core';
-import { editorMediaApi, modulePagesApi, pageDocumentsApi } from '../api/pages';
+import { editorMediaApi, modulePagesApi, pageDocumentsApi } from '@/features/lesson/api/pages';
 import { CanonicalDocument, ModulePage, TocItem } from '../types';
 import { extractErrorMessage } from '../api/client';
 

@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import apiClient, { extractErrorMessage } from '../api/client';
-import { gradebookApi, GradebookCategory, GradeHistoryItem } from '../api/gradebook';
+import { gradebookApi, GradebookCategory, GradeHistoryItem } from '@/features/grades/api/gradebook';
 import { Card, CardBody } from './Card';
 import { Loading } from './Loading';
 import { Button } from './Button';

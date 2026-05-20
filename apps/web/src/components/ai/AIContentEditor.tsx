@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../Button';
-import { aiApi, CourseEditRequest } from '../../api/ai';
+import { aiApi, CourseEditRequest } from '@/features/ai/api/ai';
 import { extractErrorMessage } from '../../api/client';
 import {
   SparklesIcon,

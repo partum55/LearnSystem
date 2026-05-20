@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { aiApi } from '../../api/ai';
+import { aiApi } from '@/features/ai/api/ai';
 
 interface AIToolbarPluginProps {
   currentContent: string;

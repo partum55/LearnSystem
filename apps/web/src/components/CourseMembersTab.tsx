@@ -5,7 +5,7 @@ import { Card, CardHeader, CardBody } from './Card';
 import { Button } from './Button';
 import { Loading } from './Loading';
 import apiClient from '../api/client';
-import { coursesApi } from '../api/courses';
+import { coursesApi } from '@/features/courses/api/courses';
 import { useAuthStore } from '../store/authStore';
 import {
   UserGroupIcon,

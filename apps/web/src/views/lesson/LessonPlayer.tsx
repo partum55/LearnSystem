@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { useLesson, useLessonProgress, useCompleteStep } from '../../queries/useLessonQueries';
+import { useLesson, useLessonProgress, useCompleteStep } from '@/features/lesson/hooks/useLessonQueries';
 import { DocumentRenderer } from '../../features/editor-core/DocumentRenderer';
 import { parseCanonicalDocument } from '../../features/editor-core';
 import { Layout } from '../../components';

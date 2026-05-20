@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { aiApi, type SyllabusResponseData } from '../api/ai';
+import { aiApi, type SyllabusResponseData } from '@/features/ai/api/ai';
 import { Modal } from './Modal';
 import { Button } from './index';
 import { SparklesIcon } from '@heroicons/react/24/outline';

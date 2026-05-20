@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Resource, ResourceType } from '../../types';
-import { resourcesApi } from '../../api/courses';
+import { resourcesApi } from '@/features/courses/api/courses';
 import { WizardResource } from '../../views/assignment-wizard/wizardTypes';
 import ResourceCard from './ResourceCard';
 

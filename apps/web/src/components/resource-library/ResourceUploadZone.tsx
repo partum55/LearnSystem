@@ -2,7 +2,7 @@
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useTranslation } from 'react-i18next';
-import { resourcesApi } from '../../api/courses';
+import { resourcesApi } from '@/features/courses/api/courses';
 
 interface ResourceUploadZoneProps {
   courseId: string;

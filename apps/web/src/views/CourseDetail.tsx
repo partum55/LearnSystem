@@ -13,7 +13,7 @@ import {
 import { CourseLayout } from '../components/CourseLayout';
 import { TabTransition } from '../components/animation';
 import { CourseMembersTab } from '../components/CourseMembersTab';
-import { announcementsApi, coursesApi, CoursePublishChecklist, modulesApi, resourcesApi } from '../api/courses';
+import { announcementsApi, coursesApi, CoursePublishChecklist, modulesApi, resourcesApi } from '@/features/courses/api/courses';
 import { extractErrorMessage } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { useCourseStore } from '../store/courseStore';

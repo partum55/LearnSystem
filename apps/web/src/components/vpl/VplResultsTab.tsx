@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from 'react';
-import { CodeExecutionResult, TestCaseResult } from '../../api/virtualLab';
+import { CodeExecutionResult, TestCaseResult } from '@/features/virtual-lab/api/virtualLab';
 
 interface VplResultsTabProps {
   result: CodeExecutionResult | null;

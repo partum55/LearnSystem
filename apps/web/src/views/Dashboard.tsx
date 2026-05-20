@@ -18,9 +18,9 @@ import {
   coursesApi,
   StudentContextReminderItem,
   TeacherTodoDashboardResponse,
-} from '../api/courses';
+} from '@/features/courses/api/courses';
 import { extractErrorMessage } from '../api/client';
-import { progressApi, ProgressItem } from '../api/progress';
+import { progressApi, ProgressItem } from '@/features/grades/api/progress';
 
 interface DashboardCourse extends Course {
   completion_percentage?: number;

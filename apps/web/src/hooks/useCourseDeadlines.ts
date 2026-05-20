@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { assignmentsApi } from '../api/assessments';
+import { assignmentsApi } from '@/features/assignments/api/assessments';
 import { Assignment, Course } from '../types';
 
 export interface CourseDeadlineItem {

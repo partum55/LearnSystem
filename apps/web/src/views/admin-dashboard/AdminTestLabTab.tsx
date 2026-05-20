@@ -5,7 +5,7 @@ import {
   ChevronRightIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
-import { aiApi } from '../../api/ai';
+import { aiApi } from '@/features/ai/api/ai';
 import {
   AdminCourse,
   AdminUser,
@@ -13,9 +13,9 @@ import {
   createAdminUser,
   getAdminCourses,
   getAdminUsers,
-} from '../../api/admin';
-import { adminCourseDeepApi } from '../../api/adminCourseManagement';
-import { submissionsApi } from '../../api/assessments';
+} from '@/features/admin/api/admin';
+import { adminCourseDeepApi } from '@/features/admin/api/adminCourseManagement';
+import { submissionsApi } from '@/features/assignments/api/assessments';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

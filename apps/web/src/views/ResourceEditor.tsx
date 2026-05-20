@@ -6,7 +6,7 @@ import { ArrowLeftIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { CourseLayout } from '../components/CourseLayout';
 import { Button, Card, CardBody, Input, Loading } from '../components';
 import { extractErrorMessage } from '../api/client';
-import { resourcesApi } from '../api/courses';
+import { resourcesApi } from '@/features/courses/api/courses';
 import { ResourceCreateData, ResourceType } from '../types';
 import {
   BlockEditor,
@@ -14,7 +14,7 @@ import {
   parseCanonicalDocument,
   serializeCanonicalDocument,
 } from '../features/editor-core';
-import { editorMediaApi } from '../api/pages';
+import { editorMediaApi } from '@/features/lesson/api/pages';
 
 interface ResourceEditorFormState {
   title: string;

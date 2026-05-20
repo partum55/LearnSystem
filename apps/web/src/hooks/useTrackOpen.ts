@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useMarkComplete } from '../queries/useProgressQueries';
+import { useMarkComplete } from '@/features/grades/hooks/useProgressQueries';
 
 /**
  * Hook that marks content as complete when a component mounts.

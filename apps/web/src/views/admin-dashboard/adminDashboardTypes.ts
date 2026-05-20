@@ -4,7 +4,7 @@ import {
   AdminUser,
   AdminUserLocale,
   AdminUserRole,
-} from '../../api/admin';
+} from '@/features/admin/api/admin';
 
 export type AdminTab = 'services' | 'users' | 'courses' | 'course-manager' | 'import-export' | 'analytics' | 'test-lab' | 'plugins';
 

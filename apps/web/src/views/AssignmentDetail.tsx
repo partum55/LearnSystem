@@ -15,13 +15,13 @@ import { DocumentRenderer } from '../features/editor-core/DocumentRenderer';
 import AssignmentSubmissionPanel from '../components/submission/AssignmentSubmissionPanel';
 import SeminarAttendancePanel from '../components/seminar/SeminarAttendancePanel';
 import { ExplainButton } from '../components/ExplainButton';
-import { peerReviewsApi, PeerReview } from '../api/peerReviews';
+import { peerReviewsApi, PeerReview } from '@/features/assignments/api/peerReviews';
 import { PeerReviewSubmitModal } from '../components/peerReview/PeerReviewSubmitModal';
 import FormSubmissionRenderer from './submission/FormSubmissionRenderer';
 import VplTaskTab from '../components/vpl/VplTaskTab';
 import VplEditorTab from '../components/vpl/VplEditorTab';
 import VplResultsTab from '../components/vpl/VplResultsTab';
-import { CodeExecutionResult } from '../api/virtualLab';
+import { CodeExecutionResult } from '@/features/virtual-lab/api/virtualLab';
 
 interface Assignment {
   id: string;

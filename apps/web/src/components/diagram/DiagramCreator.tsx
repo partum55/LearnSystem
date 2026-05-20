@@ -5,7 +5,7 @@ import type { TFunction } from 'i18next';
 import mermaid from 'mermaid';
 import DOMPurify from 'dompurify';
 import { ensureMermaidInitialized } from '../../features/editor-core/mermaidUtils';
-import { aiApi } from '../../api/ai';
+import { aiApi } from '@/features/ai/api/ai';
 import './diagram-creator.css';
 import {
   SparklesIcon,

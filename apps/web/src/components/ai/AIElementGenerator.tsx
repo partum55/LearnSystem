@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useRef } from 'react';
-import { aiApi, GeneratedModule, GeneratedAssignment, GeneratedQuiz } from '../../api/ai';
+import { aiApi, GeneratedModule, GeneratedAssignment, GeneratedQuiz } from '@/features/ai/api/ai';
 import { extractErrorMessage } from '../../api/client';
 
 /**

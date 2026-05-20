@@ -1,7 +1,7 @@
 "use client";
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Editor from '@monaco-editor/react';
-import { virtualLabApi, CodeExecutionResult } from '../../api/virtualLab';
+import { virtualLabApi, CodeExecutionResult } from '@/features/virtual-lab/api/virtualLab';
 import api from '../../api/client';
 
 interface VplEditorAssignment {

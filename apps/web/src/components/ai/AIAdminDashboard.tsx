@@ -1,6 +1,6 @@
 "use client";
 import React from 'react';
-import { useAIUsageSummary, useAIUsageStats, useTopAIUsers } from '../../queries/useAIUsageQueries';
+import { useAIUsageSummary, useAIUsageStats, useTopAIUsers } from '@/features/ai/hooks/useAIUsageQueries';
 
 /**
  * Admin dashboard for AI service monitoring.

@@ -1,7 +1,7 @@
 "use client";
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { authRecoveryApi } from '../api/authRecovery';
+import { authRecoveryApi } from '@/features/auth/api/authRecovery';
 import { Button, PasswordInput } from '../components';
 
 const ResetPassword: React.FC = () => {

@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { Button, Layout } from '../components';
-import calendarApi, { CalendarDay, ConflictItem, DeadlineItem } from '../api/calendar';
+import calendarApi, { CalendarDay, ConflictItem, DeadlineItem } from '@/features/calendar/api/calendar';
 
 const CalendarPage: React.FC = () => {
   const { user } = useAuthStore();

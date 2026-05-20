@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { aiApi, type GradeSuggestionResponse } from '../api/ai';
+import { aiApi, type GradeSuggestionResponse } from '@/features/ai/api/ai';
 import { Button } from './index';
 import { SparklesIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 

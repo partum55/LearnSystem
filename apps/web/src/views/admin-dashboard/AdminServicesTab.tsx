@@ -1,6 +1,6 @@
 "use client";
 import React from 'react';
-import { SystemHealth } from '../../api/admin';
+import { SystemHealth } from '@/features/admin/api/admin';
 import { Loading } from '../../components/Loading';
 import { formatDate } from './adminDashboardTypes';
 

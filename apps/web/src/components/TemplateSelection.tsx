@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { aiApi, CourseTemplate } from '../api/ai';
+import { aiApi, CourseTemplate } from '@/features/ai/api/ai';
 import { Loading } from './Loading';
 import {
   AcademicCapIcon,

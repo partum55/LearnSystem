@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { aiApi, type PlagiarismCheckResponse } from '../api/ai';
+import { aiApi, type PlagiarismCheckResponse } from '@/features/ai/api/ai';
 import { ShieldExclamationIcon } from '@heroicons/react/24/outline';
 
 interface PlagiarismCheckPanelProps {

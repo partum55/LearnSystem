@@ -11,7 +11,7 @@ import {
   installMarketplacePlugin,
   PluginVersion,
   PluginReview,
-} from '../../api/marketplace';
+} from '@/features/marketplace/api/marketplace';
 import { ArrowLeftIcon, CloudArrowDownIcon } from '@heroicons/react/24/outline';
 
 // --- Tab definitions ---

@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { aiApi, type PracticeQuizResponse } from '../api/ai';
+import { aiApi, type PracticeQuizResponse } from '@/features/ai/api/ai';
 import { Modal } from './Modal';
 import { Button } from './index';
 import type { Module } from '../types';

@@ -8,8 +8,8 @@ import {
   XMarkIcon,
   ClipboardDocumentListIcon,
 } from '@heroicons/react/24/outline';
-import { useCourseQuery, useModulesQuery } from '../queries/useCourseQueries';
-import { useAssignmentsQuery } from '../queries/useAssessmentQueries';
+import { useCourseQuery, useModulesQuery } from '@/features/courses/hooks/useCourseQueries';
+import { useAssignmentsQuery } from '@/features/assignments/hooks/useAssessmentQueries';
 import { resourceTypeInfo } from '../utils/resourceIcons';
 import { CollapseSection } from './animation';
 import type { Module, Resource, Assignment } from '../types';

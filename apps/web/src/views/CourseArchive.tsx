@@ -11,7 +11,7 @@ import {
 import {
   CourseArchiveSnapshotResponse,
   coursesApi,
-} from '../api/courses';
+} from '@/features/courses/api/courses';
 import { extractErrorMessage } from '../api/client';
 import { Layout, Loading } from '../components';
 import { Breadcrumbs } from '../components/common/Breadcrumbs';

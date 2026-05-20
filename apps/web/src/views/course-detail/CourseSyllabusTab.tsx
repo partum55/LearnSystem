@@ -15,7 +15,7 @@ import {
   DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 import { Button, Card, CardBody, Loading } from '../../components';
-import { coursesApi } from '../../api/courses';
+import { coursesApi } from '@/features/courses/api/courses';
 import { extractErrorMessage } from '../../api/client';
 import { BlockEditor } from '../../features/editor-core/BlockEditor';
 import { DocumentRenderer } from '../../features/editor-core/DocumentRenderer';

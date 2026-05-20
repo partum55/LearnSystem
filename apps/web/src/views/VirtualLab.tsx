@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import { Layout } from '../components';
-import { virtualLabApi } from '../api/virtualLab';
+import { virtualLabApi } from '@/features/virtual-lab/api/virtualLab';
 
 const LANGUAGES = [
   { value: 'python', label: 'Python' },

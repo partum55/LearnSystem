@@ -8,12 +8,12 @@
  * - useCourseStore().createCourse() → useCreateCourseMutation()
  * - useCourseStore().updateCourse() → useUpdateCourseMutation()
  *
- * Import from '@/queries/useCourseQueries'
+ * Import from '@/features/courses/hooks/useCourseQueries'
  */
 import { create } from 'zustand';
 import { Course, Module, Assignment, CourseCreateData } from '../types';
-import { coursesApi, modulesApi, resourcesApi } from '../api/courses';
-import { assignmentsApi } from '../api/assessments';
+import { coursesApi, modulesApi, resourcesApi } from '@/features/courses/api/courses';
+import { assignmentsApi } from '@/features/assignments/api/assessments';
 
 interface CourseState {
   courses: Course[];

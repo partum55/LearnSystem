@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
-import { adminAnalyticsApi, CourseEffectiveness, InstructorProductivity, PlatformUsage } from '../../api/adminAnalytics';
-import { aiApi, ABTestResultsResponse } from '../../api/ai';
+import { adminAnalyticsApi, CourseEffectiveness, InstructorProductivity, PlatformUsage } from '@/features/admin/api/adminAnalytics';
+import { aiApi, ABTestResultsResponse } from '@/features/ai/api/ai';
 import { extractErrorMessage } from '../../api/client';
 import { AIAdminDashboard } from '../../components/ai/AIAdminDashboard';
 

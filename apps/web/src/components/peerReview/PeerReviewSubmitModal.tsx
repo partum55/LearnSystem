@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { useTranslation } from 'react-i18next';
-import { PeerReview } from '../../api/peerReviews';
+import { PeerReview } from '@/features/assignments/api/peerReviews';
 
 interface PeerReviewSubmitModalProps {
   open: boolean;

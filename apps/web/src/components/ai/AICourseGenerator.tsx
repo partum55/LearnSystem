@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
 import { Input } from '../Input';
-import { aiApi, CourseGenerationRequest, GeneratedCourse } from '../../api/ai';
+import { aiApi, CourseGenerationRequest, GeneratedCourse } from '@/features/ai/api/ai';
 import { extractErrorMessage } from '../../api/client';
 import { SparklesIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { Loading } from '../Loading';

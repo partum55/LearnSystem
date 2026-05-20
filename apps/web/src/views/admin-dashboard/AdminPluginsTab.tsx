@@ -18,14 +18,14 @@ import {
   type PluginType,
   uninstallPlugin,
   updatePluginConfig,
-} from '../../api/plugins';
+} from '@/features/marketplace/api/plugins';
 import {
   diagnosePlugin,
   generateAndInstallPlugin,
   suggestPluginConfig,
   type PluginDiagnosisResponse,
   type PluginConfigSuggestionResponse,
-} from '../../api/aiPlugins';
+} from '@/features/ai/api/aiPlugins';
 import { Loading } from '../../components/Loading';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

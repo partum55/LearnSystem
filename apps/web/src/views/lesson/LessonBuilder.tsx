@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { useLesson, useAddLessonStep, useUpdateLesson } from '../../queries/useLessonQueries';
-import { lessonsApi } from '../../api/lessons';
+import { useLesson, useAddLessonStep, useUpdateLesson } from '@/features/lesson/hooks/useLessonQueries';
+import { lessonsApi } from '@/features/lesson/api/lessons';
 import { Layout } from '../../components';
 import { Loading } from '../../components';
 import {

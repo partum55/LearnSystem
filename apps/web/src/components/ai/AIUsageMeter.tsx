@@ -1,6 +1,6 @@
 "use client";
 import React from 'react';
-import { useMyAIUsage, useRemainingQuota } from '../../queries/useAIUsageQueries';
+import { useMyAIUsage, useRemainingQuota } from '@/features/ai/hooks/useAIUsageQueries';
 
 interface AIUsageMeterProps {
   userId: string;

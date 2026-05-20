@@ -19,7 +19,7 @@ import {
   SisImportPreviewResponse,
   SisImportRunResponse,
   ValidationResult,
-} from '../../api/adminCourseManagement';
+} from '@/features/admin/api/adminCourseManagement';
 import { extractErrorMessage } from '../../api/client';
 
 interface Props {

@@ -8,7 +8,7 @@ import { StaggeredList, StaggeredItem } from '../../components/animation';
 import {
   browseMarketplace,
   MarketplacePlugin,
-} from '../../api/marketplace';
+} from '@/features/marketplace/api/marketplace';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 const PLUGIN_TYPES = ['ACTIVITY', 'REPORT', 'BLOCK', 'INTEGRATION', 'THEME'] as const;

@@ -30,10 +30,10 @@ import {
 } from 'react-beautiful-dnd';
 import { Button, Card, CardBody, CardHeader } from '../../components';
 import { RichContentRenderer } from '../../components/common/RichContentRenderer';
-import { submissionsApi } from '../../api/assessments';
-import { topicsApi } from '../../api/courses';
+import { submissionsApi } from '@/features/assignments/api/assessments';
+import { topicsApi } from '@/features/courses/api/courses';
 import { Assignment, Module, Resource, Topic } from '../../types';
-import { useCourseProgress, useMarkComplete } from '../../queries/useProgressQueries';
+import { useCourseProgress, useMarkComplete } from '@/features/grades/hooks/useProgressQueries';
 
 interface CourseModulesTabProps {
   courseId: string;

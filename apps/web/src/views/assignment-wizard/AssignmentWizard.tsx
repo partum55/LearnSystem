@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import api, { extractErrorMessage } from '../../api/client';
-import { assignmentDocumentsApi } from '../../api/pages';
+import { assignmentDocumentsApi } from '@/features/lesson/api/pages';
 import { useWizardState } from './useWizardState';
 import { apiResponseToWizardData, wizardDataToApiPayload } from './wizardMapper';
 import { WizardFormData } from './wizardTypes';
