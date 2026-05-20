@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { assignmentsApi, quizzesApi, submissionsApi } from '../api/assessments';
-import { queryKeys } from '../api/queryClient';
-import { Assignment, Quiz, Submission } from '../types';
+import { queryKeys } from '@/api/queryClient';
+import { Assignment, Quiz, Submission } from '@/types';
 
 /**
  * React Query hooks for assessment data (assignments, quizzes, submissions).

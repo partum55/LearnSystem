@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { getSupabaseBrowserClient } from '../lib/supabase/browser';
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
 /**
  * AI Progress event structure from SSE

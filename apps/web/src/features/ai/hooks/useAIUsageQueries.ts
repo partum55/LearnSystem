@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '../api/client';
-import { queryKeys } from '../api/queryClient';
+import { apiClient } from '@/api/client';
+import { queryKeys } from '@/api/queryClient';
 
 /**
  * AI Usage types

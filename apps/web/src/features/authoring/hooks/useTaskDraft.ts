@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { QuestionDraft, TaskDraft, TaskType } from '../types';
+import { QuestionDraft, TaskDraft, TaskType } from '@/types';
 
 const createId = () =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto

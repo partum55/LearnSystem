@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '../api/client';
-import { queryKeys } from '../api/queryClient';
+import apiClient from '@/api/client';
+import { queryKeys } from '@/api/queryClient';
 
 /**
  * Mutations for AI operations.

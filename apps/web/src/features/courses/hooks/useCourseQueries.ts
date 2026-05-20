@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { coursesApi, modulesApi } from '../api/courses';
-import { queryKeys } from '../api/queryClient';
-import { Course, Module, CourseCreateData } from '../types';
+import { queryKeys } from '@/api/queryClient';
+import { Course, Module, CourseCreateData } from '@/types';
 
 /**
  * React Query hooks for course data fetching.

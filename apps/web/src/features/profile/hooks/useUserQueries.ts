@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi } from '../api/users';
-import { queryKeys } from '../api/queryClient';
-import { User } from '../types';
+import { queryKeys } from '@/api/queryClient';
+import { User } from '@/types';
 
 /**
  * React Query hooks for user data.

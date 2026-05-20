@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { TaskDraft, ValidationIssue, ValidationResult } from '../types';
+import { TaskDraft, ValidationIssue, ValidationResult } from '@/types';
 import { validateLatex } from '../utils/latex';
 
 export const useAuthoringValidation = (draft: TaskDraft): ValidationResult => {
