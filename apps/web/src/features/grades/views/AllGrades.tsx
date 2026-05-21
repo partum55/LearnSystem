@@ -2,9 +2,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
-import { Layout, Card, CardBody, Loading } from '../components';
-import apiClient, { extractErrorMessage } from '../api/client';
-import { useAuthStore } from '../store/authStore';
+import { Layout, Card, CardBody, Loading } from '@/components';
+import apiClient, { extractErrorMessage } from '@/api/client';
+import { useAuthStore } from '@/store/authStore';
 import { AcademicCapIcon, ChartBarIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 interface CourseGrade {

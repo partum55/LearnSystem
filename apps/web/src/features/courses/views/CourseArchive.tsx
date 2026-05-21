@@ -12,9 +12,9 @@ import {
   CourseArchiveSnapshotResponse,
   coursesApi,
 } from '@/features/courses/api/courses';
-import { extractErrorMessage } from '../api/client';
-import { Layout, Loading } from '../components';
-import { Breadcrumbs } from '../components/common/Breadcrumbs';
+import { extractErrorMessage } from '@/api/client';
+import { Layout, Loading } from '@/components';
+import { Breadcrumbs } from '@/components/common/Breadcrumbs';
 
 const getDisplayTitle = (titleUk?: string, titleEn?: string, fallback?: string) =>
   titleUk || titleEn || fallback || 'Archived course';

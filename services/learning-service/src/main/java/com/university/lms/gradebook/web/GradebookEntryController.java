@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/gradebook/entries")
 @RequiredArgsConstructor
 @Slf4j
+@Deprecated(forRemoval = false, since = "canonical-api-v1")
 public class GradebookEntryController {
 
     private final GradebookEntryService entryService;

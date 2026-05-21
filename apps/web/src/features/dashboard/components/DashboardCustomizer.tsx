@@ -1,8 +1,8 @@
 "use client";
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal } from './Modal';
-import { Button } from './Button';
+import { Modal } from '@/components/Modal';
+import { Button } from '@/components/Button';
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
 
 export interface DashboardWidget {

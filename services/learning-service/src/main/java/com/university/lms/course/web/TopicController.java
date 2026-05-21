@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/courses/{courseId}/modules/{moduleId}/topics")
 @RequiredArgsConstructor
 @Slf4j
+@Deprecated(forRemoval = false, since = "canonical-api-v1")
 public class TopicController {
 
   private final TopicService topicService;

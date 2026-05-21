@@ -1,8 +1,8 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Input, Button } from '../components';
-import apiClient, { extractErrorMessage } from '../api/client';
+import { Modal, Input, Button } from '@/components';
+import apiClient, { extractErrorMessage } from '@/api/client';
 
 interface Question {
   id: string;

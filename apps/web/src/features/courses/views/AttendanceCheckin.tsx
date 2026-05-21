@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { useAuthStore } from '../store/authStore';
-import apiClient from '../api/client';
+import { useAuthStore } from '@/store/authStore';
+import apiClient from '@/api/client';
 
 const AttendanceCheckin: React.FC = () => {
   const { assignmentId } = useParams();

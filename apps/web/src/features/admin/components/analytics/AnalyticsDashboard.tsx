@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
-import apiClient, { extractErrorMessage } from '../../api/client';
+import apiClient, { extractErrorMessage } from '@/api/client';
 
 interface AnalyticsDashboardProps {
   courseId: string;

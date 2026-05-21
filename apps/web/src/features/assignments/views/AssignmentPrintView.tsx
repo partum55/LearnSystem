@@ -3,9 +3,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeftIcon, PrinterIcon } from '@heroicons/react/24/outline';
-import api from '../api/client';
-import { Button, Loading } from '../components';
-import { parseCanonicalDocument } from '../features/editor-core';
+import api from '@/api/client';
+import { Button, Loading } from '@/components';
+import { parseCanonicalDocument } from '@/features/editor-core';
 import { DocumentRenderer } from '../features/editor-core/DocumentRenderer';
 
 interface AssignmentPrintData {

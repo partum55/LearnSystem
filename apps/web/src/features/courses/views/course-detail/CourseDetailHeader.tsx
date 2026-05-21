@@ -10,9 +10,9 @@ import {
   RectangleStackIcon,
   SwatchIcon,
 } from '@heroicons/react/24/outline';
-import { Button, Card, CardBody, CardHeader } from '../../components';
-import { Breadcrumbs } from '../../components/common/Breadcrumbs';
-import { RichContentRenderer } from '../../components/common/RichContentRenderer';
+import { Button, Card, CardBody, CardHeader } from '@/components';
+import { Breadcrumbs } from '@/components/common/Breadcrumbs';
+import { RichContentRenderer } from '@/components/common/RichContentRenderer';
 import { Course } from '../../types';
 
 interface CourseDetailHeaderProps {

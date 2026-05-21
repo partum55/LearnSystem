@@ -1,13 +1,13 @@
 <claude-mem-context>
 # Memory Context
 
-# [LearnSystem] recent context, 2026-05-20 4:08pm GMT+3
+# [LearnSystem] recent context, 2026-05-21 2:03pm GMT+3
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (14,473t read) | 155,444t work | 91% savings
+Stats: 50 obs (21,800t read) | 2,310,334t work | 99% savings
 
 ### May 20, 2026
 S35 LearnSystem frontend refactor — clarifying questions in progress, Q1 presented (architecture choice), awaiting user response (May 20, 2:41 AM)
@@ -20,38 +20,7 @@ S40 LearnSystem frontend refactor — Design Section 1 presented: exact file map
 S41 LearnSystem frontend refactor — Design Section 2 presented: 9-batch migration plan, awaiting user approval (May 20, 2:46 AM)
 S42 LearnSystem frontend refactor — design spec written, committed, and presented for user review before writing-plans handoff (May 20, 2:47 AM)
 S43 LearnSystem frontend refactor — spec approved, writing-plans skill now starting to generate implementation plan (May 20, 2:50 AM)
-338 2:41p 🔄 9 Domain Hook Files Moved from queries/mutations/hooks/ into Feature Domain hooks/ Directories
-339 " 🔵 Hook Import Fix Incomplete: 3 AI Hooks Import Non-existent ../api/client; useAIStreaming Has Broken Supabase Import
-340 " 🔵 All Remaining Hook Relative Imports Confirmed as Valid Intra-Domain Imports
-341 " 🔄 Task 7 Complete: Domain Hook Files Migrated to Feature Folders — Committed 793868c
-342 2:42p 🔵 Task 8: 58+ View Files Have Broken Imports Referencing Moved API/Query Paths
-343 " 🔄 Bulk Sed: All Views/Components API Relative Imports Rewritten to @/features/ Absolute Paths
-344 2:43p 🔄 Bulk Sed: All queries/ and mutations/ Imports Rewritten to @/features/ Hook Paths
-345 " 🟣 Phase 2 Complete: Zero TypeScript Module Errors After API/Hooks Migration
-346 " 🔄 Task 8 Complete: All Broken Imports Fixed After API/Hooks Migration — Committed 1709cf8
-347 " 🔄 Task 9: Auth/Landing Views Moved, 7 page.tsx Files Need Import Updates
-348 2:44p 🔄 Task 9: Auth/Landing page.tsx Imports Updated to @/features/ Paths
-349 " 🔴 TypeScript Clean After Auth/Landing View Migration
-350 " 🔵 Phase 3 View Migration Plan: Tasks 10-13 Cover Dashboard, Courses, Assignments, Quiz
-351 " 🔵 Remaining src/views/ Inventory: 39 Files/Dirs Still to Migrate in Phase 3
-352 " 🔵 sed with Escaped Next.js Route Group Parentheses Failed — Dashboard Imports Not Updated
-353 2:45p 🔴 Dashboard Page.tsx Imports Committed Without Fix — @/views/Dashboard Still Broken in app/(main)/dashboard/
-354 " 🔄 Task 11: 10 Courses View Files/Dirs Moved to features/courses/views/
-355 2:46p 🔵 Fix for (main) Route Group sed Issue: Use `find src/app -name "page.tsx" | xargs sed -i`
-356 " 🔄 Task 11 Complete: Courses Views Committed — 619bbf3
-357 " 🔄 Task 12: 6 Assignment View Items Moved to features/assignments/views/
-358 2:47p 🔄 Task 12 Complete: Assignments Views Committed — f7e3225
-359 " 🔵 Broken LessonPlayer page.tsx: Imports LessonPlayer But Has No Return Statement
-360 " 🔄 Task 13: Quiz View Files Moved to features/quiz/views/
-361 " 🔄 Task 13: Quiz Page.tsx Imports Fixed and Committed
-362 " 🔄 Task 13 Complete: Quiz Views Committed — 48e0293
-363 " 🔄 Task 14: Lesson Views Moved — lesson/ Directory and ModulePageEditor.tsx to features/lesson/views/
-364 " 🔵 LessonPlayer page.tsx Confirmed: Imports @/views/lesson/LessonPlayer Without Return
-365 2:48p 🔴 Fixed: LessonPlayer Page.tsx Missing Return Statement — Now Returns &lt;LessonPlayer /&gt;
-366 " 🔄 Task 14: TypeScript Clean After Lesson Migration and LessonPlayer Fix
 367 2:49p 🔄 Task 14 Complete: Lesson Views and LessonPlayer Fix Committed — 15d17e1
-368 " 🔄 Task 15: Grades and Teacher Views Moved to Feature Domains
-370 " 🔄 Task 15: Grades/Teacher page.tsx Imports Updated to @/features/ Paths
 371 " 🔄 Task 15 Complete: Grades/Teacher Views Committed — ea64ae4
 369 2:50p 🔵 Grades/Teacher Page Routes Confirmed: AllGrades Uses Named Import, 5 Files to Update
 372 2:51p ✅ Tasks 17-22 Bulk-Marked Completed; Task 23 (Final Remaining Views) Now In Progress
@@ -70,6 +39,38 @@ S43 LearnSystem frontend refactor — spec approved, writing-plans skill now sta
 385 " 🟣 Phase 5 Complete: 16 Feature Domain Barrel index.ts Files Written
 386 " 🔵 pnpm tsc Must Be Run from apps/web — Fails with ERR_PNPM_NO_IMPORTER_MANIFEST_FOUND from Monorepo Root
 387 " 🟣 Phase 6: Domain-Local Type Files Created for courses and assignments
+### May 21, 2026
+388 1:12p 🔵 LearnSystem learning-service canonicalization work-in-progress state
+389 1:13p 🔵 Complete canonical /api/v1 endpoint inventory for LearnSystem learning-service
+390 " 🔵 Large legacy unversioned controller layer coexists with canonical /api/v1 layer
+391 " 🔵 LearningItem and LessonBlock JPA entities mapped to canonical schema tables
+392 " 🔵 Canonical migration migrates legacy resources/lessons to learning_items table with data backfill
+393 " 🔵 LearningContentService enforces canonical business rules for learning items and lesson blocks
+394 " 🔵 Assignment settings stored as Map&lt;String, Object&gt; internally despite typed DTOs at input boundary
+395 " 🔵 Supabase migration history shows 6 migrations with canonical grade/submission model before learning_items
+396 1:15p 🔵 CanonicalGradebookService has critical gaps: quiz autoscoring is placeholder and teacher gradebook lacks student names
+397 " 🔵 VPL submissions store execution reference only — actual code execution belongs to vpl-service boundary
+398 " 🔵 CourseModuleDto correctly returns learningItems and assignments as separate arrays
+399 " 🔵 LearningItemMapper merges content and settings into a single flat map in the LearningItemDto response
+400 " 🔵 Assignment type mapping uses dual-layer translation between canonical API names and legacy storage strings
+401 " 🔵 Security architecture: JWT validates tokens without DB lookup; role enforcement is service-layer via CourseAccessService only
+402 " 🔵 Canonical error format is consistent: ApiErrorResponse with message, code, and fieldErrors
+403 " 🔵 Contract test LearningEndpointContractTest verifies canonical API paths, naming, and repository isolation at compile/unit test level
+404 " 🔵 Submission versioning is implemented: each submit() creates a SubmissionVersion record preserving full content history
+405 " 🔵 Core schema audit: legacy learning.resources, learning.lessons, and learning.lesson_content_blocks tables still exist alongside canonical tables
+406 1:18p 🔵 Database schema uses strict security isolation: internal schemas REVOKED from Supabase API roles, but new canonical tables lack RLS policies
+407 " 🔵 Legacy AssignmentController has 6 capabilities the canonical CanonicalAssignmentController lacks
+408 " 🔵 Legacy VplTestCaseController uses JWT role claim for authorization — a security anti-pattern compared to canonical CourseAccessService
+409 " 🔵 Zero unit tests cover canonical service layer — all 15 existing tests cover legacy or shared services only
+410 " 🔵 LearnSystem learning-service is built on Java 25 with Spring Boot
+411 1:19p 🔵 Legacy QuizAttemptService has real autoscoring; CanonicalQuizAttemptService does not — quiz scores will always be zero via /api/v1
+412 " 🔴 Fixed: students could see locked modules and unpublished assignments via GET /v1/courses/{courseId}/modules
+413 " 🔴 Fixed: CanonicalAssignmentService now enforces type immutability, availability for students, and syncs Quiz entity on update
+414 " 🔴 Fixed: CanonicalAssignmentMapper canResubmit now checks allowResubmission setting; canEdit hardened to false
+415 " 🔴 Fixed: CanonicalQuizAttemptService now enforces time limit, respects review/score visibility settings, and guards review endpoint
+416 1:20p ✅ 8 legacy controllers annotated @Deprecated(forRemoval=false, since="canonical-api-v1") to mark superseded status
+417 " 🔵 GradebookEntryController uses @PreAuthorize Spring Security with JWT role claims and raw JdbcTemplate — third authorization pattern in learning-service
+418 " 🟣 New CanonicalFrontendReadinessTest created with 9 tests covering all bugs fixed during the audit
 
-Access 155k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 2310k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

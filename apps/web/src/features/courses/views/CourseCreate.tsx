@@ -2,14 +2,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { Layout } from '../components';
-import { Card, CardHeader, CardBody } from '../components/Card';
-import { Input } from '../components/Input';
-import { Button } from '../components/Button';
-import { Breadcrumbs } from '../components/common/Breadcrumbs';
-import { useCourseStore } from '../store/courseStore';
+import { Layout } from '@/components';
+import { Card, CardHeader, CardBody } from '@/components/Card';
+import { Input } from '@/components/Input';
+import { Button } from '@/components/Button';
+import { Breadcrumbs } from '@/components/common/Breadcrumbs';
+import { useCourseStore } from '@/store/courseStore';
 import { coursesApi } from '@/features/courses/api/courses';
-import { SyllabusBuilder } from '../components/SyllabusBuilder';
+import { SyllabusBuilder } from '@/features/ai/components/SyllabusBuilder';
 
 const isHexColor = (value: string) =>
   /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value);

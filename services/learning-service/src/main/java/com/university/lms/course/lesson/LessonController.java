@@ -10,6 +10,7 @@ import java.util.*;
 @RestController
 @RequestMapping("/lessons")
 @RequiredArgsConstructor
+@Deprecated(forRemoval = false, since = "canonical-api-v1")
 public class LessonController {
 
     private final LessonService lessonService;

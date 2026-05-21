@@ -3,8 +3,8 @@ import React, { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Layout, Card, CardBody, Button, Input } from '../../components';
-import { StaggeredList, StaggeredItem } from '../../components/animation';
+import { Layout, Card, CardBody, Button, Input } from '@/components';
+import { StaggeredList, StaggeredItem } from '@/components/animation';
 import {
   browseMarketplace,
   MarketplacePlugin,

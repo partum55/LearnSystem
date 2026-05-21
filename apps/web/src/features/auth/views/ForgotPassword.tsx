@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { authRecoveryApi } from '@/features/auth/api/authRecovery';
-import { Button, Input } from '../components';
+import { Button, Input } from '@/components';
 
 const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('');

@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { authRecoveryApi } from '@/features/auth/api/authRecovery';
-import { Button } from '../components';
+import { Button } from '@/components';
 
 const VerifyEmail: React.FC = () => {
   const searchParams = useSearchParams();

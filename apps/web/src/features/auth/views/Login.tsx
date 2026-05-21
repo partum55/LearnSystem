@@ -2,11 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
-import { useAuthStore } from '../store/authStore';
-import { Input } from '../components';
-import { PasswordInput } from '../components/PasswordInput';
-import { Button } from '../components';
-import { LanguageSwitcher } from '../components/LanguageSwitcher';
+import { useAuthStore } from '@/store/authStore';
+import { Input } from '@/components';
+import { PasswordInput } from '@/components/PasswordInput';
+import { Button } from '@/components';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 
 const REQUIRE_UCU_EMAIL =

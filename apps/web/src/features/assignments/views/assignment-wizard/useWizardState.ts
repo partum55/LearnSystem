@@ -9,7 +9,7 @@ import {
 import {
   hasMeaningfulDocumentContent,
   parseCanonicalDocument,
-} from '../../features/editor-core/documentUtils';
+} from '@/features/editor-core/documentUtils';
 
 const DRAFT_PREFIX = 'draft:assignment:';
 

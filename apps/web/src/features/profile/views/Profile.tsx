@@ -1,9 +1,9 @@
 "use client";
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Layout } from '../components';
-import { Card, CardHeader, CardBody } from '../components/Card';
-import { useAuthStore } from '../store/authStore';
+import { Layout } from '@/components';
+import { Card, CardHeader, CardBody } from '@/components/Card';
+import { useAuthStore } from '@/store/authStore';
 
 export const Profile: React.FC = () => {
   const { t } = useTranslation();

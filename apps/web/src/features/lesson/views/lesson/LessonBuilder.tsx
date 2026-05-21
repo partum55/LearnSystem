@@ -4,8 +4,8 @@ import { useParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { useLesson, useAddLessonStep, useUpdateLesson } from '@/features/lesson/hooks/useLessonQueries';
 import { lessonsApi } from '@/features/lesson/api/lessons';
-import { Layout } from '../../components';
-import { Loading } from '../../components';
+import { Layout } from '@/components';
+import { Loading } from '@/components';
 import {
   PlusIcon,
   TrashIcon,
@@ -16,7 +16,7 @@ import {
   BlockEditor,
   serializeCanonicalDocument,
   parseCanonicalDocument,
-} from '../../features/editor-core';
+} from '@/features/editor-core';
 
 const LessonBuilder: React.FC = () => {
   const { t } = useTranslation();

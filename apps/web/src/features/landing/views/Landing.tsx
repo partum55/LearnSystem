@@ -2,8 +2,8 @@
 import React, { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
-import { useAuthStore } from '../store/authStore';
-import { LanguageSwitcher } from '../components/LanguageSwitcher';
+import { useAuthStore } from '@/store/authStore';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import {
   AcademicCapIcon,
   ClipboardDocumentCheckIcon,

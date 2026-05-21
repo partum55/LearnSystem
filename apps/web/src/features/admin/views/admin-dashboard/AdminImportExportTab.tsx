@@ -20,7 +20,7 @@ import {
   SisImportRunResponse,
   ValidationResult,
 } from '@/features/admin/api/adminCourseManagement';
-import { extractErrorMessage } from '../../api/client';
+import { extractErrorMessage } from '@/api/client';
 
 interface Props {
   onFeedback: (type: 'success' | 'error', message: string) => void;

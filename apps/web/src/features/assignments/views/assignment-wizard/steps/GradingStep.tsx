@@ -5,7 +5,7 @@ import { WizardFormData } from '../wizardTypes';
 import VplTestCaseManager from '../../../components/vpl/VplTestCaseManager';
 import AIReviewPanel from '../../../features/authoring/components/AIReviewPanel';
 import { QuestionDraft, QuestionOption } from '../../../features/authoring/types';
-import { aiApi } from '../../../api/ai';
+import { aiApi } from '@/features/ai/api/ai';
 import {
   BlockEditor,
   parseCanonicalDocument,

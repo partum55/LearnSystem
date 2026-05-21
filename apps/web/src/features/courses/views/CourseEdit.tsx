@@ -2,14 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { Layout } from '../components';
-import { Card, CardHeader, CardBody } from '../components/Card';
-import { Input } from '../components/Input';
-import { Button } from '../components/Button';
-import { Breadcrumbs } from '../components/common/Breadcrumbs';
-import { useCourseStore } from '../store/courseStore';
+import { Layout } from '@/components';
+import { Card, CardHeader, CardBody } from '@/components/Card';
+import { Input } from '@/components/Input';
+import { Button } from '@/components/Button';
+import { Breadcrumbs } from '@/components/common/Breadcrumbs';
+import { useCourseStore } from '@/store/courseStore';
 import { TrashIcon } from '@heroicons/react/24/outline';
-import { Loading } from '../components/Loading';
+import { Loading } from '@/components/Loading';
 import { Course, CourseCreateData } from '../types';
 
 const isHexColor = (value: string) =>

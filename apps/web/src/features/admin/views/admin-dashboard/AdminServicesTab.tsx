@@ -1,7 +1,7 @@
 "use client";
 import React from 'react';
 import { SystemHealth } from '@/features/admin/api/admin';
-import { Loading } from '../../components/Loading';
+import { Loading } from '@/components/Loading';
 import { formatDate } from './adminDashboardTypes';
 
 interface AdminServicesTabProps {

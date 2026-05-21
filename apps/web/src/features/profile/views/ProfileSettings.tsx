@@ -1,10 +1,10 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Layout, Card, CardHeader, CardBody, Button } from '../components';
-import { useAuthStore } from '../store/authStore';
-import { useUIStore, type ThemeMode } from '../store/uiStore';
-import apiClient, { extractErrorMessage } from '../api/client';
+import { Layout, Card, CardHeader, CardBody, Button } from '@/components';
+import { useAuthStore } from '@/store/authStore';
+import { useUIStore, type ThemeMode } from '@/store/uiStore';
+import apiClient, { extractErrorMessage } from '@/api/client';
 import { aiApi } from '@/features/ai/api/ai';
 import type { ApiKeyDto } from '../types';
 import {

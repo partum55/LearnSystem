@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { aiApi, type PracticeQuizResponse } from '@/features/ai/api/ai';
-import { Modal } from './Modal';
-import { Button } from './index';
+import { Modal } from '@/components/Modal';
+import { Button } from '@/components';
 import type { Module } from '../types';
 
 interface PracticeQuizModalProps {

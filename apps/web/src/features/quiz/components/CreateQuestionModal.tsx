@@ -1,8 +1,8 @@
 "use client";
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Input, Button } from '../components';
-import apiClient, { extractErrorMessage } from '../api/client';
+import { Modal, Input, Button } from '@/components';
+import apiClient, { extractErrorMessage } from '@/api/client';
 
 type QuestionType =
   | 'SINGLE_CHOICE'

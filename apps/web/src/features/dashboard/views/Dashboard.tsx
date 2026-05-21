@@ -3,23 +3,21 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
 import { formatDistanceToNowStrict, isToday } from 'date-fns';
-import { Layout } from '../components';
-import { Loading } from '../components';
-import { Button } from '../components';
-import { DashboardWidgetConfig } from '../components';
-import { WidgetRenderer } from '../components';
-import { useAuthStore } from '../store/authStore';
-import { useCourseStore } from '../store/courseStore';
-import { useNotificationStore } from '../store/notificationStore';
+import { Layout, Loading, Button } from '@/components';
+import { DashboardWidgetConfig } from '../components/DashboardBuilder';
+import { WidgetRenderer } from '../components/DashboardWidgets';
+import { useAuthStore } from '@/store/authStore';
+import { useCourseStore } from '@/store/courseStore';
+import { useNotificationStore } from '@/store/notificationStore';
 import { Course } from '../types';
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
-import { useCourseDeadlines } from '../hooks/useCourseDeadlines';
+import { useCourseDeadlines } from '@/hooks/useCourseDeadlines';
 import {
   coursesApi,
   StudentContextReminderItem,
   TeacherTodoDashboardResponse,
 } from '@/features/courses/api/courses';
-import { extractErrorMessage } from '../api/client';
+import { extractErrorMessage } from '@/api/client';
 import { progressApi, ProgressItem } from '@/features/grades/api/progress';
 
 interface DashboardCourse extends Course {

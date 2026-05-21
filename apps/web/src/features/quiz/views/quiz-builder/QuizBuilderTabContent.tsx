@@ -2,7 +2,7 @@
 import React from 'react';
 import { TFunction } from 'i18next';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
-import { Card, CardBody, CardHeader } from '../../components';
+import { Card, CardBody, CardHeader } from '@/components';
 import { Course } from '../../types';
 import {
   Question,

@@ -24,6 +24,7 @@ import java.util.UUID;
 @RequestMapping("/quizzes")
 @RequiredArgsConstructor
 @Slf4j
+@Deprecated(forRemoval = false, since = "canonical-api-v1")
 public class QuizController {
 
     private final QuizService quizService;

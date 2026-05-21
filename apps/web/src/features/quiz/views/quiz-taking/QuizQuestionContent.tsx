@@ -2,7 +2,7 @@
 import React from 'react';
 import { TFunction } from 'i18next';
 import { Question, StudentAnswer } from './quizTakingModel';
-import { BlockEditor } from '../../features/editor-core';
+import { BlockEditor } from '@/features/editor-core';
 import { CanonicalDocument } from '../../types';
 
 interface QuizQuestionContentProps {

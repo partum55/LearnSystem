@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { authRecoveryApi } from '@/features/auth/api/authRecovery';
-import { Button, PasswordInput } from '../components';
+import { Button, PasswordInput } from '@/components';
 
 const ResetPassword: React.FC = () => {
   const searchParams = useSearchParams();

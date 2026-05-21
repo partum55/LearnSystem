@@ -43,6 +43,7 @@ public class CanonicalGradebookService {
   private final GradebookEntryRepository gradebookEntryRepository;
   private final SubmissionRepository submissionRepository;
   private final CourseAccessService accessService;
+  private final UserProfileClient userProfileClient;
 
   @Transactional(readOnly = true)
   public StudentGradebookDto studentGradebook(UUID courseId, UUID userId) {
@@ -92,8 +93,7 @@ public class CanonicalGradebookService {
     return new TeacherGradebookDto(
         courseId,
         students.stream()
-            .map(student -> new TeacherGradebookDto.StudentDto(
-                student.getUserId(), student.getUserId().toString(), null))
+            .map(student -> studentDto(student.getUserId()))
             .toList(),
         assignments.stream()
             .map(a -> new TeacherGradebookDto.AssignmentColumnDto(
@@ -180,6 +180,14 @@ public class CanonicalGradebookService {
     gradebookEntryRepository.save(entry);
   }
 
+  public void markWithdrawn(Assignment assignment, Submission submission) {
+    GradebookEntry entry = findOrCreateEntry(assignment, submission.getUserId());
+    entry.setSubmissionId(submission.getId());
+    entry.setStatus(GradeStatus.NOT_SUBMITTED);
+    entry.setLate(false);
+    gradebookEntryRepository.save(entry);
+  }
+
   public void saveDraft(
       Assignment assignment,
       Submission submission,
@@ -256,6 +264,20 @@ public class CanonicalGradebookService {
         entry == null
             ? null
             : (published ? entry.getPublishedFinalComment() : entry.getDraftComment()));
+  }
+
+  private TeacherGradebookDto.StudentDto studentDto(UUID userId) {
+    return userProfileClient.findProfile(userId)
+        .map(profile -> new TeacherGradebookDto.StudentDto(
+            userId,
+            firstNonBlank(profile.displayName(), userId.toString()),
+            profile.email(),
+            profile.avatarUrl()))
+        .orElseGet(() -> new TeacherGradebookDto.StudentDto(userId, userId.toString(), null));
+  }
+
+  private String firstNonBlank(String value, String fallback) {
+    return value == null || value.isBlank() ? fallback : value;
   }
 
   private StudentGradebookDto.ModuleGradeDto studentModule(

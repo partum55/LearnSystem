@@ -2,9 +2,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { Layout, Card, CardHeader, CardBody, Button, Loading } from '../components';
-import apiClient from '../api/client';
-import { useAuthStore } from '../store/authStore';
+import { Layout, Card, CardHeader, CardBody, Button, Loading } from '@/components';
+import apiClient from '@/api/client';
+import { useAuthStore } from '@/store/authStore';
 import { CheckCircleIcon, XCircleIcon, ClockIcon, TrophyIcon } from '@heroicons/react/24/outline';
 
 interface Question {

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ClockIcon, PlusIcon, DocumentDuplicateIcon, BookmarkIcon, PencilIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { Menu, Transition } from '@headlessui/react';
 import { Assignment, Module } from '../../types';
-import { Button, Card, CardBody, Modal } from '../../components';
+import { Button, Card, CardBody, Modal } from '@/components';
 import { assignmentsApi } from '@/features/assignments/api/assessments';
 import { coursesApi, modulesApi } from '@/features/courses/api/courses';
 

@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/courses/{courseId}/modules/{moduleId}/pages")
 @RequiredArgsConstructor
+@Deprecated(forRemoval = false, since = "canonical-api-v1")
 public class ModulePageController {
 
   private final ModulePageService modulePageService;

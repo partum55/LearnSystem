@@ -10,7 +10,7 @@ import {
   extractDocumentText,
   parseCanonicalDocument,
   serializeCanonicalDocument,
-} from '../../features/editor-core/documentUtils';
+} from '@/features/editor-core/documentUtils';
 
 type InlineQuizQuestionPayload = {
   questionType: string;

@@ -16,10 +16,10 @@ import {
   TeacherTodoMissingItem,
   TeacherTodoSubmissionItem,
 } from '@/features/courses/api/courses';
-import { extractErrorMessage } from '../api/client';
-import { Layout, Loading } from '../components';
-import { Breadcrumbs } from '../components/common/Breadcrumbs';
-import { useCourseStore } from '../store/courseStore';
+import { extractErrorMessage } from '@/api/client';
+import { Layout, Loading } from '@/components';
+import { Breadcrumbs } from '@/components/common/Breadcrumbs';
+import { useCourseStore } from '@/store/courseStore';
 
 const formatDateTime = (value?: string) => {
   if (!value) return 'n/a';

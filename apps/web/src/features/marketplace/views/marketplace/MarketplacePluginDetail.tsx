@@ -3,8 +3,8 @@ import React, { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Layout, Card, CardBody, Button } from '../../components';
-import { TabTransition } from '../../components/animation';
+import { Layout, Card, CardBody, Button } from '@/components';
+import { TabTransition } from '@/components/animation';
 import {
   getMarketplacePlugin,
   getPluginReviews,

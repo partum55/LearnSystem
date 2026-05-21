@@ -2,8 +2,8 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { useAuthStore } from '../store/authStore';
-import { getSupabaseBrowserClient } from '../lib/supabase/browser';
+import { useAuthStore } from '@/store/authStore';
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
 export const GoogleAuthCallback: React.FC = () => {
   const router = useRouter();

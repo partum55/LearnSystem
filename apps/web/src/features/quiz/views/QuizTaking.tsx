@@ -2,10 +2,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { Card, CardBody, Layout, Loading } from '../components';
-import { UnsavedChangesPrompt } from '../components/common/UnsavedChangesPrompt';
+import { Card, CardBody, Layout, Loading } from '@/components';
+import { UnsavedChangesPrompt } from '@/components/common/UnsavedChangesPrompt';
 import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning';
-import apiClient, { extractErrorMessage } from '../api/client';
+import apiClient, { extractErrorMessage } from '@/api/client';
 import { QuizQuestionContent } from './quiz-taking/QuizQuestionContent';
 import { QuizTakingNavigation } from './quiz-taking/QuizTakingNavigation';
 import { QuizTakingProgress } from './quiz-taking/QuizTakingProgress';

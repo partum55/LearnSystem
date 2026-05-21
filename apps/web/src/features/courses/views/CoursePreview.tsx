@@ -9,8 +9,8 @@ import {
   UserCircleIcon,
 } from '@heroicons/react/24/outline';
 import { coursesApi, CoursePreviewResponse } from '@/features/courses/api/courses';
-import { extractErrorMessage } from '../api/client';
-import { Loading } from '../components';
+import { extractErrorMessage } from '@/api/client';
+import { Loading } from '@/components';
 
 const getPreferredText = (uk?: string, en?: string) => uk || en || '';
 

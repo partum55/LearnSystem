@@ -2,7 +2,7 @@
 import React from 'react';
 import { TFunction } from 'i18next';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
-import { Button } from '../../components';
+import { Button } from '@/components';
 import { Quiz, StudentAnswer } from './quizTakingModel';
 
 interface QuizTakingNavigationProps {

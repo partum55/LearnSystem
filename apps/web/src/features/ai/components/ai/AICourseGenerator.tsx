@@ -1,13 +1,13 @@
 "use client";
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal } from '../Modal';
-import { Button } from '../Button';
-import { Input } from '../Input';
+import { Modal } from '@/components/Modal';
+import { Button } from '@/components/Button';
+import { Input } from '@/components/Input';
 import { aiApi, CourseGenerationRequest, GeneratedCourse } from '@/features/ai/api/ai';
-import { extractErrorMessage } from '../../api/client';
+import { extractErrorMessage } from '@/api/client';
 import { SparklesIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
-import { Loading } from '../Loading';
+import { Loading } from '@/components/Loading';
 
 interface AICourseGeneratorProps {
   isOpen: boolean;

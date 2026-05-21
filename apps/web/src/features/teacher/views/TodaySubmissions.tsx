@@ -4,10 +4,10 @@ import { format, isToday } from 'date-fns';
 import { ClockIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
-import { Layout, Loading } from '../components';
-import { useCourseStore } from '../store/courseStore';
+import { Layout, Loading } from '@/components';
+import { useCourseStore } from '@/store/courseStore';
 import { Course } from '../types';
-import { useCourseDeadlines } from '../hooks/useCourseDeadlines';
+import { useCourseDeadlines } from '@/hooks/useCourseDeadlines';
 
 const buildSubmissionPath = (
   courseId: string,

@@ -2,20 +2,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
-import {
-  Header,
-  Sidebar,
-  Card,
-  CardHeader,
-  CardBody,
-  Button,
-  Input,
-  Loading,
-  AICourseGenerator,
-} from '../components';
-import { StaggeredList, StaggeredItem } from '../components/animation';
-import { useCourseStore } from '../store/courseStore';
-import { useAuthStore } from '../store/authStore';
+import { Header, Sidebar, Card, CardHeader, CardBody, Button, Input, Loading } from '@/components';
+import { AICourseGenerator } from '@/features/ai/components/ai/AICourseGenerator';
+import { StaggeredList, StaggeredItem } from '@/components/animation';
+import { useCourseStore } from '@/store/courseStore';
+import { useAuthStore } from '@/store/authStore';
 import { coursesApi } from '@/features/courses/api/courses';
 import { PlusIcon, MagnifyingGlassIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { Course } from '../types';

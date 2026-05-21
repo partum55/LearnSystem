@@ -1,12 +1,12 @@
 "use client";
 import React, { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import apiClient, { extractErrorMessage } from '../api/client';
+import apiClient, { extractErrorMessage } from '@/api/client';
 import { gradebookApi, GradebookCategory, GradeHistoryItem } from '@/features/grades/api/gradebook';
-import { Card, CardBody } from './Card';
-import { Loading } from './Loading';
-import { Button } from './Button';
-import { Input } from './Input';
+import { Card, CardBody } from '@/components/Card';
+import { Loading } from '@/components/Loading';
+import { Button } from '@/components/Button';
+import { Input } from '@/components/Input';
 import {
   PencilSquareIcon,
   CheckIcon,

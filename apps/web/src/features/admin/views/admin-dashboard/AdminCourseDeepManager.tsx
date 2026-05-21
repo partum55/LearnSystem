@@ -18,7 +18,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { AdminCourse } from '@/features/admin/api/admin';
 import { adminCourseDeepApi } from '@/features/admin/api/adminCourseManagement';
-import { Loading } from '../../components/Loading';
+import { Loading } from '@/components/Loading';
 
 interface Props {
   course: AdminCourse;

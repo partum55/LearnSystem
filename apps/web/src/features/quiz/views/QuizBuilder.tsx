@@ -2,11 +2,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
-import { Layout, Button } from '../components';
+import { Layout, Button } from '@/components';
 import { Course } from '../types';
-import { UnsavedChangesPrompt } from '../components/common/UnsavedChangesPrompt';
+import { UnsavedChangesPrompt } from '@/components/common/UnsavedChangesPrompt';
 import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning';
-import { apiClient } from '../api/client';
+import { apiClient } from '@/api/client';
 import {
   Question,
   Quiz,
@@ -19,7 +19,7 @@ import {
 } from './quiz-builder/quizBuilderModel';
 import { QuizBuilderTabContent } from './quiz-builder/QuizBuilderTabContent';
 import { getQuizBuilderTabs } from './quiz-builder/quizBuilderTabs';
-import { TabTransition } from '../components/animation';
+import { TabTransition } from '@/components/animation';
 
 interface ApiQuestionDetails {
   id: string;

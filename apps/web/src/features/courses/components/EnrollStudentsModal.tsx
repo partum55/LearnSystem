@@ -1,9 +1,9 @@
 "use client";
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal } from './Modal';
-import { Button } from './Button';
-import apiClient, { extractErrorMessage } from '../api/client';
+import { Modal } from '@/components/Modal';
+import { Button } from '@/components/Button';
+import apiClient, { extractErrorMessage } from '@/api/client';
 import {
   UserPlusIcon,
   DocumentArrowUpIcon,

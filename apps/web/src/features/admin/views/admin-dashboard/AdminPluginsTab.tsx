@@ -26,7 +26,7 @@ import {
   type PluginDiagnosisResponse,
   type PluginConfigSuggestionResponse,
 } from '@/features/ai/api/aiPlugins';
-import { Loading } from '../../components/Loading';
+import { Loading } from '@/components/Loading';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

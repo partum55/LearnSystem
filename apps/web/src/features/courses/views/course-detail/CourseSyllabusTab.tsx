@@ -14,15 +14,15 @@ import {
   ClipboardDocumentListIcon,
   DocumentTextIcon,
 } from '@heroicons/react/24/outline';
-import { Button, Card, CardBody, Loading } from '../../components';
+import { Button, Card, CardBody, Loading } from '@/components';
 import { coursesApi } from '@/features/courses/api/courses';
-import { extractErrorMessage } from '../../api/client';
-import { BlockEditor } from '../../features/editor-core/BlockEditor';
-import { DocumentRenderer } from '../../features/editor-core/DocumentRenderer';
+import { extractErrorMessage } from '@/api/client';
+import { BlockEditor } from '@/features/editor-core/BlockEditor';
+import { DocumentRenderer } from '@/features/editor-core/DocumentRenderer';
 import {
   parseCanonicalDocument,
   serializeCanonicalDocument,
-} from '../../features/editor-core/documentUtils';
+} from '@/features/editor-core/documentUtils';
 import { CanonicalDocument } from '../../types';
 
 /* ── Multi-page syllabus data model ── */

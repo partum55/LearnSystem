@@ -6,7 +6,7 @@ import {
   Button,
   CreateModuleModal,
   EnrollStudentsModal,
-} from '../../components';
+} from '@/components';
 import { Course } from '../../types';
 import { DeleteConfirmationState } from './courseDetailModel';
 

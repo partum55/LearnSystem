@@ -27,6 +27,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/quiz-attempts")
 @RequiredArgsConstructor
+@Deprecated(forRemoval = false, since = "canonical-api-v1")
 public class QuizAttemptController {
 
     private final QuizAttemptService quizAttemptService;

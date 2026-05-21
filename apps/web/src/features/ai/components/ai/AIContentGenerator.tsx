@@ -1,9 +1,9 @@
 "use client";
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '../Button';
-import { Modal } from '../Modal';
-import apiClient, { extractErrorMessage } from '../../api/client';
+import { Button } from '@/components/Button';
+import { Modal } from '@/components/Modal';
+import apiClient, { extractErrorMessage } from '@/api/client';
 
 interface AIContentGeneratorProps {
   type: 'quiz' | 'assignment' | 'module';

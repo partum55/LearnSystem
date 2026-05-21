@@ -61,7 +61,7 @@ public class CanonicalAssignmentService {
   @Transactional(readOnly = true)
   public AssignmentDetailDto getAssignment(UUID assignmentId, UUID userId) {
     Assignment assignment = requireAssignment(assignmentId);
-    accessService.requireActiveMember(assignment.getCourseId(), userId);
+    requireReadableAssignment(assignment, userId);
     return assignmentMapper.toDetail(
         assignment,
         findQuiz(assignment),
@@ -111,9 +111,15 @@ public class CanonicalAssignmentService {
   public AssignmentDetailDto updateAssignment(UUID assignmentId, UUID userId, AssignmentRequest request) {
     Assignment assignment = requireAssignment(assignmentId);
     accessService.requireTeacher(assignment.getCourseId(), userId);
+    String currentType = AssignmentTypeMapper.toCanonical(assignment.getAssignmentType());
+    if (request.type() != null && !currentType.equalsIgnoreCase(request.type())) {
+      throw ApiException.conflict(
+          "ASSIGNMENT_TYPE_IMMUTABLE",
+          "Assignment type cannot be changed after creation");
+    }
     Map<String, Object> settings = settingsFor(request);
-    validateAssignmentRequest(request.type(), settings);
-    assignment.setAssignmentType(AssignmentTypeMapper.toLegacy(request.type()));
+    validateAssignmentRequest(currentType, settings);
+    assignment.setAssignmentType(AssignmentTypeMapper.toLegacy(currentType));
     assignment.setTitle(request.title());
     assignment.setDescription(request.description() == null ? "" : request.description());
     assignment.setInstructions(request.instructions());
@@ -126,10 +132,66 @@ public class CanonicalAssignmentService {
       assignment.setIsPublished(request.visible());
     }
     assignment.setExternalToolConfig(canonicalSettings(settings));
-    applySettings(assignment, request.type(), settings);
+    applySettings(assignment, currentType, settings);
     assignment = assignmentRepository.save(assignment);
+    updateQuizForAssignment(assignment, settings);
     gradebookService.ensureGradebookEntriesForAssignment(assignment);
     return assignmentMapper.toDetail(assignment, findQuiz(assignment), null, null, null, 0);
+  }
+
+  @Transactional
+  public SubmissionDto editSubmission(UUID submissionId, UUID userId, SubmissionRequest request) {
+    Submission submission = requireOwnedSubmission(submissionId, userId);
+    Assignment assignment = requireAssignment(submission.getAssignmentId());
+    accessService.requireStudent(assignment.getCourseId(), userId);
+    requireAvailableForStudent(assignment);
+    requireMutableSubmission(submission);
+    if (!assignment.acceptsLateSubmission()) {
+      throw ApiException.conflict("DEADLINE_CLOSED", "The assignment deadline has passed");
+    }
+    Map<String, Object> settings = canonicalSettingsOf(assignment);
+    if (!booleanSetting(settings, "allowEditAfterSubmit", true)) {
+      throw ApiException.conflict("SUBMISSION_EDIT_NOT_ALLOWED", "This assignment does not allow editing submissions");
+    }
+    String type = AssignmentTypeMapper.toCanonical(assignment.getAssignmentType());
+    if (!AssignmentTypeMapper.requiresStudentSubmission(type)) {
+      throw ApiException.conflict("SUBMISSION_NOT_ALLOWED", "This assignment does not accept direct submissions");
+    }
+    applySubmissionContent(submission, type, request, assignment, settings);
+    submission.setSubmissionVersion(nextSubmissionVersion(submission));
+    submission.setStatus(assignment.isOverdue() ? "LATE" : "SUBMITTED");
+    submission.setIsLate(assignment.isOverdue());
+    submission.setLastResubmittedAt(LocalDateTime.now());
+    submission.setSubmittedAt(LocalDateTime.now());
+    submission = submissionRepository.save(submission);
+    saveSubmissionVersion(submission);
+    gradebookService.markSubmitted(assignment, submission);
+    return toSubmissionDto(submission);
+  }
+
+  @Transactional
+  public void withdrawSubmission(UUID submissionId, UUID userId) {
+    Submission submission = requireOwnedSubmission(submissionId, userId);
+    Assignment assignment = requireAssignment(submission.getAssignmentId());
+    accessService.requireStudent(assignment.getCourseId(), userId);
+    requireAvailableForStudent(assignment);
+    requireMutableSubmission(submission);
+    Map<String, Object> settings = canonicalSettingsOf(assignment);
+    if (!booleanSetting(settings, "allowDeleteAfterSubmit", false)) {
+      throw ApiException.conflict("SUBMISSION_DELETE_NOT_ALLOWED", "This assignment does not allow deleting submissions");
+    }
+    submission.setSubmissionVersion(nextSubmissionVersion(submission));
+    submission.setStatus("WITHDRAWN");
+    submission.setSubmittedAt(null);
+    submission.setTextAnswer(null);
+    submission.setSubmissionUrl(null);
+    submission.setFormData(null);
+    submission.setProgrammingLanguage(null);
+    submission.setAutoGradeResult(null);
+    submission.getFiles().clear();
+    submission = submissionRepository.save(submission);
+    saveSubmissionVersion(submission);
+    gradebookService.markWithdrawn(assignment, submission);
   }
 
   @Transactional
@@ -149,6 +211,7 @@ public class CanonicalAssignmentService {
       SubmissionRequest request) {
     Assignment assignment = requireAssignment(assignmentId);
     accessService.requireStudent(assignment.getCourseId(), userId);
+    requireAvailableForStudent(assignment);
     String type = AssignmentTypeMapper.toCanonical(assignment.getAssignmentType());
     if (!expectedType.equals(type)) {
       throw ApiException.badRequest(
@@ -182,15 +245,7 @@ public class CanonicalAssignmentService {
         ? (submission.getSubmissionVersion() == null ? 2 : submission.getSubmissionVersion() + 1)
         : 1);
     submission = submissionRepository.save(submission);
-    submissionVersionRepository.save(SubmissionVersion.builder()
-        .submissionId(submission.getId())
-        .assignmentId(submission.getAssignmentId())
-        .userId(submission.getUserId())
-        .versionNumber(submission.getSubmissionVersion())
-        .status(submission.getStatus())
-        .content(submissionContent(submission))
-        .submittedAt(submission.getSubmittedAt())
-        .build());
+    saveSubmissionVersion(submission);
     gradebookService.markSubmitted(assignment, submission);
     return toSubmissionDto(submission);
   }
@@ -272,6 +327,35 @@ public class CanonicalAssignmentService {
     return assignmentRepository.findById(assignmentId)
         .filter(a -> !Boolean.TRUE.equals(a.getIsArchived()))
         .orElseThrow(() -> ApiException.notFound("Assignment"));
+  }
+
+  private void requireReadableAssignment(Assignment assignment, UUID userId) {
+    accessService.requireActiveMember(assignment.getCourseId(), userId);
+    if (!accessService.canTeach(assignment.getCourseId(), userId)) {
+      accessService.requireStudent(assignment.getCourseId(), userId);
+      requireAvailableForStudent(assignment);
+    }
+  }
+
+  private void requireAvailableForStudent(Assignment assignment) {
+    if (!assignment.isAvailable()) {
+      throw ApiException.forbidden("Assignment is not available");
+    }
+  }
+
+  private Submission requireOwnedSubmission(UUID submissionId, UUID userId) {
+    Submission submission = submissionRepository.findById(submissionId)
+        .orElseThrow(() -> ApiException.notFound("Submission"));
+    if (!submission.getUserId().equals(userId)) {
+      throw ApiException.forbidden("You cannot change another student's submission");
+    }
+    return submission;
+  }
+
+  private void requireMutableSubmission(Submission submission) {
+    if (submission.getPublishedAt() != null) {
+      throw ApiException.conflict("GRADE_ALREADY_PUBLISHED", "Published submissions cannot be changed");
+    }
   }
 
   private void requireModuleInCourse(UUID courseId, UUID moduleId) {
@@ -366,11 +450,23 @@ public class CanonicalAssignmentService {
   }
 
   private void validateAssignmentRequest(String type, Map<String, Object> settings) {
+    if ("file_submission".equalsIgnoreCase(type)) {
+      if (intSetting(settings, "maxFiles", 1) < 1) {
+        throw ApiException.badRequest("INVALID_FILE_SETTINGS", "maxFiles must be at least 1");
+      }
+      if (intSetting(settings, "maxFileSizeMb", 1) < 1) {
+        throw ApiException.badRequest("INVALID_FILE_SETTINGS", "maxFileSizeMb must be at least 1");
+      }
+    }
     if ("vpl".equalsIgnoreCase(type) && isBlank((String) settings.get("language"))) {
       throw ApiException.badRequest("VPL_LANGUAGE_REQUIRED", "VPL assignments require a language");
     }
     if ("quiz".equalsIgnoreCase(type) && intSetting(settings, "attemptLimit", 1) < 1) {
       throw ApiException.badRequest("QUIZ_ATTEMPT_LIMIT_REQUIRED", "Quiz attemptLimit must be at least 1");
+    }
+    if ("quiz".equalsIgnoreCase(type) && integerSetting(settings, "timeLimitMinutes") != null
+        && integerSetting(settings, "timeLimitMinutes") < 1) {
+      throw ApiException.badRequest("QUIZ_TIME_LIMIT_INVALID", "Quiz timeLimitMinutes must be at least 1 when set");
     }
     if ("rte_submission".equalsIgnoreCase(type)) {
       Integer minWords = integerSetting(settings, "minWords");
@@ -378,6 +474,15 @@ public class CanonicalAssignmentService {
       if (minWords != null && maxWords != null && minWords > maxWords) {
         throw ApiException.badRequest("INVALID_WORD_LIMITS", "minWords cannot be greater than maxWords");
       }
+    }
+    if ("form".equalsIgnoreCase(type)) {
+      Object fields = settings.get("fields");
+      if (fields != null && !(fields instanceof List<?>)) {
+        throw ApiException.badRequest("INVALID_FORM_SETTINGS", "Form fields must be a list");
+      }
+    }
+    if ("seminar".equalsIgnoreCase(type) && Boolean.TRUE.equals(settings.get("requiresSubmission"))) {
+      throw ApiException.badRequest("INVALID_SEMINAR_SETTINGS", "Seminar assignments cannot require submissions");
     }
   }
 
@@ -392,7 +497,9 @@ public class CanonicalAssignmentService {
 
   private Map<String, Object> canonicalSettings(Map<String, Object> settings) {
     Map<String, Object> config = new HashMap<>();
-    config.put("canonicalSettings", settings == null ? Map.of() : settings);
+    Map<String, Object> canonical = new HashMap<>(settings == null ? Map.of() : settings);
+    canonical.put("schemaVersion", 1);
+    config.put("canonicalSettings", canonical);
     return config;
   }
 
@@ -461,6 +568,26 @@ public class CanonicalAssignmentService {
         .shuffleQuestions(Boolean.TRUE.equals(value.get("shuffleQuestions")))
         .createdBy(userId)
         .build());
+  }
+
+  private void updateQuizForAssignment(Assignment assignment, Map<String, Object> settings) {
+    if (assignment.getQuizId() == null || !"QUIZ".equalsIgnoreCase(assignment.getAssignmentType())) {
+      return;
+    }
+    Quiz quiz = quizRepository.findById(assignment.getQuizId()).orElse(null);
+    if (quiz == null) {
+      return;
+    }
+    Map<String, Object> value = settings == null ? Map.of() : settings;
+    quiz.setTitle(assignment.getTitle());
+    quiz.setDescription(assignment.getDescription());
+    quiz.setAttemptsAllowed(intSetting(value, "attemptLimit", 1));
+    int timeLimit = intSetting(value, "timeLimitMinutes", 0);
+    quiz.setTimeLimit(timeLimit == 0 ? null : timeLimit);
+    quiz.setTimerEnabled(value.containsKey("timeLimitMinutes") && timeLimit > 0);
+    quiz.setShowCorrectAnswers(Boolean.TRUE.equals(value.get("showCorrectAnswers")));
+    quiz.setShuffleQuestions(Boolean.TRUE.equals(value.get("shuffleQuestions")));
+    quizRepository.save(quiz);
   }
 
   private Quiz findQuiz(Assignment assignment) {
@@ -623,6 +750,22 @@ public class CanonicalAssignmentService {
         })
         .toList());
     return content;
+  }
+
+  private int nextSubmissionVersion(Submission submission) {
+    return submission.getSubmissionVersion() == null ? 1 : submission.getSubmissionVersion() + 1;
+  }
+
+  private void saveSubmissionVersion(Submission submission) {
+    submissionVersionRepository.save(SubmissionVersion.builder()
+        .submissionId(submission.getId())
+        .assignmentId(submission.getAssignmentId())
+        .userId(submission.getUserId())
+        .versionNumber(submission.getSubmissionVersion())
+        .status(submission.getStatus())
+        .content(submissionContent(submission))
+        .submittedAt(submission.getSubmittedAt())
+        .build());
   }
 
   private SubmissionDto toSubmissionDto(Submission submission) {

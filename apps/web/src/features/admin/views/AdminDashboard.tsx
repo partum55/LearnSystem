@@ -1,7 +1,7 @@
 "use client";
 import React, { useCallback, useEffect, useState } from 'react';
-import { Layout } from '../components/Layout';
-import { TabTransition } from '../components/animation';
+import { Layout } from '@/components/Layout';
+import { TabTransition } from '@/components/animation';
 import {
   activateAdminUser,
   AdminCourse,
@@ -21,7 +21,7 @@ import {
   updateAdminCourse,
   updateAdminUser,
 } from '@/features/admin/api/admin';
-import { extractErrorMessage } from '../api/client';
+import { extractErrorMessage } from '@/api/client';
 import {
   ArrowPathIcon,
   ArrowUpTrayIcon,
@@ -40,7 +40,7 @@ import { AdminImportExportTab } from './admin-dashboard/AdminImportExportTab';
 import { AdminTestLabTab } from './admin-dashboard/AdminTestLabTab';
 import { AdminAnalyticsTab } from './admin-dashboard/AdminAnalyticsTab';
 import { AdminPluginsTab } from './admin-dashboard/AdminPluginsTab';
-import { Button, Modal } from '../components';
+import { Button, Modal } from '@/components';
 import {
   AdminTab,
   CreateCourseForm,

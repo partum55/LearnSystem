@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from 'react';
 import Editor from '@monaco-editor/react';
-import { Layout } from '../components';
+import { Layout } from '@/components';
 import { virtualLabApi } from '@/features/virtual-lab/api/virtualLab';
 
 const LANGUAGES = [

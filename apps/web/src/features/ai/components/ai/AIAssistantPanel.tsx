@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { aiApi } from '@/features/ai/api/ai';
-import { extractErrorMessage } from '../../api/client';
+import { extractErrorMessage } from '@/api/client';
 import {
   SparklesIcon,
   DocumentPlusIcon,
@@ -10,8 +10,8 @@ import {
   ClipboardDocumentListIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
-import { Button } from '../Button';
-import { Loading } from '../Loading';
+import { Button } from '@/components/Button';
+import { Loading } from '@/components/Loading';
 
 interface AIAssistantPanelProps {
   courseId?: string;

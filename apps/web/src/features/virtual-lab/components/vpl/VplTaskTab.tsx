@@ -1,7 +1,7 @@
 "use client";
 import React from 'react';
-import { parseCanonicalDocument } from '../../features/editor-core';
-import { DocumentRenderer } from '../../features/editor-core/DocumentRenderer';
+import { parseCanonicalDocument } from '@/features/editor-core';
+import { DocumentRenderer } from '@/features/editor-core/DocumentRenderer';
 
 interface VplAssignment {
   title: string;

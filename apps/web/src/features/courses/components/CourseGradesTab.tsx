@@ -1,10 +1,10 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import apiClient, { extractErrorMessage } from '../api/client';
-import { useAuthStore } from '../store/authStore';
-import { Card, CardBody } from './Card';
-import { Loading } from './Loading';
+import apiClient, { extractErrorMessage } from '@/api/client';
+import { useAuthStore } from '@/store/authStore';
+import { Card, CardBody } from '@/components/Card';
+import { Loading } from '@/components/Loading';
 import {
   AcademicCapIcon,
   CheckCircleIcon,

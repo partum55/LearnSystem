@@ -21,6 +21,7 @@ import java.util.UUID;
 @RequestMapping("/assignments/{assignmentId}/test-cases")
 @RequiredArgsConstructor
 @Slf4j
+@Deprecated(forRemoval = false, since = "canonical-api-v1")
 public class VplTestCaseController {
 
     private final VplTestCaseService testCaseService;

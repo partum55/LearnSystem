@@ -3,20 +3,16 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
-import {
-  CourseGradesTab,
-  Loading,
-  Modal,
-  Button,
-  TeacherGradebook,
-} from '../components';
-import { CourseLayout } from '../components/CourseLayout';
-import { TabTransition } from '../components/animation';
+import { Loading, Modal, Button } from '@/components';
+import { CourseGradesTab } from '../components/CourseGradesTab';
+import { TeacherGradebook } from '../components/TeacherGradebook';
+import { CourseLayout } from '@/features/courses/components/CourseLayout';
+import { TabTransition } from '@/components/animation';
 import { CourseMembersTab } from '../components/CourseMembersTab';
 import { announcementsApi, coursesApi, CoursePublishChecklist, modulesApi, resourcesApi } from '@/features/courses/api/courses';
-import { extractErrorMessage } from '../api/client';
-import { useAuthStore } from '../store/authStore';
-import { useCourseStore } from '../store/courseStore';
+import { extractErrorMessage } from '@/api/client';
+import { useAuthStore } from '@/store/authStore';
+import { useCourseStore } from '@/store/courseStore';
 import { Announcement, Assignment, Module, Resource } from '../types';
 import { CourseAnnouncementsTab } from './course-detail/CourseAnnouncementsTab';
 import { CourseAssignmentsTab } from './course-detail/CourseAssignmentsTab';
@@ -25,8 +21,8 @@ import { CourseDetailModals } from './course-detail/CourseDetailModals';
 import { CourseSyllabusTab } from './course-detail/CourseSyllabusTab';
 import { CourseDetailTabs } from './course-detail/CourseDetailTabs';
 import { CourseModulesTab } from './course-detail/CourseModulesTab';
-import { PracticeQuizModal } from '../components/PracticeQuizModal';
-import AnalyticsDashboard from '../components/analytics/AnalyticsDashboard';
+import { PracticeQuizModal } from '@/features/quiz/components/PracticeQuizModal';
+import AnalyticsDashboard from '@/features/admin/components/analytics/AnalyticsDashboard';
 import {
   CourseDetailTabId,
   DeleteConfirmationState,

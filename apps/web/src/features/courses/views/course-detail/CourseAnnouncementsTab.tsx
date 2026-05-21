@@ -9,7 +9,7 @@ import {
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import { Announcement } from '../../types';
-import { Button, Card, CardBody, CardHeader, Modal } from '../../components';
+import { Button, Card, CardBody, CardHeader, Modal } from '@/components';
 
 interface CourseAnnouncementsTabProps {
   announcements: Announcement[];

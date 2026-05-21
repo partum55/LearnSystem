@@ -3,10 +3,10 @@ import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { useLesson, useLessonProgress, useCompleteStep } from '@/features/lesson/hooks/useLessonQueries';
-import { DocumentRenderer } from '../../features/editor-core/DocumentRenderer';
-import { parseCanonicalDocument } from '../../features/editor-core';
-import { Layout } from '../../components';
-import { Loading } from '../../components';
+import { DocumentRenderer } from '@/features/editor-core/DocumentRenderer';
+import { parseCanonicalDocument } from '@/features/editor-core';
+import { Layout } from '@/components';
+import { Loading } from '@/components';
 import { LockClosedIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 const LessonPlayer: React.FC = () => {

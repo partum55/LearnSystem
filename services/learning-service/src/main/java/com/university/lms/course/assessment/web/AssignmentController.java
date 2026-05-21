@@ -26,6 +26,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/assignments")
 @RequiredArgsConstructor
+@Deprecated(forRemoval = false, since = "canonical-api-v1")
 public class AssignmentController {
 
     private final AssignmentService assignmentService;

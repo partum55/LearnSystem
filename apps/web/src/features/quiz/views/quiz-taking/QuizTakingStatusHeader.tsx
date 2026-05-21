@@ -2,7 +2,7 @@
 import React from 'react';
 import { TFunction } from 'i18next';
 import { CheckCircleIcon, ClockIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-import { Card, CardHeader } from '../../components';
+import { Card, CardHeader } from '@/components';
 import { Quiz, QuizAttempt } from './quizTakingModel';
 import { formatTime } from './quizTakingModel';
 

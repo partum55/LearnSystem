@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { adminAnalyticsApi, CourseEffectiveness, InstructorProductivity, PlatformUsage } from '@/features/admin/api/adminAnalytics';
 import { aiApi, ABTestResultsResponse } from '@/features/ai/api/ai';
-import { extractErrorMessage } from '../../api/client';
-import { AIAdminDashboard } from '../../components/ai/AIAdminDashboard';
+import { extractErrorMessage } from '@/api/client';
+import { AIAdminDashboard } from '@/features/ai/components/ai/AIAdminDashboard';
 
 interface Props {
   onFeedback: (type: 'success' | 'error', message: string) => void;

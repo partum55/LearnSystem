@@ -2,9 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { Layout } from '../components';
+import { Layout } from '@/components';
 import { DashboardBuilder, DashboardWidgetConfig } from '../components/DashboardBuilder';
-import { Button } from '../components/Button';
+import { Button } from '@/components/Button';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 const DEFAULT_WIDGETS: DashboardWidgetConfig[] = [

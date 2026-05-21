@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import { virtualLabApi, CodeExecutionResult } from '@/features/virtual-lab/api/virtualLab';
-import api from '../../api/client';
+import api from '@/api/client';
 
 interface VplEditorAssignment {
   id: string;

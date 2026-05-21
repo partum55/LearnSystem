@@ -3,9 +3,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeftIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
-import { CourseLayout } from '../components/CourseLayout';
-import { Button, Card, CardBody, Input, Loading } from '../components';
-import { extractErrorMessage } from '../api/client';
+import { CourseLayout } from '@/features/courses/components/CourseLayout';
+import { Button, Card, CardBody, Input, Loading } from '@/components';
+import { extractErrorMessage } from '@/api/client';
 import { resourcesApi } from '@/features/courses/api/courses';
 import { ResourceCreateData, ResourceType } from '../types';
 import {
@@ -13,7 +13,7 @@ import {
   createEmptyDocument,
   parseCanonicalDocument,
   serializeCanonicalDocument,
-} from '../features/editor-core';
+} from '@/features/editor-core';
 import { editorMediaApi } from '@/features/lesson/api/pages';
 
 interface ResourceEditorFormState {

@@ -11,7 +11,11 @@ public record TeacherGradebookDto(
     List<AssignmentColumnDto> assignments,
     List<GradeCellDto> grades
 ) {
-  public record StudentDto(UUID id, String displayName, String email) {}
+  public record StudentDto(UUID id, String displayName, String email, String avatarUrl) {
+    public StudentDto(UUID id, String displayName, String email) {
+      this(id, displayName, email, null);
+    }
+  }
   public record AssignmentColumnDto(
       UUID id,
       UUID moduleId,

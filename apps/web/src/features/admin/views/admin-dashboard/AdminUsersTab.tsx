@@ -8,7 +8,7 @@ import {
   XCircleIcon,
 } from '@heroicons/react/24/outline';
 import { AdminUser } from '@/features/admin/api/admin';
-import { Loading } from '../../components/Loading';
+import { Loading } from '@/components/Loading';
 import {
   CreateUserForm,
   displayUserName,

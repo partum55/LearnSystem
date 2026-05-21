@@ -60,7 +60,7 @@ public class CanonicalAssignmentMapper {
             toPublishedGradePreview(grade),
             canSubmit(type, assignment, submission, attemptsUsed, attemptLimit),
             canEdit(assignment, submission),
-            false,
+            canDelete(assignment, submission),
             canResubmit(assignment, submission),
             "quiz".equals(type) && (attemptLimit == null || attemptsUsed < attemptLimit),
             "quiz".equals(type) ? Math.toIntExact(attemptsUsed) : null,
@@ -70,15 +70,20 @@ public class CanonicalAssignmentMapper {
   public Map<String, Object> settings(Assignment assignment, Quiz quiz) {
     String type = AssignmentTypeMapper.toCanonical(assignment.getAssignmentType());
     Map<String, Object> settings = new HashMap<>();
+    settings.put("type", type);
+    settings.put("schemaVersion", Optional.ofNullable(nestedSetting(assignment, "schemaVersion")).orElse(1));
     settings.put("allowLateSubmission", Boolean.TRUE.equals(assignment.getAllowLateSubmission()));
     settings.put("availableFrom", assignment.getAvailableFrom());
     settings.put("availableUntil", assignment.getAvailableUntil());
     settings.put("allowResubmission", booleanNestedSetting(assignment, "allowResubmission", true));
     switch (type) {
       case "file_submission" -> {
-        settings.put("allowedFileTypes", safeList(assignment.getAllowedFileTypes()));
-        settings.put("maxFiles", assignment.getMaxFiles());
-        settings.put("maxFileSizeMb", assignment.getMaxFileSize() == null ? null : assignment.getMaxFileSize() / 1024 / 1024);
+        settings.put("allowedFileTypes", Optional.ofNullable(nestedSetting(assignment, "allowedFileTypes"))
+            .orElse(safeList(assignment.getAllowedFileTypes())));
+        settings.put("maxFiles", Optional.ofNullable(nestedSetting(assignment, "maxFiles"))
+            .orElse(assignment.getMaxFiles()));
+        settings.put("maxFileSizeMb", Optional.ofNullable(nestedSetting(assignment, "maxFileSizeMb"))
+            .orElse(assignment.getMaxFileSize() == null ? null : assignment.getMaxFileSize() / 1024 / 1024));
         settings.put("allowEditAfterSubmit", booleanNestedSetting(assignment, "allowEditAfterSubmit", true));
         settings.put("allowDeleteAfterSubmit", booleanNestedSetting(assignment, "allowDeleteAfterSubmit", false));
       }
@@ -92,18 +97,24 @@ public class CanonicalAssignmentMapper {
         settings.put("allowEditAfterSubmit", booleanNestedSetting(assignment, "allowEditAfterSubmit", true));
       }
       case "quiz" -> {
-        settings.put("attemptLimit", quiz == null ? null : quiz.getAttemptsAllowed());
-        settings.put("timeLimitMinutes", quiz == null || !Boolean.TRUE.equals(quiz.getTimerEnabled()) ? null : quiz.getTimeLimit());
-        settings.put("canReviewAttempts", true);
-        settings.put("showCorrectAnswers", quiz != null && quiz.canShowCorrectAnswers());
-        settings.put("showScoreAfterSubmit", true);
-        settings.put("shuffleQuestions", quiz != null && Boolean.TRUE.equals(quiz.getShuffleQuestions()));
-        settings.put("gradingMode", quiz == null ? null : quiz.getAttemptScorePolicy().name().toLowerCase());
+        settings.put("attemptLimit", Optional.ofNullable(nestedSetting(assignment, "attemptLimit"))
+            .orElse(quiz == null ? null : quiz.getAttemptsAllowed()));
+        settings.put("timeLimitMinutes", Optional.ofNullable(nestedSetting(assignment, "timeLimitMinutes"))
+            .orElse(quiz == null || !Boolean.TRUE.equals(quiz.getTimerEnabled()) ? null : quiz.getTimeLimit()));
+        settings.put("canReviewAttempts", booleanNestedSetting(assignment, "canReviewAttempts", true));
+        settings.put("showCorrectAnswers", booleanNestedSetting(assignment, "showCorrectAnswers", false));
+        settings.put("showScoreAfterSubmit", booleanNestedSetting(assignment, "showScoreAfterSubmit", true));
+        settings.put("shuffleQuestions", booleanNestedSetting(assignment, "shuffleQuestions", false));
+        settings.put("gradingMode", Optional.ofNullable(nestedSetting(assignment, "gradingMode"))
+            .orElse(quiz == null ? null : quiz.getAttemptScorePolicy().name().toLowerCase()));
       }
       case "vpl" -> {
-        settings.put("language", assignment.getProgrammingLanguage());
-        settings.put("templateCode", assignment.getStarterCode());
-        settings.put("visibleTests", assignment.getTestCases());
+        settings.put("language", Optional.ofNullable(nestedSetting(assignment, "language"))
+            .orElse(assignment.getProgrammingLanguage()));
+        settings.put("templateCode", Optional.ofNullable(nestedSetting(assignment, "templateCode"))
+            .orElse(assignment.getStarterCode()));
+        settings.put("visibleTests", Optional.ofNullable(nestedSetting(assignment, "visibleTests"))
+            .orElse(assignment.getTestCases()));
         settings.put("hiddenTestsReference", nestedSetting(assignment, "hiddenTestsReference"));
         settings.put("runtime", nestedSetting(assignment, "runtime"));
         settings.put("timeLimit", nestedSetting(assignment, "timeLimit"));
@@ -202,12 +213,21 @@ public class CanonicalAssignmentMapper {
   private boolean canEdit(Assignment assignment, Submission submission) {
     return submission != null
         && submission.getPublishedAt() == null
-        && assignment.acceptsLateSubmission();
+        && assignment.acceptsLateSubmission()
+        && booleanNestedSetting(assignment, "allowEditAfterSubmit", true);
+  }
+
+  private boolean canDelete(Assignment assignment, Submission submission) {
+    return submission != null
+        && submission.getPublishedAt() == null
+        && assignment.acceptsLateSubmission()
+        && booleanNestedSetting(assignment, "allowDeleteAfterSubmit", false);
   }
 
   private boolean canResubmit(Assignment assignment, Submission submission) {
     return submission != null
         && submission.getPublishedAt() == null
-        && assignment.acceptsLateSubmission();
+        && assignment.acceptsLateSubmission()
+        && booleanNestedSetting(assignment, "allowResubmission", true);
   }
 }

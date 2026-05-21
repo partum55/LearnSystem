@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
-import api from '../api/client';
-import { useAuthStore } from '../store/authStore';
+import api from '@/api/client';
+import { useAuthStore } from '@/store/authStore';
 
 interface GradeEntry {
   assignment_id: string;

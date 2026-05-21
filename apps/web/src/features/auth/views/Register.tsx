@@ -2,12 +2,12 @@
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
-import { Input } from '../components';
-import { PasswordInput } from '../components/PasswordInput';
-import { Button } from '../components';
-import { LanguageSwitcher } from '../components/LanguageSwitcher';
+import { Input } from '@/components';
+import { PasswordInput } from '@/components/PasswordInput';
+import { Button } from '@/components';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import apiClient from '../api/client';
+import apiClient from '@/api/client';
 
 /** Password strength: 0-4 */
 function getPasswordStrength(pw: string): number {

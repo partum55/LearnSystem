@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @Slf4j
+@Deprecated(forRemoval = false, since = "canonical-api-v1")
 public class ResourceController {
 
   private final ResourceService resourceService;

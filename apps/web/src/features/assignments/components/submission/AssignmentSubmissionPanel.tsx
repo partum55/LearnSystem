@@ -1,9 +1,9 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import apiClient from '../../api/client';
+import apiClient from '@/api/client';
 import { Button, Card, CardBody, CardHeader } from '..';
-import { BlockEditor, parseCanonicalDocument, serializeCanonicalDocument } from '../../features/editor-core';
+import { BlockEditor, parseCanonicalDocument, serializeCanonicalDocument } from '@/features/editor-core';
 import type { CanonicalDocument } from '../../types';
 
 interface SubmissionFile {

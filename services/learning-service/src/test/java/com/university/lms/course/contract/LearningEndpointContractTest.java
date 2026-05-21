@@ -5,7 +5,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.university.lms.course.assignments.controller.CanonicalAssignmentController;
 import com.university.lms.course.courses.controller.CanonicalCourseController;
 import com.university.lms.course.gradebook.controller.CanonicalGradebookController;
+import com.university.lms.course.materials.controller.CanonicalLearningItemController;
+import com.university.lms.course.materials.repository.LearningItemRepository;
+import com.university.lms.course.materials.repository.LessonBlockRepository;
+import com.university.lms.course.materials.service.LearningContentService;
 import com.university.lms.course.quizzes.controller.CanonicalQuizAttemptController;
+import com.university.lms.course.repository.ResourceRepository;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -35,6 +40,7 @@ class LearningEndpointContractTest {
   @Test
   void controllersMustExposeExpectedBasePaths() {
     assertBasePath(CanonicalCourseController.class, "/v1/courses");
+    assertBasePath(CanonicalLearningItemController.class, "/v1");
     assertBasePath(CanonicalAssignmentController.class, "/v1");
     assertBasePath(CanonicalQuizAttemptController.class, "/v1");
     assertBasePath(CanonicalGradebookController.class, "/v1/courses/{courseId}/gradebook");
@@ -46,6 +52,15 @@ class LearningEndpointContractTest {
     assertMethodPath(CanonicalCourseController.class, "overview", "/{courseId}/overview");
     assertMethodPath(CanonicalCourseController.class, "modules", "/{courseId}/modules");
     assertMethodPath(CanonicalCourseController.class, "myGradebook", "/{courseId}/gradebook/me");
+    assertMethodPath(CanonicalLearningItemController.class, "createLearningItem", "/courses/{courseId}/modules/{moduleId}/learning-items");
+    assertMethodPath(CanonicalLearningItemController.class, "getLearningItem", "/learning-items/{learningItemId}");
+    assertMethodPath(CanonicalLearningItemController.class, "updateLearningItem", "/learning-items/{learningItemId}");
+    assertMethodPath(CanonicalLearningItemController.class, "archiveLearningItem", "/learning-items/{learningItemId}");
+    assertMethodPath(CanonicalLearningItemController.class, "listBlocks", "/learning-items/{learningItemId}/blocks");
+    assertMethodPath(CanonicalLearningItemController.class, "createBlock", "/learning-items/{learningItemId}/blocks");
+    assertMethodPath(CanonicalLearningItemController.class, "updateBlock", "/learning-items/{learningItemId}/blocks/{blockId}");
+    assertMethodPath(CanonicalLearningItemController.class, "deleteBlock", "/learning-items/{learningItemId}/blocks/{blockId}");
+    assertMethodPath(CanonicalLearningItemController.class, "reorderBlocks", "/learning-items/{learningItemId}/blocks/reorder");
     assertMethodPath(CanonicalAssignmentController.class, "submitFile", "/assignments/{assignmentId}/submissions/file");
     assertMethodPath(CanonicalAssignmentController.class, "submitRte", "/assignments/{assignmentId}/submissions/rte");
     assertMethodPath(CanonicalAssignmentController.class, "submitForm", "/assignments/{assignmentId}/submissions/form");
@@ -58,6 +73,14 @@ class LearningEndpointContractTest {
   }
 
   @Test
+  void canonicalLearningContentRoutesMustNotUseMaterialOrLessonTopLevelNames() {
+    Set<String> paths = controllerPaths(CanonicalLearningItemController.class);
+
+    assertThat(paths).noneMatch(path -> path.contains("/materials"));
+    assertThat(paths).noneMatch(path -> path.startsWith("/lessons"));
+  }
+
+  @Test
   void learningServiceMustNotExposeLegacyExecutionOrSubmissionControllers() {
     assertThat(ClassUtils.isPresent(
         "com.university.lms.course.assessment.web.VirtualLabController",
@@ -65,6 +88,16 @@ class LearningEndpointContractTest {
     assertThat(ClassUtils.isPresent(
         "com.university.lms.submission.web.SubmissionController",
         getClass().getClassLoader())).isFalse();
+  }
+
+  @Test
+  void canonicalLearningContentMustUseCanonicalRepositories() {
+    Set<Class<?>> fieldTypes = Arrays.stream(LearningContentService.class.getDeclaredFields())
+        .map(java.lang.reflect.Field::getType)
+        .collect(Collectors.toSet());
+
+    assertThat(fieldTypes).contains(LearningItemRepository.class, LessonBlockRepository.class);
+    assertThat(fieldTypes).doesNotContain(ResourceRepository.class);
   }
 
   private static void assertBasePath(Class<?> controllerClass, String expectedPath) {
@@ -94,6 +127,12 @@ class LearningEndpointContractTest {
             "Method %s.%s should expose path '%s' but had %s",
             controllerClass.getSimpleName(), methodName, expectedPath, paths)
         .contains(expectedPath);
+  }
+
+  private static Set<String> controllerPaths(Class<?> controllerClass) {
+    return Arrays.stream(controllerClass.getDeclaredMethods())
+        .flatMap(method -> methodPaths(method).stream())
+        .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
   private static Set<String> methodPaths(Method method) {

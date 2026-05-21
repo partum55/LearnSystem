@@ -107,6 +107,19 @@ public class CanonicalAssignmentController {
     return assignmentService.reviewSubmission(submissionId, userContext.requireUserId());
   }
 
+  @PatchMapping("/submissions/{submissionId}")
+  public SubmissionDto editSubmission(
+      @PathVariable UUID submissionId,
+      @Valid @RequestBody SubmissionRequest request) {
+    return assignmentService.editSubmission(submissionId, userContext.requireUserId(), request);
+  }
+
+  @DeleteMapping("/submissions/{submissionId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void withdrawSubmission(@PathVariable UUID submissionId) {
+    assignmentService.withdrawSubmission(submissionId, userContext.requireUserId());
+  }
+
   @PatchMapping("/submissions/{submissionId}/grade-draft")
   public SubmissionReviewDto saveDraft(
       @PathVariable UUID submissionId,

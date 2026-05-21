@@ -19,9 +19,9 @@ import {
   unpublishAdminCourse,
 } from '@/features/admin/api/admin';
 import { courseManagementApi } from '@/features/admin/api/adminCourseManagement';
-import { Loading } from '../../components/Loading';
-import { Button, Modal } from '../../components';
-import { extractErrorMessage } from '../../api/client';
+import { Loading } from '@/components/Loading';
+import { Button, Modal } from '@/components';
+import { extractErrorMessage } from '@/api/client';
 import { AdminCourseDeepManager } from './AdminCourseDeepManager';
 
 interface Props {

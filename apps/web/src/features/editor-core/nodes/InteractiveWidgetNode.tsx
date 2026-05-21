@@ -7,7 +7,7 @@ import {
 } from '@tiptap/react';
 import { Node, mergeAttributes } from '@tiptap/core';
 import { useTranslation } from 'react-i18next';
-import { aiApi } from '../../../api/ai';
+import { aiApi } from '@/features/ai/api/ai';
 import {
   clampWidgetIframeHeight,
   withWidgetAutoResize,

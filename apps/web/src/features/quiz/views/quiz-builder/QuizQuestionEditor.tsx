@@ -7,9 +7,9 @@ import {
   ArrowDownIcon,
   DocumentDuplicateIcon,
 } from '@heroicons/react/24/outline';
-import { Card, CardBody } from '../../components';
-import { BlockEditor } from '../../features/editor-core/BlockEditor';
-import { parseCanonicalDocument, serializeCanonicalDocument } from '../../features/editor-core/documentUtils';
+import { Card, CardBody } from '@/components';
+import { BlockEditor } from '@/features/editor-core/BlockEditor';
+import { parseCanonicalDocument, serializeCanonicalDocument } from '@/features/editor-core/documentUtils';
 import { Question, QUIZ_QUESTION_TYPE_OPTIONS } from './quizBuilderModel';
 
 interface QuizQuestionEditorProps {

@@ -1,11 +1,11 @@
 "use client";
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Layout } from '../components';
-import { Card, CardHeader, CardBody } from '../components/Card';
-import { Loading } from '../components/Loading';
-import { StaggeredList, StaggeredItem } from '../components/animation';
-import { useCourseStore } from '../store/courseStore';
+import { Layout } from '@/components';
+import { Card, CardHeader, CardBody } from '@/components/Card';
+import { Loading } from '@/components/Loading';
+import { StaggeredList, StaggeredItem } from '@/components/animation';
+import { useCourseStore } from '@/store/courseStore';
 
 export const Assignments: React.FC = () => {
   const { t } = useTranslation();

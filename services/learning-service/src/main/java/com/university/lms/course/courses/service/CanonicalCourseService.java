@@ -110,6 +110,7 @@ public class CanonicalCourseService {
   @Transactional(readOnly = true)
   public CourseModulesResponse modules(UUID courseId, UUID userId) {
     accessService.requireActiveMember(courseId, userId);
+    boolean canTeach = accessService.canTeach(courseId, userId);
     List<GradebookEntry> grades = gradebookEntryRepository.findByCourseIdAndStudentId(courseId, userId);
     Map<UUID, GradebookEntry> gradesByAssignment = grades.stream()
         .filter(entry -> entry.getAssignmentId() != null)
@@ -117,6 +118,7 @@ public class CanonicalCourseService {
         .collect(Collectors.toMap(GradebookEntry::getAssignmentId, entry -> entry, (a, b) -> a));
     List<CourseModuleDto> modules = moduleRepository.findByCourseIdOrderByPositionAsc(courseId)
         .stream()
+        .filter(module -> canTeach || module.isAvailable())
         .map(module -> moduleDto(module, userId, gradesByAssignment))
         .toList();
     return new CourseModulesResponse(modules);
@@ -171,6 +173,7 @@ public class CanonicalCourseService {
         .findByModuleIdOrderByPositionAsc(module.getId())
         .stream()
         .filter(a -> !Boolean.TRUE.equals(a.getIsArchived()))
+        .filter(a -> accessService.canTeach(module.getCourse().getId(), userId) || Boolean.TRUE.equals(a.getIsPublished()))
         .map(a -> assignmentMapper.toListItem(a, gradesByAssignment.get(a.getId())))
         .toList();
     return new CourseModuleDto(

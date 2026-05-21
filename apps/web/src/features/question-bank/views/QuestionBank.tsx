@@ -2,17 +2,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import {
-  Layout,
-  Card,
-  CardBody,
-  Button,
-  Loading,
-  CreateQuestionModal,
-} from '../components';
-import { StaggeredList, StaggeredItem } from '../components/animation';
-import { ConfirmModal } from '../components/common/ConfirmModal';
-import apiClient from '../api/client';
+import { Layout, Card, CardBody, Button, Loading } from '@/components';
+import { CreateQuestionModal } from '@/features/quiz/components/CreateQuestionModal';
+import { StaggeredList, StaggeredItem } from '@/components/animation';
+import { ConfirmModal } from '@/components/common/ConfirmModal';
+import apiClient from '@/api/client';
 import { PlusIcon, PencilIcon, TrashIcon, FunnelIcon } from '@heroicons/react/24/outline';
 
 interface QuestionOption {

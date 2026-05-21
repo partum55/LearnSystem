@@ -2,14 +2,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
-import { Layout } from '../components';
-import { Card, CardHeader, CardBody } from '../components';
-import { Button } from '../components';
-import { Loading } from '../components';
-import { CreateQuestionModal } from '../components';
-import { Breadcrumbs } from '../components/common/Breadcrumbs';
-import { RichContentRenderer } from '../components/common/RichContentRenderer';
-import apiClient from '../api/client';
+import { Layout } from '@/components';
+import { Card, CardHeader, CardBody } from '@/components';
+import { Button } from '@/components';
+import { Loading } from '@/components';
+import { CreateQuestionModal } from '../components/CreateQuestionModal';
+import { Breadcrumbs } from '@/components/common/Breadcrumbs';
+import { RichContentRenderer } from '@/components/common/RichContentRenderer';
+import apiClient from '@/api/client';
 
 interface Question {
   id: string;

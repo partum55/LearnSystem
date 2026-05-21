@@ -1,11 +1,11 @@
 "use client";
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal } from '../components/Modal';
-import { Input } from '../components/Input';
-import { Button } from '../components/Button';
+import { Modal } from '@/components/Modal';
+import { Input } from '@/components/Input';
+import { Button } from '@/components/Button';
 import { modulesApi } from '@/features/courses/api/courses';
-import { extractErrorMessage } from '../api/client';
+import { extractErrorMessage } from '@/api/client';
 
 interface CreateModuleModalProps {
   isOpen: boolean;

@@ -1,12 +1,12 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Card, CardHeader, CardBody } from './Card';
-import { Button } from './Button';
-import { Loading } from './Loading';
-import apiClient from '../api/client';
+import { Card, CardHeader, CardBody } from '@/components/Card';
+import { Button } from '@/components/Button';
+import { Loading } from '@/components/Loading';
+import apiClient from '@/api/client';
 import { coursesApi } from '@/features/courses/api/courses';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore } from '@/store/authStore';
 import {
   UserGroupIcon,
   TrashIcon,
