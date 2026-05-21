@@ -46,7 +46,7 @@ public class GradebookCategoryController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('TEACHER', 'SUPERADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public ResponseEntity<GradebookCategoryDto> createCategory(
             @Valid @RequestBody CreateCategoryRequest request,
             @RequestAttribute("userId") UUID userId) {
@@ -56,7 +56,7 @@ public class GradebookCategoryController {
     }
 
     @PutMapping("/{categoryId}")
-    @PreAuthorize("hasAnyRole('TEACHER', 'SUPERADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public ResponseEntity<GradebookCategoryDto> updateCategory(
             @PathVariable UUID categoryId,
             @Valid @RequestBody CreateCategoryRequest request,
@@ -67,7 +67,7 @@ public class GradebookCategoryController {
     }
 
     @DeleteMapping("/{categoryId}")
-    @PreAuthorize("hasAnyRole('TEACHER', 'SUPERADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public ResponseEntity<Void> deleteCategory(
             @PathVariable UUID categoryId,
             @RequestAttribute("userId") UUID userId) {
@@ -77,7 +77,7 @@ public class GradebookCategoryController {
     }
 
     @PutMapping("/course/{courseId}/reorder")
-    @PreAuthorize("hasAnyRole('TEACHER', 'SUPERADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public ResponseEntity<Void> reorderCategories(
             @PathVariable UUID courseId,
             @RequestBody List<UUID> categoryIds,

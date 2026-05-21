@@ -1,12 +1,6 @@
-'use client';
-import React from 'react';
-import { Layout } from '@/components/Layout';
-import { AuthGuard } from '@/components/AuthGuard';
+import type { ReactNode } from 'react';
+import { AppShell } from '@/components/AppShell';
 
-export default function MainLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <AuthGuard>
-      <Layout>{children}</Layout>
-    </AuthGuard>
-  );
+export default function MainLayout({ children }: { children: ReactNode }) {
+  return <AppShell>{children}</AppShell>;
 }

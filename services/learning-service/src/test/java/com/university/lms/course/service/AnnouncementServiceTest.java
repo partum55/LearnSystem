@@ -127,7 +127,7 @@ class AnnouncementServiceTest {
             .isPinned(true)
             .build();
 
-    AnnouncementDto dto = service.createAnnouncement(courseId, request, superAdminId, "SUPERADMIN");
+    AnnouncementDto dto = service.createAnnouncement(courseId, request, superAdminId, "ADMIN");
 
     assertEquals("System notice", dto.getTitle());
     assertEquals(true, dto.getIsPinned());

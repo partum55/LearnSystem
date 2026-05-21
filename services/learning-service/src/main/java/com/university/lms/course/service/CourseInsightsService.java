@@ -46,7 +46,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class CourseInsightsService {
 
-  private static final String ROLE_SUPERADMIN = "SUPERADMIN";
+  private static final String ROLE_ADMIN = "ADMIN";
 
   private final CourseRepository courseRepository;
   private final CourseMemberRepository courseMemberRepository;
@@ -372,7 +372,7 @@ public class CourseInsightsService {
   }
 
   private Set<UUID> resolveManageableCourseIds(UUID userId, String userRole) {
-    if (ROLE_SUPERADMIN.equalsIgnoreCase(userRole)) {
+    if (ROLE_ADMIN.equalsIgnoreCase(userRole)) {
       return courseRepository.findAll().stream().map(Course::getId).collect(Collectors.toSet());
     }
     Set<UUID> ids = new LinkedHashSet<>(courseRepository.findIdsByOwnerId(userId));

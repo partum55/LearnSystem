@@ -1,5 +1,5 @@
-'use client';
-import Profile from '@/features/profile/views/Profile';
-export default function Page() {
-  return <Profile />;
+import { PlaceholderPage } from '@/components/PlaceholderPage';
+
+export default function ProfilePage() {
+  return <PlaceholderPage title="Profile" />;
 }

@@ -38,7 +38,7 @@ public class CourseController {
 
   /** Get all courses with pagination. */
   @GetMapping({"", "/"})
-  @PreAuthorize("hasAnyRole('TEACHER','SUPERADMIN')")
+  @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<PageResponse<CourseDto>> getAllCourses(
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size,
@@ -103,7 +103,7 @@ public class CourseController {
 
   /** Get courses by owner. */
   @GetMapping("/owner/{ownerId}")
-  @PreAuthorize("hasRole('SUPERADMIN')")
+  @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<PageResponse<CourseDto>> getCoursesByOwner(
       @PathVariable UUID ownerId,
       @RequestParam(defaultValue = "0") int page,
@@ -133,7 +133,7 @@ public class CourseController {
 
   /** Aggregated instructor to-do list (ungraded, upcoming, missing). */
   @GetMapping("/teacher/todo")
-  @PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<TeacherTodoDashboardDto> getTeacherTodo(
       @RequestParam(required = false) UUID courseId) {
     UUID userId = requestUserContext.requireUserId();
@@ -145,7 +145,7 @@ public class CourseController {
 
   /** Student contextual reminders feed. */
   @GetMapping("/student/reminders")
-  @PreAuthorize("hasRole('STUDENT')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<StudentContextReminderFeedDto> getStudentContextReminders() {
     UUID userId = requestUserContext.requireUserId();
     StudentContextReminderFeedDto payload = courseInsightsService.getStudentContextReminders(userId);
@@ -171,17 +171,17 @@ public class CourseController {
 
   /** Create a new course. */
   @PostMapping({"", "/"})
-  @PreAuthorize("hasAnyRole('TEACHER','SUPERADMIN')")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<CourseDto> createCourse(@Valid @RequestBody CreateCourseRequest request) {
 
     UUID ownerId = requestUserContext.requireUserId();
-    CourseDto course = courseService.createCourse(request, ownerId);
+    CourseDto course = courseService.createCourse(request, ownerId, requestUserContext.requireUserRole());
     return ResponseEntity.status(HttpStatus.CREATED).body(course);
   }
 
   /** Clone course structure into a new semester/course shell. */
   @PostMapping("/{id}/clone-structure")
-  @PreAuthorize("hasAnyRole('TEACHER','SUPERADMIN')")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<CloneCourseStructureResultDto> cloneCourseStructure(
       @PathVariable UUID id, @Valid @RequestBody CloneCourseStructureRequest request) {
     UUID userId = requestUserContext.requireUserId();
@@ -193,7 +193,7 @@ public class CourseController {
 
   /** Update a course. */
   @PutMapping("/{id}")
-  @PreAuthorize("hasAnyRole('TEACHER','SUPERADMIN')")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<CourseDto> updateCourse(
       @PathVariable UUID id, @Valid @RequestBody UpdateCourseRequest request) {
 
@@ -205,7 +205,7 @@ public class CourseController {
 
   /** Update syllabus for a course. */
   @PutMapping("/{id}/syllabus")
-  @PreAuthorize("hasAnyRole('TEACHER','SUPERADMIN')")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<CourseSyllabusDto> updateCourseSyllabus(
       @PathVariable UUID id, @Valid @RequestBody UpdateCourseSyllabusRequest request) {
 
@@ -217,7 +217,7 @@ public class CourseController {
 
   /** Delete a course. */
   @DeleteMapping("/{id}")
-  @PreAuthorize("hasAnyRole('TEACHER','SUPERADMIN')")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<Void> deleteCourse(@PathVariable UUID id) {
     UUID userId = requestUserContext.requireUserId();
     String userRole = requestUserContext.requireUserRole();
@@ -226,7 +226,7 @@ public class CourseController {
   }
 
   @GetMapping("/{id}/publish-checklist")
-  @PreAuthorize("hasAnyRole('TEACHER','SUPERADMIN')")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<CoursePublishChecklistDto> getPublishChecklist(@PathVariable UUID id) {
     UUID userId = requestUserContext.requireUserId();
     String userRole = requestUserContext.requireUserRole();
@@ -236,7 +236,7 @@ public class CourseController {
 
   /** Publish a course. */
   @PostMapping("/{id}/publish")
-  @PreAuthorize("hasAnyRole('TEACHER','SUPERADMIN')")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<?> publishCourse(
       @PathVariable UUID id, @RequestBody(required = false) PublishCourseRequest request) {
 
@@ -271,7 +271,7 @@ public class CourseController {
 
   /** Unpublish a course. */
   @PostMapping("/{id}/unpublish")
-  @PreAuthorize("hasAnyRole('TEACHER','SUPERADMIN')")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<CourseDto> unpublishCourse(@PathVariable UUID id) {
 
     UUID userId = requestUserContext.requireUserId();
@@ -282,7 +282,7 @@ public class CourseController {
 
   /** Archive a course and capture content snapshot. */
   @PostMapping("/{id}/archive")
-  @PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<CourseDto> archiveCourse(@PathVariable UUID id) {
     UUID userId = requestUserContext.requireUserId();
     String userRole = requestUserContext.requireUserRole();
@@ -325,7 +325,7 @@ public class CourseController {
 
   /** Drop enrollment (student self-drop). */
   @PostMapping("/{courseId}/drop")
-  @PreAuthorize("hasRole('STUDENT')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<Void> dropEnrollment(@PathVariable UUID courseId) {
 
     UUID userId = requestUserContext.requireUserId();
@@ -333,37 +333,7 @@ public class CourseController {
     return ResponseEntity.noContent().build();
   }
 
-  /** Get course members. */
-  @GetMapping("/{courseId}/members")
-  @PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
-  public ResponseEntity<PageResponse<CourseMemberDto>> getCourseMembers(
-      @PathVariable UUID courseId,
-      @RequestParam(required = false) String role,
-      @RequestParam(defaultValue = "0") int page,
-      @RequestParam(defaultValue = "50") int size) {
 
-    Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "addedAt"));
-
-    PageResponse<CourseMemberDto> members;
-    if (role != null) {
-      members =
-          enrollmentService.getCourseMembers(
-              courseId,
-              role,
-              pageable,
-              requestUserContext.requireUserId(),
-              requestUserContext.requireUserRole());
-    } else {
-      members =
-          enrollmentService.getCourseMembers(
-              courseId,
-              pageable,
-              requestUserContext.requireUserId(),
-              requestUserContext.requireUserRole());
-    }
-
-    return ResponseEntity.ok(members);
-  }
 
   /** Get user's enrollment in course. */
   @GetMapping("/{courseId}/enrollment")
@@ -389,10 +359,11 @@ public class CourseController {
 
   /** Get student IDs by course ID. */
   @GetMapping("/{id}/students")
-  @PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<java.util.List<UUID>> getStudentIdsByCourseId(@PathVariable UUID id) {
     return ResponseEntity.ok(
         enrollmentService.getStudentIdsByCourseId(
             id, requestUserContext.requireUserId(), requestUserContext.requireUserRole()));
   }
+
 }

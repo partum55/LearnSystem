@@ -416,7 +416,7 @@ public class AssignmentService {
     }
 
     private boolean isSuperAdmin(String userRole) {
-        return "SUPERADMIN".equalsIgnoreCase(userRole);
+        return "ADMIN".equalsIgnoreCase(userRole);
     }
 
     private UUID resolveTargetModuleId(Assignment original, UUID targetCourseId, UUID targetModuleId) {

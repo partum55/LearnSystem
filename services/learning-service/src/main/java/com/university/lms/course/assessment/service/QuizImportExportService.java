@@ -240,7 +240,7 @@ public class QuizImportExportService {
   }
 
   private void ensureCanManageCourse(UUID courseId, UUID userId, String userRole) {
-    if ("SUPERADMIN".equals(userRole)) {
+    if ("ADMIN".equals(userRole)) {
       return;
     }
     if (!courseMemberRepository.canUserManageCourse(courseId, userId)) {

@@ -28,7 +28,7 @@ public class DeanGradebookExportController {
   private final RequestUserContext requestUserContext;
 
   @GetMapping(value = "/dean", produces = XLSX_MEDIA_TYPE)
-  @PreAuthorize("hasAnyRole('SUPERADMIN','TEACHER','TA')")
+  @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
   public ResponseEntity<byte[]> exportDeanGradebook(
       @RequestParam UUID courseId,
       @RequestParam(required = false) String semester,

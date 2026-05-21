@@ -1,6 +1,5 @@
-'use client';
-import GoogleAuthCallback from '@/features/auth/views/GoogleAuthCallback';
+import { PlaceholderPage } from '@/components/PlaceholderPage';
 
-export default function Page() {
-  return <GoogleAuthCallback />;
+export default function GoogleCallbackPage() {
+  return <PlaceholderPage title="Google authentication" />;
 }

@@ -34,6 +34,8 @@ public class UserDto implements Serializable {
     private String lastName;
     private String studentId;
     private UserRole role;
+    private UserRole globalRole;
+    private String status;
     private UserLocale locale;
     private String theme;
     private String avatarUrl;

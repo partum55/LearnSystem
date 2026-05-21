@@ -1,249 +1,97 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { coursesApi, modulesApi } from '../api/courses';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/api/queryClient';
-import { Course, Module, CourseCreateData } from '@/types';
+import { canonicalCoursesApi } from '../api/courses.api';
+import type { CourseMemberRequest, CreateCourseRequest, ModuleRequest } from '../api/canonical.types';
 
-/**
- * React Query hooks for course data fetching.
- * Replaces manual useState/useEffect patterns with proper caching and deduplication.
- */
-
-// ==================== COURSE QUERIES ====================
-
-/**
- * Fetch all courses
- */
-export function useCoursesQuery() {
-  return useQuery({
-    queryKey: queryKeys.courses.list(),
-    queryFn: async () => {
-      const response = await coursesApi.getAll();
-      return Array.isArray(response.data) ? response.data : [];
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+export const useActiveCourses = () =>
+  useQuery({
+    queryKey: queryKeys.courses.myActive(),
+    queryFn: canonicalCoursesApi.getMyActive,
   });
-}
 
-/**
- * Fetch a single course by ID
- */
-export function useCourseQuery(courseId: string | undefined) {
-  return useQuery({
-    queryKey: queryKeys.courses.detail(courseId || ''),
-    queryFn: async () => {
-      const response = await coursesApi.getById(courseId!);
-      return response.data;
-    },
-    enabled: !!courseId,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+export const useTeachingCourses = () =>
+  useQuery({
+    queryKey: queryKeys.courses.myTeaching(),
+    queryFn: canonicalCoursesApi.getMyTeaching,
   });
-}
 
-/**
- * Fetch enrolled courses for current user
- */
-export function useEnrolledCoursesQuery() {
-  return useQuery({
-    queryKey: queryKeys.courses.enrolled(),
-    queryFn: async () => {
-      const response = await coursesApi.getAll();
-      return Array.isArray(response.data) ? response.data : [];
-    },
-    staleTime: 5 * 60 * 1000,
+export const useAdminCourses = (params?: { page?: number; size?: number }) =>
+  useQuery({
+    queryKey: queryKeys.courses.adminList(params),
+    queryFn: () => canonicalCoursesApi.getAdminCourses(params),
   });
-}
 
-/**
- * Fetch course members
- */
-export function useCourseMembers(courseId: string | undefined, role?: string) {
-  return useQuery({
-    queryKey: [...queryKeys.courses.detail(courseId || ''), 'members', role],
-    queryFn: async () => {
-      const response = await coursesApi.getMembers(courseId!, role);
-      return response.data;
-    },
-    enabled: !!courseId,
+export const useCourseOverview = (courseId: string | undefined) =>
+  useQuery({
+    queryKey: queryKeys.courses.overview(courseId || ''),
+    queryFn: () => canonicalCoursesApi.getOverview(courseId!),
+    enabled: Boolean(courseId),
   });
-}
 
-// ==================== COURSE MUTATIONS ====================
+export const useCourseModules = (courseId: string | undefined) =>
+  useQuery({
+    queryKey: queryKeys.courses.modules(courseId || ''),
+    queryFn: () => canonicalCoursesApi.getModules(courseId!),
+    enabled: Boolean(courseId),
+  });
 
-/**
- * Create a new course
- */
-export function useCreateCourseMutation() {
+export const useCreateModule = (courseId: string) => {
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async (data: CourseCreateData) => {
-      const response = await coursesApi.create(data);
-      return response.data;
-    },
-    onSuccess: (newCourse) => {
-      // Invalidate courses list to refetch
-      queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
-
-      // Optionally add to cache immediately
-      queryClient.setQueryData(
-        queryKeys.courses.detail(newCourse.id),
-        newCourse
-      );
+    mutationFn: (request: ModuleRequest) => canonicalCoursesApi.createModule(courseId, request),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.modules(courseId) });
     },
   });
-}
+};
 
-/**
- * Update an existing course
- */
-export function useUpdateCourseMutation() {
+export const useCreateCourse = () => {
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<Course> }) => {
-      const response = await coursesApi.update(id, data);
-      return response.data;
-    },
-    onSuccess: (updatedCourse, { id }) => {
-      // Update the specific course in cache
-      queryClient.setQueryData(queryKeys.courses.detail(id), updatedCourse);
-
-      // Invalidate the list to ensure consistency
-      queryClient.invalidateQueries({ queryKey: queryKeys.courses.list() });
+    mutationFn: (request: CreateCourseRequest) => canonicalCoursesApi.createCourse(request),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
     },
   });
-}
+};
 
-/**
- * Delete a course
- */
-export function useDeleteCourseMutation() {
+export const useCourseMembers = (
+  courseId: string | undefined,
+  params?: { role?: string; page?: number; size?: number }
+) =>
+  useQuery({
+    queryKey: queryKeys.courses.members(courseId || '', params),
+    queryFn: () => canonicalCoursesApi.getMembers(courseId!, params),
+    enabled: Boolean(courseId),
+  });
+
+export const useAddCourseMember = (courseId: string) => {
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: (courseId: string) => coursesApi.delete(courseId),
-    onSuccess: (_, courseId) => {
-      // Remove from cache
-      queryClient.removeQueries({ queryKey: queryKeys.courses.detail(courseId) });
-
-      // Invalidate list
-      queryClient.invalidateQueries({ queryKey: queryKeys.courses.list() });
+    mutationFn: (request: CourseMemberRequest) => canonicalCoursesApi.addMember(courseId, request),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.members(courseId) });
     },
   });
-}
+};
 
-/**
- * Enroll students in a course
- */
-export function useEnrollStudentsMutation() {
+export const useUpdateCourseMember = (courseId: string) => {
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: ({
-      courseId,
-      emails,
-      role = 'STUDENT'
-    }: {
-      courseId: string;
-      emails: string[];
-      role?: string;
-    }) => coursesApi.enrollStudents(courseId, emails, role),
-    onSuccess: (_, { courseId }) => {
-      // Invalidate course members
-      queryClient.invalidateQueries({
-        queryKey: [...queryKeys.courses.detail(courseId), 'members']
-      });
+    mutationFn: ({ userId, request }: { userId: string; request: CourseMemberRequest }) =>
+      canonicalCoursesApi.updateMember(courseId, userId, request),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.members(courseId) });
     },
   });
-}
+};
 
-// ==================== MODULE QUERIES ====================
-
-/**
- * Fetch modules for a course
- */
-export function useModulesQuery(courseId: string | undefined) {
-  return useQuery({
-    queryKey: [...queryKeys.courses.detail(courseId || ''), 'modules'],
-    queryFn: async () => {
-      const response = await modulesApi.getAll(courseId!);
-      return Array.isArray(response.data) ? response.data : [];
-    },
-    enabled: !!courseId,
-    staleTime: 2 * 60 * 1000,
-  });
-}
-
-/**
- * Fetch a single module by ID
- */
-export function useModuleQuery(courseId: string | undefined, moduleId: string | undefined) {
-  return useQuery({
-    queryKey: ['modules', 'detail', courseId, moduleId],
-    queryFn: async () => {
-      const response = await modulesApi.getById(courseId!, moduleId!);
-      return response.data;
-    },
-    enabled: !!courseId && !!moduleId,
-  });
-}
-
-// ==================== MODULE MUTATIONS ====================
-
-/**
- * Create a new module
- */
-export function useCreateModuleMutation() {
+export const useRemoveCourseMember = (courseId: string) => {
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: (data: {
-      course: string;
-      title: string;
-      description?: string;
-      is_published?: boolean;
-    }) => modulesApi.create(data),
-    onSuccess: (_, { course }) => {
-      // Invalidate modules for this course
-      queryClient.invalidateQueries({
-        queryKey: [...queryKeys.courses.detail(course), 'modules']
-      });
+    mutationFn: (userId: string) => canonicalCoursesApi.removeMember(courseId, userId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.members(courseId) });
     },
   });
-}
-
-/**
- * Update a module
- */
-export function useUpdateModuleMutation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ courseId, moduleId, data }: { courseId: string; moduleId: string; data: Partial<Module> }) =>
-      modulesApi.update(courseId, moduleId, data),
-    onSuccess: (_, { courseId }) => {
-      // Invalidate modules for the course
-      queryClient.invalidateQueries({
-        queryKey: [...queryKeys.courses.detail(courseId), 'modules']
-      });
-    },
-  });
-}
-
-/**
- * Delete a module
- */
-export function useDeleteModuleMutation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ courseId, moduleId }: { courseId: string; moduleId: string }) =>
-      modulesApi.delete(courseId, moduleId),
-    onSuccess: (_, { courseId }) => {
-      queryClient.invalidateQueries({
-        queryKey: [...queryKeys.courses.detail(courseId), 'modules']
-      });
-    },
-  });
-}
-
+};

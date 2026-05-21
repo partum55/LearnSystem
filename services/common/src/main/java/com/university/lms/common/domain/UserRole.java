@@ -5,16 +5,16 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * User roles in the LMS system.
- * Maps directly from Django's ROLE_CHOICES.
+ * Global platform roles.
+ *
+ * <p>Course-local permissions are represented separately by CourseMembership.roleInCourse.
  */
 public enum UserRole {
-    SUPERADMIN,
+    ADMIN,
     TEACHER,
-    STUDENT,
-    TA;
+    USER;
 
-    private static final UserRole DEFAULT = STUDENT;
+    private static final UserRole DEFAULT = USER;
     private static final Map<String, UserRole> LOOKUP = buildLookup();
 
     public static UserRole fromValue(String value) {

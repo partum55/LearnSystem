@@ -330,7 +330,7 @@ public class CanonicalAssignmentService {
   }
 
   private void requireReadableAssignment(Assignment assignment, UUID userId) {
-    accessService.requireActiveMember(assignment.getCourseId(), userId);
+    accessService.requireCourseAccess(assignment.getCourseId(), userId);
     if (!accessService.canTeach(assignment.getCourseId(), userId)) {
       accessService.requireStudent(assignment.getCourseId(), userId);
       requireAvailableForStudent(assignment);

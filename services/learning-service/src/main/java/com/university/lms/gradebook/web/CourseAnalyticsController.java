@@ -23,7 +23,7 @@ public class CourseAnalyticsController {
   private final RequestUserContext requestUserContext;
 
   @GetMapping("/courses/{courseId}/stats")
-  @PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<CourseStatsDto> getCourseStats(@PathVariable UUID courseId) {
     return ResponseEntity.ok(
         courseAnalyticsService.getCourseStats(
@@ -31,7 +31,7 @@ public class CourseAnalyticsController {
   }
 
   @GetMapping("/courses/{courseId}/student-progress")
-  @PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<List<StudentProgressDto>> getStudentProgress(@PathVariable UUID courseId) {
     return ResponseEntity.ok(
         courseAnalyticsService.getStudentProgress(

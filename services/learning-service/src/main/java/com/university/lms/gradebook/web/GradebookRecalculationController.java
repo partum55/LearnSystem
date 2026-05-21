@@ -20,7 +20,7 @@ public class GradebookRecalculationController {
     private final GradebookSummaryService summaryService;
 
     @PostMapping("/recalculate/course/{courseId}/student/{studentId}")
-    @PreAuthorize("hasAnyRole('TEACHER', 'SUPERADMIN', 'TA')")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public ResponseEntity<String> recalculateStudentGrade(
             @PathVariable UUID courseId,
             @PathVariable UUID studentId) {
@@ -30,7 +30,7 @@ public class GradebookRecalculationController {
     }
 
     @PostMapping("/recalculate/course/{courseId}")
-    @PreAuthorize("hasAnyRole('TEACHER', 'SUPERADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public ResponseEntity<String> recalculateCourseGrades(@PathVariable UUID courseId) {
         log.info("Recalculating all grades for course: {}", courseId);
         int recalculatedStudents = summaryService.recalculateCourseGrades(courseId);

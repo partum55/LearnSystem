@@ -9,6 +9,7 @@ import com.university.lms.gradebook.mapper.GradebookEntryMapper;
 import com.university.lms.gradebook.service.GradeHistoryService;
 import com.university.lms.gradebook.service.GradebookEntryService;
 import com.university.lms.gradebook.service.GradebookSummaryService;
+import com.university.lms.course.gradebook.service.UserProfileClient;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,9 +37,10 @@ public class GradebookEntryController {
     private final GradebookEntryMapper entryMapper;
     private final GradeHistoryMapper historyMapper;
     private final JdbcTemplate jdbcTemplate;
+    private final UserProfileClient userProfileClient;
 
     @GetMapping("/course/{courseId}")
-    @PreAuthorize("hasAnyRole('TEACHER', 'SUPERADMIN', 'TA')")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public ResponseEntity<List<GradebookEntryDto>> getCourseEntries(
             @PathVariable UUID courseId,
             @RequestAttribute("userId") UUID userId) {
@@ -59,7 +61,7 @@ public class GradebookEntryController {
             @RequestAttribute("userRole") String userRole) {
 
         // Students can only see their own entries
-        if (!"TEACHER".equals(userRole) && !"SUPERADMIN".equals(userRole) && !"TA".equals(userRole)) {
+        if (!"TEACHER".equals(userRole) && !"ADMIN".equals(userRole) && !"TA".equals(userRole)) {
             if (!studentId.equals(requestingUserId)) {
                 return ResponseEntity.status(403).build();
             }
@@ -75,7 +77,7 @@ public class GradebookEntryController {
     }
 
     @PatchMapping("/{entryId}")
-    @PreAuthorize("hasAnyRole('TEACHER', 'SUPERADMIN', 'TA')")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public ResponseEntity<GradebookEntryDto> updateGrade(
             @PathVariable UUID entryId,
             @Valid @RequestBody UpdateGradeRequest request,
@@ -92,7 +94,7 @@ public class GradebookEntryController {
     }
 
     @GetMapping("/{entryId}/history")
-    @PreAuthorize("hasAnyRole('TEACHER', 'SUPERADMIN', 'TA')")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public ResponseEntity<List<GradeHistoryDto>> getGradeHistory(@PathVariable UUID entryId) {
         log.info("Fetching grade history for entry: {}", entryId);
         List<GradeHistoryDto> history = historyService.getHistoryForEntry(entryId)
@@ -114,19 +116,15 @@ public class GradebookEntryController {
         Set<UUID> assignmentIds = entries.stream().map(GradebookEntryDto::getAssignmentId)
                 .filter(Objects::nonNull).collect(Collectors.toSet());
 
-        // Batch fetch user info
+        // Fetch user info via UserProfileClient
         Map<UUID, String[]> userMap = new HashMap<>();
-        if (!studentIds.isEmpty()) {
+        for (UUID studentId : studentIds) {
             try {
-                String placeholders = studentIds.stream().map(id -> "?").collect(Collectors.joining(","));
-                String sql = "SELECT id, COALESCE(display_name, CONCAT(first_name, ' ', last_name), email) as name, email "
-                        + "FROM users WHERE id IN (" + placeholders + ")";
-                jdbcTemplate.query(sql, rs -> {
-                    UUID id = UUID.fromString(rs.getString("id"));
-                    userMap.put(id, new String[]{rs.getString("name"), rs.getString("email")});
-                }, studentIds.toArray());
+                userProfileClient.findProfile(studentId).ifPresent(profile -> {
+                    userMap.put(profile.id(), new String[]{profile.displayName(), profile.email()});
+                });
             } catch (Exception e) {
-                log.warn("Failed to fetch user info for gradebook: {}", e.getMessage());
+                log.warn("Failed to fetch user info for gradebook student {}: {}", studentId, e.getMessage());
             }
         }
 

@@ -15,49 +15,43 @@ export const queryClient = new QueryClient({
   },
 });
 
-// Export query keys for consistency
 export const queryKeys = {
+  dashboard: {
+    all: ['dashboard'] as const,
+    student: () => [...queryKeys.dashboard.all, 'student'] as const,
+  },
   courses: {
     all: ['courses'] as const,
-    list: () => [...queryKeys.courses.all, 'list'] as const,
-    detail: (id: string) => [...queryKeys.courses.all, 'detail', id] as const,
-    enrolled: () => [...queryKeys.courses.all, 'enrolled'] as const,
+    myActive: () => [...queryKeys.courses.all, 'my-active'] as const,
+    myTeaching: () => [...queryKeys.courses.all, 'my-teaching'] as const,
+    adminList: (params?: unknown) => [...queryKeys.courses.all, 'admin', params ?? {}] as const,
+    detail: (id: string) => [...queryKeys.courses.all, id] as const,
+    overview: (id: string) => [...queryKeys.courses.detail(id), 'overview'] as const,
+    modules: (id: string) => [...queryKeys.courses.detail(id), 'modules'] as const,
+    members: (id: string, params?: unknown) => [...queryKeys.courses.detail(id), 'members', params ?? {}] as const,
   },
   users: {
     all: ['users'] as const,
-    current: () => [...queryKeys.users.all, 'current'] as const,
-    detail: (id: string) => [...queryKeys.users.all, 'detail', id] as const,
-    list: () => [...queryKeys.users.all, 'list'] as const,
+    me: () => [...queryKeys.users.all, 'me'] as const,
+    adminList: (params?: unknown) => [...queryKeys.users.all, 'admin', params ?? {}] as const,
   },
-  assessments: {
-    all: ['assessments'] as const,
-    list: (courseId: string) => [...queryKeys.assessments.all, 'list', courseId] as const,
-    detail: (id: string) => [...queryKeys.assessments.all, 'detail', id] as const,
-    assignments: (courseId: string) => [...queryKeys.assessments.all, 'assignments', courseId] as const,
-    assignmentDetail: (id: string) => [...queryKeys.assessments.all, 'assignment', id] as const,
-    quizzes: (courseId: string) => [...queryKeys.assessments.all, 'quizzes', courseId] as const,
-    quizDetail: (id: string) => [...queryKeys.assessments.all, 'quiz', id] as const,
-    submissions: (assignmentId: string) => [...queryKeys.assessments.all, 'submissions', assignmentId] as const,
+  learningItems: {
+    all: ['learning-items'] as const,
+    detail: (id: string) => [...queryKeys.learningItems.all, 'detail', id] as const,
+    blocks: (id: string) => [...queryKeys.learningItems.detail(id), 'blocks'] as const,
+  },
+  assignments: {
+    all: ['assignments'] as const,
+    detail: (id: string) => [...queryKeys.assignments.all, id] as const,
+    submissions: (assignmentId: string) => [...queryKeys.assignments.detail(assignmentId), 'submissions'] as const,
   },
   gradebook: {
     all: ['gradebook'] as const,
-    course: (courseId: string) => [...queryKeys.gradebook.all, 'course', courseId] as const,
-    student: (studentId: string) => [...queryKeys.gradebook.all, 'student', studentId] as const,
+    studentCourse: (courseId: string) => [...queryKeys.gradebook.all, 'student-course', courseId] as const,
+    teacherCourse: (courseId: string) => [...queryKeys.gradebook.all, 'teacher-course', courseId] as const,
   },
-  ai: {
-    all: ['ai'] as const,
-    generation: (type: string) => [...queryKeys.ai.all, 'generation', type] as const,
-    templates: () => [...queryKeys.ai.all, 'templates'] as const,
-    usage: {
-      all: () => [...queryKeys.ai.all, 'usage'] as const,
-      me: () => [...queryKeys.ai.all, 'usage', 'me'] as const,
-      user: (userId: string) => [...queryKeys.ai.all, 'usage', 'user', userId] as const,
-      remaining: (userId: string) => [...queryKeys.ai.all, 'usage', 'remaining', userId] as const,
-      quota: (userId: string) => [...queryKeys.ai.all, 'usage', 'quota', userId] as const,
-      summary: () => [...queryKeys.ai.all, 'usage', 'summary'] as const,
-      stats: () => [...queryKeys.ai.all, 'usage', 'stats'] as const,
-      topUsers: (limit: number) => [...queryKeys.ai.all, 'usage', 'top-users', limit] as const,
-    },
+  quizAttempts: {
+    all: ['quiz-attempts'] as const,
+    review: (attemptId: string) => [...queryKeys.quizAttempts.all, 'review', attemptId] as const,
   },
 };
-

@@ -10,6 +10,16 @@ spring:
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials Access-Control-Allow-Methods Access-Control-Allow-Headers, RETAIN_UNIQUE
       routes:
+        - id: admin-courses
+          uri: ${LEARNING_SERVICE_URL:http://learning-service:8089}
+          predicates:
+            - Path=/api/v1/admin/courses/**
+
+        - id: admin-users
+          uri: ${USER_SERVICE_URL:http://user-service:8081}
+          predicates:
+            - Path=/api/v1/admin/users/**
+
         - id: admin-course-management
           uri: ${LEARNING_SERVICE_URL:http://learning-service:8089}
           predicates:
@@ -31,15 +41,16 @@ spring:
           uri: ${USER_SERVICE_URL:http://user-service:8081}
           predicates:
             - Path=/api/v1/users/**, /api/users/**
-          filters:
-            - RewritePath=/api/v1/users(?<segment>/?.*), /api/users${segment}
+
+        - id: learning-course-members
+          uri: ${LEARNING_SERVICE_URL:http://learning-service:8089}
+          predicates:
+            - Path=/api/v1/courses/*/members/**, /api/v1/courses/*/members
 
         - id: learning-courses
           uri: ${LEARNING_SERVICE_URL:http://learning-service:8089}
           predicates:
-            - Path=/api/v1/courses/**, /api/courses/**
-          filters:
-            - RewritePath=/api/v1/courses(?<segment>/?.*), /api/courses${segment}
+            - Path=/api/v1/courses/**
 
         - id: learning-quiz-attempts
           uri: ${LEARNING_SERVICE_URL:http://learning-service:8089}

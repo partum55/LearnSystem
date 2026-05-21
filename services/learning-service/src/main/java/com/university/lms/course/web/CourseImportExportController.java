@@ -34,13 +34,13 @@ import java.util.stream.Collectors;
 
 /**
  * REST Controller for bulk course import/export via JSON.
- * SUPERADMIN only — allows full course structure management.
+ * ADMIN only — allows full course structure management.
  */
 @RestController
 @RequestMapping("/admin/course-management")
 @RequiredArgsConstructor
 @Slf4j
-@PreAuthorize("hasRole('SUPERADMIN')")
+@PreAuthorize("hasRole('ADMIN')")
 public class CourseImportExportController {
 
     private final CourseService courseService;
@@ -215,7 +215,7 @@ public class CourseImportExportController {
             courseReq.setMaxStudents(meta.getMaxStudents());
             courseReq.setIsPublished(meta.getIsPublished() != null ? meta.getIsPublished() : false);
 
-            CourseDto createdCourse = courseService.createCourse(courseReq, userId);
+            CourseDto createdCourse = courseService.createCourse(courseReq, userId, "ADMIN");
             UUID courseId = createdCourse.getId();
             logs.add("Created course: " + meta.getCode() + " (ID: " + courseId + ")");
 
@@ -315,7 +315,7 @@ public class CourseImportExportController {
             // Publish if requested
             if (Boolean.TRUE.equals(meta.getIsPublished())) {
                 try {
-                    courseService.publishCourse(courseId, userId, "SUPERADMIN");
+                    courseService.publishCourse(courseId, userId, "ADMIN");
                     logs.add("Published course");
                 } catch (Exception e) {
                     logs.add("Warning: Could not publish course: " + e.getMessage());

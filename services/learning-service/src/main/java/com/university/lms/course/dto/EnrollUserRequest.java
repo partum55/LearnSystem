@@ -20,6 +20,6 @@ public class EnrollUserRequest {
   private UUID userId;
 
   @NotBlank(message = "Role is required")
-  @Pattern(regexp = "^(TEACHER|TA|STUDENT)$", message = "Role must be TEACHER, TA, or STUDENT")
+  @Pattern(regexp = "^(OWNER|TEACHER|TA|STUDENT)$", message = "Role must be OWNER, TEACHER, TA, or STUDENT")
   private String roleInCourse;
 }

@@ -108,7 +108,7 @@ public class CanonicalQuizAttemptService {
     if (!teacher && !attempt.getUserId().equals(userId)) {
       throw ApiException.forbidden("You cannot review another student's quiz attempt");
     }
-    accessService.requireActiveMember(assignment.getCourseId(), userId);
+    accessService.requireCourseAccess(assignment.getCourseId(), userId);
     if (!teacher && !canReviewAttempts(assignment)) {
       throw ApiException.forbidden("Quiz attempt review is not available");
     }

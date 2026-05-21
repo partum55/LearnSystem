@@ -55,13 +55,14 @@ public interface CourseMemberRepository extends JpaRepository<CourseMember, UUID
   /** Find teachers of a course. */
   @Query(
       "SELECT m FROM CourseMember m WHERE m.course.id = :courseId "
-          + "AND m.roleInCourse IN ('TEACHER', 'TA')")
+          + "AND m.roleInCourse IN ('TEACHER', 'TA', 'OWNER') AND m.enrollmentStatus = 'active'")
   List<CourseMember> findCourseInstructors(@Param("courseId") UUID courseId);
 
   /** Check if user can manage course. */
   @Query(
       "SELECT COUNT(m) > 0 FROM CourseMember m WHERE m.course.id = :courseId "
-          + "AND m.userId = :userId AND m.roleInCourse IN ('TEACHER', 'TA')")
+          + "AND m.userId = :userId AND m.roleInCourse IN ('TEACHER', 'TA', 'OWNER') "
+          + "AND m.enrollmentStatus = 'active'")
   boolean canUserManageCourse(@Param("courseId") UUID courseId, @Param("userId") UUID userId);
 
   /** Find all enrollments by status. */
@@ -79,7 +80,8 @@ public interface CourseMemberRepository extends JpaRepository<CourseMember, UUID
   List<UUID> findStudentIdsByCourseId(@Param("courseId") UUID courseId);
 
   @Query(
-      "SELECT DISTINCT m.course.id FROM CourseMember m WHERE m.userId = :userId AND m.roleInCourse IN ('TEACHER','TA')")
+      "SELECT DISTINCT m.course.id FROM CourseMember m WHERE m.userId = :userId "
+          + "AND m.roleInCourse IN ('TEACHER','TA','OWNER') AND m.enrollmentStatus = 'active'")
   List<UUID> findManagedCourseIdsByUserId(@Param("userId") UUID userId);
 
   @Query(

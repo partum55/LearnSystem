@@ -29,12 +29,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-/** SUPERADMIN SIS operations: preview/apply/rollback + audit + bulk enrollment actions. */
+/** ADMIN SIS operations: preview/apply/rollback + audit + bulk enrollment actions. */
 @RestController
 @RequestMapping("/admin/course-management/sis")
 @RequiredArgsConstructor
 @Slf4j
-@PreAuthorize("hasRole('SUPERADMIN')")
+@PreAuthorize("hasRole('ADMIN')")
 public class SisAdminOpsController {
 
   private final SisAdminOpsService sisAdminOpsService;

@@ -20,6 +20,8 @@ public interface UserMapper {
      * Convert User entity to UserDto.
      */
     @Mapping(target = "isActive", source = "active")
+    @Mapping(target = "globalRole", source = "role")
+    @Mapping(target = "status", expression = "java(user.isDeleted() ? \"deleted\" : (user.isActive() ? \"active\" : \"inactive\"))")
     UserDto toDto(User user);
 
     /**

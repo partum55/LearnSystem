@@ -1,5 +1,5 @@
-'use client';
-import TodaySubmissions from '@/features/teacher/views/TodaySubmissions';
-export default function Page() {
-  return <TodaySubmissions />;
+import { PlaceholderPage } from '@/components/PlaceholderPage';
+
+export default function TodayPage() {
+  return <PlaceholderPage title="Today" />;
 }

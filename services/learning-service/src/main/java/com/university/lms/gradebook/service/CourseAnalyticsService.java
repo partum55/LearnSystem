@@ -37,7 +37,7 @@ public class CourseAnalyticsService {
       Set.of("SUBMITTED", "IN_REVIEW", "GRADED_DRAFT");
   private static final Set<String> COMPLETED_SUBMISSION_STATUSES =
       Set.of("SUBMITTED", "IN_REVIEW", "GRADED_DRAFT", "GRADED_PUBLISHED");
-  private static final String ROLE_SUPERADMIN = "SUPERADMIN";
+  private static final String ROLE_ADMIN = "ADMIN";
 
   private final CourseMemberRepository courseMemberRepository;
   private final AssignmentRepository assignmentRepository;
@@ -158,7 +158,7 @@ public class CourseAnalyticsService {
 
   private void validateCanViewCourseAnalytics(
       UUID courseId, UUID requesterId, String requesterRole) {
-    if (ROLE_SUPERADMIN.equalsIgnoreCase(requesterRole)) {
+    if (ROLE_ADMIN.equalsIgnoreCase(requesterRole)) {
       return;
     }
     if (!courseMemberRepository.canUserManageCourse(courseId, requesterId)) {

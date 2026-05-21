@@ -31,7 +31,7 @@ public class VplTestCaseController {
             @PathVariable UUID assignmentId,
             @RequestAttribute(value = "userRole", required = false) String userRole) {
 
-        boolean isStaff = "TEACHER".equals(userRole) || "TA".equals(userRole) || "SUPERADMIN".equals(userRole);
+        boolean isStaff = "TEACHER".equals(userRole) || "TA".equals(userRole) || "ADMIN".equals(userRole);
 
         List<VplTestCaseDto> testCases = isStaff
                 ? testCaseService.getTestCasesForAssignment(assignmentId)
@@ -86,7 +86,7 @@ public class VplTestCaseController {
     }
 
     private void assertStaff(String userRole) {
-        if (!"TEACHER".equals(userRole) && !"TA".equals(userRole) && !"SUPERADMIN".equals(userRole)) {
+        if (!"TEACHER".equals(userRole) && !"TA".equals(userRole) && !"ADMIN".equals(userRole)) {
             throw new ResourceNotFoundException("Resource", "access", "denied");
         }
     }

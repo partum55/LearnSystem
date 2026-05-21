@@ -24,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class AnnouncementService {
 
-  private static final String ROLE_SUPERADMIN = "SUPERADMIN";
+  private static final String ROLE_ADMIN = "ADMIN";
 
   private final AnnouncementRepository announcementRepository;
   private final CourseRepository courseRepository;
@@ -149,7 +149,7 @@ public class AnnouncementService {
   }
 
   private boolean isSuperAdmin(String userRole) {
-    return userRole != null && ROLE_SUPERADMIN.equalsIgnoreCase(userRole);
+    return userRole != null && ROLE_ADMIN.equalsIgnoreCase(userRole);
   }
 
   private String normalizeRequiredText(String value, String field) {

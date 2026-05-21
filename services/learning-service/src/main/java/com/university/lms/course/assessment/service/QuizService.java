@@ -615,7 +615,7 @@ public class QuizService {
     }
 
     private boolean isSuperAdmin(String userRole) {
-        return "SUPERADMIN".equalsIgnoreCase(userRole);
+        return "ADMIN".equalsIgnoreCase(userRole);
     }
 
     private String buildCopyTitle(String originalTitle) {

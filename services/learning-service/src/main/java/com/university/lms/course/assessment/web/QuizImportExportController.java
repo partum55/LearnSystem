@@ -19,7 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/quizzes")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
+@PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
 public class QuizImportExportController {
 
   private final QuizImportExportService quizImportExportService;

@@ -135,6 +135,6 @@ public class SubmissionDocumentService {
   }
 
   private boolean isSuperAdmin(String userRole) {
-    return "SUPERADMIN".equalsIgnoreCase(userRole);
+    return "ADMIN".equalsIgnoreCase(userRole);
   }
 }

@@ -62,7 +62,7 @@ public class DeanGradebookExportService {
             .findById(courseId)
             .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
 
-    if (!"SUPERADMIN".equals(actorRole)
+    if (!"ADMIN".equals(actorRole)
         && !courseMemberRepository.canUserManageCourse(courseId, actorId)) {
       throw new org.springframework.security.access.AccessDeniedException(
           "Not authorized to export this course gradebook");

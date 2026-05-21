@@ -1,6 +1,6 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
-export type UserRole = 'SUPERADMIN' | 'TEACHER' | 'STUDENT' | 'TA';
+export type UserRole = 'ADMIN' | 'TEACHER' | 'USER';
 export type UserLocale = 'UK' | 'EN';
 export type UserTheme = 'light' | 'dark';
 
@@ -74,7 +74,7 @@ export type CourseMemberRow = {
   id: string;
   course_id: string;
   user_id: string;
-  role_in_course: 'TEACHER' | 'TA' | 'STUDENT';
+  role_in_course: 'OWNER' | 'TEACHER' | 'TA' | 'STUDENT';
   added_by: string | null;
   added_at: string;
   updated_at: string;

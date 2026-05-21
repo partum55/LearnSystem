@@ -1,9 +1,13 @@
-export interface PageResponse<T> {
-  content: T[];
-  pageNumber: number;
+export interface PaginationDto {
+  page: number;
   pageSize: number;
-  totalElements: number;
+  totalItems: number;
   totalPages: number;
-  first?: boolean;
-  last?: boolean;
 }
+
+export interface ListResponse<T> {
+  items: T[];
+  pagination: PaginationDto;
+}
+
+export type Uuid = string;

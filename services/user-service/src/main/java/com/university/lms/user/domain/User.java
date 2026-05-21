@@ -54,7 +54,7 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
-    private UserRole role = UserRole.STUDENT;
+    private UserRole role = UserRole.USER;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 5)
@@ -125,14 +125,14 @@ public class User {
      * Check if the user has admin privileges.
      */
     public boolean isAdmin() {
-        return role == UserRole.SUPERADMIN;
+        return role == UserRole.ADMIN;
     }
 
     /**
      * Check if the user is a teacher or admin.
      */
     public boolean isTeacherOrAdmin() {
-        return role == UserRole.TEACHER || role == UserRole.SUPERADMIN;
+        return role == UserRole.TEACHER || role == UserRole.ADMIN;
     }
 
 }

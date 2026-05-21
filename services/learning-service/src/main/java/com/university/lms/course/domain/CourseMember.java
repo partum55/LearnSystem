@@ -69,16 +69,20 @@ public class CourseMember {
   private BigDecimal finalGrade;
 
   // Helper methods
+  public boolean isOwner() {
+    return "OWNER".equalsIgnoreCase(roleInCourse);
+  }
+
   public boolean isTeacher() {
-    return "TEACHER".equals(roleInCourse);
+    return "TEACHER".equalsIgnoreCase(roleInCourse) || "OWNER".equalsIgnoreCase(roleInCourse);
   }
 
   public boolean isTA() {
-    return "TA".equals(roleInCourse);
+    return "TA".equalsIgnoreCase(roleInCourse);
   }
 
   public boolean isStudent() {
-    return "STUDENT".equals(roleInCourse);
+    return "STUDENT".equalsIgnoreCase(roleInCourse);
   }
 
   public boolean isActive() {
@@ -86,6 +90,6 @@ public class CourseMember {
   }
 
   public boolean canManageCourse() {
-    return isTeacher() || isTA();
+    return isOwner() || isTeacher() || isTA();
   }
 }

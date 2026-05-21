@@ -124,7 +124,7 @@ public class QuizAttemptController {
      * Grade quiz attempt.
      */
     @PostMapping("/{attemptId}/grade")
-    @PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ResponseEntity<QuizAttempt> gradeQuizAttempt(
             @PathVariable UUID attemptId,
             @RequestParam BigDecimal score,
@@ -192,7 +192,7 @@ public class QuizAttemptController {
      * Get ungraded attempts for a quiz (instructors only).
      */
     @GetMapping("/quiz/{quizId}/ungraded")
-    @PreAuthorize("hasAnyRole('TEACHER','TA','SUPERADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ResponseEntity<List<QuizAttemptDto>> getUngradedAttempts(@PathVariable UUID quizId) {
         List<QuizAttempt> attempts = quizAttemptService.getUngradedAttempts(quizId);
         return ResponseEntity.ok(attempts.stream().map(assessmentMapper::toDto).toList());

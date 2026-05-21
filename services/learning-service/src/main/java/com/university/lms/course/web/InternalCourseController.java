@@ -22,7 +22,7 @@ public class InternalCourseController {
 
   /** Delete all course-related data for a user. */
   @DeleteMapping("/{userId}/data")
-  @PreAuthorize("hasRole('SUPERADMIN')")
+  @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<Void> deleteUserData(@PathVariable UUID userId) {
     log.info("Internal request to delete course data for user: {}", userId);
     courseService.deleteUserData(userId);

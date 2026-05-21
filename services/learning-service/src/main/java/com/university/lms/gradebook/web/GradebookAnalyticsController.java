@@ -25,7 +25,7 @@ public class GradebookAnalyticsController {
   private final GradebookEntryService entryService;
 
   @GetMapping("/grades")
-  @PreAuthorize("hasAnyRole('TEACHER', 'SUPERADMIN', 'TA')")
+  @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
   public ResponseEntity<List<GradeDto>> getGradesByCourseAndStudent(
       @RequestParam("courseId") String courseId, @RequestParam("studentId") UUID studentId) {
     UUID parsedCourseId;

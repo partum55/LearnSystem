@@ -1,13 +1,13 @@
 <claude-mem-context>
 # Memory Context
 
-# [LearnSystem] recent context, 2026-05-21 2:03pm GMT+3
+# [LearnSystem] recent context, 2026-05-21 10:27pm GMT+3
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (21,800t read) | 2,310,334t work | 99% savings
+Stats: 50 obs (25,512t read) | 3,343,380t work | 99% savings
 
 ### May 20, 2026
 S35 LearnSystem frontend refactor — clarifying questions in progress, Q1 presented (architecture choice), awaiting user response (May 20, 2:41 AM)
@@ -20,25 +20,7 @@ S40 LearnSystem frontend refactor — Design Section 1 presented: exact file map
 S41 LearnSystem frontend refactor — Design Section 2 presented: 9-batch migration plan, awaiting user approval (May 20, 2:46 AM)
 S42 LearnSystem frontend refactor — design spec written, committed, and presented for user review before writing-plans handoff (May 20, 2:47 AM)
 S43 LearnSystem frontend refactor — spec approved, writing-plans skill now starting to generate implementation plan (May 20, 2:50 AM)
-367 2:49p 🔄 Task 14 Complete: Lesson Views and LessonPlayer Fix Committed — 15d17e1
-371 " 🔄 Task 15 Complete: Grades/Teacher Views Committed — ea64ae4
-369 2:50p 🔵 Grades/Teacher Page Routes Confirmed: AllGrades Uses Named Import, 5 Files to Update
-372 2:51p ✅ Tasks 17-22 Bulk-Marked Completed; Task 23 (Final Remaining Views) Now In Progress
-373 2:52p 🔄 Task 16: All Remaining View Files Moved — src/views/ Now Empty
-374 2:53p 🔵 10 @/views/ Imports Remaining — All for Task 16 Domains, Dashboard Imports Resolved
-375 " 🔄 Phase 3 Complete: Zero @/views/ Imports Remain Anywhere in the Codebase
-377 " 🔄 Task 16 Complete: Final View Migration Committed — 7f687ae; Phase 3 Fully Done
-378 " 🔵 Phase 4 Plan: Components Migration Covers 3 Tasks — courses, assignments/quiz, dashboard/AI/virtual-lab
-376 2:54p 🔄 Phase 3 TypeScript Check Passes — Zero Errors After Full View Migration
-380 " 🔄 Phase 4 Component Moves Partially Executed: 30+ Components Staged Across courses/assignments/AI Feature Domains
-379 2:55p 🔵 src/components/ Full Inventory Before Phase 4: Unexpected Subdirectories Not in Migration Plan
-381 2:57p 🔄 Phase 4 Nearly Complete: analytics/ Was Last Remaining Domain Component, Now Moved to admin Feature
-382 " 🔄 Phase 4 Complete: Zero TypeScript Errors After Component Moves; components/index.ts Barrel Reduced to Shared UI Only
-383 " 🔄 Phase 4 Complete: 50 Domain Components Moved to Feature Domains — Committed 22eb1be
-384 3:09p 🔵 Phase 5 Plan: Feature Domain Barrel Files + useCourseQueries Exports Confirmed
-385 " 🟣 Phase 5 Complete: 16 Feature Domain Barrel index.ts Files Written
-386 " 🔵 pnpm tsc Must Be Run from apps/web — Fails with ERR_PNPM_NO_IMPORTER_MANIFEST_FOUND from Monorepo Root
-387 " 🟣 Phase 6: Domain-Local Type Files Created for courses and assignments
+386 3:09p 🔵 pnpm tsc Must Be Run from apps/web — Fails with ERR_PNPM_NO_IMPORTER_MANIFEST_FOUND from Monorepo Root
 ### May 21, 2026
 388 1:12p 🔵 LearnSystem learning-service canonicalization work-in-progress state
 389 1:13p 🔵 Complete canonical /api/v1 endpoint inventory for LearnSystem learning-service
@@ -71,6 +53,24 @@ S43 LearnSystem frontend refactor — spec approved, writing-plans skill now sta
 416 1:20p ✅ 8 legacy controllers annotated @Deprecated(forRemoval=false, since="canonical-api-v1") to mark superseded status
 417 " 🔵 GradebookEntryController uses @PreAuthorize Spring Security with JWT role claims and raw JdbcTemplate — third authorization pattern in learning-service
 418 " 🟣 New CanonicalFrontendReadinessTest created with 9 tests covering all bugs fixed during the audit
+419 " ⚖️ Final Backend Hardening Pass Before Frontend Integration
+420 2:04p 🔵 CanonicalAssignmentService Full Architecture Confirmed
+421 " 🔵 Teacher Gradebook UUID Display Name Gap Confirmed in Code
+422 " 🔵 Quiz Autoscoring Placeholder Confirmed — AutoGradingService Exists But Not Wired
+423 " 🔵 Assignment Settings DTO Types Exist for All 6 Canonical Assignment Types
+424 2:05p 🔵 Legacy QuizAttemptService Has Real Scoring Logic Not Wired to Canonical
+425 " 🔵 CanonicalAssignmentMapper.settings() Hardcodes Quiz Visibility Settings
+426 " 🔵 Submission Entity Has studentName/studentEmail Fields But Canonical Service Never Populates Them
+427 " 🔵 No Auth-Service or User Profile HTTP Client Exists in learning-service
+428 2:06p 🟣 Real Quiz Autoscoring Implemented in CanonicalQuizAttemptService
+429 " 🟣 Submission Edit and Withdraw Endpoints Added to Canonical API
+430 " 🟣 Assignment Settings Validation Enhanced and canonicalSettings Versioned
+431 2:07p 🔴 CanonicalAssignmentMapper Settings Read Path Fixed — canonicalSettings Now Primary Source
+432 " 🟣 UserProfileClient Boundary Created for Teacher Gradebook Student Display Names
+433 2:08p ✅ CanonicalFrontendReadinessTest Updated for New Service Dependencies
+434 " 🟣 13 New Tests Added to CanonicalFrontendReadinessTest for Hardening Pass
+435 2:09p ✅ CanonicalFrontendReadinessTest Factory Methods and Constructor Updated
+436 2:10p ⚖️ Frontend Legacy Separation Architecture Plan for LearnSystem
 
-Access 2310k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 3343k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

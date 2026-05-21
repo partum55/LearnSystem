@@ -164,7 +164,7 @@ public class AssignmentTemplateDocumentService {
   }
 
   private boolean isSuperAdmin(String userRole) {
-    return "SUPERADMIN".equalsIgnoreCase(userRole);
+    return "ADMIN".equalsIgnoreCase(userRole);
   }
 
   private Map<String, Object> toMap(JsonNode node) {

@@ -22,6 +22,16 @@ spring:
               maxBackoff: 500ms
               factor: 2
       routes:
+        - id: admin-courses
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/v1/admin/courses/**
+
+        - id: admin-users
+          uri: ${USER_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/admin/users/**
+
         - id: admin-course-management
           uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
           predicates:
@@ -39,20 +49,20 @@ spring:
           predicates:
             - Path=/api/lessons/**
 
+        - id: learning-course-members
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/v1/courses/*/members/**, /api/v1/courses/*/members
+
         - id: learning-courses
           uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
           predicates:
-            - Path=/api/v1/courses/**, /api/courses/**
-          filters:
-            - RewritePath=/api/v1/courses(?<segment>/?.*), /api/courses${segment}
-            - RewritePath=/api/(?<segment>.*), /api/${segment}
+            - Path=/api/v1/courses/**
 
         - id: user-service
           uri: ${USER_SERVICE_URL:http://localhost:8081}
           predicates:
-            - Path=/api/users/**
-          filters:
-            - RewritePath=/api/(?<segment>.*), /api/${segment}
+            - Path=/api/v1/users/**, /api/users/**
 
         - id: learning-quiz-attempts
           uri: ${LEARNING_SERVICE_URL:http://localhost:8089}

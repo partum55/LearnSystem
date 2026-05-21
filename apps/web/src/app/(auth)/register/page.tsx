@@ -1,6 +1,5 @@
-'use client';
-import Register from '@/features/auth/views/Register';
+import { PlaceholderPage } from '@/components/PlaceholderPage';
 
-export default function Page() {
-  return <Register />;
+export default function RegisterPage() {
+  return <PlaceholderPage title="Register" />;
 }

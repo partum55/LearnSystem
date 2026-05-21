@@ -3,6 +3,7 @@ package com.university.lms.user.web;
 import com.university.lms.common.domain.UserRole;
 import com.university.lms.common.dto.PageResponse;
 import com.university.lms.common.exception.ValidationException;
+import com.university.lms.user.dto.CreateUserRequest;
 import com.university.lms.user.dto.UpdateUserRequest;
 import com.university.lms.user.dto.UserDto;
 import com.university.lms.user.service.UserService;
@@ -16,8 +17,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
+import com.university.lms.user.dto.AdminUpdateUserRequest;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -48,6 +51,12 @@ public class UserController {
 
     private final UserService userService;
 
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserDto> createUser(@Valid @RequestBody CreateUserRequest request) {
+        return ResponseEntity.ok(userService.createUser(request));
+    }
+
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserDto> getCurrentUser(@RequestAttribute("userId") UUID userId) {
@@ -69,7 +78,7 @@ public class UserController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('TEACHER', 'SUPERADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public ResponseEntity<PageResponse<UserDto>> searchUsers(
             @RequestParam(required = false) String query,
             @RequestParam(required = false) UserRole role,
@@ -87,7 +96,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserDto> updateUser(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateUserRequest request) {
@@ -95,23 +104,16 @@ public class UserController {
     }
 
     @PostMapping("/{id}/deactivate")
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deactivateUser(@PathVariable UUID id) {
         userService.deactivateUser(id);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{id}/activate")
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> activateUser(@PathVariable UUID id) {
         userService.activateUser(id);
-        return ResponseEntity.ok().build();
-    }
-
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('SUPERADMIN')")
-    public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
-        userService.deleteUser(id);
         return ResponseEntity.ok().build();
     }
 

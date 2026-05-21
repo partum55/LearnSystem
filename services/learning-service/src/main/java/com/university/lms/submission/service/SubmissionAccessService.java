@@ -53,6 +53,6 @@ public class SubmissionAccessService {
         String normalizedRole = role.trim().toUpperCase(Locale.ROOT);
         return "TEACHER".equals(normalizedRole)
                 || "TA".equals(normalizedRole)
-                || "SUPERADMIN".equals(normalizedRole);
+                || "ADMIN".equals(normalizedRole);
     }
 }

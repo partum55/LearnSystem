@@ -6,5 +6,5 @@ import java.util.UUID;
 public interface UserProfileClient {
   Optional<UserProfile> findProfile(UUID userId);
 
-  record UserProfile(UUID id, String displayName, String email, String avatarUrl) {}
+  record UserProfile(UUID id, String displayName, String email, String avatarUrl, String role) {}
 }

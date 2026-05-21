@@ -94,7 +94,7 @@ class DeanGradebookExportServiceTest {
     when(gradebookEntryService.getEntriesForCourse(courseId, actorId)).thenReturn(List.of());
 
     DeanGradebookExportService.DeanGradebookFile result =
-        service.export(courseId, "2024-1", null, actorId, "SUPERADMIN");
+        service.export(courseId, "2024-1", null, actorId, "ADMIN");
 
     assertThat(result.filename()).contains("cs101");
   }

@@ -32,7 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class CourseArchiveService {
 
-  private static final String ROLE_SUPERADMIN = "SUPERADMIN";
+  private static final String ROLE_ADMIN = "ADMIN";
 
   private final CourseRepository courseRepository;
   private final CourseMemberRepository courseMemberRepository;
@@ -235,7 +235,7 @@ public class CourseArchiveService {
   }
 
   private boolean isSuperAdmin(String userRole) {
-    return ROLE_SUPERADMIN.equalsIgnoreCase(userRole);
+    return ROLE_ADMIN.equalsIgnoreCase(userRole);
   }
 
   private String asString(Object value) {

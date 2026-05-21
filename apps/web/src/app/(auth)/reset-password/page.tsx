@@ -1,5 +1,5 @@
-'use client';
-import ResetPassword from '@/features/auth/views/ResetPassword';
-export default function Page() {
-  return <ResetPassword />;
+import { PlaceholderPage } from '@/components/PlaceholderPage';
+
+export default function ResetPasswordPage() {
+  return <PlaceholderPage title="Reset password" />;
 }

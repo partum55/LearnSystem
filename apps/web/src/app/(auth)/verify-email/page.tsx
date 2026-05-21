@@ -1,5 +1,5 @@
-'use client';
-import VerifyEmail from '@/features/auth/views/VerifyEmail';
-export default function Page() {
-  return <VerifyEmail />;
+import { PlaceholderPage } from '@/components/PlaceholderPage';
+
+export default function VerifyEmailPage() {
+  return <PlaceholderPage title="Verify email" />;
 }

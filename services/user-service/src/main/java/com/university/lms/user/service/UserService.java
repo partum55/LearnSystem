@@ -6,22 +6,31 @@ import com.university.lms.common.exception.ResourceNotFoundException;
 import com.university.lms.common.exception.ValidationException;
 import com.university.lms.user.client.CourseClient;
 import com.university.lms.user.domain.User;
+import com.university.lms.user.dto.AdminUpdateUserRequest;
+import com.university.lms.user.dto.CreateUserRequest;
 import com.university.lms.user.dto.UpdateUserRequest;
 import com.university.lms.user.dto.UserDto;
 import com.university.lms.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -37,6 +46,94 @@ public class UserService {
     private final UserMapper userMapper;
     private final CourseClient courseClient;
     private final CacheManager cacheManager;
+
+    @Value("${supabase.url:https://aarkyaevxuhlkefayzro.supabase.co}")
+    private String supabaseUrl;
+
+    @Value("${supabase.secret-key:}")
+    private String supabaseSecretKey;
+
+    private RestTemplate restTemplate = new RestTemplate();
+
+    @Transactional
+    public UserDto createUser(CreateUserRequest request) {
+        String email = normalizeEmail(request.getEmail());
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            throw new ValidationException("email", "Email already exists");
+        }
+
+        if (request.getStudentId() != null && !request.getStudentId().isBlank()) {
+            if (userRepository.existsByStudentId(request.getStudentId().trim())) {
+                throw new ValidationException("studentId", "Student ID already exists");
+            }
+        }
+
+        // 1. Create user in Supabase Auth
+        log.info("Creating user in Supabase Auth: {}", email);
+        UUID userId;
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("apikey", supabaseSecretKey);
+            headers.set("Authorization", "Bearer " + supabaseSecretKey);
+
+            Map<String, Object> body = new HashMap<>();
+            body.put("email", email);
+            body.put("password", request.getPassword());
+            body.put("email_confirm", true);
+
+            Map<String, String> userMetadata = new HashMap<>();
+            String displayName = request.getDisplayName();
+            if (displayName == null || displayName.isBlank()) {
+                displayName = email.split("@")[0];
+            }
+            userMetadata.put("display_name", displayName);
+            if (request.getFirstName() != null) userMetadata.put("first_name", request.getFirstName());
+            if (request.getLastName() != null) userMetadata.put("last_name", request.getLastName());
+            body.put("user_metadata", userMetadata);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+            String url = supabaseUrl.replaceAll("/+$", "") + "/auth/v1/admin/users";
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+
+            Map<String, Object> responseBody = response.getBody();
+            if (responseBody == null || !responseBody.containsKey("id")) {
+                throw new ValidationException("email", "Invalid response from Supabase Auth");
+            }
+            userId = UUID.fromString(responseBody.get("id").toString());
+        } catch (Exception ex) {
+            log.error("Failed to create user in Supabase: {}", ex.getMessage());
+            throw new ValidationException("email", "Failed to create user in Supabase Auth: " + ex.getMessage());
+        }
+
+        // 2. Fetch the created profile from public.users (inserted via Postgres trigger)
+        User user = userRepository.findById(userId)
+                .orElseGet(() -> userRepository.findByEmailIgnoreCaseAndIsDeletedFalse(email)
+                        .orElseThrow(() -> new ResourceNotFoundException("User", userId.toString())));
+
+        // 3. Update with role and other details
+        user.setRole(request.getRole() == null ? UserRole.USER : request.getRole());
+        if (request.getDisplayName() != null && !request.getDisplayName().isBlank()) {
+            user.setDisplayName(request.getDisplayName().trim());
+        } else {
+            user.setDisplayName(email.split("@")[0]);
+        }
+        if (request.getFirstName() != null) user.setFirstName(request.getFirstName().trim());
+        if (request.getLastName() != null) user.setLastName(request.getLastName().trim());
+        if (request.getStudentId() != null) user.setStudentId(request.getStudentId().trim());
+        if (request.getLocale() != null) {
+            user.setLocale(request.getLocale());
+        } else {
+            user.setLocale(com.university.lms.common.domain.UserLocale.UK);
+        }
+        user.setEmailVerified(true);
+        user.setActive(true);
+
+        User savedUser = userRepository.save(user);
+        log.info("Successfully provisioned admin user profile: {}", savedUser.getId());
+
+        return userMapper.toDto(savedUser);
+    }
 
     @Transactional(readOnly = true)
     @Cacheable(value = USERS_CACHE, key = "#id")
@@ -68,6 +165,31 @@ public class UserService {
         log.info("User updated: {}", id);
 
         return userMapper.toDto(updatedUser);
+    }
+
+    @Transactional
+    @CacheEvict(value = USERS_CACHE, key = "#targetUserId")
+    public UserDto adminUpdateUser(UUID targetUserId, AdminUpdateUserRequest request, UUID actorId, UserRole actorRole) {
+        User targetUser = getRequiredUserById(targetUserId);
+
+        if (actorRole != UserRole.ADMIN) {
+            throw new ValidationException("role", "Only administrators can perform this action");
+        }
+
+        if (actorId != null && actorId.equals(targetUserId) && request.getRole() == UserRole.ADMIN) {
+            throw new ValidationException("role", "User cannot make themselves ADMIN");
+        }
+
+        if (request.getRole() != null) {
+            targetUser.setRole(request.getRole());
+        }
+        if (request.getIsActive() != null) {
+            targetUser.setActive(request.getIsActive());
+        }
+
+        User savedUser = userRepository.save(targetUser);
+        log.info("User {} updated by admin {} ({})", targetUserId, actorId, actorRole);
+        return userMapper.toDto(savedUser);
     }
 
     @Transactional(readOnly = true)

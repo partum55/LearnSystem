@@ -28,8 +28,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class CourseService {
 
-  private static final String ROLE_SUPERADMIN = "SUPERADMIN";
+  private static final String ROLE_ADMIN = "ADMIN";
   private static final String ROLE_TEACHER = "TEACHER";
+  private static final String ROLE_OWNER = "OWNER";
   private static final String ENROLLMENT_ACTIVE = "active";
 
   private final CourseRepository courseRepository;
@@ -131,8 +132,12 @@ public class CourseService {
   /** Create a new course. */
   @Transactional
   @CacheEvict(value = "courses", allEntries = true)
-  public CourseDto createCourse(CreateCourseRequest request, UUID ownerId) {
+  public CourseDto createCourse(CreateCourseRequest request, UUID ownerId, String requesterRole) {
     log.info("Creating new course with code: {} by owner: {}", request.getCode(), ownerId);
+
+    if (!ROLE_ADMIN.equalsIgnoreCase(requesterRole) && !ROLE_TEACHER.equalsIgnoreCase(requesterRole)) {
+      throw new ValidationException("Only ADMIN or global TEACHER accounts can create courses");
+    }
 
     // Validate course code uniqueness
     if (courseRepository.existsByCode(request.getCode())) {
@@ -145,8 +150,9 @@ public class CourseService {
     Course course = courseMapper.toEntity(request, ownerId);
     Course savedCourse = courseRepository.save(course);
 
-    // Automatically add owner as TEACHER
-    addCourseMember(savedCourse, ownerId, ROLE_TEACHER, ownerId);
+    if (ROLE_TEACHER.equalsIgnoreCase(requesterRole)) {
+      addCourseMember(savedCourse, ownerId, ROLE_OWNER, ownerId);
+    }
 
     log.info("Course created successfully with ID: {}", savedCourse.getId());
     return courseMapper.toDto(savedCourse);
@@ -218,9 +224,9 @@ public class CourseService {
 
     Course course = findCourseById(id);
 
-    // Owner and SUPERADMIN can delete
-    if (!course.getOwnerId().equals(userId) && !isSuperAdmin(userRole)) {
-      throw new ValidationException("Only course owner or SUPERADMIN can delete the course");
+    // Course OWNER and ADMIN can delete
+    if (!isCourseOwner(course.getId(), userId) && !isAdmin(userRole)) {
+      throw new ValidationException("Only course owner or ADMIN can delete the course");
     }
 
     courseRepository.delete(course);
@@ -317,20 +323,23 @@ public class CourseService {
   }
 
   private boolean canUserManageCourse(Course course, UUID userId, String userRole) {
-    if (isSuperAdmin(userRole)) {
+    if (isAdmin(userRole)) {
       return true;
     }
 
-    // Owner can always manage
-    if (course.getOwnerId().equals(userId)) {
-      return true;
-    }
-    // Check if user is TEACHER or TA
+    // Check actual course membership. Global TEACHER does not grant access.
     return courseMemberRepository.canUserManageCourse(course.getId(), userId);
   }
 
+  private boolean isCourseOwner(UUID courseId, UUID userId) {
+    return courseMemberRepository.findByCourseIdAndUserId(courseId, userId)
+        .filter(CourseMember::isActive)
+        .map(CourseMember::isOwner)
+        .orElse(false);
+  }
+
   private void enforceCourseVisibility(Course course, UUID userId, String userRole) {
-    boolean isAdmin = isSuperAdmin(userRole);
+    boolean isAdmin = isAdmin(userRole);
     boolean canManage = canUserManageCourse(course, userId, userRole);
 
     if (course.getIsPublished()) {
@@ -342,8 +351,8 @@ public class CourseService {
     }
   }
 
-  private boolean isSuperAdmin(String userRole) {
-    return ROLE_SUPERADMIN.equalsIgnoreCase(userRole);
+  private boolean isAdmin(String userRole) {
+    return ROLE_ADMIN.equalsIgnoreCase(userRole);
   }
 
   private void addCourseMember(Course course, UUID userId, String role, UUID addedBy) {

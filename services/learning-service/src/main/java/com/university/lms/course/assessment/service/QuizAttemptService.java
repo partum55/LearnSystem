@@ -875,7 +875,7 @@ public class QuizAttemptService {
       normalized = normalized.substring("ROLE_".length());
     }
 
-    return normalized.equals("TEACHER") || normalized.equals("TA") || normalized.equals("SUPERADMIN");
+    return normalized.equals("TEACHER") || normalized.equals("TA") || normalized.equals("ADMIN");
   }
 
   private QuizAttemptQuestionDto toDto(QuizAttemptQuestion question) {

@@ -76,7 +76,7 @@ class QuizImportExportServiceTest {
     when(quizService.getQuizById(quizId)).thenReturn(QuizDto.builder().id(quizId).build());
     when(quizSectionService.getSections(any(), any())).thenReturn(java.util.List.of());
 
-    var result = service.exportQuizAsJson(quizId, userId, "SUPERADMIN");
+    var result = service.exportQuizAsJson(quizId, userId, "ADMIN");
 
     assertThat(result).containsKey("quiz");
   }

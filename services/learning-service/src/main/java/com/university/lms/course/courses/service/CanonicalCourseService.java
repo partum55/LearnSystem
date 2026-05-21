@@ -13,6 +13,8 @@ import com.university.lms.course.courses.dto.UpcomingDeadlineDto;
 import com.university.lms.course.domain.Course;
 import com.university.lms.course.domain.CourseMember;
 import com.university.lms.course.domain.Module;
+import com.university.lms.course.dto.CourseDto;
+import com.university.lms.course.dto.CreateCourseRequest;
 import com.university.lms.course.materials.dto.LearningItemDto;
 import com.university.lms.course.materials.service.LearningContentService;
 import com.university.lms.course.modules.dto.CourseModuleDto;
@@ -21,6 +23,7 @@ import com.university.lms.course.modules.dto.ModuleRequest;
 import com.university.lms.course.repository.CourseMemberRepository;
 import com.university.lms.course.repository.CourseRepository;
 import com.university.lms.course.repository.ModuleRepository;
+import com.university.lms.course.service.CourseService;
 import com.university.lms.gradebook.domain.GradebookEntry;
 import com.university.lms.gradebook.repository.GradebookEntryRepository;
 import java.math.BigDecimal;
@@ -47,6 +50,7 @@ public class CanonicalCourseService {
   private final LearningContentService learningContentService;
   private final CanonicalAssignmentMapper assignmentMapper;
   private final CourseAccessService accessService;
+  private final CourseService courseService;
 
   @Transactional(readOnly = true)
   public StudentDashboardDto studentDashboard(UUID userId) {
@@ -85,8 +89,23 @@ public class CanonicalCourseService {
   }
 
   @Transactional(readOnly = true)
+  public List<CourseSummaryDto> myTeachingCourses(UUID userId) {
+    return courseMemberRepository.findActiveEnrollmentsForUser(userId, PageRequest.of(0, 200))
+        .stream()
+        .filter(member -> member.isOwner() || member.isTeacher() || member.isTA())
+        .map(CourseMember::getCourse)
+        .map(course -> courseSummary(course, userId))
+        .toList();
+  }
+
+  @Transactional
+  public CourseDto createCourse(CreateCourseRequest request, UUID userId, String globalRole) {
+    return courseService.createCourse(request, userId, globalRole);
+  }
+
+  @Transactional(readOnly = true)
   public CourseOverviewDto overview(UUID courseId, UUID userId) {
-    accessService.requireActiveMember(courseId, userId);
+    accessService.requireCourseAccess(courseId, userId);
     Course course = courseRepository.findById(courseId)
         .orElseThrow(() -> ApiException.notFound("Course"));
     List<UpcomingDeadlineDto> deadlines = assignmentRepository.findByCourseId(courseId).stream()
@@ -109,7 +128,7 @@ public class CanonicalCourseService {
 
   @Transactional(readOnly = true)
   public CourseModulesResponse modules(UUID courseId, UUID userId) {
-    accessService.requireActiveMember(courseId, userId);
+    accessService.requireCourseAccess(courseId, userId);
     boolean canTeach = accessService.canTeach(courseId, userId);
     List<GradebookEntry> grades = gradebookEntryRepository.findByCourseIdAndStudentId(courseId, userId);
     Map<UUID, GradebookEntry> gradesByAssignment = grades.stream()

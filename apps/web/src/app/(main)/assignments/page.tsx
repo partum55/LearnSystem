@@ -1,5 +1,5 @@
-'use client';
-import Assignments from '@/features/assignments/views/Assignments';
-export default function Page() {
-  return <Assignments />;
+import { PlaceholderPage } from '@/components/PlaceholderPage';
+
+export default function AssignmentsPage() {
+  return <PlaceholderPage title="Assignments" />;
 }

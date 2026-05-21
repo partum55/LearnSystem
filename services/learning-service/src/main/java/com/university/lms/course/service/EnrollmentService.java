@@ -3,10 +3,12 @@ package com.university.lms.course.service;
 import com.university.lms.common.dto.PageResponse;
 import com.university.lms.common.exception.ResourceNotFoundException;
 import com.university.lms.common.exception.ValidationException;
+import com.university.lms.course.common.security.CourseAccessService;
 import com.university.lms.course.domain.Course;
 import com.university.lms.course.domain.CourseMember;
 import com.university.lms.course.dto.CourseMemberDto;
 import com.university.lms.course.dto.EnrollUserRequest;
+import com.university.lms.course.gradebook.service.UserProfileClient;
 import com.university.lms.course.repository.CourseMemberRepository;
 import com.university.lms.course.repository.CourseRepository;
 import java.time.LocalDateTime;
@@ -36,12 +38,15 @@ public class EnrollmentService {
   private static final String ENROLLMENT_ACTIVE = "active";
   private static final String ENROLLMENT_DROPPED = "dropped";
   private static final String ENROLLMENT_COMPLETED = "completed";
-  private static final String ROLE_SUPERADMIN = "SUPERADMIN";
+  private static final String ROLE_ADMIN = "ADMIN";
+  private static final String ROLE_TEACHER = "TEACHER";
+  private static final Set<String> COURSE_ROLES = Set.of("OWNER", "TEACHER", "TA", "STUDENT");
 
   private final CourseRepository courseRepository;
   private final CourseMemberRepository courseMemberRepository;
   private final CourseMapper courseMapper;
-  private final JdbcTemplate jdbcTemplate;
+  private final CourseAccessService courseAccessService;
+  private final UserProfileClient userProfileClient;
 
   /** Enroll a user in a course. */
   @Transactional
@@ -51,41 +56,52 @@ public class EnrollmentService {
   public CourseMemberDto enrollUser(
       UUID courseId, EnrollUserRequest request, UUID enrolledBy, String requesterRole) {
     String targetRole = normalizeRole(request.getRoleInCourse());
+    if (!COURSE_ROLES.contains(targetRole)) {
+      throw new ValidationException("Invalid role in course: " + targetRole);
+    }
+
     log.info(
         "Enrolling user {} in course {} with role {}", request.getUserId(), courseId, targetRole);
 
     Course course = findCourseById(courseId);
-    enforceEnrollmentPermission(
-        courseId, request.getUserId(), targetRole, enrolledBy, requesterRole);
+    courseAccessService.requireCanEnroll(courseId, request.getUserId(), targetRole);
 
-    // Check if user is already enrolled
-    if (courseMemberRepository.existsByCourseIdAndUserId(courseId, request.getUserId())) {
-      throw new ValidationException("User is already enrolled in this course");
-    }
+    validateTargetGlobalRole(request.getUserId(), targetRole);
 
-    // Check capacity for students
-    if (ROLE_STUDENT.equals(targetRole)) {
-      if (!course.hasCapacity()) {
-        throw new ValidationException("Course has reached maximum capacity");
+    java.util.Optional<CourseMember> existingMemberOpt = courseMemberRepository.findByCourseIdAndUserId(courseId, request.getUserId());
+    CourseMember savedMember;
+    if (existingMemberOpt.isPresent()) {
+      CourseMember existingMember = existingMemberOpt.get();
+      existingMember.setRoleInCourse(targetRole);
+      existingMember.setAddedBy(enrolledBy);
+      existingMember.setEnrollmentStatus(ENROLLMENT_ACTIVE);
+      savedMember = courseMemberRepository.save(existingMember);
+      log.info("User {} course membership updated successfully in course {} to role {}", request.getUserId(), courseId, targetRole);
+    } else {
+      // Check capacity for students
+      if (ROLE_STUDENT.equals(targetRole) && !isAdmin(requesterRole)) {
+        if (!course.hasCapacity()) {
+          throw new ValidationException("Course has reached maximum capacity");
+        }
       }
+
+      // Check if course is published for student enrollment
+      if (ROLE_STUDENT.equals(targetRole) && !isAdmin(requesterRole) && !course.isActive()) {
+        throw new ValidationException("Cannot enroll in unpublished course");
+      }
+
+      CourseMember member =
+          CourseMember.builder()
+              .course(course)
+              .userId(request.getUserId())
+              .roleInCourse(targetRole)
+              .addedBy(enrolledBy)
+              .enrollmentStatus(ENROLLMENT_ACTIVE)
+              .build();
+
+      savedMember = courseMemberRepository.save(member);
+      log.info("User {} enrolled successfully in course {}", request.getUserId(), courseId);
     }
-
-    // Check if course is published for student enrollment
-    if (ROLE_STUDENT.equals(targetRole) && !course.isActive()) {
-      throw new ValidationException("Cannot enroll in unpublished course");
-    }
-
-    CourseMember member =
-        CourseMember.builder()
-            .course(course)
-            .userId(request.getUserId())
-            .roleInCourse(targetRole)
-            .addedBy(enrolledBy)
-            .enrollmentStatus(ENROLLMENT_ACTIVE)
-            .build();
-
-    CourseMember savedMember = courseMemberRepository.save(member);
-    log.info("User {} enrolled successfully in course {}", request.getUserId(), courseId);
 
     CourseMemberDto dto = courseMapper.toDto(savedMember);
     enrichWithUserInfo(List.of(dto));
@@ -105,12 +121,7 @@ public class EnrollmentService {
             .findByCourseIdAndUserId(courseId, userId)
             .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found"));
 
-    // Check permissions - user can unenroll themselves, or instructors can unenroll others
-    if (!userId.equals(requestedBy)
-        && !courseMemberRepository.canUserManageCourse(courseId, requestedBy)
-        && !isSuperAdmin(requesterRole)) {
-      throw new ValidationException("You don't have permission to unenroll this user");
-    }
+    courseAccessService.requireCanUnenroll(courseId, userId);
 
     // Don't allow unenrolling course owner
     if (member.getCourse().getOwnerId().equals(userId)) {
@@ -171,7 +182,7 @@ public class EnrollmentService {
 
     // Verify course exists
     findCourseById(courseId);
-    enforceViewMembersPermission(courseId, requesterId, requesterRole);
+    courseAccessService.requireCanViewMembers(courseId);
 
     Page<CourseMember> memberPage = courseMemberRepository.findByCourseId(courseId, pageable);
     return mapToPageResponse(memberPage);
@@ -185,7 +196,7 @@ public class EnrollmentService {
 
     // Verify course exists
     findCourseById(courseId);
-    enforceViewMembersPermission(courseId, requesterId, requesterRole);
+    courseAccessService.requireCanViewMembers(courseId);
 
     Page<CourseMember> memberPage =
         courseMemberRepository.findByCourseIdAndRoleInCourse(courseId, normalizedRole, pageable);
@@ -218,11 +229,7 @@ public class EnrollmentService {
   public CourseMemberDto getEnrollment(
       UUID courseId, UUID userId, UUID requesterId, String requesterRole) {
     log.debug("Fetching enrollment for user {} in course {}", userId, courseId);
-    if (!userId.equals(requesterId)
-        && !courseMemberRepository.canUserManageCourse(courseId, requesterId)
-        && !isSuperAdmin(requesterRole)) {
-      throw new ValidationException("You don't have permission to view this enrollment");
-    }
+    courseAccessService.requireCanViewEnrollment(courseId, userId);
 
     CourseMember member =
         courseMemberRepository
@@ -235,7 +242,7 @@ public class EnrollmentService {
   }
 
   public List<UUID> getStudentIdsByCourseId(UUID courseId, UUID requesterId, String requesterRole) {
-    enforceViewMembersPermission(courseId, requesterId, requesterRole);
+    courseAccessService.requireCanViewMembers(courseId);
     return courseMemberRepository.findStudentIdsByCourseId(courseId);
   }
 
@@ -246,43 +253,40 @@ public class EnrollmentService {
         .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
   }
 
-  private void enforceEnrollmentPermission(
-      UUID courseId, UUID targetUserId, String targetRole, UUID requesterId, String requesterRole) {
-    boolean isSelfEnrollment = requesterId.equals(targetUserId);
-    boolean isInstructor = courseMemberRepository.canUserManageCourse(courseId, requesterId);
-    boolean isAdmin = isSuperAdmin(requesterRole);
-
-    if (isAdmin || isInstructor) {
-      return;
-    }
-
-    if (!isSelfEnrollment) {
-      throw new ValidationException("Only instructors or admins can enroll other users");
-    }
-
-    if (!ROLE_STUDENT.equals(targetRole)) {
-      throw new ValidationException("Self-enrollment is only permitted for students");
-    }
-  }
-
-  private void enforceViewMembersPermission(UUID courseId, UUID requesterId, String requesterRole) {
-    if (isSuperAdmin(requesterRole)) {
-      return;
-    }
-    if (!courseMemberRepository.canUserManageCourse(courseId, requesterId)) {
-      throw new ValidationException("You don't have permission to view course members");
-    }
-  }
-
-  private boolean isSuperAdmin(String requesterRole) {
-    return ROLE_SUPERADMIN.equalsIgnoreCase(requesterRole);
-  }
-
   private String normalizeRole(String role) {
     if (role == null || role.isBlank()) {
       throw new ValidationException("Role is required");
     }
     return role.trim().toUpperCase();
+  }
+
+  private boolean isAdmin(String role) {
+    return ROLE_ADMIN.equalsIgnoreCase(role);
+  }
+
+  private void validateTargetGlobalRole(UUID targetUserId, String targetCourseRole) {
+    UserProfileClient.UserProfile profile = userProfileClient.findProfile(targetUserId)
+        .orElseThrow(() -> new ValidationException("Failed to verify user profile for enrollment"));
+    String globalRole = normalizeGlobalRole(profile.role());
+
+    if ("OWNER".equals(targetCourseRole) || "TEACHER".equals(targetCourseRole)) {
+      if (!ROLE_TEACHER.equals(globalRole) && !ROLE_ADMIN.equals(globalRole)) {
+        throw new ValidationException("User must have global TEACHER or ADMIN role to be assigned course OWNER or TEACHER");
+      }
+      return;
+    }
+
+    if (!ROLE_ADMIN.equals(globalRole) && !ROLE_TEACHER.equals(globalRole) && !"USER".equals(globalRole)) {
+      throw new ValidationException("Unsupported global role for course membership");
+    }
+  }
+
+  private String normalizeGlobalRole(String role) {
+    if (role == null || role.isBlank()) {
+      return "USER";
+    }
+    String normalized = role.trim().toUpperCase();
+    return normalized;
   }
 
   private PageResponse<CourseMemberDto> mapToPageResponse(Page<CourseMember> page) {
@@ -298,60 +302,22 @@ public class EnrollmentService {
         .build();
   }
 
-  /**
-   * Batch-fetches user display names and emails from the users table
-   * and enriches the member DTOs.
-   */
   private void enrichWithUserInfo(List<CourseMemberDto> dtos) {
     if (dtos == null || dtos.isEmpty()) {
       return;
     }
 
-    Set<UUID> userIds = dtos.stream()
-        .map(CourseMemberDto::getUserId)
-        .collect(Collectors.toSet());
-
-    Map<UUID, String[]> userInfoMap = fetchUserInfo(userIds);
-
     for (CourseMemberDto dto : dtos) {
-      String[] info = userInfoMap.get(dto.getUserId());
-      if (info != null) {
-        dto.setUserName(info[0]);
-        dto.setUserEmail(info[1]);
-      } else {
-        dto.setUserName("Unknown User");
-        dto.setUserEmail("");
-      }
-    }
-  }
-
-  /**
-   * Queries the shared users table to get display names and emails for a set of user IDs.
-   */
-  private Map<UUID, String[]> fetchUserInfo(Set<UUID> userIds) {
-    if (userIds.isEmpty()) {
-      return Map.of();
-    }
-
-    try {
-      String placeholders = userIds.stream().map(id -> "?").collect(Collectors.joining(","));
-      String sql = "SELECT id, COALESCE(display_name, CONCAT(first_name, ' ', last_name), email) as name, email "
-          + "FROM users WHERE id IN (" + placeholders + ")";
-
-      Object[] params = userIds.toArray();
-
-      Map<UUID, String[]> result = new HashMap<>();
-      jdbcTemplate.query(sql, rs -> {
-        UUID id = UUID.fromString(rs.getString("id"));
-        String name = rs.getString("name");
-        String email = rs.getString("email");
-        result.put(id, new String[]{name, email});
-      }, params);
-
-      return result;
-    } catch (Exception e) {
-      log.warn("Failed to fetch user info from users table: {}", e.getMessage());
-      return Map.of();
+      userProfileClient.findProfile(dto.getUserId()).ifPresentOrElse(
+          profile -> {
+            dto.setUserName(profile.displayName());
+            dto.setUserEmail(profile.email());
+          },
+          () -> {
+            dto.setUserName("Unknown User");
+            dto.setUserEmail("");
+          }
+      );
     }
   }
 }

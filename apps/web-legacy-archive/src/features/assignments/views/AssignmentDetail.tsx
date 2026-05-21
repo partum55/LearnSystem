@@ -1,0 +1,763 @@
+"use client";
+import React, { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
+import { useAuthStore } from '@/store/authStore';
+import api from '@/api/client';
+import { Layout } from '@/components';
+import { CourseLayout } from '@/features/courses/components/CourseLayout';
+import { Card, CardHeader, CardBody } from '@/components';
+import { Button } from '@/components';
+import { Loading } from '@/components';
+import { Breadcrumbs } from '@/components/common/Breadcrumbs';
+import { parseCanonicalDocument } from '@/features/editor-core';
+import { DocumentRenderer } from '@/features/editor-core/DocumentRenderer';
+import AssignmentSubmissionPanel from '../components/submission/AssignmentSubmissionPanel';
+import SeminarAttendancePanel from '@/features/courses/components/seminar/SeminarAttendancePanel';
+import { ExplainButton } from '@/features/ai/components/ExplainButton';
+import { peerReviewsApi, PeerReview } from '@/features/assignments/api/peerReviews';
+import { PeerReviewSubmitModal } from '../components/peerReview/PeerReviewSubmitModal';
+import FormSubmissionRenderer from './submission/FormSubmissionRenderer';
+import VplTaskTab from '@/features/virtual-lab/components/vpl/VplTaskTab';
+import VplEditorTab from '@/features/virtual-lab/components/vpl/VplEditorTab';
+import VplResultsTab from '@/features/virtual-lab/components/vpl/VplResultsTab';
+import { CodeExecutionResult } from '@/features/virtual-lab/api/virtualLab';
+import { canonicalAssignmentsApi, canonicalSubmissionsApi } from '@/features/assignments/api/assignments.api';
+
+interface Assignment {
+  id: string;
+  course: string;
+  title: string;
+  description: string;
+  description_format: string;
+  instructions: string;
+  instructions_format: string;
+  due_date: string;
+  available_from: string | null;
+  max_points: number;
+  allow_late_submission: boolean;
+  late_penalty_percent: number;
+  submission_types: string[];
+  submissions_count: number;
+  graded_count: number;
+  assignment_type: string;
+  programming_language?: string;
+  starter_code?: string;
+  auto_grading_enabled?: boolean;
+  formFields?: Array<{ fieldId: string; fieldType: string; label: string; required: boolean; placeholder: string; options: string }>;
+  repeatableGroups?: Array<{ groupId: string; label: string; minItems: number; maxItems: number; fields: Array<{ fieldId: string; fieldType: string; label: string; required: boolean; placeholder: string; options: string }> }>;
+}
+
+interface Submission {
+  id: string;
+  user: string;
+  student_name: string;
+  student_email: string;
+  status: string;
+  grade: number | null;
+  submitted_at: string | null;
+  is_late: boolean;
+}
+
+const mapCanonicalTypeToLegacy = (type: string): string => {
+  switch (type) {
+    case 'file_submission':
+      return 'FILE_UPLOAD';
+    case 'rte_submission':
+      return 'TEXT';
+    case 'form':
+      return 'FORM';
+    case 'vpl':
+      return 'VIRTUAL_LAB';
+    case 'quiz':
+      return 'QUIZ';
+    case 'seminar':
+      return 'SEMINAR';
+    default:
+      return type.toUpperCase();
+  }
+};
+
+export const AssignmentDetail: React.FC = () => {
+  const { t } = useTranslation();
+  const params = useParams();
+  const assignmentId = String(params.assignmentId || params.id || '');
+  const courseId = params.courseId ? String(params.courseId) : undefined;
+  const moduleId = params.moduleId ? String(params.moduleId) : undefined;
+  const router = useRouter();
+  const { user } = useAuthStore();
+  const [assignment, setAssignment] = useState<Assignment | null>(null);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'details' | 'submissions'>('details');
+  const [courseName, setCourseName] = useState<string>('');
+  const [moduleName, setModuleName] = useState<string>('');
+  const [peerReviews, setPeerReviews] = useState<PeerReview[]>([]);
+  const [peerReviewLoading, setPeerReviewLoading] = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedReview, setSelectedReview] = useState<PeerReview | null>(null);
+  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [vplTab, setVplTab] = useState<'task' | 'editor' | 'results'>('task');
+  const [vplCode, setVplCode] = useState('');
+  const [vplTestResult, setVplTestResult] = useState<CodeExecutionResult | null>(null);
+
+  const isStudent = user?.role === 'STUDENT';
+  const isTeacher = user?.role === 'TEACHER' || user?.role === 'SUPERADMIN' || user?.role === 'TA';
+
+  // Build base path for assignment navigation
+  const assignmentBasePath = courseId && moduleId
+    ? `/courses/${courseId}/modules/${moduleId}/assignments/${assignmentId}`
+    : `/assignments/${assignmentId}`;
+
+  useEffect(() => {
+    fetchAssignment();
+    fetchSubmissions();
+    void fetchPeerReviews();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignmentId]);
+
+  // Fetch course and module names for breadcrumb context
+  useEffect(() => {
+    if (courseId) {
+      api.get<Record<string, unknown>>(`/v1/courses/${courseId}/overview`)
+        .then(res => {
+          const d = res.data;
+          setCourseName(String(d.titleEn || d.titleUk || d.title || d.code || ''));
+        })
+        .catch(() => { /* ignore */ });
+    }
+    if (courseId && moduleId) {
+      api.get<{ items?: Record<string, unknown>[] }>(`/v1/courses/${courseId}/modules`)
+        .then(res => {
+          const d = (res.data.items || []).find((item) => String(item.id) === String(moduleId)) || {};
+          setModuleName(String(d.title || ''));
+        })
+        .catch(() => { /* ignore */ });
+    }
+  }, [courseId, moduleId]);
+
+  const fetchAssignment = async () => {
+    try {
+      if (!assignmentId) return;
+      const data = await canonicalAssignmentsApi.get(String(assignmentId));
+      const settings = (data.settings || {}) as Record<string, unknown>;
+      setAssignment({
+        id: String(data.id || ''),
+        course: String(data.courseId || ''),
+        title: String(data.title || ''),
+        description: String(data.description || ''),
+        description_format: 'MARKDOWN',
+        instructions: String(data.instructions || ''),
+        instructions_format: 'MARKDOWN',
+        due_date: String(data.dueDate || ''),
+        available_from: null,
+        max_points: Number(data.maxPoints || 0),
+        allow_late_submission: false,
+        late_penalty_percent: 0,
+        submission_types: [data.type],
+        submissions_count: 0,
+        graded_count: 0,
+        assignment_type: mapCanonicalTypeToLegacy(data.type),
+        programming_language: String(settings.language || ''),
+        starter_code: settings.templateCode as string | undefined,
+        auto_grading_enabled: Boolean(settings.gradingMode),
+        formFields: Array.isArray(settings.fields) ? settings.fields as Assignment['formFields'] : undefined,
+      });
+    } catch (error) {
+      console.error('Failed to fetch assignment:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSubmissions = async () => {
+    try {
+      if (!assignmentId) return;
+      const response = await canonicalSubmissionsApi.listForAssignment(String(assignmentId), 1, 100);
+      setSubmissions(response.items.map((submission) => ({
+        id: submission.id,
+        user: submission.studentId,
+        student_name: submission.studentId,
+        student_email: '',
+        status: submission.status,
+        grade: null,
+        submitted_at: submission.submittedAt || null,
+        is_late: false,
+      })));
+    } catch (error) {
+      console.error('Failed to fetch submissions:', error);
+    }
+  };
+
+  const fetchPeerReviews = async () => {
+    if (!assignmentId) return;
+    setPeerReviewLoading(true);
+    try {
+      const reviews = await peerReviewsApi.getAssignmentReviews(assignmentId);
+      setPeerReviews(reviews);
+    } catch (error) {
+      console.error('Failed to fetch peer reviews:', error);
+    } finally {
+      setPeerReviewLoading(false);
+    }
+  };
+
+  const assignPeerReviews = async () => {
+    const submitterUserIds = Array.from(
+      new Set(
+        submissions
+          .map((submission) => Number(submission.user))
+          .filter((value) => Number.isFinite(value))
+      )
+    );
+
+    if (submitterUserIds.length === 0) {
+      alert('No submissions available to assign peer reviews.');
+      return;
+    }
+
+    try {
+      setPeerReviewLoading(true);
+      await peerReviewsApi.assignReviewers({
+        assignmentId: assignmentId || '',
+        submitterUserIds,
+        reviewsPerSubmission: 2,
+      });
+      await fetchPeerReviews();
+      alert('Peer reviews assigned.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to assign peer reviews';
+      alert(message);
+    } finally {
+      setPeerReviewLoading(false);
+    }
+  };
+
+  const openReviewModal = (review: PeerReview) => {
+    setSelectedReview(review);
+    setReviewModalOpen(true);
+  };
+
+  const handleReviewSubmit = async (reviewId: number, score: number, feedback?: string) => {
+    await peerReviewsApi.submitReview({
+      peerReviewId: reviewId,
+      overallScore: score,
+      overallFeedback: feedback,
+    });
+    await fetchPeerReviews();
+  };
+
+  const handleFormSubmit = async (formData: Record<string, unknown>) => {
+    if (!assignmentId) return;
+    setFormSubmitting(true);
+    try {
+      await canonicalSubmissionsApi.submitForm(String(assignmentId), { answers: formData });
+    } catch (error) {
+      console.error('Failed to submit form:', error);
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
+
+  const openVirtualLab = () => {
+    router.push(`/virtual-lab/${assignmentId}`);
+  };
+
+  const scrollToSubmissionPanel = () => {
+    const panel = document.getElementById('assignment-submission-panel');
+    if (panel) {
+      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const openSpeedGrader = () => {
+    router.push(`/speed-grader?assignmentId=${assignmentId}`);
+  };
+
+  const openPrintView = () => {
+    router.push(`${assignmentBasePath}/print`);
+  };
+
+  const getStatusBadge = (status: string) => {
+    const styles: Record<string, { className: string; label: string }> = {
+      'DRAFT': { className: 'badge', label: 'Draft' },
+      'SUBMITTED': { className: 'badge', label: 'Submitted' },
+      'IN_REVIEW': { className: 'badge', label: 'In review' },
+      'GRADED_DRAFT': { className: 'badge', label: 'Draft graded' },
+      'GRADED': { className: 'badge badge-success', label: 'Graded' },
+      'GRADED_PUBLISHED': { className: 'badge badge-success', label: 'Published' },
+      'RETURNED': { className: 'badge', label: 'Returned' },
+    };
+
+    const badge = styles[status] || styles['DRAFT'];
+    return <span className={badge.className}>{badge.label}</span>;
+  };
+
+  if (loading) {
+    return <Loading />;
+  }
+
+  if (!assignment) {
+    return (
+      <Layout>
+        <div className="p-4 sm:p-6 lg:p-8">
+          <div className="max-w-7xl mx-auto text-center py-16">
+            <p className="text-lg" style={{ color: 'var(--text-muted)' }}>
+              {t('assignment.not_found', 'Assignment not found')}
+            </p>
+            {courseId && (
+              <Button
+                variant="secondary"
+                className="mt-4"
+                onClick={() => router.push(`/courses/${courseId}`)}
+              >
+                {t('courses.backToCourse', 'Back to Course')}
+              </Button>
+            )}
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  const myPeerReviews = peerReviews.filter((review) => String(review.reviewerUserId) === String(user?.id));
+
+  const renderContent = (content: string, format: string) => {
+    if (format === 'RICH') {
+      return <DocumentRenderer document={parseCanonicalDocument(content)} />;
+    }
+    return <p style={{ color: 'var(--text-muted)' }}>{content}</p>;
+  };
+
+  const content = (
+    <>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
+          {courseId && (
+            <Breadcrumbs
+              className="mb-6"
+              items={[
+                { label: t('nav.courses', 'Courses'), to: '/courses' },
+                { label: courseName || t('courses.title', 'Course'), to: `/courses/${courseId}` },
+                ...(moduleId && moduleName ? [{ label: moduleName, to: `/courses/${courseId}` }] : []),
+                { label: assignment.title },
+              ]}
+            />
+          )}
+          {/* Assignment Header */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1
+                  className="text-3xl font-bold"
+                  style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+                >
+                  {assignment.title}
+                </h1>
+                <p className="mt-2" style={{ color: 'var(--text-muted)' }}>
+                  {t('assignment.due')}: {new Date(assignment.due_date).toLocaleString()}
+                </p>
+              </div>
+
+              <div className="flex gap-3 items-start">
+                <Button onClick={openPrintView} variant="secondary">
+                  {t('assignment.printFriendly', 'Print view')}
+                </Button>
+                {isStudent && assignment.assignment_type !== 'VIRTUAL_LAB' && (
+                  <>
+                    {assignment.assignment_type === 'SEMINAR' ? (
+                      <span className="badge">
+                        {t('assignment.seminar_no_submission', 'Seminar task: no submission required')}
+                      </span>
+                    ) : (
+                      <Button onClick={scrollToSubmissionPanel}>
+                        {t('submission.open_submission', 'Open Submission')}
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Statistics */}
+          <div className={`grid grid-cols-1 ${isTeacher ? 'md:grid-cols-4' : ''} gap-6 mb-8`}>
+            <Card>
+              <CardBody>
+                <div className="text-center">
+                  <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                    {assignment.max_points}
+                  </p>
+                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+                    Points
+                  </p>
+                </div>
+              </CardBody>
+            </Card>
+
+            {isTeacher && (
+              <>
+                <Card>
+                  <CardBody>
+                    <div className="text-center">
+                      <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                        {assignment.submissions_count}
+                      </p>
+                      <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+                        Submissions
+                      </p>
+                    </div>
+                  </CardBody>
+                </Card>
+
+                <Card>
+                  <CardBody>
+                    <div className="text-center">
+                      <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                        {assignment.graded_count}
+                      </p>
+                      <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+                        Graded
+                      </p>
+                    </div>
+                  </CardBody>
+                </Card>
+
+                <Card>
+                  <CardBody>
+                    <div className="text-center">
+                      <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                        {assignment.submissions_count - assignment.graded_count}
+                      </p>
+                      <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+                        To Grade
+                      </p>
+                    </div>
+                  </CardBody>
+                </Card>
+              </>
+            )}
+          </div>
+
+          {/* VPL 3-tab layout for students */}
+          {isStudent && assignment.assignment_type === 'VIRTUAL_LAB' ? (
+            <>
+              <div className="mb-0" style={{ borderBottom: '1px solid var(--border-default)' }}>
+                <nav className="-mb-px flex space-x-0">
+                  {(['task', 'editor', 'results'] as const).map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setVplTab(tab)}
+                      className="py-4 px-5 border-b-2 font-medium text-sm transition-colors capitalize"
+                      style={vplTab === tab
+                        ? { borderColor: 'var(--text-primary)', color: 'var(--text-primary)' }
+                        : { borderColor: 'transparent', color: 'var(--text-muted)' }
+                      }
+                    >
+                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  ))}
+                </nav>
+              </div>
+
+              {vplTab === 'task' && <VplTaskTab assignment={assignment} />}
+              {vplTab === 'editor' && (
+                <VplEditorTab
+                  assignment={assignment}
+                  code={vplCode}
+                  onCodeChange={setVplCode}
+                  onTestResult={setVplTestResult}
+                  onViewResults={() => setVplTab('results')}
+                />
+              )}
+              {vplTab === 'results' && (
+                <VplResultsTab result={vplTestResult} assignment={assignment} />
+              )}
+            </>
+          ) : (
+            <>
+          {/* Standard tabs */}
+          <div className="mb-6" style={{ borderBottom: '1px solid var(--border-default)' }}>
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('details')}
+                className="py-4 px-1 border-b-2 font-medium text-sm transition-colors"
+                style={activeTab === 'details'
+                  ? { borderColor: 'var(--text-primary)', color: 'var(--text-primary)' }
+                  : { borderColor: 'transparent', color: 'var(--text-muted)' }
+                }
+              >
+                {t('assignment.tabs.basic')}
+              </button>
+              {isTeacher && (
+                <button
+                  onClick={() => setActiveTab('submissions')}
+                  className="py-4 px-1 border-b-2 font-medium text-sm transition-colors"
+                  style={activeTab === 'submissions'
+                    ? { borderColor: 'var(--text-primary)', color: 'var(--text-primary)' }
+                    : { borderColor: 'transparent', color: 'var(--text-muted)' }
+                  }
+                >
+                  {t('submission.review_tab', 'Submission Review')} ({assignment.submissions_count})
+                </button>
+              )}
+            </nav>
+          </div>
+
+          {/* Details Tab */}
+          {activeTab === 'details' && (
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <h2
+                    className="text-xl font-semibold"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    {t('assignment.description')}
+                  </h2>
+                </CardHeader>
+                <CardBody>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Description</h3>
+                      {renderContent(assignment.description, assignment.description_format)}
+                    </div>
+
+                    {assignment.instructions && (
+                      <div>
+                        <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Instructions</h3>
+                        {renderContent(assignment.instructions, assignment.instructions_format)}
+                      </div>
+                    )}
+
+                    {/* AI Explain Button */}
+                    <ExplainButton
+                      contentType="ASSIGNMENT"
+                      contentText={`${assignment.description || ''}\n\n${assignment.instructions || ''}`}
+                    />
+
+                    <div>
+                      <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Submission Types</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {assignment.submission_types.map((type) => (
+                          <span key={type} className="badge">
+                            {type}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {assignment.allow_late_submission && (
+                      <div>
+                        <h3 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Late Policy</h3>
+                        <p style={{ color: 'var(--text-muted)' }}>
+                          {assignment.late_penalty_percent}% penalty per day
+                        </p>
+                      </div>
+                    )}
+
+                  </div>
+                </CardBody>
+              </Card>
+
+              {isStudent && (
+                <Card>
+                  <CardHeader>
+                    <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+                      Peer Reviews Assigned to You
+                    </h2>
+                  </CardHeader>
+                  <CardBody>
+                    {peerReviewLoading ? (
+                      <p style={{ color: 'var(--text-muted)' }}>Loading peer reviews...</p>
+                    ) : myPeerReviews.length === 0 ? (
+                      <p style={{ color: 'var(--text-muted)' }}>No assigned peer reviews yet.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {myPeerReviews.map((review) => (
+                          <div key={review.id} className="rounded-md p-3" style={{ background: 'var(--bg-base)' }}>
+                            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                              Review for {review.revieweeName || `User ${review.revieweeUserId}`}
+                            </p>
+                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                              Status: {review.status}
+                            </p>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="mt-2"
+                              onClick={() => openReviewModal(review)}
+                            >
+                              {t('peerReview.submitReview', 'Submit Review')}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardBody>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* Seminar Attendance Tab - For Teachers on SEMINAR assignments */}
+          {activeTab === 'submissions' && isTeacher && assignment.assignment_type === 'SEMINAR' && (
+            <SeminarAttendancePanel
+              assignmentId={assignment.id}
+              courseId={assignment.course}
+            />
+          )}
+
+          {/* Submissions Tab - Only for Teachers (non-seminar) */}
+          {activeTab === 'submissions' && isTeacher && assignment.assignment_type !== 'SEMINAR' && (
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <h2
+                    className="text-xl font-semibold"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    {t('submission.review_tab', 'Submission Review')}
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    <Button variant="secondary" onClick={() => void assignPeerReviews()} disabled={peerReviewLoading}>
+                      {peerReviewLoading ? 'Assigning…' : 'Assign Peer Reviews'}
+                    </Button>
+                    <Button onClick={openSpeedGrader}>
+                      {t('submission.open_reviewer', 'Open Reviewer')}
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardBody>
+                <div className="mb-4 p-3 rounded-lg" style={{ background: 'var(--bg-base)' }}>
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    Peer reviews: {peerReviews.length}
+                  </p>
+                </div>
+                {submissions.length === 0 ? (
+                  <p className="text-center py-12" style={{ color: 'var(--text-muted)' }}>
+                    No submissions yet
+                  </p>
+                ) : (
+                  <div className="table-container">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Student</th>
+                          <th>Status</th>
+                          <th>Submitted</th>
+                          <th>Grade</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {submissions.map((submission) => (
+                          <tr key={submission.id}>
+                            <td>
+                              <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                                {submission.student_name}
+                              </div>
+                              <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                                {submission.student_email}
+                              </div>
+                            </td>
+                            <td>
+                              <div className="flex items-center space-x-2">
+                                {getStatusBadge(submission.status)}
+                                {submission.is_late && (
+                                  <span className="badge badge-error">Late</span>
+                                )}
+                              </div>
+                            </td>
+                            <td>
+                              {submission.submitted_at
+                                ? new Date(submission.submitted_at).toLocaleString()
+                                : 'Not submitted'}
+                            </td>
+                            <td style={{ color: 'var(--text-primary)' }}>
+                              {submission.grade !== null
+                                ? `${submission.grade} / ${assignment.max_points}`
+                                : '-'}
+                            </td>
+                            <td>
+                              <button
+                                onClick={() => router.push(`/speed-grader?assignmentId=${assignmentId}&submission=${submission.id}`)}
+                                className="text-sm font-medium transition-colors"
+                                style={{ color: 'var(--text-secondary)' }}
+                                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
+                              >
+                                Grade
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardBody>
+            </Card>
+          )}
+
+          {activeTab === 'details' && isStudent && assignment.assignment_type === 'SEMINAR' && (
+            <Card>
+              <CardBody>
+                <p style={{ color: 'var(--text-secondary)' }}>
+                  {t(
+                    'assignment.seminar_grade_info',
+                    'This is a seminar task. No student submission is needed; your teacher will assign a grade in the gradebook.'
+                  )}
+                </p>
+              </CardBody>
+            </Card>
+          )}
+
+          {activeTab === 'details' && isStudent && assignment.assignment_type === 'FORM' && assignment.formFields && (
+            <Card>
+              <CardHeader>
+                <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  {t('submission.submit_assignment', 'Submit Assignment')}
+                </h2>
+              </CardHeader>
+              <CardBody>
+                <FormSubmissionRenderer
+                  fields={assignment.formFields}
+                  groups={assignment.repeatableGroups || []}
+                  onSubmit={(data) => void handleFormSubmit(data)}
+                  submitting={formSubmitting}
+                />
+              </CardBody>
+            </Card>
+          )}
+
+          {activeTab === 'details' && isStudent && assignment.assignment_type !== 'SEMINAR' && assignment.assignment_type !== 'FORM' && (
+            <AssignmentSubmissionPanel
+              assignmentId={assignment.id}
+              assignmentType={assignment.assignment_type}
+              programmingLanguage={assignment.programming_language}
+              maxPoints={assignment.max_points}
+              latePenaltyPercent={assignment.late_penalty_percent}
+              isVirtualLab={false}
+              onOpenVirtualLab={openVirtualLab}
+            />
+          )}
+            </>
+          )}
+        </div>
+      </div>
+
+      <PeerReviewSubmitModal
+        open={reviewModalOpen}
+        review={selectedReview}
+        onClose={() => { setReviewModalOpen(false); setSelectedReview(null); }}
+        onSubmit={handleReviewSubmit}
+      />
+    </>
+  );
+
+  return courseId ? <CourseLayout courseId={courseId}>{content}</CourseLayout> : <Layout>{content}</Layout>;
+};
+
+export default AssignmentDetail;

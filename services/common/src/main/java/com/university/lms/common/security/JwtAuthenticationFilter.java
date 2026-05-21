@@ -14,8 +14,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Locale;
 import java.util.UUID;
+import com.university.lms.common.domain.UserRole;
 
 /**
  * Base Supabase JWT authentication filter with audit logging.
@@ -130,10 +130,10 @@ public abstract class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private String resolveRole(String roleFromUser, String roleFromToken) {
         if (roleFromUser != null && !roleFromUser.isBlank()) {
-            return roleFromUser.trim().toUpperCase(Locale.ROOT);
+            return UserRole.fromValue(roleFromUser).name();
         }
         if (roleFromToken != null && !roleFromToken.isBlank()) {
-            return roleFromToken.trim().toUpperCase(Locale.ROOT);
+            return UserRole.fromValue(roleFromToken).name();
         }
         return null;
     }

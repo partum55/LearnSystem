@@ -1,5 +1,5 @@
-'use client';
-import VirtualLab from '@/features/virtual-lab/views/VirtualLab';
-export default function Page() {
-  return <VirtualLab />;
+import { PlaceholderPage } from '@/components/PlaceholderPage';
+
+export default function VirtualLabPage() {
+  return <PlaceholderPage title="Virtual lab" />;
 }

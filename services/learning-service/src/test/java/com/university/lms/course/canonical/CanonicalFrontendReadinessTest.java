@@ -38,6 +38,7 @@ import com.university.lms.course.quizzes.service.CanonicalQuizAttemptService;
 import com.university.lms.course.repository.CourseMemberRepository;
 import com.university.lms.course.repository.CourseRepository;
 import com.university.lms.course.repository.ModuleRepository;
+import com.university.lms.course.service.CourseService;
 import com.university.lms.course.submissions.dto.SubmissionRequest;
 import com.university.lms.gradebook.domain.GradeStatus;
 import com.university.lms.gradebook.domain.GradebookEntry;
@@ -73,6 +74,7 @@ class CanonicalFrontendReadinessTest {
   @Mock private QuizAttemptRepository quizAttemptRepository;
   @Mock private CourseAccessService accessService;
   @Mock private UserProfileClient userProfileClient;
+  @Mock private CourseService legacyCourseService;
 
   @Test
   void studentModulesHideUnavailableModulesAndHiddenAssignments() {
@@ -590,7 +592,7 @@ class CanonicalFrontendReadinessTest {
     when(submissionRepository.findByAssignmentIdIn(List.of())).thenReturn(List.of());
     when(gradebookEntryRepository.findAllByCourseId(courseId)).thenReturn(List.of());
     when(userProfileClient.findProfile(profiledStudent)).thenReturn(Optional.of(
-        new UserProfileClient.UserProfile(profiledStudent, "Ada Lovelace", "ada@example.test", "avatar.png")));
+        new UserProfileClient.UserProfile(profiledStudent, "Ada Lovelace", "ada@example.test", "avatar.png", "USER")));
     when(userProfileClient.findProfile(fallbackStudent)).thenReturn(Optional.empty());
 
     TeacherGradebookDto dto = gradebookService().teacherGradebook(courseId, teacherId);
@@ -610,7 +612,8 @@ class CanonicalFrontendReadinessTest {
         gradebookEntryRepository,
         learningContentService,
         assignmentMapper,
-        accessService);
+        accessService,
+        legacyCourseService);
   }
 
   private CanonicalAssignmentService assignmentService() {

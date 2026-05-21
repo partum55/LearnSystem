@@ -431,7 +431,7 @@ public class ModulePageService {
   }
 
   private boolean isSuperAdmin(String userRole) {
-    return "SUPERADMIN".equalsIgnoreCase(userRole);
+    return "ADMIN".equalsIgnoreCase(userRole);
   }
 
   private ModulePage findPageById(UUID pageId) {

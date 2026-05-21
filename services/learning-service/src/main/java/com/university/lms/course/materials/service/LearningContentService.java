@@ -46,7 +46,7 @@ public class LearningContentService {
   @Transactional(readOnly = true)
   public List<LearningItemDto> listModuleLearningItems(UUID courseId, UUID moduleId, UUID userId) {
     requireModuleInCourse(courseId, moduleId);
-    accessService.requireActiveMember(courseId, userId);
+    accessService.requireCourseAccess(courseId, userId);
     boolean canTeach = accessService.canTeach(courseId, userId);
     return learningItemRepository.findByModuleIdOrderByPositionAsc(moduleId).stream()
         .filter(item -> item.getStatus() != LearningItemStatus.ARCHIVED)
@@ -250,7 +250,7 @@ public class LearningContentService {
     LearningItem item = learningItemRepository.findById(itemId)
         .orElseThrow(() -> ApiException.notFound("Learning item"));
     UUID courseId = item.getModule().getCourse().getId();
-    accessService.requireActiveMember(courseId, userId);
+    accessService.requireCourseAccess(courseId, userId);
     if (item.getStatus() == LearningItemStatus.ARCHIVED) {
       throw ApiException.notFound("Learning item");
     }

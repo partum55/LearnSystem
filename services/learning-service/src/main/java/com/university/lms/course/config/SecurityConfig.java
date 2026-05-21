@@ -97,9 +97,9 @@ public class SecurityConfig {
                     .permitAll()
                     // Admin endpoints
                     .requestMatchers("/actuator/prometheus")
-                    .hasRole("SUPERADMIN")
+                    .hasRole("ADMIN")
                     .requestMatchers("/actuator/**")
-                    .hasRole("SUPERADMIN")
+                    .hasRole("ADMIN")
                     // Protected endpoints - require authentication
                     .anyRequest()
                     .authenticated())

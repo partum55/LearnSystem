@@ -1,21 +1,18 @@
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 import '../index.css';
-import { Providers } from '../components/Providers';
-import { SpeedInsights } from '@vercel/speed-insights/next';
-import { Analytics } from '@vercel/analytics/next';
+import { Providers } from '@/components/Providers';
 
 export const metadata: Metadata = {
-  title: 'Learning Management System',
-  description: 'Learning Management System frontend',
+  title: 'LearnSystem',
+  description: 'Canonical LearnSystem frontend',
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="uk">
-      <body className="antialiased">
+    <html lang="en">
+      <body>
         <Providers>{children}</Providers>
-        <SpeedInsights />
-        <Analytics />
       </body>
     </html>
   );

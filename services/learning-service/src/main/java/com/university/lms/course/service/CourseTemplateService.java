@@ -38,7 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class CourseTemplateService {
 
-  private static final String ROLE_SUPERADMIN = "SUPERADMIN";
+  private static final String ROLE_ADMIN = "ADMIN";
   private static final String ROLE_TEACHER = "TEACHER";
   private static final String ENROLLMENT_ACTIVE = "active";
 
@@ -303,7 +303,7 @@ public class CourseTemplateService {
   }
 
   private boolean canUserManageCourse(Course course, UUID userId, String userRole) {
-    if (ROLE_SUPERADMIN.equalsIgnoreCase(userRole)) {
+    if (ROLE_ADMIN.equalsIgnoreCase(userRole)) {
       return true;
     }
     if (course.getOwnerId().equals(userId)) {
