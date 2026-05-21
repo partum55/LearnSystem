@@ -25,6 +25,24 @@ export default function LoginPage() {
     router.push('/dashboard');
   };
 
+  const signInWithGoogle = async () => {
+    setSubmitting(true);
+    setError(null);
+    const supabase = getSupabaseBrowserClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    setSubmitting(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    // signInWithOAuth redirects the user, so we don't need to push
+  };
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
       <form onSubmit={submit} className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6">
@@ -54,6 +72,14 @@ export default function LoginPage() {
           {submitting ? 'Signing in...' : 'Sign in'}
         </button>
       </form>
+      <div className="mt-6 text-center">
+        <button
+          onClick={signInWithGoogle}
+          className="w-full rounded-md border border-slate-300 px-4 py-2 bg-white hover:bg-slate-50 flex items-center justify-center gap-2"
+        >
+          Sign in with Google
+        </button>
+      </div>
     </main>
   );
 }
