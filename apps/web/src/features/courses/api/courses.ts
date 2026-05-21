@@ -233,8 +233,7 @@ export interface CourseArchiveSnapshotResponse {
   payload: CourseArchivePayload;
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const normalizeModule = (raw: any): Module => ({
+const normalizeModule = (raw: Record<string, unknown>): Module => ({
   id: String(raw.id ?? ''),
   course: String(raw.courseId ?? raw.course ?? ''),
   title: String(raw.title ?? ''),
@@ -250,7 +249,7 @@ const normalizeModule = (raw: any): Module => ({
   assignments: Array.isArray(raw.assignments) ? raw.assignments.map(normalizeAssignment) : undefined,
 });
 
-const normalizeResource = (raw: any): Resource => ({
+const normalizeResource = (raw: Record<string, unknown>): Resource => ({
   id: String(raw.id ?? ''),
   module: String(raw.moduleId ?? raw.module ?? ''),
   topicId: raw.topicId ? String(raw.topicId) : undefined,
@@ -271,7 +270,7 @@ const normalizeResource = (raw: any): Resource => ({
   uploadedByName: raw.uploadedByName ?? undefined,
 });
 
-const normalizeAnnouncement = (raw: any): Announcement => ({
+const normalizeAnnouncement = (raw: Record<string, unknown>): Announcement => ({
   id: String(raw.id ?? ''),
   courseId: String(raw.courseId ?? raw.course ?? ''),
   title: String(raw.title ?? ''),
@@ -283,7 +282,7 @@ const normalizeAnnouncement = (raw: any): Announcement => ({
   updatedAt: raw.updatedAt ?? '',
 });
 
-const normalizeCourse = (raw: any): Course => {
+const normalizeCourse = (raw: Record<string, unknown>): Course => {
   const titleUk = raw.titleUk ?? undefined;
   const titleEn = raw.titleEn ?? undefined;
   const descriptionUk = raw.descriptionUk ?? undefined;
@@ -321,7 +320,7 @@ const normalizeCourse = (raw: any): Course => {
   };
 };
 
-const normalizeTopic = (raw: any): Topic => ({
+const normalizeTopic = (raw: Record<string, unknown>): Topic => ({
   id: String(raw.id ?? ''),
   moduleId: String(raw.moduleId ?? ''),
   title: String(raw.title ?? ''),
@@ -331,7 +330,7 @@ const normalizeTopic = (raw: any): Topic => ({
   updatedAt: raw.updatedAt ?? '',
 });
 
-const normalizeAssignment = (raw: any): Assignment => ({
+const normalizeAssignment = (raw: Record<string, unknown>): Assignment => ({
   ...raw,
   id: String(raw.id ?? ''),
   courseId: String(raw.courseId ?? ''),
