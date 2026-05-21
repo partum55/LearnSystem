@@ -8,9 +8,16 @@
 # Run locally with ./scripts/dev.sh instead.
 
 api.learnsystem.app {
-    reverse_proxy gateway:8080
-
     encode zstd gzip
+
+    handle /api/v1/actuator/health {
+        rewrite * /actuator/health
+        reverse_proxy gateway:8080
+    }
+
+    handle {
+        reverse_proxy gateway:8080
+    }
 
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
@@ -23,3 +30,4 @@ api.learnsystem.app {
         output stdout
     }
 }
+

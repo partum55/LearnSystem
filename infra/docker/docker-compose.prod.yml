@@ -99,7 +99,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8081/api/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -138,7 +138,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8089/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8089/api/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -157,6 +157,12 @@ services:
       - "8080"
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - SERVER_PORT=8080
       - USER_SERVICE_URL=http://user-service:8081
       - LEARNING_SERVICE_URL=http://learning-service:8089
