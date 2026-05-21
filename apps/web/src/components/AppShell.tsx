@@ -8,8 +8,8 @@ import { useCurrentUser } from '@/features/users/hooks/useUserQueries';
 const baseNavItems = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/courses', label: 'Courses' },
-  { href: '/assignments', label: 'Assignments' },
-  { href: '/grades', label: 'Grades' },
+  { href: '/gradebook', label: 'Gradebook' },
+  { href: '/profile', label: 'Profile' },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -18,9 +18,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const globalRole = currentUser?.role ?? currentUser?.globalRole;
   const navItems = [
     ...baseNavItems,
-    ...(globalRole === 'ADMIN' || globalRole === 'TEACHER'
-      ? [{ href: '/gradebook', label: 'Teacher Gradebook' }]
-      : []),
     ...(globalRole === 'ADMIN' ? [{ href: '/admin', label: 'Admin' }] : []),
   ];
 

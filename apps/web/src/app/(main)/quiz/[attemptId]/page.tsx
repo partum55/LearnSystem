@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import { QuizAttemptPage } from '@/features/quiz-attempts/components/QuizAttemptPage';
 
-export default function QuizAttemptReviewPage() {
+export default function QuizAttemptActivePage() {
   const params = useParams<{ attemptId: string }>();
   const attemptId = params.attemptId;
 

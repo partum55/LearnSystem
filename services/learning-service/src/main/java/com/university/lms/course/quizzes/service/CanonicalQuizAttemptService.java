@@ -9,6 +9,8 @@ import com.university.lms.course.assessment.repository.QuizRepository;
 import com.university.lms.course.common.error.ApiException;
 import com.university.lms.course.common.security.CourseAccessService;
 import com.university.lms.course.gradebook.service.CanonicalGradebookService;
+import com.university.lms.course.quizzes.dto.QuizAttemptActiveDto;
+import com.university.lms.course.quizzes.dto.QuizQuestionActiveDto;
 import com.university.lms.course.quizzes.dto.QuizAttemptReviewDto;
 import com.university.lms.course.quizzes.dto.QuizAttemptStartDto;
 import com.university.lms.course.quizzes.dto.QuizAttemptSubmitRequest;
@@ -73,6 +75,70 @@ public class CanonicalQuizAttemptService {
         Boolean.TRUE.equals(quiz.getTimerEnabled()) ? quiz.getTimeLimit() : null);
   }
 
+  @Transactional(readOnly = true)
+  public QuizAttemptActiveDto getActiveAttempt(UUID attemptId, UUID userId) {
+    QuizAttempt attempt = quizAttemptRepository.findById(attemptId)
+        .orElseThrow(() -> ApiException.notFound("Quiz attempt"));
+    Assignment assignment = assignmentRepository.findFirstByQuizId(attempt.getQuiz().getId())
+        .orElseThrow(() -> ApiException.notFound("Quiz assignment"));
+    
+    boolean teacher = accessService.canTeach(assignment.getCourseId(), userId);
+    if (!teacher && !attempt.getUserId().equals(userId)) {
+      throw ApiException.forbidden("You cannot access another user's quiz attempt");
+    }
+    accessService.requireCourseAccess(assignment.getCourseId(), userId);
+
+    Quiz quiz = attempt.getQuiz();
+    
+    Long remainingSeconds = null;
+    if (attempt.getStartedAt() != null && Boolean.TRUE.equals(quiz.getTimerEnabled()) && quiz.getTimeLimit() != null && quiz.getTimeLimit() > 0) {
+      LocalDateTime expiresAt = attempt.getStartedAt().plusMinutes(quiz.getTimeLimit());
+      remainingSeconds = java.time.Duration.between(LocalDateTime.now(), expiresAt).getSeconds();
+      if (remainingSeconds < 0) {
+        remainingSeconds = 0L;
+      }
+    }
+
+    List<QuizQuestionActiveDto> questions = quiz.getQuizQuestions().stream()
+        .map(qq -> {
+          var question = qq.getQuestion();
+          if (question == null || Boolean.TRUE.equals(question.getIsArchived())) {
+            return null;
+          }
+          
+          Object studentAnswer = attempt.getAnswers() != null ? attempt.getAnswers().get(question.getId().toString()) : null;
+          if (studentAnswer == null && attempt.getAnswers() != null) {
+            studentAnswer = attempt.getAnswers().get(qq.getId().toString());
+          }
+          
+          return new QuizQuestionActiveDto(
+              question.getId(),
+              question.getQuestionType(),
+              qq.getPosition() != null ? qq.getPosition() : 0,
+              question.getStem(),
+              question.getStem(),
+              qq.getEffectivePoints(),
+              question.getOptions() != null ? new HashMap<>(question.getOptions()) : Map.of(),
+              studentAnswer
+          );
+        })
+        .filter(Objects::nonNull)
+        .sorted(java.util.Comparator.comparingInt(QuizQuestionActiveDto::order))
+        .toList();
+
+    return new QuizAttemptActiveDto(
+        attempt.getId(),
+        assignment.getId(),
+        quiz.getTitle(),
+        attempt.getAttemptNumber(),
+        attempt.isSubmitted() ? "submitted" : "in_progress",
+        attempt.getStartedAt(),
+        Boolean.TRUE.equals(quiz.getTimerEnabled()) ? quiz.getTimeLimit() : null,
+        remainingSeconds,
+        questions
+    );
+  }
+
   @Transactional
   public QuizAttemptReviewDto submit(UUID attemptId, UUID userId, QuizAttemptSubmitRequest request) {
     QuizAttempt attempt = quizAttemptRepository.findById(attemptId)
@@ -87,6 +153,22 @@ public class CanonicalQuizAttemptService {
       throw ApiException.conflict("QUIZ_ATTEMPT_ALREADY_SUBMITTED", "Quiz attempt is already submitted");
     }
     enforceTimeLimit(attempt);
+
+    if (request.answers() != null) {
+      Set<String> validQuestionIds = new java.util.HashSet<>();
+      for (var qq : attempt.getQuiz().getQuizQuestions()) {
+        if (qq.getQuestion() != null) {
+          validQuestionIds.add(qq.getQuestion().getId().toString());
+        }
+        validQuestionIds.add(qq.getId().toString());
+      }
+      for (String submittedId : request.answers().keySet()) {
+        if (!validQuestionIds.contains(submittedId)) {
+          throw ApiException.badRequest("INVALID_QUESTION_ID", "Submitted question ID is not part of this quiz");
+        }
+      }
+    }
+
     attempt.setAnswers(new HashMap<>(request.answers()));
     attempt.setSubmittedAt(LocalDateTime.now());
     BigDecimal autoScore = scoreAttempt(attempt);

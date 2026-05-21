@@ -25,3 +25,26 @@ export interface QuizAttemptReviewDto {
   finalScore?: number | null;
   correctAnswersVisible: boolean;
 }
+
+export interface QuizQuestionActiveDto {
+  questionId: Uuid;
+  type: string;
+  order: number;
+  text: string;
+  stem: string;
+  points: number;
+  options: Record<string, unknown>;
+  studentAnswer?: unknown | null;
+}
+
+export interface QuizAttemptActiveDto {
+  id: Uuid;
+  assignmentId: Uuid;
+  quizTitle: string;
+  attemptNumber: number;
+  status: string;
+  startedAt: string;
+  timeLimitMinutes?: number | null;
+  remainingSeconds?: number | null;
+  questions: QuizQuestionActiveDto[];
+}

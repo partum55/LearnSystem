@@ -52,6 +52,7 @@ export const queryKeys = {
   },
   quizAttempts: {
     all: ['quiz-attempts'] as const,
+    active: (attemptId: string) => [...queryKeys.quizAttempts.all, 'active', attemptId] as const,
     review: (attemptId: string) => [...queryKeys.quizAttempts.all, 'review', attemptId] as const,
   },
 };

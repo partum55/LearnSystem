@@ -1,5 +1,6 @@
 import apiClient from '@/api/client';
 import type {
+  QuizAttemptActiveDto,
   QuizAttemptReviewDto,
   QuizAttemptStartDto,
   QuizAttemptSubmitRequest,
@@ -10,6 +11,12 @@ export const quizAttemptsApi = {
     apiClient.request<QuizAttemptStartDto>({
       method: 'POST',
       url: `/v1/assignments/${assignmentId}/quiz-attempts`,
+    }),
+
+  getActiveAttempt: (attemptId: string) =>
+    apiClient.request<QuizAttemptActiveDto>({
+      method: 'GET',
+      url: `/v1/quiz-attempts/${attemptId}`,
     }),
 
   submit: (attemptId: string, request: QuizAttemptSubmitRequest) =>

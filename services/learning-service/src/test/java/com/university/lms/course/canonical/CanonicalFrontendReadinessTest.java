@@ -32,6 +32,8 @@ import com.university.lms.course.gradebook.dto.TeacherGradebookDto;
 import com.university.lms.course.gradebook.service.CanonicalGradebookService;
 import com.university.lms.course.gradebook.service.UserProfileClient;
 import com.university.lms.course.materials.service.LearningContentService;
+import com.university.lms.course.quizzes.dto.QuizAttemptActiveDto;
+import com.university.lms.course.quizzes.dto.QuizQuestionActiveDto;
 import com.university.lms.course.quizzes.dto.QuizAttemptReviewDto;
 import com.university.lms.course.quizzes.dto.QuizAttemptSubmitRequest;
 import com.university.lms.course.quizzes.service.CanonicalQuizAttemptService;
@@ -299,6 +301,61 @@ class CanonicalFrontendReadinessTest {
         new QuizAttemptSubmitRequest(Map.of("q1", "a"))))
         .isInstanceOf(ApiException.class)
         .hasMessage("Quiz time limit has been exceeded");
+  }
+
+  @Test
+  void activeAttemptReturnsSafeQuestionsWithoutCorrectAnswers() {
+    UUID attemptId = UUID.randomUUID();
+    UUID studentId = UUID.randomUUID();
+    UUID courseId = UUID.randomUUID();
+    
+    Quiz quiz = quiz(courseId, true, true, true, 10);
+    QuestionBank question = question("MULTIPLE_CHOICE", Map.of("choice", "A"), BigDecimal.TEN);
+    question.setExplanation("This is correct because...");
+    QuizQuestion qq = quizQuestion(quiz, question, 1, null);
+    quiz.setQuizQuestions(new java.util.HashSet<>(List.of(qq)));
+
+    Assignment assignment = quizAssignment(UUID.randomUUID(), courseId, quiz.getId(), Map.of());
+    QuizAttempt attempt = attempt(attemptId, quiz, studentId, LocalDateTime.now(), false);
+
+    when(quizAttemptRepository.findById(attemptId)).thenReturn(Optional.of(attempt));
+    when(assignmentRepository.findFirstByQuizId(quiz.getId())).thenReturn(Optional.of(assignment));
+    when(accessService.canTeach(courseId, studentId)).thenReturn(false);
+
+    QuizAttemptActiveDto response = quizAttemptService().getActiveAttempt(attemptId, studentId);
+
+    assertThat(response.id()).isEqualTo(attemptId);
+    assertThat(response.questions()).hasSize(1);
+    var qDto = response.questions().getFirst();
+    assertThat(qDto.questionId()).isEqualTo(question.getId());
+    assertThat(qDto.text()).isEqualTo(question.getStem());
+    assertThat(qDto.options()).isEqualTo(question.getOptions());
+  }
+
+  @Test
+  void quizSubmitRejectsUnknownQuestionIds() {
+    UUID attemptId = UUID.randomUUID();
+    UUID studentId = UUID.randomUUID();
+    UUID courseId = UUID.randomUUID();
+    
+    Quiz quiz = quiz(courseId, false, true, true, 10);
+    QuestionBank question = question("MULTIPLE_CHOICE", Map.of("choice", "A"), BigDecimal.TEN);
+    QuizQuestion qq = quizQuestion(quiz, question, 1, null);
+    quiz.setQuizQuestions(new java.util.HashSet<>(List.of(qq)));
+
+    Assignment assignment = quizAssignment(UUID.randomUUID(), courseId, quiz.getId(), Map.of());
+    QuizAttempt attempt = attempt(attemptId, quiz, studentId, LocalDateTime.now().minusMinutes(1), false);
+
+    when(quizAttemptRepository.findById(attemptId)).thenReturn(Optional.of(attempt));
+    when(assignmentRepository.findFirstByQuizId(quiz.getId())).thenReturn(Optional.of(assignment));
+
+    QuizAttemptSubmitRequest badRequest = new QuizAttemptSubmitRequest(Map.of(
+        UUID.randomUUID().toString(), "some answer"
+    ));
+
+    assertThatThrownBy(() -> quizAttemptService().submit(attemptId, studentId, badRequest))
+        .isInstanceOf(ApiException.class)
+        .hasMessage("Submitted question ID is not part of this quiz");
   }
 
   @Test

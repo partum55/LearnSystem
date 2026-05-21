@@ -1,5 +1,6 @@
 package com.university.lms.course.quizzes.controller;
 
+import com.university.lms.course.quizzes.dto.QuizAttemptActiveDto;
 import com.university.lms.course.quizzes.dto.QuizAttemptReviewDto;
 import com.university.lms.course.quizzes.dto.QuizAttemptStartDto;
 import com.university.lms.course.quizzes.dto.QuizAttemptSubmitRequest;
@@ -28,6 +29,16 @@ public class CanonicalQuizAttemptController {
   @ResponseStatus(HttpStatus.CREATED)
   public QuizAttemptStartDto start(@PathVariable UUID assignmentId) {
     return quizAttemptService.start(assignmentId, userContext.requireUserId());
+  }
+
+  @GetMapping("/quiz-attempts/{attemptId}")
+  public QuizAttemptActiveDto getActiveAttempt(@PathVariable UUID attemptId) {
+    return quizAttemptService.getActiveAttempt(attemptId, userContext.requireUserId());
+  }
+
+  @GetMapping("/quiz-attempts/{attemptId}/take")
+  public QuizAttemptActiveDto take(@PathVariable UUID attemptId) {
+    return quizAttemptService.getActiveAttempt(attemptId, userContext.requireUserId());
   }
 
   @PostMapping("/quiz-attempts/{attemptId}/submit")
