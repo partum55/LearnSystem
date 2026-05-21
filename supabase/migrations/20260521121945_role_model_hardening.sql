@@ -27,3 +27,35 @@ CREATE INDEX IF NOT EXISTS idx_course_members_course_id ON learning.course_membe
 CREATE INDEX IF NOT EXISTS idx_course_members_user_id ON learning.course_members (user_id);
 CREATE INDEX IF NOT EXISTS idx_course_members_course_role_status
   ON learning.course_members (course_id, role_in_course, enrollment_status);
+
+-- 8. Fix the handle_new_auth_user trigger to insert 'USER' role instead of legacy 'STUDENT'
+CREATE OR REPLACE FUNCTION private.handle_new_auth_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  INSERT INTO public.users (
+    id, email, display_name, first_name, last_name,
+    role, locale, theme, email_verified
+  ) VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'display_name', split_part(NEW.email, '@', 1)),
+    NEW.raw_user_meta_data->>'first_name',
+    NEW.raw_user_meta_data->>'last_name',
+    'USER', -- Matches new global role check constraint
+    'UK',
+    'light',
+    NEW.email_confirmed_at IS NOT NULL
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    email          = EXCLUDED.email,
+    display_name   = COALESCE(public.users.display_name, EXCLUDED.display_name),
+    email_verified = EXCLUDED.email_verified,
+    updated_at     = NOW();
+  RETURN NEW;
+END;
+$$;
+

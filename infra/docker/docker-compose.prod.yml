@@ -1,0 +1,197 @@
+# ==========================================
+# LearnSystem — Production Docker Compose
+# ==========================================
+#
+# Starts the backend services needed for production with Caddy HTTPS reverse proxy:
+#   - caddy
+#   - gateway
+#   - user-service
+#   - learning-service
+#   - redis
+#
+# Usage:
+#   docker compose -f infra/docker/docker-compose.prod.yml \
+#     --env-file config/env/.env up -d --build
+#
+# ==========================================
+
+name: learnsystem-prod
+
+services:
+
+  # ==========================================
+  # REVERSE PROXY — production only
+  # Port exposure: 80 and 443 (Caddy only)
+  # ==========================================
+  caddy:
+    image: caddy:2-alpine
+    container_name: lms-caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - lms-network
+    depends_on:
+      gateway:
+        condition: service_healthy
+
+  # ==========================================
+  # CACHE
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    container_name: lms-redis
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_HOST_PORT:-6380}:6379"
+    networks:
+      - lms-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  # ==========================================
+  # USER PROFILE & AUTH SERVICE
+  # ==========================================
+  user-service:
+    build:
+      context: ../../services
+      dockerfile: user-service/Dockerfile
+    container_name: lms-user-service
+    restart: always
+    expose:
+      - "8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
+      - SERVER_PORT=8081
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
+      - SUPABASE_JWKS_URL=${SUPABASE_JWKS_URL}
+      - SUPABASE_DB_URL=${SUPABASE_DB_URL}
+      - SUPABASE_DB_USER=${SUPABASE_DB_USER}
+      - SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - SPRING_DATASOURCE_URL=${SUPABASE_DB_URL}
+      - SPRING_DATASOURCE_USERNAME=${SUPABASE_DB_USER:-postgres}
+      - SPRING_DATASOURCE_PASSWORD=${SUPABASE_DB_PASSWORD:-postgres}
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - LEARNING_SERVICE_URL=http://learning-service:8089
+      - FRONTEND_URL=${FRONTEND_URL:-https://app.learnsystem.app}
+      - JWT_EXPIRATION=${JWT_EXPIRATION:-86400000}
+      - BOOTSTRAP_ADMIN_ENABLED=${BOOTSTRAP_ADMIN_ENABLED:-false}
+      - BOOTSTRAP_ADMIN_EMAIL=${BOOTSTRAP_ADMIN_EMAIL:-}
+      - BOOTSTRAP_ADMIN_PASSWORD=${BOOTSTRAP_ADMIN_PASSWORD:-}
+      - JAVA_OPTS=-Xmx384m -Xms192m
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - lms-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ==========================================
+  # CORE LMS & CANONICAL API MONOLITH
+  # ==========================================
+  learning-service:
+    build:
+      context: ../../services
+      dockerfile: learning-service/Dockerfile
+    container_name: lms-learning-service
+    restart: always
+    expose:
+      - "8089"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
+      - SERVER_PORT=8089
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
+      - SUPABASE_JWKS_URL=${SUPABASE_JWKS_URL}
+      - SUPABASE_DB_URL=${SUPABASE_DB_URL}
+      - SUPABASE_DB_USER=${SUPABASE_DB_USER}
+      - SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - SPRING_DATASOURCE_URL=${SUPABASE_DB_URL}
+      - SPRING_DATASOURCE_USERNAME=${SUPABASE_DB_USER:-postgres}
+      - SPRING_DATASOURCE_PASSWORD=${SUPABASE_DB_PASSWORD:-postgres}
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - EXECUTION_SERVICE_URL=http://execution-service:3000
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - lms-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8089/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ==========================================
+  # API GATEWAY — the only public backend entry point
+  # ==========================================
+  gateway:
+    build:
+      context: ../../services
+      dockerfile: gateway/Dockerfile
+    container_name: lms-gateway
+    restart: always
+    expose:
+      - "8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
+      - SERVER_PORT=8080
+      - USER_SERVICE_URL=http://user-service:8081
+      - LEARNING_SERVICE_URL=http://learning-service:8089
+      - AI_SERVICE_URL=http://ai-service:8085
+      - ANALYTICS_SERVICE_URL=http://analytics-service:8088
+      - EXECUTION_SERVICE_URL=http://execution-service:3000
+      - GATEWAY_PUBLIC_URL=${API_URL:-https://api.learnsystem.app}
+      - GATEWAY_CORS_ALLOWED_ORIGINS=${FRONTEND_URL:-https://app.learnsystem.app}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
+      - SUPABASE_JWKS_URL=${SUPABASE_JWKS_URL}
+      - JAVA_OPTS=-Xmx384m -Xms192m
+    depends_on:
+      user-service:
+        condition: service_healthy
+      learning-service:
+        condition: service_healthy
+    networks:
+      - lms-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+# ==========================================
+# VOLUMES & NETWORKS
+# ==========================================
+volumes:
+  redis_data:
+    driver: local
+  caddy_data:
+  caddy_config:
+
+networks:
+  lms-network:
+    driver: bridge

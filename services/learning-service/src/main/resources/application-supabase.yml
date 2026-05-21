@@ -4,7 +4,7 @@ spring:
     name: lms-learning-service
 
   datasource:
-    url: ${SUPABASE_SUPABASE_DB_URL:jdbc:postgresql://aws-0-us-east-1.pooler.supabase.com:6543/postgres}
+    url: ${SPRING_DATASOURCE_URL:${SUPABASE_DB_URL:jdbc:postgresql://aws-0-us-east-1.pooler.supabase.com:6543/postgres}}
     username: ${SUPABASE_DB_USER:postgres}
     password: ${SUPABASE_DB_PASSWORD:your-supabase-password}
     driver-class-name: org.postgresql.Driver

@@ -81,7 +81,7 @@ public class QuizAttempt {
     private String feedback;
 
     // Security and proctoring
-    @Column(name = "ip_address", length = 45)
+    @Column(name = "ip_address", columnDefinition = "inet")
     private String ipAddress;
 
     @Column(name = "browser_fingerprint", length = 255)

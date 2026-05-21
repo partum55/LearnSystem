@@ -119,6 +119,10 @@ spring:
             - Path=/api/v1/gradebook/**, /api/gradebook/**
           filters:
             - RewritePath=/api/v1/gradebook(?<segment>/?.*), /api/gradebook${segment}
+        - id: actuator-health
+          uri: http://localhost:8080/actuator/health
+          predicates:
+            - Path=/api/v1/actuator/health
         - id: ai-service-v1
           uri: ${AI_SERVICE_URL:http://ai-service:8085}
           predicates:
@@ -164,3 +168,13 @@ spring:
             - Path=/api/v1/analytics/**, /api/analytics/**
           filters:
             - RewritePath=/api/v1/analytics(?<segment>/?.*), /api/analytics${segment}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: never

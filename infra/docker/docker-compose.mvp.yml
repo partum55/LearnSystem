@@ -1,0 +1,186 @@
+# ============================================================
+# LearnSystem — Minimal MVP Docker Compose
+# ============================================================
+#
+# Starts only the core backend services needed for login, profiles,
+# courses, assignments, and gradebook:
+#   - redis
+#   - user-service
+#   - learning-service
+#   - gateway
+#
+# Usage:
+#   docker compose -f infra/docker/docker-compose.mvp.yml \
+#     --env-file config/env/.env.local up --build
+#
+# ============================================================
+
+name: learnsystem-mvp
+
+services:
+
+  # ==========================================
+  # CACHE & RATE LIMIT STORE
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    container_name: lms-redis-mvp
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data_mvp:/data
+    ports:
+      - "${REDIS_HOST_PORT:-6380}:6379"
+    networks:
+      - lms-network-mvp
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  # ==========================================
+  # USER PROFILE & AUTH SERVICE
+  # ==========================================
+  user-service:
+    build:
+      context: ../../services
+      dockerfile: user-service/Dockerfile
+    container_name: lms-user-service-mvp
+    restart: always
+    expose:
+      - "8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev,docker,supabase}
+      - SERVER_PORT=8081
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
+      - SUPABASE_JWKS_URL=${SUPABASE_JWKS_URL}
+      - SUPABASE_DB_URL=${SUPABASE_DB_URL}
+      - SUPABASE_DB_USER=${SUPABASE_DB_USER}
+      - SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      # Standard Spring datasource vars (docker profile uses these)
+      - SPRING_DATASOURCE_URL=${SUPABASE_DB_URL}
+      - SPRING_DATASOURCE_USERNAME=${SUPABASE_DB_USER:-postgres}
+      - SPRING_DATASOURCE_PASSWORD=${SUPABASE_DB_PASSWORD:-postgres}
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - LEARNING_SERVICE_URL=http://learning-service:8089
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - JWT_EXPIRATION=${JWT_EXPIRATION:-86400000}
+      - BOOTSTRAP_ADMIN_ENABLED=${BOOTSTRAP_ADMIN_ENABLED:-false}
+      - BOOTSTRAP_ADMIN_EMAIL=${BOOTSTRAP_ADMIN_EMAIL:-}
+      - BOOTSTRAP_ADMIN_PASSWORD=${BOOTSTRAP_ADMIN_PASSWORD:-}
+      - JAVA_OPTS=-Xmx384m -Xms192m
+    depends_on:
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - lms-network-mvp
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/api/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # ==========================================
+  # CORE LMS & CANONICAL API MONOLITH
+  # ==========================================
+  learning-service:
+    build:
+      context: ../../services
+      dockerfile: learning-service/Dockerfile
+    container_name: lms-learning-service-mvp
+    restart: always
+    expose:
+      - "8089"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev,docker,supabase}
+      - SERVER_PORT=8089
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
+      - SUPABASE_JWKS_URL=${SUPABASE_JWKS_URL}
+      - SUPABASE_DB_URL=${SUPABASE_DB_URL}
+      - SUPABASE_DB_USER=${SUPABASE_DB_USER}
+      - SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      # Standard Spring datasource vars (docker profile uses these)
+      - SPRING_DATASOURCE_URL=${SUPABASE_DB_URL}
+      - SPRING_DATASOURCE_USERNAME=${SUPABASE_DB_USER:-postgres}
+      - SPRING_DATASOURCE_PASSWORD=${SUPABASE_DB_PASSWORD:-postgres}
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      # execution-service not started in MVP — VPL/code-run features will return 503
+      - EXECUTION_SERVICE_URL=http://execution-service:3000
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    depends_on:
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - lms-network-mvp
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8089/api/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # ==========================================
+  # API GATEWAY (Public Endpoint at localhost:8080)
+  # ==========================================
+  gateway:
+    build:
+      context: ../../services
+      dockerfile: gateway/Dockerfile
+    container_name: lms-gateway-mvp
+    restart: always
+    ports:
+      - "${GATEWAY_HOST_PORT:-8080}:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev,docker}
+      - SERVER_PORT=8080
+      - USER_SERVICE_URL=http://user-service:8081
+      - LEARNING_SERVICE_URL=http://learning-service:8089
+      - AI_SERVICE_URL=http://ai-service:8085
+      - ANALYTICS_SERVICE_URL=http://analytics-service:8088
+      - EXECUTION_SERVICE_URL=http://execution-service:3000
+      - GATEWAY_PUBLIC_URL=${API_URL:-http://localhost:8080}
+      - GATEWAY_CORS_ALLOWED_ORIGINS=${FRONTEND_URL:-http://localhost:3000}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
+      - SUPABASE_JWKS_URL=${SUPABASE_JWKS_URL}
+      # Gateway uses REDIS_HOST/REDIS_PORT (not SPRING_DATA_REDIS_*)
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JAVA_OPTS=-Xmx384m -Xms192m
+    depends_on:
+      user-service:
+        condition: service_healthy
+      learning-service:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - lms-network-mvp
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+# ==========================================
+# VOLUMES & NETWORKS
+# ==========================================
+volumes:
+  redis_data_mvp:
+    driver: local
+
+networks:
+  lms-network-mvp:
+    driver: bridge

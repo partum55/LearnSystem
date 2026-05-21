@@ -226,12 +226,12 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
             >
               + Assignment
             </button>
-            <button 
-              onClick={() => showToast('TODO: Open teacher gradebook dashboard will be activated in a future pass.')} 
-              className="rounded-lg bg-indigo-650 px-3 py-1.5 text-2xs font-bold text-white hover:bg-indigo-600 shadow-2xs active:scale-[0.98] transition-all"
+            <Link 
+              href={`/courses/${courseId}/gradebook`}
+              className="rounded-lg bg-indigo-650 px-3 py-1.5 text-2xs font-bold text-white hover:bg-indigo-600 shadow-2xs active:scale-[0.98] transition-all text-center"
             >
               Open Gradebook
-            </button>
+            </Link>
           </div>
         </section>
       )}
@@ -667,14 +667,14 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
                     The full interactive teacher Gradebook and SpeedGrader panel allows managing all course students, drafting points, and publishing grades.
                   </p>
                   <p className="text-3xs text-indigo-700 bg-white border border-indigo-150 p-2 rounded italic mt-2">
-                    Note: Teacher Gradebook dashboard controls will be migrated under its own dedicated workspace pass in a future track.
+                    Note: The interactive Gradebook and SpeedGrader panel is now active and ready. Click below to edit cells and publish grades.
                   </p>
-                  <button 
-                    onClick={() => showToast('TODO: Open teacher gradebook dashboard will be activated in a future pass.')} 
-                    className="mt-3 inline-block rounded-lg bg-indigo-600 px-4 py-2 text-2xs font-bold text-white shadow-2xs hover:bg-indigo-700 active:scale-[0.98] transition-all"
+                  <Link 
+                    href={`/courses/${courseId}/gradebook`}
+                    className="mt-3 inline-block rounded-lg bg-indigo-600 px-4 py-2 text-2xs font-bold text-white shadow-2xs hover:bg-indigo-700 active:scale-[0.98] transition-all text-center"
                   >
                     Open Gradebook
-                  </button>
+                  </Link>
                 </div>
               </div>
             )}
