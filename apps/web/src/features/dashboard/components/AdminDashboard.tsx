@@ -17,7 +17,6 @@ import { useServicesHealth } from '@/features/admin/hooks/useAdminMonitoring';
 import type { SystemHealthDto } from '@/features/admin/api/admin.api';
 import {
   DashboardLayout,
-  DashboardLink,
   EmptyState,
   SectionHeader,
   StatCard,
@@ -26,7 +25,7 @@ import {
 
 type AdminTab = 'overview' | 'services' | 'users' | 'courses';
 
-export function AdminDashboard({ currentUser, embedded = false }: { currentUser: UserProfileDto; embedded?: boolean }) {
+export function AdminDashboard({ currentUser }: { currentUser: UserProfileDto }) {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const { data: users, isLoading: usersLoading } = useAdminUsers({ size: 12 });
   const { data: courses, isLoading: coursesLoading } = useAdminCourses({ size: 12 });
@@ -53,7 +52,6 @@ export function AdminDashboard({ currentUser, embedded = false }: { currentUser:
       eyebrow="Admin dashboard"
       title={`Platform control, ${displayName(currentUser)}`}
       description="Monitor services, users, courses, publishing state, and operational health from the canonical admin surface."
-      actions={embedded ? <DashboardLink href="/admin" label="Open full admin" /> : undefined}
     >
       <section className="grid gap-4 md:grid-cols-5">
         <StatCard icon={UserGroupIcon} label="Users" value={userCount} />
@@ -169,10 +167,10 @@ function OperationalPanel() {
     <section className="rounded-lg border" style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-base)' }}>
       <SectionHeader title="Admin operations" />
       <div className="card-body grid gap-3 sm:grid-cols-2">
-        <AdminShortcut href="/admin" icon={UserGroupIcon} label="Users" description="Search users, review roles, and inspect account status." />
-        <AdminShortcut href="/admin" icon={AcademicCapIcon} label="Courses" description="Review published, draft, and archived course state." />
-        <AdminShortcut href="/admin" icon={ServerIcon} label="Services" description="Watch gateway service health and degraded dependencies." />
-        <AdminShortcut href="/admin" icon={CpuChipIcon} label="System info" description="Track JVM/runtime details from the gateway health payload." />
+        <AdminShortcut href="/dashboard" icon={UserGroupIcon} label="Users" description="Search users, review roles, and inspect account status." />
+        <AdminShortcut href="/dashboard" icon={AcademicCapIcon} label="Courses" description="Review published, draft, and archived course state." />
+        <AdminShortcut href="/dashboard" icon={ServerIcon} label="Services" description="Watch gateway service health and degraded dependencies." />
+        <AdminShortcut href="/dashboard" icon={CpuChipIcon} label="System info" description="Track JVM/runtime details from the gateway health payload." />
       </div>
     </section>
   );

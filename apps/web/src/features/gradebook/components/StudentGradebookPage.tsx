@@ -337,7 +337,7 @@ export function StudentGradebookPage() {
               </p>
               <div className="pt-2">
                 <Link
-                  href="/admin"
+                  href="/dashboard"
                   className="btn btn-primary"
                 >
                   Go to Admin Dashboard <ArrowRightIcon className="h-4 w-4" />

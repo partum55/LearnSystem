@@ -25,7 +25,7 @@ export function DashboardPage() {
   const role = resolvedRole(currentUser.role, currentUser.globalRole);
 
   if (role === 'ADMIN') {
-    return <AdminDashboard currentUser={currentUser} embedded />;
+    return <AdminDashboard currentUser={currentUser} />;
   }
 
   if (role === 'TEACHER') {

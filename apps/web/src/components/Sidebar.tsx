@@ -11,7 +11,6 @@ import {
   UserIcon,
   ClipboardDocumentListIcon,
   XMarkIcon,
-  Cog6ToothIcon,
   ClipboardIcon,
 } from '@heroicons/react/24/outline';
 import { useCurrentUser } from '@/features/users/hooks/useUserQueries';
@@ -30,7 +29,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const globalRole = String(user?.globalRole ?? user?.role ?? '').toUpperCase();
 
   const isTeacher = globalRole === 'TEACHER' || globalRole === 'ADMIN';
-  const isAdmin = globalRole === 'ADMIN';
+
 
   const navigation: NavItem[] = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
@@ -47,9 +46,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
     );
   }
 
-  if (isAdmin) {
-    navigation.push({ name: 'Admin Panel', href: '/admin', icon: Cog6ToothIcon });
-  }
+
 
   return (
     <>
