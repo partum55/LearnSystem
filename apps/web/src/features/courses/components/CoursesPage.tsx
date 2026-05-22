@@ -12,8 +12,8 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { Loading } from '@/components/Loading';
-import { useActiveCourses, useCreateCourse, useTeachingCourses } from '@/features/courses/hooks/useCourseQueries';
-import type { CourseSummaryDto, CreateCourseRequest } from '@/features/courses/api/canonical.types';
+import { useActiveCourses, useAdminCourses, useCreateCourse, useTeachingCourses } from '@/features/courses/hooks/useCourseQueries';
+import type { AdminCourseDto, CourseSummaryDto, CreateCourseRequest } from '@/features/courses/api/canonical.types';
 import { useCurrentUser } from '@/features/users/hooks/useUserQueries';
 
 type CourseTab = 'ENROLLED' | 'TEACHING';
@@ -41,17 +41,35 @@ function clampProgress(value?: number | null) {
   return Math.max(0, Math.min(value ?? 0, 100));
 }
 
+function adminCourseToSummary(course: AdminCourseDto): CourseSummaryDto {
+  return {
+    id: course.id,
+    title: course.titleEn || course.titleUk,
+    description: course.descriptionEn || course.descriptionUk,
+    status: course.status,
+    teacherName: 'Admin managed',
+    progress: 0,
+    grade: null,
+  };
+}
+
 export function CoursesPage() {
   const router = useRouter();
   const { data: currentUser, isLoading: isUserLoading, error: userError } = useCurrentUser();
+  const role = String(currentUser?.globalRole ?? currentUser?.role ?? '').toUpperCase();
+  const isAdmin = role === 'ADMIN';
   const { data: activeCourses, isLoading: isActiveLoading, error: activeError } = useActiveCourses();
   const { data: teachingCourses, isLoading: isTeachingLoading, error: teachingError } = useTeachingCourses();
+  const { data: adminCourses, isLoading: isAdminCoursesLoading, error: adminCoursesError } = useAdminCourses(
+    { page: 0, size: 100 },
+    isAdmin
+  );
   const createCourse = useCreateCourse();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [studentFilter, setStudentFilter] = useState<StudentFilter>('ALL');
   const [teacherFilter, setTeacherFilter] = useState<TeacherFilter>('ALL');
-  const [activeTab, setActiveTab] = useState<CourseTab>('ENROLLED');
+  const [activeTab, setActiveTab] = useState<CourseTab>('TEACHING');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [courseForm, setCourseForm] = useState<CreateCourseRequest>({
@@ -63,10 +81,13 @@ export function CoursesPage() {
     isPublished: false,
   });
 
-  const role = String(currentUser?.globalRole ?? currentUser?.role ?? '').toUpperCase();
-  const showStudentSection = role === 'USER' || role === 'ADMIN';
-  const showTeacherSection = role === 'TEACHER' || role === 'ADMIN';
-  const selectedTab = showTeacherSection && !showStudentSection ? 'TEACHING' : activeTab;
+  const showStudentSection = role === 'USER' || isAdmin;
+  const showTeacherSection = role === 'TEACHER' || isAdmin;
+  const selectedTab = showTeacherSection ? activeTab : 'ENROLLED';
+  const visibleTeachingCourses = useMemo(
+    () => (isAdmin ? adminCourses?.content.map(adminCourseToSummary) : teachingCourses) ?? [],
+    [adminCourses, isAdmin, teachingCourses]
+  );
 
   const filteredActiveCourses = useMemo(() => {
     return (activeCourses ?? []).filter((course) => {
@@ -79,23 +100,26 @@ export function CoursesPage() {
   }, [activeCourses, searchTerm, studentFilter]);
 
   const filteredTeachingCourses = useMemo(() => {
-    return (teachingCourses ?? []).filter((course) => {
+    return visibleTeachingCourses.filter((course) => {
       const status = (course.status || '').toUpperCase();
       const matchesFilter = teacherFilter === 'ALL' || teacherFilter === status;
       return matchesCourseSearch(course, searchTerm) && matchesFilter;
     });
-  }, [teachingCourses, searchTerm, teacherFilter]);
+  }, [visibleTeachingCourses, searchTerm, teacherFilter]);
 
   const visibleCount =
     selectedTab === 'TEACHING' ? filteredTeachingCourses.length : filteredActiveCourses.length;
   const totalCount =
     (showStudentSection ? activeCourses?.length ?? 0 : 0) +
-    (showTeacherSection ? teachingCourses?.length ?? 0 : 0);
+    (showTeacherSection ? visibleTeachingCourses.length : 0);
   const isLoading =
     isUserLoading ||
     (showStudentSection && isActiveLoading) ||
-    (showTeacherSection && isTeachingLoading);
-  const hasError = userError || (showStudentSection && activeError) || (showTeacherSection && teachingError);
+    (showTeacherSection && (isAdmin ? isAdminCoursesLoading : isTeachingLoading));
+  const hasError =
+    userError ||
+    (showStudentSection && activeError) ||
+    (showTeacherSection && (isAdmin ? adminCoursesError : teachingError));
 
   if (isLoading) {
     return <Loading label="Loading courses..." />;
@@ -288,7 +312,7 @@ export function CoursesPage() {
       {showTeacherSection && isCreateOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
-          style={{ background: 'rgba(0, 0, 0, 0.55)' }}
+          style={{ background: 'color-mix(in srgb, var(--bg-base) 78%, transparent)' }}
         >
           <form onSubmit={handleCreateCourse} className="card w-full max-w-2xl shadow-2xl">
             <div className="card-header flex items-center justify-between gap-4">
@@ -315,7 +339,7 @@ export function CoursesPage() {
               {createError && (
                 <div
                   className="rounded-md border px-3 py-2 text-sm"
-                  style={{ borderColor: 'rgba(239, 68, 68, 0.35)', color: 'var(--fn-error)' }}
+                  style={{ borderColor: 'var(--border-default)', background: 'var(--bg-elevated)', color: 'var(--fn-error)' }}
                 >
                   {createError}
                 </div>

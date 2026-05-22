@@ -16,10 +16,11 @@ export const useTeachingCourses = (enabled = true) =>
     enabled,
   });
 
-export const useAdminCourses = (params?: { page?: number; size?: number }) =>
+export const useAdminCourses = (params?: { page?: number; size?: number }, enabled = true) =>
   useQuery({
     queryKey: queryKeys.courses.adminList(params),
     queryFn: () => canonicalCoursesApi.getAdminCourses(params),
+    enabled,
   });
 
 export const useCourseOverview = (courseId: string | undefined) =>
