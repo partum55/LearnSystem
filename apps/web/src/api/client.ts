@@ -94,6 +94,18 @@ const toApiError = (error: unknown): ApiError => {
 const isFormData = (value: unknown): value is FormData =>
   typeof FormData !== 'undefined' && value instanceof FormData;
 
+const isCanonicalApiPath = (url: string) => url === '/v1' || url.startsWith('/v1/');
+
+const assertCanonicalApiPath = (url: string) => {
+  if (!isCanonicalApiPath(url)) {
+    throw new ApiError({
+      message: `Canonical frontend API calls must use /v1 paths. Received: ${url}`,
+      code: 'NON_CANONICAL_API_PATH',
+      fieldErrors: {},
+    });
+  }
+};
+
 class ApiClient {
   private client: AxiosInstance;
 
@@ -197,6 +209,8 @@ class ApiClient {
     params?: Record<string, unknown>;
     headers?: Record<string, string>;
   }): Promise<T> {
+    assertCanonicalApiPath(config.url);
+
     try {
       const response = await this.client.request<T>({
         method: config.method || 'GET',

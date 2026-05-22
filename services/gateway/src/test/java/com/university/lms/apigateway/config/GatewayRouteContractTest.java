@@ -33,7 +33,13 @@ class GatewayRouteContractTest {
         routes,
         "learning-courses",
         expectedLearningUri(resourceName),
-        Set.of("/api/v1/courses/**", "/api/courses/**"));
+        Set.of("/api/v1/courses/**"));
+
+    assertLearningRoute(
+        routes,
+        "learning-dashboard",
+        expectedLearningUri(resourceName),
+        Set.of("/api/v1/dashboard/**"));
 
     assertLearningRoute(
         routes,

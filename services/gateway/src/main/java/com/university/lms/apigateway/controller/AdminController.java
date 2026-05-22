@@ -28,7 +28,7 @@ import java.util.Optional;
  * Administrative endpoints for gateway-level service visibility.
  */
 @RestController
-@RequestMapping("/api/admin")
+@RequestMapping({"/api/admin", "/api/v1/admin"})
 @Validated
 public class AdminController {
 

@@ -1,12 +1,15 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect } from 'react';
 import { Menu, MenuButton, MenuItems, MenuItem, Transition } from '@headlessui/react';
 import { BellIcon, Bars3Icon } from '@heroicons/react/24/outline';
-import { useCurrentUser } from '@/features/users/hooks/useUserQueries';
+import { useCurrentUser, useUpdateCurrentUser } from '@/features/users/hooks/useUserQueries';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
+import { ThemeToggle } from './ThemeToggle';
+import { normalizeTheme, themeToApi, useUIStore } from '@/store/uiStore';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -14,8 +17,16 @@ interface HeaderProps {
 
 export function Header({ onMenuClick }: HeaderProps) {
   const { data: user } = useCurrentUser();
+  const updateCurrentUser = useUpdateCurrentUser();
+  const setTheme = useUIStore((state) => state.setTheme);
   const router = useRouter();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (user?.theme) {
+      setTheme(normalizeTheme(user.theme));
+    }
+  }, [setTheme, user?.theme]);
 
   const handleLogout = async () => {
     const supabase = getSupabaseBrowserClient();
@@ -62,6 +73,14 @@ export function Header({ onMenuClick }: HeaderProps) {
 
         {/* Right: notifications + user */}
         <div className="flex items-center gap-0.5">
+          <ThemeToggle
+            onChange={(theme) => {
+              if (user) {
+                updateCurrentUser.mutate({ theme: themeToApi(theme) });
+              }
+            }}
+          />
+
           <button
             className="flex items-center justify-center w-8 h-8 rounded-md transition-colors"
             style={{ color: 'var(--text-muted)' }}
@@ -125,6 +144,20 @@ export function Header({ onMenuClick }: HeaderProps) {
                         }}
                       >
                         Profile
+                      </Link>
+                    )}
+                  </MenuItem>
+                  <MenuItem>
+                    {({ focus }: { focus: boolean }) => (
+                      <Link
+                        href="/profile"
+                        className="block px-3 py-2 text-sm transition-colors"
+                        style={{
+                          background: focus ? 'var(--bg-active)' : 'transparent',
+                          color: focus ? 'var(--text-primary)' : 'var(--text-secondary)',
+                        }}
+                      >
+                        Settings
                       </Link>
                     )}
                   </MenuItem>

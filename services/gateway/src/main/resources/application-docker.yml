@@ -47,6 +47,11 @@ spring:
           predicates:
             - Path=/api/v1/courses/*/members/**, /api/v1/courses/*/members
 
+        - id: learning-dashboard
+          uri: ${LEARNING_SERVICE_URL:http://learning-service:8089}
+          predicates:
+            - Path=/api/v1/dashboard/**
+
         - id: learning-courses
           uri: ${LEARNING_SERVICE_URL:http://learning-service:8089}
           predicates:

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/api/queryClient';
 import { usersApi } from '../api/users.api';
-import type { AdminUpdateUserRequest, GlobalRole } from '../api/users.types';
+import type { AdminUpdateUserRequest, GlobalRole, UpdateCurrentUserRequest } from '../api/users.types';
 
 export const useCurrentUser = () =>
   useQuery({
@@ -14,6 +14,17 @@ export const useAdminUsers = (params?: { query?: string; role?: GlobalRole; page
     queryKey: queryKeys.users.adminList(params),
     queryFn: () => usersApi.listAdminUsers(params),
   });
+
+export const useUpdateCurrentUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: UpdateCurrentUserRequest) => usersApi.updateMe(request),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.me() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
+    },
+  });
+};
 
 export const useUpdateAdminUser = () => {
   const queryClient = useQueryClient();

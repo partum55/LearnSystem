@@ -3,6 +3,8 @@ import type { Uuid } from '@/api/types';
 export type GlobalRole = 'ADMIN' | 'TEACHER' | 'USER';
 export type CourseRole = 'OWNER' | 'TEACHER' | 'TA' | 'STUDENT';
 export type UserStatus = 'active' | 'inactive' | 'deleted' | string;
+export type UserLocale = 'UK' | 'EN' | 'uk' | 'en' | string;
+export type UserTheme = 'dark' | 'light' | string;
 
 export interface UserProfileDto {
   id: Uuid;
@@ -13,14 +15,25 @@ export interface UserProfileDto {
   studentId?: string | null;
   role: GlobalRole;
   globalRole?: GlobalRole;
-  locale?: string | null;
-  theme?: string | null;
+  locale?: UserLocale | null;
+  theme?: UserTheme | null;
   avatarUrl?: string | null;
   bio?: string | null;
   isActive: boolean;
   emailVerified?: boolean;
   createdAt?: string | null;
   updatedAt?: string | null;
+}
+
+export interface UpdateCurrentUserRequest {
+  displayName?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  bio?: string | null;
+  locale?: 'UK' | 'EN';
+  theme?: 'dark' | 'light';
+  avatarUrl?: string | null;
+  preferences?: Record<string, unknown>;
 }
 
 export interface AdminUpdateUserRequest {

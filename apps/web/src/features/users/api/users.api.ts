@@ -1,9 +1,22 @@
 import apiClient from '@/api/client';
-import type { AdminUpdateUserRequest, GlobalRole, PageResponse, UserProfileDto } from './users.types';
+import type {
+  AdminUpdateUserRequest,
+  GlobalRole,
+  PageResponse,
+  UpdateCurrentUserRequest,
+  UserProfileDto,
+} from './users.types';
 
 export const usersApi = {
   me: () =>
     apiClient.request<UserProfileDto>({ url: '/v1/users/me' }),
+
+  updateMe: (request: UpdateCurrentUserRequest) =>
+    apiClient.request<UserProfileDto>({
+      method: 'PUT',
+      url: '/v1/users/me',
+      data: request,
+    }),
 
   listAdminUsers: (params?: { query?: string; role?: GlobalRole; page?: number; size?: number }) =>
     apiClient.request<PageResponse<UserProfileDto>>({
