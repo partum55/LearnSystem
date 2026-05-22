@@ -55,7 +55,8 @@ public class LearningItem {
   private Module module;
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false, length = 30)
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+  @Column(nullable = false, columnDefinition = "learning.learning_item_type")
   private LearningItemType type;
 
   @Column(nullable = false)
@@ -69,7 +70,8 @@ public class LearningItem {
   private Integer position = 0;
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false, length = 30)
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+  @Column(nullable = false, columnDefinition = "learning.learning_item_status")
   @Builder.Default
   private LearningItemStatus status = LearningItemStatus.HIDDEN;
 

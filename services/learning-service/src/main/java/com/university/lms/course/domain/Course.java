@@ -10,7 +10,9 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 /**
  * Course entity with multilingual support and comprehensive tracking. Migrated from Django Course
@@ -59,7 +61,8 @@ public class Course {
   private UUID ownerId;
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false, length = 20)
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+  @Column(nullable = false, columnDefinition = "learning.course_visibility")
   @Builder.Default
   private CourseVisibility visibility = CourseVisibility.DRAFT;
 
@@ -88,7 +91,8 @@ public class Course {
 
   // Course status
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false, length = 20)
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+  @Column(nullable = false, columnDefinition = "learning.course_status")
   @Builder.Default
   private CourseStatus status = CourseStatus.DRAFT;
 

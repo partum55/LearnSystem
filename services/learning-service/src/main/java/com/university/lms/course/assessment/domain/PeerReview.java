@@ -5,6 +5,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -40,8 +43,9 @@ public class PeerReview {
     @Builder.Default
     private Boolean isAnonymous = true;
 
-    @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "status", nullable = false, columnDefinition = "assessment.peer_review_status")
     @Builder.Default
     private PeerReviewStatus status = PeerReviewStatus.PENDING;
 

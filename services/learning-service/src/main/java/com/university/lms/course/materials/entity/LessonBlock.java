@@ -49,7 +49,8 @@ public class LessonBlock {
   private LearningItem learningItem;
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false, length = 40)
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+  @Column(nullable = false, columnDefinition = "learning.lesson_block_type")
   private LessonBlockType type;
 
   @Column(length = 255)

@@ -3,7 +3,9 @@ package com.university.lms.course.assessment.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -54,7 +56,8 @@ public class Quiz {
     private Boolean attemptLimitEnabled = false;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "attempt_score_policy", nullable = false, length = 16)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "attempt_score_policy", nullable = false, columnDefinition = "assessment.attempt_score_policy")
     @Builder.Default
     private AttemptScorePolicy attemptScorePolicy = AttemptScorePolicy.HIGHEST;
 

@@ -82,14 +82,14 @@ public class JwtService {
      */
     public String extractRole(String token) {
         return extractClaim(token, jwt -> {
-            String role = jwt.getClaimAsString(CLAIM_ROLE);
-            if (role == null) {
-                Map<String, Object> appMetadata = jwt.getClaimAsMap("app_metadata");
-                if (appMetadata != null) {
-                    role = (String) appMetadata.get("role");
+            Map<String, Object> appMetadata = jwt.getClaimAsMap("app_metadata");
+            if (appMetadata != null) {
+                Object appRole = appMetadata.get("role");
+                if (appRole instanceof String role && !role.isBlank()) {
+                    return role;
                 }
             }
-            return role;
+            return jwt.getClaimAsString(CLAIM_ROLE);
         });
     }
 

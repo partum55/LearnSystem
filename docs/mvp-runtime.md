@@ -257,6 +257,8 @@ curl -s -H "Authorization: Bearer $ADMIN_TOKEN" \
 | `USER` | Default registered user | Can enroll in courses |
 
 > There is **no** global `STUDENT` or `TA` role. Course-level membership roles (`STUDENT`, `TA`, `TEACHER`, `OWNER`) are stored separately in `learning.course_members`.
+>
+> Auth/database ownership is documented in [MVP Auth/DB Canonical Model](./mvp-auth-db.md). Supabase owns the managed `auth` schema; LearnSystem owns one app profile table, `public.users`.
 
 ---
 

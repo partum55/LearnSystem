@@ -22,10 +22,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
@@ -252,8 +254,37 @@ public class UserService {
             // We might want to allow deletion even if course cleanup fails, or retry.
         }
 
-        userRepository.delete(user);
+        if (hasSupabaseAdminCredentials()) {
+            deleteSupabaseAuthUser(userId);
+            if (userRepository.existsById(userId)) {
+                userRepository.deleteById(userId);
+            }
+        } else {
+            log.warn("SUPABASE_SECRET_KEY is not configured; deleting only local profile {}", userId);
+            userRepository.delete(user);
+        }
         log.info("User deleted: {}", userId);
+    }
+
+    private boolean hasSupabaseAdminCredentials() {
+        return supabaseSecretKey != null && !supabaseSecretKey.isBlank();
+    }
+
+    private void deleteSupabaseAuthUser(UUID userId) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("apikey", supabaseSecretKey);
+            headers.set("Authorization", "Bearer " + supabaseSecretKey);
+
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+            String url = supabaseUrl.replaceAll("/+$", "") + "/auth/v1/admin/users/" + userId;
+            restTemplate.exchange(url, HttpMethod.DELETE, entity, Void.class);
+        } catch (HttpClientErrorException.NotFound ex) {
+            log.warn("Supabase Auth user {} was already missing; deleting local profile", userId);
+        } catch (Exception ex) {
+            log.error("Failed to delete Supabase Auth user {}: {}", userId, ex.getMessage());
+            throw new ValidationException("userId", "Failed to delete Supabase Auth user: " + ex.getMessage());
+        }
     }
 
     private User getRequiredUserById(UUID userId) {

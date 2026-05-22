@@ -52,12 +52,14 @@ public class User {
     private String studentId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(nullable = false, columnDefinition = "public.user_role")
     @Builder.Default
     private UserRole role = UserRole.USER;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 5)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(nullable = false, columnDefinition = "public.user_locale")
     @Builder.Default
     private UserLocale locale = UserLocale.UK;
 

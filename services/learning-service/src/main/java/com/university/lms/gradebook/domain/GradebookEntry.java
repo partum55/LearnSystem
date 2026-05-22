@@ -50,7 +50,8 @@ public class GradebookEntry {
     private BigDecimal percentage;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20, nullable = false)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(nullable = false, columnDefinition = "grading.grade_status")
     @Builder.Default
     private GradeStatus status = GradeStatus.NOT_SUBMITTED;
 
