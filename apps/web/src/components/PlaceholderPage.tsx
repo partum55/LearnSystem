@@ -1,10 +1,12 @@
 export function PlaceholderPage({ title }: { title: string }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-8">
-      <h1 className="text-2xl font-semibold text-slate-950">{title}</h1>
-      <p className="mt-3 max-w-2xl text-slate-600">
+    <section className="card">
+      <div className="card-body">
+      <h1 className="text-2xl font-semibold">{title}</h1>
+      <p className="mt-3 max-w-2xl" style={{ color: 'var(--text-muted)' }}>
         This section is currently under development.
       </p>
+      </div>
     </section>
   );
 }

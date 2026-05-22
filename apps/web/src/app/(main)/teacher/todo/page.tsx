@@ -6,11 +6,8 @@ import { useCurrentUser } from '@/features/users/hooks/useUserQueries';
 
 export default function TeacherTodoPage() {
   const { data: currentUser, isLoading } = useCurrentUser();
-  const isTeacher =
-    currentUser?.role === 'TEACHER' ||
-    currentUser?.globalRole === 'TEACHER' ||
-    currentUser?.role === 'ADMIN' ||
-    currentUser?.globalRole === 'ADMIN';
+  const role = String(currentUser?.globalRole ?? currentUser?.role ?? '').toUpperCase();
+  const isTeacher = role === 'TEACHER' || role === 'ADMIN';
 
   if (isLoading) return <Loading label="Loading teaching workspace..." />;
 

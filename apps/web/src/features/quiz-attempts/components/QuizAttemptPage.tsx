@@ -186,12 +186,12 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
 
   if (activeError || (isSubmitted && reviewError)) {
     return (
-      <div className="mx-auto max-w-4xl rounded-xl border border-red-200 bg-red-50 p-6 text-slate-800 shadow-sm mt-8">
+      <div className="mx-auto max-w-4xl rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 text-[var(--text-primary)] shadow-sm mt-8">
         <div className="flex gap-3">
-          <ExclamationTriangleIcon className="h-6 w-6 text-red-600 shrink-0" />
+          <ExclamationTriangleIcon className="h-6 w-6 shrink-0" style={{ color: 'var(--fn-error)' }} />
           <div>
-            <h2 className="text-lg font-semibold text-red-800">Error Loading Quiz</h2>
-            <p className="mt-2 text-sm text-red-700">
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Error Loading Quiz</h2>
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">
               There was an issue loading the quiz attempt details. It might have expired or you may not have access.
             </p>
           </div>
@@ -217,40 +217,40 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-8 space-y-8">
         {/* Scorecard Header */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-8 text-white shadow-xl">
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="card">
+          <div className="card-body flex flex-col justify-between gap-6 md:flex-row md:items-center">
             <div className="space-y-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-400">
+              <span className="badge badge-success inline-flex items-center gap-1.5">
                 <CheckCircleIcon className="h-4 w-4" /> Submitted
               </span>
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+              <h1 className="text-2xl font-semibold md:text-3xl">
                 {activeAttempt?.quizTitle || 'Quiz Review'}
               </h1>
-              <p className="text-sm text-slate-350">
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                 Attempt #{reviewAttempt.attemptNumber} completed.
               </p>
             </div>
 
             {showScore ? (
-              <div className="flex items-center gap-4 bg-white/5 backdrop-blur-md rounded-xl p-4 border border-white/10 shrink-0">
+              <div className="flex shrink-0 items-center gap-4 rounded-md border p-4" style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-base)' }}>
                 <div className="text-right">
-                  <span className="block text-xs uppercase tracking-wider text-slate-400 font-semibold">Your Grade</span>
+                  <span className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Your Grade</span>
                   <div className="flex items-baseline gap-1 mt-0.5">
-                    <span className="text-3xl font-extrabold text-white">{finalScore.toFixed(2)}</span>
-                    <span className="text-sm text-slate-400">/ {totalPoints.toFixed(2)}</span>
+                    <span className="text-3xl font-semibold">{finalScore.toFixed(2)}</span>
+                    <span className="text-sm" style={{ color: 'var(--text-muted)' }}>/ {totalPoints.toFixed(2)}</span>
                   </div>
                 </div>
-                <div className="h-10 w-[1px] bg-white/20" />
-                <div className="text-center rounded-lg bg-emerald-500/20 px-3 py-1.5 border border-emerald-500/30">
-                  <span className="block text-2xl font-bold text-emerald-400">
+                <div className="h-10 w-px" style={{ background: 'var(--border-subtle)' }} />
+                <div className="rounded-md border px-3 py-1.5 text-center" style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-elevated)' }}>
+                  <span className="block text-2xl font-semibold" style={{ color: 'var(--fn-success)' }}>
                     {Math.round((finalScore / totalPoints) * 100)}%
                   </span>
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md rounded-xl p-4 border border-white/10 shrink-0 max-w-sm">
-                <InformationCircleIcon className="h-6 w-6 text-slate-400 shrink-0" />
-                <span className="text-sm text-slate-300">
+              <div className="flex max-w-sm shrink-0 items-center gap-3 rounded-md border p-4" style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-base)' }}>
+                <InformationCircleIcon className="h-6 w-6 shrink-0" style={{ color: 'var(--text-muted)' }} />
+                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
                   Quiz attempt submitted! Grades will be released by the instructor.
                 </span>
               </div>
@@ -260,16 +260,16 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
 
         {/* Detailed Questions Review */}
         <div className="space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-            <h2 className="text-lg font-bold text-slate-800">Quiz Question Summary</h2>
-            <span className="text-sm text-slate-500 font-medium">
+          <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
+            <h2 className="text-lg font-bold text-[var(--text-primary)]">Quiz Question Summary</h2>
+            <span className="text-sm text-[var(--text-muted)] font-medium">
               {activeAttempt?.questions.length} Questions
             </span>
           </div>
 
           {!reviewAttempt.correctAnswersVisible && (
-            <div className="flex gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-slate-700">
-              <InformationCircleIcon className="h-5 w-5 text-slate-500 shrink-0 mt-0.5" />
+            <div className="flex gap-3 rounded-lg border border-[var(--border-default)] bg-[var(--bg-base)] p-4 text-[var(--text-secondary)]">
+              <InformationCircleIcon className="h-5 w-5 text-[var(--text-muted)] shrink-0 mt-0.5" />
               <p className="text-sm">
                 Correct answers and question scoring details are currently hidden by the instructor.
               </p>
@@ -283,19 +283,19 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
             return (
               <div
                 key={question.questionId}
-                className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md"
+                className="overflow-hidden rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] shadow-sm transition hover:shadow-md"
               >
-                <div className="border-b border-slate-100 bg-slate-50/75 px-6 py-4 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-700">
+                <div className="border-b border-[var(--border-subtle)] bg-[var(--bg-base)] px-6 py-4 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-[var(--text-secondary)]">
                     Question {idx + 1}
                   </span>
-                  <span className="rounded-md bg-slate-150 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                  <span className="rounded-md bg-[var(--bg-elevated)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)]">
                     {question.points} Points
                   </span>
                 </div>
 
                 <div className="p-6 space-y-4">
-                  <p className="text-base text-slate-800 font-medium whitespace-pre-wrap">
+                  <p className="text-base text-[var(--text-primary)] font-medium whitespace-pre-wrap">
                     {question.text}
                   </p>
 
@@ -307,9 +307,9 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
                           ? studentAns.includes(choice.key)
                           : String(studentAns) === String(choice.key);
 
-                        let optionStyle = 'border-slate-200 bg-white text-slate-800';
+                        let optionStyle = 'border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-primary)]';
                         if (isStudentSelected) {
-                          optionStyle = 'border-slate-800 bg-slate-50 text-slate-900 font-medium';
+                          optionStyle = 'border-[var(--border-strong)] bg-[var(--bg-base)] text-[var(--text-primary)] font-medium';
                         }
 
                         return (
@@ -318,7 +318,7 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
                             className={`flex items-start gap-3 rounded-lg border p-3.5 text-sm transition ${optionStyle}`}
                           >
                             <span className={`h-4 w-4 rounded-full border shrink-0 mt-0.5 flex items-center justify-center text-[10px] ${
-                              isStudentSelected ? 'border-slate-800 bg-slate-800 text-white' : 'border-slate-350 bg-white'
+                              isStudentSelected ? 'border-[var(--border-strong)] bg-[var(--bg-active)] text-[var(--text-primary)]' : 'border-[var(--border-strong)] bg-[var(--bg-surface)]'
                             }`}>
                               {isStudentSelected && '✓'}
                             </span>
@@ -329,11 +329,11 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
                     </div>
                   ) : (
                     /* Free Text Essay Display */
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                      <span className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                    <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-base)] p-4">
+                      <span className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-faint)] mb-1.5">
                         Your Submission
                       </span>
-                      <p className="text-sm text-slate-800 whitespace-pre-wrap font-mono">
+                      <p className="text-sm text-[var(--text-primary)] whitespace-pre-wrap font-mono">
                         {String(studentAns || 'No response provided')}
                       </p>
                     </div>
@@ -352,7 +352,7 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
   // ----------------------------------------------------
   if (!activeAttempt || activeAttempt.questions.length === 0) {
     return (
-      <div className="mx-auto max-w-4xl p-8 text-center text-slate-500">
+      <div className="mx-auto max-w-4xl p-8 text-center text-[var(--text-muted)]">
         No questions found for this quiz attempt.
       </div>
     );
@@ -367,24 +367,24 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       {/* Sticky Active Taking Header */}
-      <div className="sticky top-0 z-20 mb-6 rounded-2xl bg-slate-900 p-5 text-white shadow-lg border border-slate-850">
+      <div className="sticky top-0 z-20 mb-6 rounded-lg border p-5 shadow-lg" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'var(--fn-error)' }}></span>
+                <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: 'var(--fn-error)' }}></span>
               </span>
               {activeAttempt.quizTitle}
             </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-[var(--text-faint)] mt-0.5">
               Attempt #{activeAttempt.attemptNumber} • Active Session
             </p>
           </div>
 
           {timeLeft !== null && (
             <div className={`flex items-center gap-2 rounded-xl px-4 py-2 border font-mono font-bold shrink-0 ${
-              timeLeft < 60 ? 'animate-pulse bg-red-500/20 border-red-500 text-red-400' : 'bg-white/5 border-white/10 text-white'
+              timeLeft < 60 ? 'animate-pulse bg-[var(--bg-elevated)] border-[var(--fn-error)] text-[var(--fn-error)]' : 'bg-[var(--bg-surface)]/5 border-[var(--border-subtle)] text-[var(--text-primary)]'
             }`}>
               <ClockIcon className="h-5 w-5 shrink-0" />
               <span>{formatTime(timeLeft)}</span>
@@ -396,8 +396,8 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         {/* Navigation Map Panel */}
         <div className="lg:col-span-1 space-y-4">
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-450 mb-3.5">
+          <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-5 shadow-sm">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3.5">
               Quiz Navigation
             </h3>
             
@@ -406,11 +406,11 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
                 const isSelected = idx === currentIdx;
                 const isAnswered = answers[q.questionId] !== undefined && answers[q.questionId] !== null && answers[q.questionId] !== '';
                 
-                let btnStyle = 'border-slate-200 bg-white text-slate-700 hover:border-slate-450';
+                let btnStyle = 'border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:border-[var(--border-strong)]';
                 if (isSelected) {
-                  btnStyle = 'border-slate-800 bg-slate-900 text-white font-bold';
+                  btnStyle = 'border-[var(--border-strong)] bg-[var(--bg-active)] text-[var(--text-primary)] font-bold';
                 } else if (isAnswered) {
-                  btnStyle = 'border-slate-300 bg-slate-50 text-slate-800 font-semibold';
+                  btnStyle = 'border-[var(--border-default)] bg-[var(--bg-base)] text-[var(--text-primary)] font-semibold';
                 }
 
                 return (
@@ -421,22 +421,22 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
                   >
                     {idx + 1}
                     {isAnswered && !isSelected && (
-                      <span className="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      <span className="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full" style={{ background: 'var(--fn-success)' }} />
                     )}
                   </button>
                 );
               })}
             </div>
 
-            <div className="mt-5 border-t border-slate-100 pt-4 flex flex-col gap-3">
-              <div className="flex justify-between text-xs font-medium text-slate-500">
+            <div className="mt-5 border-t border-[var(--border-subtle)] pt-4 flex flex-col gap-3">
+              <div className="flex justify-between text-xs font-medium text-[var(--text-muted)]">
                 <span>Progress</span>
                 <span>{answeredCount} of {activeAttempt.questions.length} answered</span>
               </div>
               
               <button
                 onClick={() => setShowConfirm(true)}
-                className="w-full cursor-pointer rounded-xl bg-slate-900 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 shadow-md shrink-0 flex items-center justify-center gap-1.5"
+                className="btn btn-primary w-full justify-center"
               >
                 Submit Quiz Attempt
               </button>
@@ -446,18 +446,18 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
 
         {/* Question Panel */}
         <div className="lg:col-span-3 space-y-6">
-          <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-6 space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-450">
+          <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] shadow-sm p-6 space-y-6">
+            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
                 Question {currentIdx + 1} of {activeAttempt.questions.length}
               </span>
-              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+              <span className="rounded-md bg-[var(--bg-elevated)] px-2 py-0.5 text-xs font-semibold text-[var(--text-secondary)]">
                 {currentQuestion.points} points
               </span>
             </div>
 
             <div className="space-y-4">
-              <p className="text-base text-slate-850 font-medium whitespace-pre-wrap leading-relaxed">
+              <p className="text-base text-[var(--text-primary)] font-medium whitespace-pre-wrap leading-relaxed">
                 {currentQuestion.text}
               </p>
 
@@ -484,9 +484,9 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
                       }
                     };
 
-                    let boxStyle = 'border-slate-200 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50/50';
+                    let boxStyle = 'border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-base)]';
                     if (isChecked) {
-                      boxStyle = 'border-slate-800 bg-slate-50 text-slate-900 font-medium';
+                      boxStyle = 'border-[var(--border-strong)] bg-[var(--bg-base)] text-[var(--text-primary)] font-medium';
                     }
 
                     return (
@@ -496,7 +496,7 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
                         className={`flex items-start gap-3 rounded-xl border p-4 text-sm text-left transition cursor-pointer w-full ${boxStyle}`}
                       >
                         <span className={`h-4.5 w-4.5 rounded-full border shrink-0 mt-0.5 flex items-center justify-center text-[10px] ${
-                          isChecked ? 'border-slate-800 bg-slate-900 text-white' : 'border-slate-300 bg-white'
+                          isChecked ? 'border-[var(--border-strong)] bg-[var(--bg-active)] text-[var(--text-primary)]' : 'border-[var(--border-default)] bg-[var(--bg-surface)]'
                         }`}>
                           {isChecked && '✓'}
                         </span>
@@ -508,13 +508,13 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
               ) : (
                 /* Text Input Panel */
                 <div className="space-y-2">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-faint)]">
                     Your Response
                   </label>
                   <textarea
                     rows={6}
                     placeholder="Type your response here..."
-                    className="w-full rounded-xl border border-slate-250 p-4 text-sm font-mono focus:border-slate-800 focus:outline-none transition shadow-inner bg-slate-50/25"
+                    className="input min-h-32 font-mono"
                     value={String(currentAnswer || '')}
                     onChange={(e) => handleAnswerChange(currentQuestion.questionId, e.target.value)}
                   />
@@ -523,11 +523,11 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
             </div>
 
             {/* Navigation buttons */}
-            <div className="flex items-center justify-between border-t border-slate-100 pt-5">
+            <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-5">
               <button
                 disabled={currentIdx === 0}
                 onClick={() => setCurrentIdx((prev) => prev - 1)}
-                className="flex items-center gap-1 cursor-pointer rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-650 transition hover:border-slate-400 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn btn-secondary btn-sm"
               >
                 <ChevronLeftIcon className="h-4.5 w-4.5" /> Previous
               </button>
@@ -535,7 +535,7 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
               <button
                 disabled={currentIdx === activeAttempt.questions.length - 1}
                 onClick={() => setCurrentIdx((prev) => prev + 1)}
-                className="flex items-center gap-1 cursor-pointer rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-650 transition hover:border-slate-400 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn btn-secondary btn-sm"
               >
                 Next <ChevronRightIcon className="h-4.5 w-4.5" />
               </button>
@@ -546,18 +546,18 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
 
       {/* Confirmation Submit Overlay Dialog */}
       {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <InformationCircleIcon className="h-6 w-6 text-slate-850 shrink-0" /> Submit Quiz Attempt?
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'color-mix(in srgb, var(--bg-base) 78%, transparent)' }}>
+          <div className="w-full max-w-md rounded-2xl bg-[var(--bg-surface)] p-6 shadow-2xl space-y-4">
+            <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+              <InformationCircleIcon className="h-6 w-6 text-[var(--text-primary)] shrink-0" /> Submit Quiz Attempt?
             </h3>
             
-            <p className="text-sm text-slate-550 leading-relaxed">
+            <p className="text-sm text-[var(--text-muted)] leading-relaxed">
               Are you sure you want to submit your quiz answers? You have answered <strong>{answeredCount}</strong> of <strong>{activeAttempt.questions.length}</strong> questions.
             </p>
 
             {submitError && (
-              <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-xs text-red-750">
+              <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] p-3 text-xs text-[var(--fn-error)]">
                 {submitError}
               </div>
             )}
@@ -568,7 +568,7 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
                   setShowConfirm(false);
                   setSubmitError(null);
                 }}
-                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 cursor-pointer"
+                className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--bg-base)] cursor-pointer"
               >
                 Go Back
               </button>
@@ -576,7 +576,7 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
               <button
                 onClick={handleSubmit}
                 disabled={submitAttempt.isPending}
-                className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5"
+                className="btn btn-primary"
               >
                 {submitAttempt.isPending ? 'Submitting...' : 'Yes, Submit'}
               </button>

@@ -65,32 +65,32 @@ export function StudentGradebookPage() {
   const getTypeBadgeColor = (type: string) => {
     switch (type?.toUpperCase()) {
       case 'QUIZ':
-        return 'bg-violet-50 text-violet-700 border-violet-100 dark:bg-violet-950/30 dark:text-violet-400 dark:border-violet-900/50';
+        return 'bg-[var(--bg-elevated)] text-[var(--text-primary)] border-[var(--border-subtle)]';
       case 'VPL':
-        return 'bg-cyan-50 text-cyan-700 border-cyan-100 dark:bg-cyan-950/30 dark:text-cyan-400 dark:border-cyan-900/50';
+        return 'bg-[var(--bg-elevated)] text-[var(--text-primary)] border-[var(--border-subtle)]';
       default:
-        return 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50';
+        return 'bg-[var(--bg-elevated)] text-[var(--text-primary)] border-[var(--border-subtle)]';
     }
   };
 
   // Helper to determine letter grade or feedback color
   const getScoreColorClass = (percentage: number | undefined | null) => {
-    if (percentage === undefined || percentage === null) return 'text-slate-500';
-    if (percentage >= 90) return 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/30';
-    if (percentage >= 75) return 'text-indigo-600 bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-950/30';
-    if (percentage >= 60) return 'text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-950/30';
-    return 'text-rose-600 bg-rose-50 dark:text-rose-400 dark:bg-rose-950/30';
+    if (percentage === undefined || percentage === null) return 'text-[var(--text-muted)] bg-[var(--bg-elevated)]';
+    if (percentage >= 90) return 'text-[var(--fn-success)] bg-[var(--bg-elevated)]';
+    if (percentage >= 75) return 'text-[var(--text-primary)] bg-[var(--bg-elevated)]';
+    if (percentage >= 60) return 'text-[var(--fn-warning)] bg-[var(--bg-elevated)]';
+    return 'text-[var(--fn-error)] bg-[var(--bg-elevated)]';
   };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 space-y-8">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--border-default)] pb-5">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
+          <h1 className="text-3xl font-extrabold tracking-tight text-[var(--text-primary)]">
             Grades & Feedback
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-[var(--text-muted)] mt-1">
             Track your academic progress, assignment submissions, and instructor comments.
           </p>
         </div>
@@ -101,7 +101,7 @@ export function StudentGradebookPage() {
             <select
               value={selectedCourseId}
               onChange={(e) => handleCourseChange(e.target.value)}
-              className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white px-4 py-2.5 pr-10 text-sm font-semibold text-slate-800 shadow-sm focus:border-slate-800 focus:outline-none transition hover:bg-slate-50"
+              className="input cursor-pointer appearance-none pr-10 font-semibold"
             >
               {activeCourses!.map((course) => (
                 <option key={course.id} value={course.id}>
@@ -109,18 +109,18 @@ export function StudentGradebookPage() {
                 </option>
               ))}
             </select>
-            <ChevronDownIcon className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 pointer-events-none" />
+            <ChevronDownIcon className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
           </div>
         )}
       </div>
 
       {coursesError && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-slate-800 shadow-sm">
+        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-5 text-[var(--text-primary)] shadow-sm">
           <div className="flex gap-3">
-            <ExclamationCircleIcon className="h-6 w-6 text-red-600 shrink-0" />
+            <ExclamationCircleIcon className="h-6 w-6 shrink-0" style={{ color: 'var(--fn-error)' }} />
             <div>
-              <h2 className="text-lg font-semibold text-red-800">Error loading courses</h2>
-              <p className="mt-2 text-sm text-red-700">
+              <h2 className="text-lg font-semibold text-[var(--text-primary)]">Error loading courses</h2>
+              <p className="mt-2 text-sm text-[var(--text-secondary)]">
                 There was a problem loading your active academic courses. Please reload or try again later.
               </p>
             </div>
@@ -134,12 +134,12 @@ export function StudentGradebookPage() {
           {gradebookLoading ? (
             <Loading label="Fetching gradebook scores..." />
           ) : gradebookError ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-slate-800 shadow-sm">
+            <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-5 text-[var(--text-primary)] shadow-sm">
               <div className="flex gap-3">
-                <ExclamationCircleIcon className="h-6 w-6 text-red-600 shrink-0" />
+                <ExclamationCircleIcon className="h-6 w-6 shrink-0" style={{ color: 'var(--fn-error)' }} />
                 <div>
-                  <h2 className="text-lg font-semibold text-red-800">Access Restricted</h2>
-                  <p className="mt-2 text-sm text-red-700">
+                  <h2 className="text-lg font-semibold text-[var(--text-primary)]">Access Restricted</h2>
+                  <p className="mt-2 text-sm text-[var(--text-secondary)]">
                     You do not have student enrollment details or active grade records for the selected course.
                   </p>
                 </div>
@@ -149,31 +149,31 @@ export function StudentGradebookPage() {
             <div className="space-y-8 animate-fadeIn">
               {/* Course Scorecard Summary */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex items-center justify-between">
+                <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-sm flex items-center justify-between">
                   <div className="space-y-1">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-faint)] block">
                       Course Total Score
                     </span>
                     <div className="flex items-baseline gap-1.5">
-                      <span className="text-3xl font-extrabold text-slate-900">
+                      <span className="text-3xl font-extrabold text-[var(--text-primary)]">
                         {gradebook.total.points.toFixed(1)}
                       </span>
-                      <span className="text-sm text-slate-400 font-medium">
+                      <span className="text-sm text-[var(--text-faint)] font-medium">
                         / {gradebook.total.maxPoints.toFixed(1)} pts
                       </span>
                     </div>
                   </div>
-                  <div className="rounded-xl bg-slate-50 p-3 shrink-0">
-                    <AcademicCapIcon className="h-6 w-6 text-slate-600" />
+                  <div className="rounded-xl bg-[var(--bg-base)] p-3 shrink-0">
+                    <AcademicCapIcon className="h-6 w-6 text-[var(--text-secondary)]" />
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex items-center justify-between">
+                <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-sm flex items-center justify-between">
                   <div className="space-y-1">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-faint)] block">
                       Progress Percentage
                     </span>
-                    <span className="text-3xl font-extrabold text-slate-900 block">
+                    <span className="text-3xl font-extrabold text-[var(--text-primary)] block">
                       {gradebook.total.percentage !== undefined && gradebook.total.percentage !== null
                         ? `${Math.round(gradebook.total.percentage)}%`
                         : `${Math.round((gradebook.total.points / (gradebook.total.maxPoints || 1)) * 100)}%`}
@@ -188,32 +188,32 @@ export function StudentGradebookPage() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex items-center justify-between">
+                <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-sm flex items-center justify-between">
                   <div className="space-y-1">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-faint)] block">
                       Course Enrolled
                     </span>
-                    <span className="text-lg font-bold text-slate-800 block truncate max-w-[200px]">
+                    <span className="text-lg font-bold text-[var(--text-primary)] block truncate max-w-[200px]">
                       {gradebook.courseTitle}
                     </span>
                   </div>
-                  <div className="rounded-xl bg-slate-50 p-3 shrink-0">
-                    <BookOpenIcon className="h-6 w-6 text-slate-600" />
+                  <div className="rounded-xl bg-[var(--bg-base)] p-3 shrink-0">
+                    <BookOpenIcon className="h-6 w-6 text-[var(--text-secondary)]" />
                   </div>
                 </div>
               </div>
 
               {/* Module & Assignment Layout */}
               <div className="space-y-6">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-                  <h2 className="text-lg font-bold text-slate-800">Module & Submission Breakdown</h2>
-                  <span className="text-sm text-slate-500 font-semibold">
+                <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
+                  <h2 className="text-lg font-bold text-[var(--text-primary)]">Module & Submission Breakdown</h2>
+                  <span className="text-sm text-[var(--text-muted)] font-semibold">
                     {gradebook.modules.length} Modules
                   </span>
                 </div>
 
                 {gradebook.modules.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-250 p-8 text-center text-slate-400">
+                  <div className="rounded-xl border border-dashed border-[var(--border-default)] p-8 text-center text-[var(--text-faint)]">
                     No academic module records exist for this course yet.
                   </div>
                 ) : (
@@ -221,16 +221,16 @@ export function StudentGradebookPage() {
                     {gradebook.modules.map((mod) => (
                       <div
                         key={mod.moduleId}
-                        className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md"
+                        className="overflow-hidden rounded-2xl border border-[var(--border-default)] bg-[var(--bg-surface)] shadow-sm transition hover:shadow-md"
                       >
                         {/* Module Sub-Header */}
-                        <div className="border-b border-slate-100 bg-slate-50/75 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                          <h3 className="text-base font-bold text-slate-800">
+                        <div className="border-b border-[var(--border-subtle)] bg-[var(--bg-base)] px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <h3 className="text-base font-bold text-[var(--text-primary)]">
                             {mod.title}
                           </h3>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-slate-400">Module total:</span>
-                            <span className="rounded-lg bg-slate-100 border border-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
+                            <span className="text-xs font-semibold text-[var(--text-faint)]">Module total:</span>
+                            <span className="rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-default)] px-3 py-1 text-xs font-bold text-[var(--text-secondary)]">
                               {mod.total.points.toFixed(1)} / {mod.total.maxPoints.toFixed(1)} pts
                             </span>
                           </div>
@@ -238,22 +238,22 @@ export function StudentGradebookPage() {
 
                         {/* Assignments Table/List */}
                         {mod.assignments.length === 0 ? (
-                          <div className="p-6 text-center text-sm text-slate-400">
+                          <div className="p-6 text-center text-sm text-[var(--text-faint)]">
                             No assignments are published in this module.
                           </div>
                         ) : (
-                          <div className="divide-y divide-slate-100">
+                          <div className="divide-y divide-[var(--border-subtle)]">
                             {mod.assignments.map((assignment) => (
                               <div
                                 key={assignment.assignmentId}
-                                className="p-6 space-y-4 hover:bg-slate-50/50 transition"
+                                className="p-6 space-y-4 hover:bg-[var(--bg-base)] transition"
                               >
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                   <div className="space-y-1.5">
                                     <div className="flex items-center flex-wrap gap-2.5">
                                       <Link
                                         href={`/assignments/${assignment.assignmentId}`}
-                                        className="text-sm font-bold text-slate-800 hover:text-indigo-650 hover:underline transition"
+                                        className="text-sm font-bold transition hover:underline"
                                       >
                                         {assignment.title}
                                       </Link>
@@ -263,9 +263,9 @@ export function StudentGradebookPage() {
                                         {assignment.type}
                                       </span>
                                     </div>
-                                    <div className="flex items-center gap-2 text-xs text-slate-450">
+                                    <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
                                       <span>Status:</span>
-                                      <span className="font-semibold uppercase text-slate-600">
+                                      <span className="font-semibold uppercase text-[var(--text-secondary)]">
                                         {assignment.status?.replace('_', ' ')}
                                       </span>
                                     </div>
@@ -274,16 +274,16 @@ export function StudentGradebookPage() {
                                   {/* Score Points Display */}
                                   <div className="flex items-center gap-3 shrink-0 self-start sm:self-center">
                                     <div className="text-right">
-                                      <span className="block text-[10px] uppercase font-bold text-slate-400 tracking-wide">
+                                      <span className="block text-[10px] uppercase font-bold text-[var(--text-faint)] tracking-wide">
                                         Grade Points
                                       </span>
                                       <div className="flex items-baseline gap-1 mt-0.5">
-                                        <span className="text-lg font-extrabold text-slate-800">
+                                        <span className="text-lg font-extrabold text-[var(--text-primary)]">
                                           {assignment.points !== undefined && assignment.points !== null
                                             ? assignment.points.toFixed(1)
                                             : '-'}
                                         </span>
-                                        <span className="text-xs text-slate-400 font-semibold">
+                                        <span className="text-xs text-[var(--text-faint)] font-semibold">
                                           / {assignment.maxPoints.toFixed(1)}
                                         </span>
                                       </div>
@@ -301,11 +301,11 @@ export function StudentGradebookPage() {
 
                                 {/* Instructor Feedback Comments */}
                                 {assignment.comment && (
-                                  <div className="rounded-xl bg-indigo-50/40 dark:bg-slate-950/20 border border-indigo-100/50 p-4 space-y-1.5">
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                                      <ChatBubbleLeftRightIcon className="h-4 w-4 text-indigo-500 shrink-0" /> Instructor Comments
+                                  <div className="rounded-lg border p-4 space-y-1.5" style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-base)' }}>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-faint)] flex items-center gap-1.5">
+                                      <ChatBubbleLeftRightIcon className="h-4 w-4 shrink-0" style={{ color: 'var(--text-secondary)' }} /> Instructor Comments
                                     </span>
-                                    <p className="text-xs text-slate-650 italic leading-relaxed whitespace-pre-wrap">
+                                    <p className="text-xs text-[var(--text-secondary)] italic leading-relaxed whitespace-pre-wrap">
                                       "{assignment.comment}"
                                     </p>
                                   </div>
@@ -321,24 +321,24 @@ export function StudentGradebookPage() {
               </div>
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-slate-250 p-12 text-center text-slate-400">
+            <div className="rounded-xl border border-dashed border-[var(--border-default)] p-12 text-center text-[var(--text-faint)]">
               Select an active course above to review your grade details.
             </div>
           )}
         </>
       ) : (
-        <div className="rounded-2xl border border-dashed border-slate-250 p-12 text-center max-w-lg mx-auto mt-12 space-y-4">
+        <div className="rounded-2xl border border-dashed border-[var(--border-default)] p-12 text-center max-w-lg mx-auto mt-12 space-y-4">
           {globalRole === 'ADMIN' ? (
             <>
-              <BriefcaseIcon className="mx-auto h-12 w-12 text-slate-400" />
-              <h2 className="text-lg font-bold text-slate-700">No Active Student Enrollments</h2>
-              <p className="text-sm text-slate-450 leading-relaxed">
+              <BriefcaseIcon className="mx-auto h-12 w-12 text-[var(--text-faint)]" />
+              <h2 className="text-lg font-bold text-[var(--text-secondary)]">No Active Student Enrollments</h2>
+              <p className="text-sm text-[var(--text-muted)] leading-relaxed">
                 Administrators do not have student gradebooks unless enrolled as a student.
               </p>
               <div className="pt-2">
                 <Link
                   href="/admin"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 shadow-md"
+                  className="btn btn-primary"
                 >
                   Go to Admin Dashboard <ArrowRightIcon className="h-4 w-4" />
                 </Link>
@@ -346,15 +346,15 @@ export function StudentGradebookPage() {
             </>
           ) : globalRole === 'TEACHER' ? (
             <>
-              <BriefcaseIcon className="mx-auto h-12 w-12 text-slate-400" />
-              <h2 className="text-lg font-bold text-slate-700">No Student Gradebooks Found</h2>
-              <p className="text-sm text-slate-450 leading-relaxed">
+              <BriefcaseIcon className="mx-auto h-12 w-12 text-[var(--text-faint)]" />
+              <h2 className="text-lg font-bold text-[var(--text-secondary)]">No Student Gradebooks Found</h2>
+              <p className="text-sm text-[var(--text-muted)] leading-relaxed">
                 You are registered as a Teacher and have no active student course enrollments.
               </p>
               <div className="pt-2">
                 <Link
                   href="/courses"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 shadow-md"
+                  className="btn btn-primary"
                 >
                   Go to Teaching Courses <ArrowRightIcon className="h-4 w-4" />
                 </Link>
@@ -362,15 +362,15 @@ export function StudentGradebookPage() {
             </>
           ) : (
             <>
-              <BookOpenIcon className="mx-auto h-12 w-12 text-slate-350" />
-              <h2 className="text-lg font-bold text-slate-700">No Student Gradebooks Found</h2>
-              <p className="text-sm text-slate-450 leading-relaxed">
+              <BookOpenIcon className="mx-auto h-12 w-12 text-[var(--text-faint)]" />
+              <h2 className="text-lg font-bold text-[var(--text-secondary)]">No Student Gradebooks Found</h2>
+              <p className="text-sm text-[var(--text-muted)] leading-relaxed">
                 You do not currently have any active student course enrollments. Click below to review your courses or check back once enrolled.
               </p>
               <div className="pt-2">
                 <Link
                   href="/courses"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 shadow-md"
+                  className="btn btn-primary"
                 >
                   Browse Course List <ArrowRightIcon className="h-4 w-4" />
                 </Link>

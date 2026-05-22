@@ -131,26 +131,26 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
   // Forbidden layout
   if (!isStaff) {
     return (
-      <div className="mx-auto max-w-lg rounded-2xl border border-rose-250 bg-white p-8 text-center shadow-xl mt-12 space-y-6">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-rose-50 text-rose-600 border border-rose-100">
+      <div className="mx-auto max-w-lg rounded-2xl border bg-[var(--bg-surface)] p-8 text-center shadow-xl mt-12 space-y-6" style={{ borderColor: 'var(--border-default)' }}>
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-elevated)', color: 'var(--fn-error)' }}>
           <LockClosedIcon className="h-8 w-8" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">Access Gated to Course Staff</h2>
-          <p className="text-sm text-slate-500 leading-relaxed">
+          <h2 className="text-xl font-extrabold text-[var(--text-primary)] tracking-tight">Access Gated to Course Staff</h2>
+          <p className="text-sm text-[var(--text-muted)] leading-relaxed">
             You do not have the required course ownership, teaching, or administrative privileges to view or edit the gradebook spreadsheet for this module.
           </p>
         </div>
         <div className="flex flex-col gap-2.5 pt-2">
           <Link
             href="/gradebook"
-            className="w-full rounded-xl bg-slate-900 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 shadow-md text-center block"
+            className="btn btn-primary w-full justify-center"
           >
             Go to Student Grades
           </Link>
           <button
             onClick={() => router.back()}
-            className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="w-full cursor-pointer rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] py-2.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--bg-base)]"
           >
             Return to Course Hub
           </button>
@@ -170,12 +170,12 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
 
   if (gradebookError || !gradebook) {
     return (
-      <div className="mx-auto max-w-3xl rounded-xl border border-red-200 bg-red-50 p-6 text-slate-800 shadow-xs mt-8 space-y-4">
+      <div className="mx-auto max-w-3xl rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 text-[var(--text-primary)] shadow-xs mt-8 space-y-4">
         <div className="flex gap-3">
-          <ExclamationTriangleIcon className="h-6 w-6 text-red-650 shrink-0" />
+          <ExclamationTriangleIcon className="h-6 w-6 shrink-0" style={{ color: 'var(--fn-error)' }} />
           <div>
-            <h2 className="text-lg font-bold text-red-800">Failed to Retrieve Gradebook</h2>
-            <p className="mt-1.5 text-sm text-red-700 leading-relaxed">
+            <h2 className="text-lg font-bold text-[var(--text-primary)]">Failed to Retrieve Gradebook</h2>
+            <p className="mt-1.5 text-sm text-[var(--text-secondary)] leading-relaxed">
               We encountered an API communication error trying to retrieve this course's grading grid. Confirm that your course token details are valid or that active academic tables are initialized on the backend.
             </p>
           </div>
@@ -183,13 +183,14 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
         <div className="flex gap-3 pt-2">
           <button
             onClick={() => refetchGradebook()}
-            className="rounded-lg bg-red-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-red-700 flex items-center gap-1.5"
+            className="rounded-lg px-4 py-2 text-xs font-semibold transition flex items-center gap-1.5"
+            style={{ background: 'var(--fn-error)', color: 'var(--bg-base)' }}
           >
             <ArrowPathIcon className="h-4 w-4" /> Retry Retrieval
           </button>
           <button
             onClick={() => router.back()}
-            className="rounded-lg border border-slate-350 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="rounded-lg border border-[var(--border-strong)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--bg-base)]"
           >
             Cancel
           </button>
@@ -310,81 +311,76 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
 
   return (
     <div className="space-y-8 animate-fade-in pb-12">
-      {/* Visual Header Panel */}
-      <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-linear-to-r from-slate-900 via-slate-800 to-indigo-950 p-6 text-white shadow-md md:p-8">
-        <div className="relative z-10 flex flex-col gap-4">
+      <header className="rounded-lg border p-5 md:p-6" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-surface)' }}>
+        <div className="flex flex-col gap-4">
           <div className="flex items-center gap-2">
             <button
               onClick={() => router.back()}
-              className="group flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-white/10 hover:text-white transition cursor-pointer"
+              className="btn btn-secondary btn-sm"
             >
               <ArrowLeftIcon className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" /> Back to Course
             </button>
-            <span className="rounded bg-indigo-500/20 px-2 py-1 text-[10px] font-bold text-indigo-300 uppercase tracking-widest border border-indigo-500/30">
+            <span className="badge">
               {courseRole ?? 'ADMIN'} Area
             </span>
           </div>
 
           <div className="space-y-1.5">
-            <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl bg-gradient-to-r from-indigo-200 via-indigo-100 to-white bg-clip-text text-transparent">
+            <h1 className="text-3xl font-semibold md:text-4xl">
               {overview?.title || 'Course Gradebook'}
             </h1>
-            <p className="max-w-2xl text-sm leading-relaxed text-slate-355">
+            <p className="max-w-2xl text-sm leading-6" style={{ color: 'var(--text-muted)' }}>
               SpeedGrader Spreadsheet. Modify scores, leave instructor comments, and release published evaluations to student profiles.
             </p>
           </div>
         </div>
-
-        {/* Backdrop Design Blobs */}
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl"></div>
-        <div className="absolute bottom-0 right-0 -mb-20 mr-12 h-48 w-48 rounded-full bg-emerald-500/5 blur-3xl"></div>
       </header>
 
       {/* Summary Scorecard Statistics */}
       <section className="grid gap-5 sm:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs flex items-center justify-between">
+        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-5 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">Students</span>
-            <span className="text-2xl font-extrabold text-slate-900 block">{students.length}</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-faint)] block">Students</span>
+            <span className="text-2xl font-extrabold text-[var(--text-primary)] block">{students.length}</span>
           </div>
-          <div className="rounded-lg bg-slate-50 p-2.5 text-slate-600">
+          <div className="rounded-lg bg-[var(--bg-base)] p-2.5 text-[var(--text-secondary)]">
             <UserGroupIcon className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs flex items-center justify-between">
+        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-5 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">Assignments</span>
-            <span className="text-2xl font-extrabold text-slate-900 block">{assignments.length}</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-faint)] block">Assignments</span>
+            <span className="text-2xl font-extrabold text-[var(--text-primary)] block">{assignments.length}</span>
           </div>
-          <div className="rounded-lg bg-slate-50 p-2.5 text-slate-600">
+          <div className="rounded-lg bg-[var(--bg-base)] p-2.5 text-[var(--text-secondary)]">
             <AcademicCapIcon className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs flex items-center justify-between">
+        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-5 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">Pending Release</span>
-            <span className="text-2xl font-extrabold text-amber-700 block">{draftEditsCount}</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-faint)] block">Pending Release</span>
+            <span className="text-2xl font-extrabold block" style={{ color: 'var(--fn-warning)' }}>{draftEditsCount}</span>
           </div>
-          <div className="rounded-lg bg-amber-50 p-2.5 text-amber-600 border border-amber-100">
+          <div className="rounded-lg border p-2.5" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-elevated)', color: 'var(--fn-warning)' }}>
             <PaperAirplaneIcon className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs flex items-center justify-between">
+        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-5 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">Local Edits</span>
-            <span className="text-2xl font-extrabold text-indigo-650 block">{unsavedCount}</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-faint)] block">Local Edits</span>
+            <span className="text-2xl font-extrabold block" style={{ color: 'var(--text-primary)' }}>{unsavedCount}</span>
           </div>
-          <div className="rounded-lg bg-indigo-50 p-2.5 text-indigo-600 border border-indigo-100 animate-pulse">
+          <div className="rounded-lg border p-2.5 animate-pulse" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
             <CheckIcon className="h-5 w-5" />
           </div>
         </div>
       </section>
 
       {/* Grid Controller & Controls Surface */}
-      <section className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-xs space-y-4">
+      <section className="rounded-xl border border-[var(--border-default)]/80 bg-[var(--bg-surface)] p-5 shadow-xs space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           {/* Client Search */}
           <div className="relative min-w-[280px]">
@@ -393,9 +389,9 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
               placeholder="Filter student lists..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 py-2 pl-10 pr-4 text-xs focus:border-slate-800 focus:outline-none bg-slate-50/50"
+              className="input pl-10 text-xs"
             />
-            <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-slate-400" />
+            <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-[var(--text-faint)]" />
           </div>
 
           {/* Action CTAs */}
@@ -404,7 +400,7 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
               <button
                 onClick={handleSaveChanges}
                 disabled={updateCellsMutation.isPending}
-                className="cursor-pointer flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4.5 py-2.5 text-xs font-bold text-white shadow-md hover:bg-indigo-500 disabled:opacity-50 transition"
+                className="btn btn-primary"
               >
                 {updateCellsMutation.isPending ? 'Committing...' : `Save Local Changes (${unsavedCount})`}
               </button>
@@ -412,7 +408,7 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
 
             <button
               onClick={() => setPublishModalOpen(true)}
-              className="cursor-pointer flex items-center gap-1.5 rounded-xl bg-slate-900 px-4.5 py-2.5 text-xs font-bold text-white shadow-md hover:bg-slate-800 transition"
+              className="btn btn-primary"
             >
               <CheckBadgeIcon className="h-4.5 w-4.5" /> Release Grades
             </button>
@@ -420,7 +416,7 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
         </div>
 
         {unsavedCount > 0 && (
-          <div className="rounded-lg bg-amber-50 border border-amber-200/70 p-3 text-xs text-amber-800 flex items-center justify-between">
+          <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] p-3 text-xs text-[var(--text-secondary)] flex items-center justify-between">
             <span>
               ⚠️ You have <strong>{unsavedCount}</strong> unsaved grade edits currently active on your screen. Click <strong>Save Local Changes</strong> above to push modifications to the server.
             </span>
@@ -429,35 +425,35 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
       </section>
 
       {/* Main Gradebook Spreadsheet Container */}
-      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-surface)] shadow-sm overflow-hidden">
         {assignments.length === 0 ? (
-          <div className="p-12 text-center text-slate-400">No active assignment columns found in this course.</div>
+          <div className="p-12 text-center text-[var(--text-faint)]">No active assignment columns found in this course.</div>
         ) : filteredStudents.length === 0 ? (
-          <div className="p-12 text-center text-slate-400">No students matching the search filters.</div>
+          <div className="p-12 text-center text-[var(--text-faint)]">No students matching the search filters.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse table-fixed min-w-[800px]">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-700">
+                <tr className="bg-[var(--bg-base)] border-b border-[var(--border-default)] text-xs font-bold text-[var(--text-secondary)]">
                   {/* Sticky left student header */}
-                  <th className="sticky left-0 z-10 bg-slate-50 px-6 py-4 border-r border-slate-200 w-[240px]">
+                  <th className="sticky left-0 z-10 bg-[var(--bg-base)] px-6 py-4 border-r border-[var(--border-default)] w-[240px]">
                     Student Profile
                   </th>
                   {assignments.map((asg) => (
-                    <th key={asg.id} className="px-5 py-4 border-r border-slate-200 w-[180px] align-top space-y-1">
-                      <div className="truncate text-slate-900" title={asg.title}>
+                    <th key={asg.id} className="px-5 py-4 border-r border-[var(--border-default)] w-[180px] align-top space-y-1">
+                      <div className="truncate text-[var(--text-primary)]" title={asg.title}>
                         {asg.title}
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="rounded bg-slate-200 px-1 py-0.2 text-[8px] font-bold text-slate-655 uppercase tracking-wide">
+                        <span className="rounded bg-[var(--bg-overlay)] px-1 py-0.2 text-[8px] font-bold text-[var(--text-secondary)] uppercase tracking-wide">
                           {asg.type}
                         </span>
-                        <span className="text-[10px] text-slate-400 font-semibold">
+                        <span className="text-[10px] text-[var(--text-faint)] font-semibold">
                           Max: {asg.maxPoints} pts
                         </span>
                       </div>
                       {asg.dueDate && (
-                        <div className="text-[9px] text-slate-400 font-medium">
+                        <div className="text-[9px] text-[var(--text-faint)] font-medium">
                           Due: {new Date(asg.dueDate).toLocaleDateString()}
                         </div>
                       )}
@@ -465,19 +461,19 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 text-xs">
+              <tbody className="divide-y divide-[var(--border-subtle)] text-xs">
                 {filteredStudents.map((student) => (
-                  <tr key={student.id} className="hover:bg-slate-50/50 transition">
+                  <tr key={student.id} className="hover:bg-[var(--bg-base)] transition">
                     {/* Sticky left student cell */}
-                    <td className="sticky left-0 z-10 bg-white px-6 py-3.5 border-r border-slate-200 font-semibold text-slate-800 shadow-sm flex items-center gap-3">
-                      <div className="h-7 w-7 rounded-full bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                    <td className="sticky left-0 z-10 bg-[var(--bg-surface)] px-6 py-3.5 border-r border-[var(--border-default)] font-semibold text-[var(--text-primary)] shadow-sm flex items-center gap-3">
+                      <div className="h-7 w-7 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-default)] text-[var(--text-secondary)] flex items-center justify-center font-bold text-xs uppercase shrink-0">
                         {student.displayName.substring(0, 2)}
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate text-slate-900 font-bold leading-tight" title={student.displayName}>
+                        <p className="truncate text-[var(--text-primary)] font-bold leading-tight" title={student.displayName}>
                           {student.displayName}
                         </p>
-                        <p className="truncate text-[10px] text-slate-400 font-medium" title={student.email || ''}>
+                        <p className="truncate text-[10px] text-[var(--text-faint)] font-medium" title={student.email || ''}>
                           {student.email || 'No email registered'}
                         </p>
                       </div>
@@ -511,17 +507,17 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
                       }
 
                       // Dynamic highlight styles
-                      let cellStyle = 'border-r border-slate-150 cursor-pointer hover:bg-slate-100/50 transition relative ';
+                      let cellStyle = 'border-r border-[var(--border-subtle)] cursor-pointer hover:bg-[var(--bg-elevated)]/50 transition relative ';
                       if (isSelected) {
-                        cellStyle += 'ring-2 ring-indigo-500 bg-indigo-50/20 ';
+                        cellStyle += 'ring-2 ring-[var(--border-strong)] bg-[var(--bg-active)] ';
                       } else if (isUnsaved) {
-                        cellStyle += 'bg-amber-50/45 text-amber-800 font-bold border-2 border-amber-300 ';
+                        cellStyle += 'bg-[var(--bg-elevated)] text-[var(--fn-warning)] font-bold border-2 border-[var(--border-strong)] ';
                       } else if (isDraft) {
-                        cellStyle += 'bg-slate-50/60 text-amber-700 font-medium ';
+                        cellStyle += 'bg-[var(--bg-base)] text-[var(--fn-warning)] font-medium ';
                       } else if (cellPoints !== undefined && cellPoints !== null) {
-                        cellStyle += 'text-slate-800 font-semibold ';
+                        cellStyle += 'text-[var(--text-primary)] font-semibold ';
                       } else {
-                        cellStyle += 'text-slate-350 ';
+                        cellStyle += 'text-[var(--text-faint)] ';
                       }
 
                       return (
@@ -534,7 +530,7 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
                             <div className="space-y-0.5">
                               <span className="text-sm font-bold tracking-tight">{displayVal}</span>
                               {cellPoints !== undefined && cellPoints !== null && (
-                                <span className="text-[10px] text-slate-400 font-medium block">
+                                <span className="text-[10px] text-[var(--text-faint)] font-medium block">
                                   / {asg.maxPoints}
                                 </span>
                               )}
@@ -542,21 +538,21 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
                             
                             <div className="flex flex-col items-end gap-1">
                               {isUnsaved ? (
-                                <span className="rounded bg-amber-100 border border-amber-200 px-1 py-0.2 text-[8px] font-bold uppercase tracking-wider text-amber-750 shrink-0">
+                                <span className="rounded border px-1 py-0.2 text-[8px] font-bold uppercase tracking-wider shrink-0" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-elevated)', color: 'var(--fn-warning)' }}>
                                   Unsaved
                                 </span>
                               ) : isDraft ? (
-                                <span className="rounded bg-slate-100 border border-slate-200 px-1 py-0.2 text-[8px] font-bold uppercase tracking-wider text-amber-600 shrink-0">
+                                <span className="rounded bg-[var(--bg-elevated)] border border-[var(--border-default)] px-1 py-0.2 text-[8px] font-bold uppercase tracking-wider text-[var(--fn-warning)] shrink-0">
                                   Draft
                                 </span>
                               ) : cellPoints !== undefined && cellPoints !== null ? (
-                                <span className="rounded bg-emerald-50 border border-emerald-100 px-1 py-0.2 text-[8px] font-bold uppercase tracking-wider text-emerald-600 shrink-0">
+                                <span className="rounded border px-1 py-0.2 text-[8px] font-bold uppercase tracking-wider shrink-0" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-elevated)', color: 'var(--fn-success)' }}>
                                   Released
                                 </span>
                               ) : null}
 
                               {hasComment && (
-                                <ChatBubbleOvalLeftIcon className="h-4 w-4 text-slate-400" title="Comment present" />
+                                <ChatBubbleOvalLeftIcon className="h-4 w-4 text-[var(--text-faint)]" title="Comment present" />
                               )}
                             </div>
                           </div>
@@ -573,17 +569,17 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
 
       {/* Popover Grade Editing Panel (Sidebar drawer or bottom details card) */}
       {selectedCell && currentSelectedStudent && currentSelectedAssignment && (
-        <section className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-md max-w-2xl animate-fade-in space-y-4">
-          <div className="flex items-start justify-between border-b border-slate-200 pb-3">
+        <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-base)] p-6 shadow-md max-w-2xl animate-fade-in space-y-4">
+          <div className="flex items-start justify-between border-b border-[var(--border-default)] pb-3">
             <div>
-              <span className="text-[10px] font-bold text-indigo-650 uppercase tracking-widest block">SpeedGrader Editor</span>
-              <h3 className="text-base font-bold text-slate-900 mt-1">
-                Edit {currentSelectedStudent.displayName} for <span className="italic text-slate-700">"{currentSelectedAssignment.title}"</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest block" style={{ color: 'var(--text-faint)' }}>SpeedGrader Editor</span>
+              <h3 className="text-base font-bold text-[var(--text-primary)] mt-1">
+                Edit {currentSelectedStudent.displayName} for <span className="italic text-[var(--text-secondary)]">"{currentSelectedAssignment.title}"</span>
               </h3>
             </div>
             <button
               onClick={() => setSelectedCell(null)}
-              className="text-xs font-semibold text-slate-500 hover:text-slate-800 cursor-pointer"
+              className="text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
             >
               Dismiss
             </button>
@@ -592,7 +588,7 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
           <div className="grid gap-4 sm:grid-cols-2">
             {/* Grade Input */}
             <div className="space-y-1.5">
-              <label className="block text-[10.5px] font-bold uppercase tracking-wider text-slate-450">
+              <label className="block text-[10.5px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                 Grade Score (Max: {currentSelectedAssignment.maxPoints.toFixed(2)} pts)
               </label>
               <div className="relative">
@@ -604,9 +600,9 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
                   value={editPoints}
                   onChange={(e) => setEditPoints(e.target.value)}
                   placeholder="0.0"
-                  className="w-full rounded-xl border border-slate-250 py-2.5 pl-4 pr-16 text-sm font-semibold focus:border-slate-800 focus:outline-none shadow-inner bg-white"
+                  className="input pr-16 font-semibold"
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--text-faint)]">
                   / {currentSelectedAssignment.maxPoints.toFixed(1)} pts
                 </span>
               </div>
@@ -614,7 +610,7 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
 
             {/* Comment Inputs */}
             <div className="space-y-1.5">
-              <label className="block text-[10.5px] font-bold uppercase tracking-wider text-slate-450">
+              <label className="block text-[10.5px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                 Instructor Feedback Comments
               </label>
               <textarea
@@ -622,27 +618,27 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
                 value={editComment}
                 onChange={(e) => setEditComment(e.target.value)}
                 placeholder="Write feedback comments..."
-                className="w-full rounded-xl border border-slate-250 p-3 text-xs focus:border-slate-800 focus:outline-none shadow-inner bg-white resize-none"
+                className="input min-h-20 resize-none text-xs"
               />
             </div>
           </div>
 
           {validationError && (
-            <p className="text-xs text-rose-600 font-medium bg-rose-50 border border-rose-200 p-2 rounded-lg">
+            <p className="rounded-lg border p-2 text-xs font-medium" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-elevated)', color: 'var(--fn-error)' }}>
               {validationError}
             </p>
           )}
 
-          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-200/60">
+          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[var(--border-default)]/60">
             <button
               onClick={handleDiscardSingleEdit}
-              className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="cursor-pointer rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] px-3.5 py-2 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--bg-base)]"
             >
               Discard Changes
             </button>
             <button
               onClick={handleApplyEdit}
-              className="cursor-pointer rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+              className="btn btn-primary btn-sm"
             >
               Apply Edit to Grid
             </button>
@@ -652,31 +648,31 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
 
       {/* Release Grades / Publication Overlay Modal */}
       {publishModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
-              <CheckBadgeIcon className="h-6.5 w-6.5 text-indigo-600 shrink-0" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'color-mix(in srgb, var(--bg-base) 78%, transparent)' }}>
+          <div className="w-full max-w-lg rounded-2xl bg-[var(--bg-surface)] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-2.5 border-b border-[var(--border-subtle)] pb-3">
+              <CheckBadgeIcon className="h-6.5 w-6.5 shrink-0" style={{ color: 'var(--text-secondary)' }} />
               <div>
-                <h3 className="text-base font-bold text-slate-900">Publish Draft Grades</h3>
-                <p className="text-xs text-slate-400 mt-0.5">Select assignment evaluations to release to student profiles.</p>
+                <h3 className="text-base font-bold text-[var(--text-primary)]">Publish Draft Grades</h3>
+                <p className="text-xs text-[var(--text-faint)] mt-0.5">Select assignment evaluations to release to student profiles.</p>
               </div>
             </div>
 
-            <div className="max-h-[220px] overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl p-2 bg-slate-50/50">
+            <div className="max-h-[220px] overflow-y-auto divide-y divide-[var(--border-subtle)] border border-[var(--border-default)] rounded-xl p-2 bg-[var(--bg-base)]">
               {assignments.map((asg) => {
                 const isChecked = selectedPublishIds.includes(asg.id);
                 return (
                   <div
                     key={asg.id}
                     onClick={() => handleTogglePublishAsg(asg.id)}
-                    className="flex items-center justify-between p-2.5 cursor-pointer hover:bg-slate-100/50 rounded-lg transition"
+                    className="flex items-center justify-between p-2.5 cursor-pointer hover:bg-[var(--bg-elevated)]/50 rounded-lg transition"
                   >
                     <div className="space-y-0.5">
-                      <p className="text-xs font-bold text-slate-850 truncate max-w-[340px]">{asg.title}</p>
-                      <p className="text-[10px] text-slate-400 font-semibold uppercase">{asg.type} column • Max: {asg.maxPoints} pts</p>
+                      <p className="text-xs font-bold text-[var(--text-primary)] truncate max-w-[340px]">{asg.title}</p>
+                      <p className="text-[10px] text-[var(--text-faint)] font-semibold uppercase">{asg.type} column • Max: {asg.maxPoints} pts</p>
                     </div>
                     <span className={`h-4.5 w-4.5 rounded border shrink-0 flex items-center justify-center text-[10px] ${
-                      isChecked ? 'border-slate-800 bg-slate-900 text-white' : 'border-slate-300 bg-white'
+                      isChecked ? 'border-[var(--border-strong)] bg-[var(--bg-active)] text-[var(--text-primary)]' : 'border-[var(--border-default)] bg-[var(--bg-surface)]'
                     }`}>
                       {isChecked && '✓'}
                     </span>
@@ -685,36 +681,36 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
               })}
             </div>
 
-            <div className="flex justify-between items-center text-xs font-semibold text-slate-500 pt-1">
+            <div className="flex justify-between items-center text-xs font-semibold text-[var(--text-muted)] pt-1">
               <span>{selectedPublishIds.length} of {assignments.length} columns selected</span>
               <div className="flex gap-2">
                 <button
                   onClick={() => setSelectedPublishIds(assignments.map((a) => a.id))}
-                  className="text-xs text-indigo-650 hover:underline cursor-pointer"
+                  className="cursor-pointer text-xs hover:underline"
                 >
                   Select All
                 </button>
                 <span>•</span>
                 <button
                   onClick={() => setSelectedPublishIds([])}
-                  className="text-xs text-indigo-655 hover:underline cursor-pointer"
+                  className="cursor-pointer text-xs hover:underline"
                 >
                   Clear All
                 </button>
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+            <div className="flex justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
               <button
                 onClick={() => setPublishModalOpen(false)}
-                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 cursor-pointer"
+                className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--bg-base)] cursor-pointer"
               >
                 Go Back
               </button>
               <button
                 onClick={handlePublishGrades}
                 disabled={publishGradebookMutation.isPending || selectedPublishIds.length === 0}
-                className="rounded-lg bg-indigo-650 px-4.5 py-2 text-xs font-bold text-white transition hover:bg-indigo-700 disabled:opacity-50 cursor-pointer"
+                className="btn btn-primary"
               >
                 {publishGradebookMutation.isPending ? 'Publishing...' : 'Publish Selected Grades'}
               </button>
@@ -725,7 +721,7 @@ export function TeacherGradebookPage({ courseId }: TeacherGradebookPageProps) {
 
       {/* Toast notifications */}
       {todoToast && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-xl bg-slate-900 px-5 py-3.5 text-xs font-semibold text-white shadow-2xl animate-fade-in border border-slate-800">
+        <div className="fixed bottom-6 right-6 z-50 rounded-lg border px-5 py-3.5 text-xs font-semibold shadow-2xl animate-fade-in" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>
           {todoToast}
         </div>
       )}

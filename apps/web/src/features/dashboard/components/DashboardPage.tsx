@@ -7,6 +7,10 @@ import { DashboardError } from './DashboardLayout';
 import { StudentDashboard } from './StudentDashboard';
 import { TeacherDashboard } from './TeacherDashboard';
 
+function resolvedRole(role?: string | null, globalRole?: string | null) {
+  return String(globalRole ?? role ?? '').toUpperCase();
+}
+
 export function DashboardPage() {
   const { data: currentUser, isLoading, error } = useCurrentUser();
 
@@ -18,11 +22,13 @@ export function DashboardPage() {
     return <DashboardError />;
   }
 
-  if (currentUser.role === 'ADMIN' || currentUser.globalRole === 'ADMIN') {
+  const role = resolvedRole(currentUser.role, currentUser.globalRole);
+
+  if (role === 'ADMIN') {
     return <AdminDashboard currentUser={currentUser} embedded />;
   }
 
-  if (currentUser.role === 'TEACHER' || currentUser.globalRole === 'TEACHER') {
+  if (role === 'TEACHER') {
     return <TeacherDashboard currentUser={currentUser} />;
   }
 

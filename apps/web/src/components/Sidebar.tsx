@@ -27,7 +27,7 @@ type NavItem = { name: string; href: string; icon: React.ComponentType<React.SVG
 export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { data: user } = useCurrentUser();
-  const globalRole = user?.role ?? user?.globalRole;
+  const globalRole = String(user?.globalRole ?? user?.role ?? '').toUpperCase();
 
   const isTeacher = globalRole === 'TEACHER' || globalRole === 'ADMIN';
   const isAdmin = globalRole === 'ADMIN';

@@ -6,7 +6,8 @@ import { useCurrentUser } from '@/features/users/hooks/useUserQueries';
 
 export default function AdminPage() {
   const { data: currentUser, isLoading } = useCurrentUser();
-  const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.globalRole === 'ADMIN';
+  const role = String(currentUser?.globalRole ?? currentUser?.role ?? '').toUpperCase();
+  const isAdmin = role === 'ADMIN';
 
   if (isLoading) return <Loading label="Loading admin dashboard..." />;
 

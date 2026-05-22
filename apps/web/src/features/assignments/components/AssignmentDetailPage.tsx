@@ -52,9 +52,9 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
 
   if (error || !assignment) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-955 text-slate-800">
+      <div className="rounded-lg border p-6 text-[var(--text-primary)]" style={{ borderColor: 'var(--fn-error)', background: 'var(--bg-surface)' }}>
         <h2 className="text-lg font-semibold">Error Loading Assignment</h2>
-        <p className="mt-2 text-sm text-red-700">
+        <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
           This assignment could not be retrieved. It may have been archived or you might not have access to this course.
         </p>
       </div>
@@ -181,11 +181,11 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
       case 'rte_submission':
         return (
           <div className="space-y-4">
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-[var(--text-secondary)]">
               Response Text Input (Rich Text simulated)
             </label>
             <textarea
-              className="w-full min-h-[180px] rounded-md border border-slate-300 p-3 text-sm focus:border-slate-500 focus:outline-none"
+              className="input min-h-[180px]"
               placeholder="Type your submission response here..."
               value={rteText}
               onChange={(e) => setRteText(e.target.value)}
@@ -198,11 +198,11 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
         const fileSettings = settings as FileAssignmentSettings;
         return (
           <div className="space-y-5">
-            <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+            <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-base)] p-4">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                 File Submission Settings
               </h4>
-              <ul className="mt-2 space-y-1 text-xs text-slate-500">
+              <ul className="mt-2 space-y-1 text-xs text-[var(--text-muted)]">
                 <li>• Max Files: {fileSettings?.maxFiles ?? 'Unlimited'}</li>
                 <li>• Max File Size: {fileSettings?.maxFileSizeMb ?? 10} MB</li>
                 {fileSettings?.allowedFileTypes?.length && (
@@ -212,21 +212,21 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
             </div>
 
             <div className="space-y-3">
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="block text-sm font-medium text-[var(--text-secondary)]">
                 Attach Mock Files to Submit
               </label>
               
               <div className="flex gap-2">
                 <input
                   type="text"
-                  className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none"
+                  className="flex-1 rounded-md border border-[var(--border-default)] px-3 py-1.5 text-sm focus:outline-none"
                   placeholder="e.g. document.pdf"
                   value={newFileName}
                   onChange={(e) => setNewFileName(e.target.value)}
                 />
                 <input
                   type="text"
-                  className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none"
+                  className="flex-1 rounded-md border border-[var(--border-default)] px-3 py-1.5 text-sm focus:outline-none"
                   placeholder="Mock URL (optional)"
                   value={newFileUrl}
                   onChange={(e) => setNewFileUrl(e.target.value)}
@@ -234,24 +234,25 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
                 <button
                   type="button"
                   onClick={handleAddFile}
-                  className="rounded-md bg-slate-800 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-750"
+                  className="btn btn-primary"
                 >
                   Add File
                 </button>
               </div>
 
               {fileList.length > 0 && (
-                <div className="mt-3 divide-y divide-slate-100 rounded-md border border-slate-200 bg-white">
+                <div className="mt-3 divide-y rounded-md border border-[var(--border-default)] bg-[var(--bg-surface)]" style={{ borderColor: 'var(--border-default)' }}>
                   {fileList.map((file, idx) => (
                     <div key={idx} className="flex items-center justify-between px-3 py-2 text-sm">
                       <div>
-                        <span className="font-medium text-slate-800">{file.fileName}</span>
-                        <span className="ml-2 text-xs text-slate-400">({file.fileUrl})</span>
+                        <span className="font-medium text-[var(--text-primary)]">{file.fileName}</span>
+                        <span className="ml-2 text-xs text-[var(--text-faint)]">({file.fileUrl})</span>
                       </div>
                       <button
                         type="button"
                         onClick={() => handleRemoveFile(idx)}
-                        className="text-xs font-medium text-red-600 hover:text-red-800"
+                        className="text-xs font-medium"
+                        style={{ color: 'var(--fn-error)' }}
                       >
                         Remove
                       </button>
@@ -269,20 +270,20 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
         const fields = formSettings?.fields || [];
         return (
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-slate-700">Complete the form fields below:</h3>
+            <h3 className="text-sm font-medium text-[var(--text-secondary)]">Complete the form fields below:</h3>
             {fields.map((field, idx) => {
               const label = String(field.label || `Field ${idx + 1}`);
               const fieldId = String(field.fieldId || `field_${idx}`);
               const required = Boolean(field.required);
               return (
                 <div key={fieldId} className="space-y-1">
-                  <label className="block text-sm font-medium text-slate-700">
-                    {label} {required && <span className="text-red-500">*</span>}
+                  <label className="block text-sm font-medium text-[var(--text-secondary)]">
+                    {label} {required && <span style={{ color: 'var(--fn-error)' }}>*</span>}
                   </label>
                   <input
                     type="text"
                     required={required}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                    className="input"
                     placeholder={String(field.placeholder || '')}
                     value={formAnswers[fieldId] || ''}
                     onChange={(e) =>
@@ -292,7 +293,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
                 </div>
               );
             })}
-            {!fields.length && <p className="text-sm text-slate-500">No form fields configured.</p>}
+            {!fields.length && <p className="text-sm text-[var(--text-muted)]">No form fields configured.</p>}
           </div>
         );
       }
@@ -302,17 +303,17 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
         return (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="block text-sm font-medium text-[var(--text-secondary)]">
                 Programming Code Submission ({vplSettings?.language || 'javascript'})
               </label>
               {vplSettings?.runtime && (
-                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                <span className="rounded-md bg-[var(--bg-elevated)] px-2 py-0.5 text-xs text-[var(--text-secondary)]">
                   Runtime: {vplSettings.runtime}
                 </span>
               )}
             </div>
             <textarea
-              className="w-full min-h-[220px] font-mono rounded-md border border-slate-300 bg-slate-900 p-4 text-sm text-slate-100 focus:outline-none"
+              className="input min-h-[220px] font-mono"
               placeholder={vplSettings?.templateCode || '// Enter your code execution here...'}
               value={vplCode}
               onChange={(e) => setVplCode(e.target.value)}
@@ -330,14 +331,14 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
   const getStatusBadgeClass = (status: string) => {
     switch (status.toUpperCase()) {
       case 'SUBMITTED':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-default)]';
       case 'DRAFT':
-        return 'bg-amber-100 text-amber-800';
+        return 'bg-[var(--bg-elevated)] text-[var(--fn-warning)] border border-[var(--border-default)]';
       case 'GRADED':
       case 'PUBLISHED':
-        return 'bg-green-100 text-green-800';
+        return 'bg-[var(--bg-elevated)] text-[var(--fn-success)] border border-[var(--border-default)]';
       default:
-        return 'bg-slate-100 text-slate-800';
+        return 'bg-[var(--bg-elevated)] text-[var(--text-primary)]';
     }
   };
 
@@ -348,8 +349,8 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
         <div
           className={`rounded-md p-4 text-sm font-medium ${
             statusMessage.type === 'success'
-              ? 'bg-green-50 border border-green-200 text-green-800'
-              : 'bg-red-50 border border-red-200 text-red-800'
+              ? 'border text-[var(--fn-success)] bg-[var(--bg-surface)] border-[var(--border-default)]'
+              : 'border text-[var(--fn-error)] bg-[var(--bg-surface)] border-[var(--border-default)]'
           }`}
         >
           {statusMessage.text}
@@ -358,51 +359,51 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
 
       {/* Staff Administration Header Placement */}
       {isStaff && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">
+        <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 text-[var(--text-primary)]">
           <p className="text-sm font-medium">
             Course Staff Access
           </p>
-          <p className="mt-1 text-xs text-amber-700">
+          <p className="mt-1 text-xs text-[var(--text-muted)]">
             Grading and submission review tools are available below.
           </p>
         </div>
       )}
 
       {/* Main Assignment Details Display */}
-      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+      <section className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
               {assignmentType.replace('_', ' ')}
             </p>
-            <h1 className="mt-1 text-2xl font-bold text-slate-900">{assignment.title}</h1>
+            <h1 className="mt-1 text-2xl font-bold text-[var(--text-primary)]">{assignment.title}</h1>
           </div>
           <div className="text-right">
-            <span className="text-sm text-slate-500">Max Points</span>
-            <p className="text-lg font-bold text-slate-800">{assignment.maxPoints}</p>
+            <span className="text-sm text-[var(--text-muted)]">Max Points</span>
+            <p className="text-lg font-bold text-[var(--text-primary)]">{assignment.maxPoints}</p>
           </div>
         </div>
 
         <div className="mt-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-faint)]">
             Description & Instructions
           </h3>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700 leading-relaxed">
+          <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--text-secondary)] leading-relaxed">
             {assignment.instructions || assignment.description || 'No instruction manual has been provided.'}
           </p>
         </div>
 
-        <div className="mt-6 grid gap-4 border-t border-slate-100 pt-5 text-sm md:grid-cols-2">
+        <div className="mt-6 grid gap-4 border-t border-[var(--border-subtle)] pt-5 text-sm md:grid-cols-2">
           <div>
-            <span className="text-xs font-medium uppercase tracking-wider text-slate-400">
+            <span className="text-xs font-medium uppercase tracking-wider text-[var(--text-faint)]">
               Submission Due Date
             </span>
-            <p className="mt-1 font-semibold text-slate-800">
+            <p className="mt-1 font-semibold text-[var(--text-primary)]">
               {assignment.dueDate ? new Date(assignment.dueDate).toLocaleString() : 'No due date scheduled'}
             </p>
           </div>
           <div>
-            <span className="text-xs font-medium uppercase tracking-wider text-slate-400">
+            <span className="text-xs font-medium uppercase tracking-wider text-[var(--text-faint)]">
               Submission Status
             </span>
             <div className="mt-1 flex items-center gap-2">
@@ -414,7 +415,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
                 {studentState?.status?.replace('_', ' ') || 'NOT STARTED'}
               </span>
               {studentState?.grade && (
-                <span className="text-xs font-medium text-slate-600">
+                <span className="text-xs font-medium text-[var(--text-secondary)]">
                   Grade: {studentState.grade.points} / {assignment.maxPoints}
                 </span>
               )}
@@ -425,9 +426,9 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
 
       {/* Submission Actions Hub */}
       {assignmentType === 'quiz' ? (
-        <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Quiz Assessment</h2>
-          <p className="mt-2 text-sm text-slate-600">
+        <section className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Quiz Assessment</h2>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">
             This assignment is conducted via a quiz. You must start a timed attempt to answer.
           </p>
           
@@ -437,12 +438,12 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
                 type="button"
                 onClick={handleStartQuiz}
                 disabled={startQuizAttempt.isPending}
-                className="rounded-md bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-850 focus:outline-none disabled:opacity-50"
+                className="btn btn-primary"
               >
                 {startQuizAttempt.isPending ? 'Starting Timed Attempt...' : 'Start timed Quiz Attempt'}
               </button>
             ) : (
-              <p className="text-sm font-medium text-slate-500">
+              <p className="text-sm font-medium text-[var(--text-muted)]">
                 You have reached your quiz attempt limit or starting new attempts is restricted.
               </p>
             )}
@@ -451,7 +452,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
               <button
                 type="button"
                 onClick={() => router.push(`/quiz/${studentState.latestAttemptId}/review`)}
-                className="rounded-md border border-slate-350 px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-md border border-[var(--border-strong)] px-5 py-2 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-base)]"
               >
                 Review Latest Attempt
               </button>
@@ -459,14 +460,14 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
           </div>
         </section>
       ) : (
-        <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Your Submission</h2>
+        <section className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Your Submission</h2>
 
           {/* Submission content history */}
           {studentState?.submittedAt && !isEditing && (
-            <div className="mt-3 rounded-md bg-slate-55 p-4 text-sm text-slate-700">
-              <p className="font-semibold text-slate-800">Latest Submission Summary:</p>
-              <ul className="mt-2 space-y-1 text-xs text-slate-600">
+            <div className="mt-3 rounded-md bg-[var(--bg-base)] p-4 text-sm text-[var(--text-secondary)]">
+              <p className="font-semibold text-[var(--text-primary)]">Latest Submission Summary:</p>
+              <ul className="mt-2 space-y-1 text-xs text-[var(--text-secondary)]">
                 <li>• Version Submitted: {studentState.attemptsUsed ?? 1}</li>
                 <li>• Submitted Timestamp: {new Date(studentState.submittedAt).toLocaleString()}</li>
               </ul>
@@ -476,7 +477,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
                   <button
                     type="button"
                     onClick={handleEnterEditMode}
-                    className="rounded-md bg-slate-800 px-4 py-1.5 text-xs font-semibold text-white hover:bg-slate-750"
+                    className="btn btn-primary btn-sm"
                   >
                     Edit Submission
                   </button>
@@ -486,7 +487,8 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
                     type="button"
                     onClick={handleWithdraw}
                     disabled={withdrawSubmission.isPending}
-                    className="rounded-md bg-red-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                    className="rounded-md px-4 py-1.5 text-xs font-semibold disabled:opacity-50"
+                    style={{ background: 'var(--fn-error)', color: 'var(--bg-base)' }}
                   >
                     {withdrawSubmission.isPending ? 'Withdrawing...' : 'Withdraw Submission'}
                   </button>
@@ -504,7 +506,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
                 <button
                   type="submit"
                   disabled={submitAssignment.isPending || editSubmission.isPending}
-                  className="rounded-md bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-850 disabled:opacity-50"
+                  className="btn btn-primary"
                 >
                   {submitAssignment.isPending || editSubmission.isPending
                     ? 'Submitting response...'
@@ -516,7 +518,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
                   <button
                     type="button"
                     onClick={() => setIsEditing(false)}
-                    className="rounded-md border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    className="rounded-md border border-[var(--border-default)] px-5 py-2 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-base)]"
                   >
                     Cancel Edit
                   </button>
@@ -525,7 +527,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
             </form>
           ) : (
             studentState?.submittedAt ? null : (
-              <p className="mt-4 text-sm text-slate-500">
+              <p className="mt-4 text-sm text-[var(--text-muted)]">
                 Submissions are not permitted for this assignment, or the availability window has closed.
               </p>
             )
