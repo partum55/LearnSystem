@@ -22,7 +22,7 @@ export class ApiError extends Error implements ApiErrorShape {
   }
 }
 
-let API_BASE_URL = process.env.NEXT_PUBLIC_LEARNING_API_URL || process.env.NEXT_PUBLIC_API_URL || '';
+let API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 if (!API_BASE_URL) {
   if (typeof window !== 'undefined' && window.location && window.location.hostname) {
