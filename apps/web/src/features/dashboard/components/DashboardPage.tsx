@@ -9,21 +9,20 @@ import { Loading } from '@/components/Loading';
 export function DashboardPage() {
   const { data: currentUser, isLoading: isUserLoading, error: userError } = useCurrentUser();
   
-  // Conditionally fetch student dashboard based on role (USER or ADMIN)
   const isStudentOrAdmin = currentUser?.role === 'USER' || currentUser?.role === 'ADMIN';
-  const { 
-    data: studentData, 
-    isLoading: isStudentLoading, 
-    error: studentError 
-  } = useStudentDashboard();
-
-  // Conditionally fetch teaching courses based on role (TEACHER or ADMIN)
   const isTeacherOrAdmin = currentUser?.role === 'TEACHER' || currentUser?.role === 'ADMIN';
-  const { 
-    data: teachingCourses, 
-    isLoading: isTeachingLoading, 
-    error: teachingError 
-  } = useTeachingCourses();
+
+  const {
+    data: studentData,
+    isLoading: isStudentLoading,
+    error: studentError
+  } = useStudentDashboard(!!currentUser && isStudentOrAdmin);
+
+  const {
+    data: teachingCourses,
+    isLoading: isTeachingLoading,
+    error: teachingError
+  } = useTeachingCourses(!!currentUser && isTeacherOrAdmin);
 
   const isLoading = isUserLoading || (isStudentOrAdmin && isStudentLoading) || (isTeacherOrAdmin && isTeachingLoading);
   const hasError = userError || (isStudentOrAdmin && studentError) || (isTeacherOrAdmin && teachingError);
@@ -80,7 +79,7 @@ export function DashboardPage() {
       {/* Header Welcome Box */}
       <header className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-linear-to-r from-slate-900 via-slate-800 to-indigo-950 p-6 text-white shadow-md md:p-8">
         <div className="relative z-10 space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-indigo-300">LMS portal Overview</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-indigo-300">LearnSystem</p>
           <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl">
             {getGreeting()}, <span className="bg-gradient-to-r from-indigo-200 via-indigo-100 to-white bg-clip-text text-transparent">{displayName}</span>!
           </h1>
@@ -105,8 +104,8 @@ export function DashboardPage() {
                 </svg>
               </div>
               <div>
-                <h3 className="text-sm font-bold text-amber-900">🛡️ Platform Administration Panel</h3>
-                <p className="text-xs text-amber-755">You are signed in as an Administrator. You have system-wide permissions.</p>
+                <h3 className="text-sm font-bold text-amber-900">Platform Administration</h3>
+                <p className="text-xs text-amber-755">You have administrator access to platform settings.</p>
               </div>
             </div>
             <Link 

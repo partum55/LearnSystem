@@ -9,10 +9,11 @@ export const useActiveCourses = () =>
     queryFn: canonicalCoursesApi.getMyActive,
   });
 
-export const useTeachingCourses = () =>
+export const useTeachingCourses = (enabled = true) =>
   useQuery({
     queryKey: queryKeys.courses.myTeaching(),
     queryFn: canonicalCoursesApi.getMyTeaching,
+    enabled,
   });
 
 export const useAdminCourses = (params?: { page?: number; size?: number }) =>
