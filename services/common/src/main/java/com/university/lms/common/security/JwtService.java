@@ -1,19 +1,23 @@
 package com.university.lms.common.security;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.stereotype.Service;
 import jakarta.annotation.PostConstruct;
-
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.stereotype.Service;
 
 /**
- * Supabase JWT validation service using JWKS.
+ * Supabase JWT validation service using JWKS with legacy HS256 fallback.
  * Shared across Java services to validate tokens issued by Supabase Auth.
  */
 @Service
@@ -27,19 +31,43 @@ public class JwtService {
     @Value("${supabase.jwks-url:https://aarkyaevxuhlkefayzro.supabase.co/auth/v1/.well-known/jwks.json}")
     private String jwksUrl;
 
-    private JwtDecoder jwtDecoder;
+    @Value("${supabase.jwt-secret:${JWT_SECRET:}}")
+    private String jwtSecret;
+
+    private JwtDecoder jwksDecoder;
+    private JwtDecoder hmacDecoder;
 
     @PostConstruct
     public void initialize() {
         if (jwksUrl != null && !jwksUrl.isBlank()) {
             try {
-                this.jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwksUrl).build();
+                this.jwksDecoder = NimbusJwtDecoder.withJwkSetUri(jwksUrl).build();
                 log.info("Initialized JwtService with JWKS URL: {}", jwksUrl);
             } catch (Exception e) {
                 log.error("Failed to initialize JwtDecoder with JWKS URL {}: {}", jwksUrl, e.getMessage());
             }
         } else {
-            log.error("SUPABASE_JWKS_URL is not configured. JWT validation will fail.");
+            log.warn("SUPABASE_JWKS_URL is not configured.");
+        }
+
+        if (jwtSecret != null && !jwtSecret.isBlank()) {
+            try {
+                SecretKey secretKey = new SecretKeySpec(
+                        jwtSecret.getBytes(StandardCharsets.UTF_8),
+                        "HmacSHA256"
+                );
+                this.hmacDecoder = NimbusJwtDecoder
+                        .withSecretKey(secretKey)
+                        .macAlgorithm(MacAlgorithm.HS256)
+                        .build();
+                log.info("Initialized JwtService with HS256 fallback.");
+            } catch (Exception e) {
+                log.error("Failed to initialize HS256 JwtDecoder: {}", e.getMessage());
+            }
+        }
+
+        if (jwksDecoder == null && hmacDecoder == null) {
+            log.error("No Supabase JWT decoder configured. JWT validation will fail.");
         }
     }
 
@@ -97,10 +125,7 @@ public class JwtService {
      * Extract specific claim from token using a resolver function.
      */
     public <T> T extractClaim(String token, Function<Jwt, T> claimsResolver) {
-        if (jwtDecoder == null) {
-            throw new IllegalStateException("JwtDecoder is not initialized. Check SUPABASE_JWKS_URL.");
-        }
-        final Jwt jwt = jwtDecoder.decode(token);
+        final Jwt jwt = decodeToken(token);
         return claimsResolver.apply(jwt);
     }
 
@@ -108,16 +133,40 @@ public class JwtService {
      * Validate a Supabase access token signature and required subject.
      */
     public boolean validateAccessToken(String token) {
-        if (jwtDecoder == null) {
-            log.error("JwtDecoder not initialized; cannot validate token.");
-            return false;
-        }
         try {
-            Jwt jwt = jwtDecoder.decode(token);
+            Jwt jwt = decodeToken(token);
             return jwt.getSubject() != null && !jwt.getSubject().isBlank();
         } catch (Exception e) {
             log.debug("JWT validation failed: {}", e.getMessage());
             return false;
         }
+    }
+
+    private Jwt decodeToken(String token) {
+        JwtException jwksFailure = null;
+
+        if (jwksDecoder != null) {
+            try {
+                return jwksDecoder.decode(token);
+            } catch (JwtException ex) {
+                jwksFailure = ex;
+            }
+        }
+
+        if (hmacDecoder != null) {
+            try {
+                return hmacDecoder.decode(token);
+            } catch (JwtException ex) {
+                if (jwksFailure != null) {
+                    ex.addSuppressed(jwksFailure);
+                }
+                throw ex;
+            }
+        }
+
+        if (jwksFailure != null) {
+            throw jwksFailure;
+        }
+        throw new IllegalStateException("No Supabase JWT decoder is initialized.");
     }
 }

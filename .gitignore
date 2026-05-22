@@ -219,6 +219,9 @@ __marimo__/
 .next/
 out/
 
+# Local deployment helpers
+scripts/redeploy-droplet.local.sh
+
 # Java / Maven build artifacts
 **/target/
 *.jar
