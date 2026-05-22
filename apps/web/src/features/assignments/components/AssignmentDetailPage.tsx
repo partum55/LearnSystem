@@ -360,10 +360,10 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
       {isStaff && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">
           <p className="text-sm font-medium">
-            🛡️ Course Staff Administration Panel:
+            Course Staff Access
           </p>
           <p className="mt-1 text-xs text-amber-700">
-            Grading panel is being rebuilt for canonical API.
+            Grading and submission review tools are available below.
           </p>
         </div>
       )}
