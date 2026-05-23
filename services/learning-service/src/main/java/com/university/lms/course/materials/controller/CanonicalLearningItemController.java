@@ -2,9 +2,9 @@ package com.university.lms.course.materials.controller;
 
 import com.university.lms.course.materials.dto.LearningItemDto;
 import com.university.lms.course.materials.dto.LearningItemRequest;
-import com.university.lms.course.materials.dto.LessonBlockDto;
-import com.university.lms.course.materials.dto.LessonBlockReorderRequest;
-import com.university.lms.course.materials.dto.LessonBlockRequest;
+import com.university.lms.course.materials.dto.LessonPageDto;
+import com.university.lms.course.materials.dto.LessonPageReorderRequest;
+import com.university.lms.course.materials.dto.LessonPageRequest;
 import com.university.lms.course.materials.dto.LessonDetailDto;
 import com.university.lms.course.materials.service.LearningContentService;
 import com.university.lms.course.web.RequestUserContext;
@@ -59,40 +59,40 @@ public class CanonicalLearningItemController {
     learningContentService.archiveLearningItem(learningItemId, userContext.requireUserId());
   }
 
-  @GetMapping("/learning-items/{learningItemId}/blocks")
-  public List<LessonBlockDto> listBlocks(@PathVariable UUID learningItemId) {
-    return learningContentService.listLessonBlocks(learningItemId, userContext.requireUserId());
+  @GetMapping("/learning-items/{learningItemId}/pages")
+  public List<LessonPageDto> listPages(@PathVariable UUID learningItemId) {
+    return learningContentService.listLessonPages(learningItemId, userContext.requireUserId());
   }
 
-  @PostMapping("/learning-items/{learningItemId}/blocks")
+  @PostMapping("/learning-items/{learningItemId}/pages")
   @ResponseStatus(HttpStatus.CREATED)
-  public LessonBlockDto createBlock(
+  public LessonPageDto createPage(
       @PathVariable UUID learningItemId,
-      @Valid @RequestBody LessonBlockRequest request) {
-    return learningContentService.createLessonBlock(
+      @Valid @RequestBody LessonPageRequest request) {
+    return learningContentService.createLessonPage(
         learningItemId, userContext.requireUserId(), request);
   }
 
-  @PatchMapping("/learning-items/{learningItemId}/blocks/{blockId}")
-  public LessonBlockDto updateBlock(
+  @PatchMapping("/learning-items/{learningItemId}/pages/{pageId}")
+  public LessonPageDto updatePage(
       @PathVariable UUID learningItemId,
-      @PathVariable UUID blockId,
-      @Valid @RequestBody LessonBlockRequest request) {
-    return learningContentService.updateLessonBlock(
-        learningItemId, blockId, userContext.requireUserId(), request);
+      @PathVariable UUID pageId,
+      @Valid @RequestBody LessonPageRequest request) {
+    return learningContentService.updateLessonPage(
+        learningItemId, pageId, userContext.requireUserId(), request);
   }
 
-  @DeleteMapping("/learning-items/{learningItemId}/blocks/{blockId}")
+  @DeleteMapping("/learning-items/{learningItemId}/pages/{pageId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void deleteBlock(@PathVariable UUID learningItemId, @PathVariable UUID blockId) {
-    learningContentService.deleteLessonBlock(learningItemId, blockId, userContext.requireUserId());
+  public void deletePage(@PathVariable UUID learningItemId, @PathVariable UUID pageId) {
+    learningContentService.deleteLessonPage(learningItemId, pageId, userContext.requireUserId());
   }
 
-  @PatchMapping("/learning-items/{learningItemId}/blocks/reorder")
-  public LessonDetailDto reorderBlocks(
+  @PatchMapping("/learning-items/{learningItemId}/pages/reorder")
+  public LessonDetailDto reorderPages(
       @PathVariable UUID learningItemId,
-      @Valid @RequestBody LessonBlockReorderRequest request) {
-    return learningContentService.reorderLessonBlocks(
+      @Valid @RequestBody LessonPageReorderRequest request) {
+    return learningContentService.reorderLessonPages(
         learningItemId, userContext.requireUserId(), request);
   }
 }

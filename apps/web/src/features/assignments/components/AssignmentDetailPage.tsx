@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   useCanonicalAssignment,
@@ -12,8 +12,11 @@ import { useStartQuizAttempt } from '@/features/quiz-attempts/hooks/useQuizAttem
 import { useCurrentUser } from '@/features/users/hooks/useUserQueries';
 import { useTeachingCourses } from '@/features/courses/hooks/useCourseQueries';
 import { Loading } from '@/components/Loading';
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { RichContentEditor } from '@/features/rich-content/components/RichContentEditor';
+import { RichContentRenderer } from '@/features/rich-content/components/RichContentRenderer';
+import type { RichContentDocument } from '@/features/rich-content/rich-content.types';
 import type {
-  FormAssignmentSettings,
   VplAssignmentSettings,
   FileAssignmentSettings,
   SubmissionFileItem,
@@ -23,6 +26,22 @@ import type {
 interface AssignmentDetailPageProps {
   assignmentId: string;
 }
+
+type TabId = 'instructions' | 'answer' | 'history';
+
+const parseDocument = (content: any): RichContentDocument => {
+  if (!content) return { version: 1, blocks: [] };
+  if (typeof content === 'object') return content as RichContentDocument;
+  try {
+    return JSON.parse(content) as RichContentDocument;
+  } catch {
+    // Wrap simple text in a paragraph block
+    return {
+      version: 1,
+      blocks: [{ id: 'init', type: 'paragraph', data: { text: String(content) } }],
+    };
+  }
+};
 
 export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps) {
   const router = useRouter();
@@ -35,16 +54,71 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
   const editSubmission = useEditSubmission();
   const withdrawSubmission = useWithdrawSubmission();
 
+  // Active Workspace Tab state (for TEXT_SUBMISSION)
+  const [activeTab, setActiveTab] = useState<TabId>('instructions');
+
   // Submission inputs state
-  const [rteText, setRteText] = useState('');
+  const [submissionValue, setSubmissionValue] = useState<RichContentDocument>({
+    version: 1,
+    blocks: [],
+  });
   const [vplCode, setVplCode] = useState('');
   const [fileList, setFileList] = useState<SubmissionFileItem[]>([]);
   const [newFileName, setNewFileName] = useState('');
   const [newFileUrl, setNewFileUrl] = useState('');
-  const [formAnswers, setFormAnswers] = useState<Record<string, string>>({});
+
+  // Submission Versions History
+  const [versions, setVersions] = useState<any[]>([]);
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
 
   const [isEditing, setIsEditing] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const { studentState, settings, type: assignmentType } = assignment || {};
+
+  // Fetch current submission text answer and version history directly from Supabase
+  useEffect(() => {
+    if (studentState?.submissionId && assignment?.type === 'TEXT_SUBMISSION') {
+      const subId = studentState.submissionId;
+      const fetchSubmissionData = async () => {
+        const supabase = getSupabaseBrowserClient();
+        
+        // 1. Fetch current answer
+        const { data } = await supabase
+          .from('assignment_submissions')
+          .select('content_json')
+          .eq('id', subId)
+          .single();
+        
+        const subData = data as any;
+        if (subData?.content_json) {
+          setSubmissionValue(parseDocument(subData.content_json));
+        }
+
+        // 2. Fetch version attempts
+        const { data: verDataList } = await supabase
+          .from('submission_versions')
+          .select('*')
+          .eq('submission_id', subId)
+          .order('version_number', { ascending: false });
+
+        const verData = verDataList as any[] | null;
+        if (verData) {
+          setVersions(verData);
+          if (verData.length > 0) {
+            setSelectedVersionId(verData[0].id);
+          }
+        }
+      };
+      
+      fetchSubmissionData();
+    }
+  }, [studentState?.submissionId, assignmentType]);
+
+  const selectedVersion = useMemo(() => {
+    if (!versions || !selectedVersionId) return null;
+    return versions.find((v) => v.id === selectedVersionId) || null;
+  }, [versions, selectedVersionId]);
 
   if (isLoading) {
     return <Loading label="Loading assignment details..." />;
@@ -61,18 +135,17 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
     );
   }
 
+  const typeStr = (assignmentType || 'FILE_SUBMISSION') as string;
+
   const isStaff =
     currentUser?.role === 'ADMIN' ||
     teachingCourses?.some((c) => c.id === assignment.courseId);
-
-  const { studentState, settings, type: assignmentType } = assignment;
 
   const handleStartQuiz = async () => {
     try {
       setStatusMessage(null);
       const res = await startQuizAttempt.mutateAsync(assignmentId);
       setStatusMessage({ type: 'success', text: 'Quiz attempt started successfully!' });
-      // Redirect to quiz taking view
       router.push(`/quiz/${res.id}`);
     } catch (err) {
       const error = err as { message?: string };
@@ -99,17 +172,15 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
   };
 
   const buildSubmissionRequest = (): SubmissionRequest => {
-    switch (assignmentType) {
+    switch (typeStr) {
       case 'TEXT_SUBMISSION':
-        return { text: rteText };
+        return { text: JSON.stringify(submissionValue) };
       case 'FILE_SUBMISSION':
         return { files: fileList };
-      case 'FORM':
-        return { answers: formAnswers };
       case 'VPL':
         return { code: vplCode, programmingLanguage: (settings as VplAssignmentSettings)?.language || 'javascript' };
       default:
-        return { text: rteText };
+        return { text: JSON.stringify(submissionValue) };
     }
   };
 
@@ -129,7 +200,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
       } else {
         await submitAssignment.mutateAsync({
           assignmentId,
-          type: assignmentType,
+          type: typeStr,
           request,
         });
         setStatusMessage({ type: 'success', text: 'Assignment submitted successfully!' });
@@ -155,10 +226,9 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
       setStatusMessage(null);
       await withdrawSubmission.mutateAsync(studentState.submissionId);
       setStatusMessage({ type: 'success', text: 'Submission withdrawn successfully.' });
-      setRteText('');
+      setSubmissionValue({ version: 1, blocks: [] });
       setVplCode('');
       setFileList([]);
-      setFormAnswers({});
       setIsEditing(false);
       void refetch();
     } catch (err) {
@@ -167,164 +237,6 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
         type: 'error',
         text: error.message || 'Failed to withdraw submission. Please try again.',
       });
-    }
-  };
-
-  const handleEnterEditMode = () => {
-    setIsEditing(true);
-    // Pre-populate input fields if we are editing an existing state
-    setStatusMessage(null);
-  };
-
-  const renderSubmissionForm = () => {
-    switch (assignmentType) {
-      case 'TEXT_SUBMISSION':
-        return (
-          <div className="space-y-4">
-            <label className="block text-sm font-medium text-[var(--text-secondary)]">
-              Response Text Input (Rich Text simulated)
-            </label>
-            <textarea
-              className="input min-h-[180px]"
-              placeholder="Type your submission response here..."
-              value={rteText}
-              onChange={(e) => setRteText(e.target.value)}
-              required
-            />
-          </div>
-        );
-
-      case 'FILE_SUBMISSION': {
-        const fileSettings = settings as FileAssignmentSettings;
-        return (
-          <div className="space-y-5">
-            <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-base)] p-4">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
-                File Submission Settings
-              </h4>
-              <ul className="mt-2 space-y-1 text-xs text-[var(--text-muted)]">
-                <li>• Max Files: {fileSettings?.maxFiles ?? 'Unlimited'}</li>
-                <li>• Max File Size: {fileSettings?.maxFileSizeMb ?? 10} MB</li>
-                {fileSettings?.allowedFileTypes?.length && (
-                  <li>• Allowed Formats: {fileSettings.allowedFileTypes.join(', ')}</li>
-                )}
-              </ul>
-            </div>
-
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-[var(--text-secondary)]">
-                Attach Mock Files to Submit
-              </label>
-              
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  className="flex-1 rounded-md border border-[var(--border-default)] px-3 py-1.5 text-sm focus:outline-none"
-                  placeholder="e.g. document.pdf"
-                  value={newFileName}
-                  onChange={(e) => setNewFileName(e.target.value)}
-                />
-                <input
-                  type="text"
-                  className="flex-1 rounded-md border border-[var(--border-default)] px-3 py-1.5 text-sm focus:outline-none"
-                  placeholder="Mock URL (optional)"
-                  value={newFileUrl}
-                  onChange={(e) => setNewFileUrl(e.target.value)}
-                />
-                <button
-                  type="button"
-                  onClick={handleAddFile}
-                  className="btn btn-primary"
-                >
-                  Add File
-                </button>
-              </div>
-
-              {fileList.length > 0 && (
-                <div className="mt-3 divide-y rounded-md border border-[var(--border-default)] bg-[var(--bg-surface)]" style={{ borderColor: 'var(--border-default)' }}>
-                  {fileList.map((file, idx) => (
-                    <div key={idx} className="flex items-center justify-between px-3 py-2 text-sm">
-                      <div>
-                        <span className="font-medium text-[var(--text-primary)]">{file.fileName}</span>
-                        <span className="ml-2 text-xs text-[var(--text-faint)]">({file.fileUrl})</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveFile(idx)}
-                        className="text-xs font-medium"
-                        style={{ color: 'var(--fn-error)' }}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      }
-
-      case 'FORM': {
-        const formSettings = settings as FormAssignmentSettings;
-        const fields = formSettings?.fields || [];
-        return (
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium text-[var(--text-secondary)]">Complete the form fields below:</h3>
-            {fields.map((field, idx) => {
-              const label = String(field.label || `Field ${idx + 1}`);
-              const fieldId = String(field.fieldId || `field_${idx}`);
-              const required = Boolean(field.required);
-              return (
-                <div key={fieldId} className="space-y-1">
-                  <label className="block text-sm font-medium text-[var(--text-secondary)]">
-                    {label} {required && <span style={{ color: 'var(--fn-error)' }}>*</span>}
-                  </label>
-                  <input
-                    type="text"
-                    required={required}
-                    className="input"
-                    placeholder={String(field.placeholder || '')}
-                    value={formAnswers[fieldId] || ''}
-                    onChange={(e) =>
-                      setFormAnswers((prev) => ({ ...prev, [fieldId]: e.target.value }))
-                    }
-                  />
-                </div>
-              );
-            })}
-            {!fields.length && <p className="text-sm text-[var(--text-muted)]">No form fields configured.</p>}
-          </div>
-        );
-      }
-
-      case 'VPL': {
-        const vplSettings = settings as VplAssignmentSettings;
-        return (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <label className="block text-sm font-medium text-[var(--text-secondary)]">
-                Programming Code Submission ({vplSettings?.language || 'javascript'})
-              </label>
-              {vplSettings?.runtime && (
-                <span className="rounded-md bg-[var(--bg-elevated)] px-2 py-0.5 text-xs text-[var(--text-secondary)]">
-                  Runtime: {vplSettings.runtime}
-                </span>
-              )}
-            </div>
-            <textarea
-              className="input min-h-[220px] font-mono"
-              placeholder={vplSettings?.templateCode || '// Enter your code execution here...'}
-              value={vplCode}
-              onChange={(e) => setVplCode(e.target.value)}
-              required
-            />
-          </div>
-        );
-      }
-
-      default:
-        return null;
     }
   };
 
@@ -343,79 +255,68 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
   };
 
   return (
-    <div className="space-y-6">
-      {/* Dynamic Status Banner Alerts */}
+    <div className="space-y-6 animate-fade-in max-w-4xl mx-auto pb-12">
+      {/* Dynamic Status Alert Banner */}
       {statusMessage && (
         <div
-          className={`rounded-md p-4 text-sm font-medium ${
+          className={`rounded-xl p-4 text-xs font-bold ${
             statusMessage.type === 'success'
-              ? 'border text-[var(--fn-success)] bg-[var(--bg-surface)] border-[var(--border-default)]'
-              : 'border text-[var(--fn-error)] bg-[var(--bg-surface)] border-[var(--border-default)]'
+              ? 'border text-[var(--fn-success)] bg-[var(--bg-surface)] border-[var(--border-default)] animate-slide-in'
+              : 'border text-[var(--fn-error)] bg-[var(--bg-surface)] border-[var(--border-default)] animate-slide-in'
           }`}
         >
           {statusMessage.text}
         </div>
       )}
 
-      {/* Staff Administration Header Placement */}
+      {/* Staff Administration Banner */}
       {isStaff && (
-        <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 text-[var(--text-primary)]">
-          <p className="text-sm font-medium">
-            Course Staff Access
-          </p>
-          <p className="mt-1 text-xs text-[var(--text-muted)]">
-            Grading and submission review tools are available below.
+        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 text-[var(--text-primary)] shadow-3xs">
+          <p className="text-xs font-extrabold uppercase tracking-wide">Course Staff Access</p>
+          <p className="mt-1 text-3xs text-[var(--text-muted)] leading-relaxed">
+            Grading triggers and full student submission histories are managed within the Dedicated Course Gradebook page.
           </p>
         </div>
       )}
 
-      {/* Main Assignment Details Display */}
-      <section className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-sm">
+      {/* Main Assignment Details Panel */}
+      <section className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-xs space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-              {assignmentType.replace('_', ' ')}
+            <p className="text-3xs font-extrabold uppercase tracking-widest text-[var(--text-muted)]">
+              {typeStr.replace('_', ' ')}
             </p>
-            <h1 className="mt-1 text-2xl font-bold text-[var(--text-primary)]">{assignment.title}</h1>
+            <h1 className="mt-1 text-xl font-extrabold text-[var(--text-primary)] tracking-tight">{assignment.title}</h1>
           </div>
           <div className="text-right">
-            <span className="text-sm text-[var(--text-muted)]">Max Points</span>
-            <p className="text-lg font-bold text-[var(--text-primary)]">{assignment.maxPoints}</p>
+            <span className="text-3xs uppercase font-extrabold text-[var(--text-muted)] block">Max Score</span>
+            <p className="text-lg font-extrabold text-[var(--text-primary)]">{assignment.maxPoints} pts</p>
           </div>
         </div>
 
-        <div className="mt-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-faint)]">
-            Description & Instructions
-          </h3>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--text-secondary)] leading-relaxed">
-            {assignment.instructions || assignment.description || 'No instruction manual has been provided.'}
-          </p>
-        </div>
+        {/* Instructions preview (for non-RTE view; RTE submission has its own tab) */}
+        {assignmentType !== 'TEXT_SUBMISSION' && (
+          <div className="prose max-w-none text-xs">
+            <span className="text-3xs uppercase font-extrabold text-[var(--text-faint)] block mb-1">Instructions</span>
+            <RichContentRenderer document={assignment.instructionsJson as any} />
+          </div>
+        )}
 
-        <div className="mt-6 grid gap-4 border-t border-[var(--border-subtle)] pt-5 text-sm md:grid-cols-2">
+        <div className="grid gap-4 border-t border-[var(--border-subtle)] pt-4 text-xs md:grid-cols-2">
           <div>
-            <span className="text-xs font-medium uppercase tracking-wider text-[var(--text-faint)]">
-              Submission Due Date
-            </span>
-            <p className="mt-1 font-semibold text-[var(--text-primary)]">
+            <span className="text-3xs uppercase font-extrabold tracking-widest text-[var(--text-faint)]">Due Date</span>
+            <p className="mt-1 font-bold text-[var(--text-primary)]">
               {assignment.dueDate ? new Date(assignment.dueDate).toLocaleString() : 'No due date scheduled'}
             </p>
           </div>
           <div>
-            <span className="text-xs font-medium uppercase tracking-wider text-[var(--text-faint)]">
-              Submission Status
-            </span>
+            <span className="text-3xs uppercase tracking-widest font-extrabold text-[var(--text-faint)]">Your Status</span>
             <div className="mt-1 flex items-center gap-2">
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${getStatusBadgeClass(
-                  studentState?.status || 'NOT_STARTED'
-                )}`}
-              >
+              <span className={`rounded-full px-2.5 py-0.5 text-3xs font-extrabold uppercase tracking-wide ${getStatusBadgeClass(studentState?.status || 'NOT_STARTED')}`}>
                 {studentState?.status?.replace('_', ' ') || 'NOT STARTED'}
               </span>
               {studentState?.grade && (
-                <span className="text-xs font-medium text-[var(--text-secondary)]">
+                <span className="text-2xs font-bold text-[var(--text-secondary)]">
                   Grade: {studentState.grade.points} / {assignment.maxPoints}
                 </span>
               )}
@@ -424,26 +325,45 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
         </div>
       </section>
 
-      {/* Submission Actions Hub */}
-      {assignmentType === 'QUIZ' ? (
-        <section className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Quiz Assessment</h2>
-          <p className="mt-2 text-sm text-[var(--text-secondary)]">
+      {/* Submission Actions workspace */}
+
+      {/* FORM: IN DEVELOPMENT */}
+      {assignmentType === 'FORM' && (
+        <section className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-8 text-center space-y-4 shadow-xs">
+          <div className="inline-flex rounded-full bg-[var(--bg-elevated)] p-3 text-[var(--fn-warning)] border border-[var(--border-default)]">
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div className="space-y-2 max-w-sm mx-auto">
+            <h3 className="text-sm font-extrabold text-[var(--text-primary)]">Form Submissions In Development</h3>
+            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+              FORM assignments and full-featured Form Builders are currently under active development. You cannot submit responses at this time.
+            </p>
+          </div>
+        </section>
+      )}
+
+      {/* QUIZ */}
+      {assignmentType === 'QUIZ' && (
+        <section className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-xs space-y-4">
+          <h2 className="text-sm font-extrabold uppercase tracking-wide text-[var(--text-secondary)]">Quiz Assessment</h2>
+          <p className="text-xs text-[var(--text-secondary)]">
             This assignment is conducted via a quiz. You must start a timed attempt to answer.
           </p>
           
-          <div className="mt-6 flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 pt-2">
             {studentState?.canStartNewAttempt ? (
               <button
                 type="button"
                 onClick={handleStartQuiz}
                 disabled={startQuizAttempt.isPending}
-                className="btn btn-primary"
+                className="btn btn-primary text-xs px-5 py-2 font-bold cursor-pointer"
               >
-                {startQuizAttempt.isPending ? 'Starting Timed Attempt...' : 'Start timed Quiz Attempt'}
+                {startQuizAttempt.isPending ? 'Starting Timed Attempt...' : 'Start Quiz Attempt'}
               </button>
             ) : (
-              <p className="text-sm font-medium text-[var(--text-muted)]">
+              <p className="text-xs font-bold text-[var(--text-muted)]">
                 You have reached your quiz attempt limit or starting new attempts is restricted.
               </p>
             )}
@@ -452,85 +372,306 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
               <button
                 type="button"
                 onClick={() => router.push(`/quiz/${studentState.latestAttemptId}/review`)}
-                className="rounded-md border border-[var(--border-strong)] px-5 py-2 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-base)]"
+                className="rounded-lg border border-[var(--border-default)] px-4 py-2 text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] transition-all cursor-pointer"
               >
                 Review Latest Attempt
               </button>
             )}
           </div>
         </section>
-      ) : (
-        <section className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Your Submission</h2>
+      )}
 
-          {/* Submission content history */}
-          {studentState?.submittedAt && !isEditing && (
-            <div className="mt-3 rounded-md bg-[var(--bg-base)] p-4 text-sm text-[var(--text-secondary)]">
-              <p className="font-semibold text-[var(--text-primary)]">Latest Submission Summary:</p>
-              <ul className="mt-2 space-y-1 text-xs text-[var(--text-secondary)]">
+      {/* TEXT / RTE SUBMISSION (WITH DETAILED 3-TAB WORKSPACE) */}
+      {assignmentType === 'TEXT_SUBMISSION' && (
+        <section className="border border-[var(--border-default)] rounded-xl bg-[var(--bg-surface)] p-6 shadow-xs space-y-6">
+          {/* Tabs Navigation */}
+          <nav className="flex gap-2 border-b border-[var(--border-default)] pb-0">
+            {(['instructions', 'answer', 'history'] as TabId[]).map((tab) => {
+              const isActive = activeTab === tab;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-4 py-2 text-xs font-extrabold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+                    isActive 
+                      ? 'border-[var(--text-primary)] text-[var(--text-primary)]' 
+                      : 'border-transparent text-[var(--text-faint)] hover:text-[var(--text-secondary)]'
+                  }`}
+                >
+                  {tab === 'instructions' ? 'Instructions' : tab === 'answer' ? 'Your Answer' : 'Submission History'}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* TAB 1: INSTRUCTIONS */}
+          {activeTab === 'instructions' && (
+            <div className="prose max-w-none text-xs">
+              <span className="text-3xs uppercase font-extrabold text-[var(--text-faint)] block mb-1">Assignment Guidelines</span>
+              <RichContentRenderer document={assignment.instructionsJson as any} />
+            </div>
+          )}
+
+          {/* TAB 2: YOUR ANSWER (WYSIWYG RTE EDITOR WITH AUTO-PREVIEW) */}
+          {activeTab === 'answer' && (
+            <div className="space-y-6">
+              {studentState?.submittedAt && !isEditing ? (
+                <div className="space-y-4">
+                  <div className="bg-[var(--bg-base)] border border-[var(--border-default)] rounded-xl p-6">
+                    <span className="text-3xs uppercase font-extrabold text-[var(--text-faint)] block mb-2">My Submitted Response</span>
+                    <RichContentRenderer document={submissionValue} />
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    {studentState.canEdit && (
+                      <button onClick={() => setIsEditing(true)} className="btn btn-primary text-2xs px-4 py-2 font-bold cursor-pointer">
+                        Edit Submission Draft
+                      </button>
+                    )}
+                    {studentState.canDelete && (
+                      <button 
+                        onClick={handleWithdraw} 
+                        disabled={withdrawSubmission.isPending} 
+                        className="btn btn-danger text-2xs px-4 py-2 font-bold cursor-pointer"
+                      >
+                        {withdrawSubmission.isPending ? 'Withdrawing...' : 'Withdraw Submission'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-[var(--text-secondary)]">
+                      Draft Response (Obsidian-Style editor, live preview KaTeX/Mermaid on focus loss)
+                    </label>
+                    <div className="border border-[var(--border-default)] rounded-xl p-4 bg-[var(--bg-base)]">
+                      <RichContentEditor value={submissionValue} onChange={setSubmissionValue} />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      disabled={submitAssignment.isPending || editSubmission.isPending}
+                      className="btn btn-primary text-xs px-5 py-2 font-bold cursor-pointer"
+                    >
+                      {submitAssignment.isPending || editSubmission.isPending
+                        ? 'Saving response...'
+                        : isEditing
+                        ? 'Save Answer Updates'
+                        : 'Submit Assignment'}
+                    </button>
+                    {isEditing && (
+                      <button
+                        type="button"
+                        onClick={() => setIsEditing(false)}
+                        className="rounded-lg border border-[var(--border-default)] px-4 py-2 text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] cursor-pointer"
+                      >
+                        Cancel Edit
+                      </button>
+                    )}
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: HISTORY (VERSION HISTORY RENDERER) */}
+          {activeTab === 'history' && (
+            <div className="space-y-6">
+              {versions.length === 0 ? (
+                <p className="text-xs text-[var(--text-muted)] italic">No submission attempts recorded yet.</p>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold text-[var(--text-secondary)]">Submission Version Attempt:</span>
+                    <select
+                      value={selectedVersionId || ''}
+                      onChange={(e) => setSelectedVersionId(e.target.value)}
+                      className="input text-xs font-semibold py-1 px-3 bg-[var(--bg-base)] w-64"
+                    >
+                      {versions.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          Attempt #{v.version_number} - {new Date(v.created_at || v.submitted_at).toLocaleString()}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {selectedVersion && (
+                    <div className="border border-[var(--border-default)] rounded-xl p-6 bg-[var(--bg-base)] animate-fade-in">
+                      <span className="text-3xs uppercase font-extrabold text-[var(--text-faint)] block mb-3">
+                        Attempt #{selectedVersion.version_number} Content
+                      </span>
+                      <RichContentRenderer document={selectedVersion.content_json} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* FILE SUBMISSION */}
+      {assignmentType === 'FILE_SUBMISSION' && (
+        <section className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-xs space-y-6">
+          <h2 className="text-sm font-extrabold uppercase tracking-wide text-[var(--text-secondary)]">File Upload Submission</h2>
+
+          {studentState?.submittedAt && !isEditing ? (
+            <div className="rounded-xl bg-[var(--bg-base)] border border-[var(--border-default)] p-5 space-y-4">
+              <span className="text-3xs uppercase font-extrabold text-[var(--text-faint)] block">My Submission Summary</span>
+              <ul className="text-xs text-[var(--text-secondary)] space-y-1">
                 <li>• Version Submitted: {studentState.attemptsUsed ?? 1}</li>
                 <li>• Submitted Timestamp: {new Date(studentState.submittedAt).toLocaleString()}</li>
               </ul>
               
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="flex gap-3">
                 {studentState.canEdit && (
-                  <button
-                    type="button"
-                    onClick={handleEnterEditMode}
-                    className="btn btn-primary btn-sm"
-                  >
+                  <button onClick={() => setIsEditing(true)} className="btn btn-primary btn-sm font-bold cursor-pointer">
                     Edit Submission
                   </button>
                 )}
                 {studentState.canDelete && (
-                  <button
-                    type="button"
-                    onClick={handleWithdraw}
-                    disabled={withdrawSubmission.isPending}
-                    className="rounded-md px-4 py-1.5 text-xs font-semibold disabled:opacity-50"
-                    style={{ background: 'var(--fn-error)', color: 'var(--bg-base)' }}
+                  <button 
+                    onClick={handleWithdraw} 
+                    disabled={withdrawSubmission.isPending} 
+                    className="btn btn-danger btn-sm font-bold cursor-pointer"
                   >
-                    {withdrawSubmission.isPending ? 'Withdrawing...' : 'Withdraw Submission'}
+                    Withdraw Submission
                   </button>
                 )}
               </div>
             </div>
-          )}
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-base)] p-4">
+                <span className="text-3xs font-extrabold uppercase tracking-wide text-[var(--text-faint)] block">Upload Settings</span>
+                <ul className="mt-2 space-y-1 text-xs text-[var(--text-muted)]">
+                  <li>• Max Upload Count: {(settings as FileAssignmentSettings)?.maxFiles ?? 1}</li>
+                  <li>• Max File Size: {(settings as FileAssignmentSettings)?.maxFileSizeMb ?? 10} MB</li>
+                  {((settings as FileAssignmentSettings)?.allowedFileTypes?.length ?? 0) > 0 && (
+                    <li>• Formats Allowed: {((settings as FileAssignmentSettings)?.allowedFileTypes || []).join(', ')}</li>
+                  )}
+                </ul>
+              </div>
 
-          {/* Submission Input Form Editor */}
-          {((!studentState?.submittedAt && studentState?.canSubmit) || isEditing || studentState?.canResubmit) ? (
-            <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-              {renderSubmissionForm()}
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-[var(--text-secondary)]">Mock File Attachment Upload</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    className="flex-1 rounded-lg border border-[var(--border-default)] px-3 py-1.5 text-xs focus:outline-none bg-[var(--bg-base)] text-[var(--text-primary)]"
+                    placeholder="e.g. document.pdf"
+                    value={newFileName}
+                    onChange={(e) => setNewFileName(e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    className="flex-1 rounded-lg border border-[var(--border-default)] px-3 py-1.5 text-xs focus:outline-none bg-[var(--bg-base)] text-[var(--text-primary)]"
+                    placeholder="Mock URL (optional)"
+                    value={newFileUrl}
+                    onChange={(e) => setNewFileUrl(e.target.value)}
+                  />
+                  <button type="button" onClick={handleAddFile} className="btn btn-secondary text-xs py-1.5 px-4 font-bold cursor-pointer">
+                    Add File
+                  </button>
+                </div>
 
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="submit"
-                  disabled={submitAssignment.isPending || editSubmission.isPending}
-                  className="btn btn-primary"
-                >
-                  {submitAssignment.isPending || editSubmission.isPending
-                    ? 'Submitting response...'
-                    : isEditing
-                    ? 'Save Submission Updates'
-                    : 'Submit Assignment Response'}
+                {fileList.length > 0 && (
+                  <div className="divide-y rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)]">
+                    {fileList.map((file, idx) => (
+                      <div key={idx} className="flex items-center justify-between px-4 py-2 text-xs font-bold">
+                        <div>
+                          <span>{file.fileName}</span>
+                          <span className="ml-2 text-3xs text-[var(--text-faint)] font-mono">({file.fileUrl})</span>
+                        </div>
+                        <button type="button" onClick={() => handleRemoveFile(idx)} className="text-xs font-bold text-[var(--fn-error)] cursor-pointer">
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <button type="submit" disabled={submitAssignment.isPending || editSubmission.isPending} className="btn btn-primary text-xs px-5 py-2 font-bold cursor-pointer">
+                  {submitAssignment.isPending || editSubmission.isPending ? 'Submitting...' : isEditing ? 'Save Update' : 'Submit Assignment'}
                 </button>
                 {isEditing && (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditing(false)}
-                    className="rounded-md border border-[var(--border-default)] px-5 py-2 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-base)]"
-                  >
+                  <button type="button" onClick={() => setIsEditing(false)} className="rounded-lg border border-[var(--border-default)] px-4 py-2 text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] cursor-pointer">
                     Cancel Edit
                   </button>
                 )}
               </div>
             </form>
+          )}
+        </section>
+      )}
+
+      {/* VPL SUBMISSION */}
+      {assignmentType === 'VPL' && (
+        <section className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-xs space-y-6">
+          <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-3">
+            <h2 className="text-sm font-extrabold uppercase tracking-wide text-[var(--text-secondary)]">VPL Code Workspace</h2>
+            {(settings as VplAssignmentSettings)?.runtime && (
+              <span className="rounded-lg bg-[var(--bg-elevated)] px-2 py-0.5 text-xs text-[var(--text-secondary)]">
+                Runtime: {(settings as VplAssignmentSettings).runtime}
+              </span>
+            )}
+          </div>
+
+          {studentState?.submittedAt && !isEditing ? (
+            <div className="space-y-4">
+              <div className="bg-[var(--bg-base)] border border-[var(--border-default)] rounded-xl p-5 font-mono text-xs overflow-x-auto whitespace-pre">
+                {vplCode || '// No code submitted.'}
+              </div>
+              
+              <div className="flex gap-3">
+                {studentState.canEdit && (
+                  <button onClick={() => setIsEditing(true)} className="btn btn-primary btn-sm font-bold cursor-pointer">
+                    Edit Code Submission
+                  </button>
+                )}
+                {studentState.canDelete && (
+                  <button 
+                    onClick={handleWithdraw} 
+                    disabled={withdrawSubmission.isPending} 
+                    className="btn btn-danger btn-sm font-bold cursor-pointer"
+                  >
+                    Withdraw Submission
+                  </button>
+                )}
+              </div>
+            </div>
           ) : (
-            studentState?.submittedAt ? null : (
-              <p className="mt-4 text-sm text-[var(--text-muted)]">
-                Submissions are not permitted for this assignment, or the availability window has closed.
-              </p>
-            )
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-[var(--text-secondary)]">
+                  Code Input ({(settings as VplAssignmentSettings)?.language || 'javascript'})
+                </label>
+                <textarea
+                  className="input min-h-[220px] font-mono text-xs"
+                  placeholder={(settings as VplAssignmentSettings)?.templateCode || '// Write your code execution here...'}
+                  value={vplCode}
+                  onChange={(e) => setVplCode(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <button type="submit" disabled={submitAssignment.isPending || editSubmission.isPending} className="btn btn-primary text-xs px-5 py-2 font-bold cursor-pointer">
+                  {submitAssignment.isPending || editSubmission.isPending ? 'Submitting...' : isEditing ? 'Save Update' : 'Submit Code'}
+                </button>
+                {isEditing && (
+                  <button type="button" onClick={() => setIsEditing(false)} className="rounded-lg border border-[var(--border-default)] px-4 py-2 text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] cursor-pointer">
+                    Cancel Edit
+                  </button>
+                )}
+              </div>
+            </form>
           )}
         </section>
       )}

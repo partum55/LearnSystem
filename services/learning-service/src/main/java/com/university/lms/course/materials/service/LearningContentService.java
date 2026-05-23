@@ -5,19 +5,19 @@ import com.university.lms.course.common.security.CourseAccessService;
 import com.university.lms.course.domain.Module;
 import com.university.lms.course.materials.dto.LearningItemDto;
 import com.university.lms.course.materials.dto.LearningItemRequest;
-import com.university.lms.course.materials.dto.LessonBlockDto;
-import com.university.lms.course.materials.dto.LessonBlockReorderRequest;
-import com.university.lms.course.materials.dto.LessonBlockRequest;
+import com.university.lms.course.materials.dto.LessonPageDto;
+import com.university.lms.course.materials.dto.LessonPageReorderRequest;
+import com.university.lms.course.materials.dto.LessonPageRequest;
 import com.university.lms.course.materials.dto.LessonDetailDto;
 import com.university.lms.course.materials.entity.LearningItem;
 import com.university.lms.course.materials.entity.LearningItemStatus;
 import com.university.lms.course.materials.entity.LearningItemType;
-import com.university.lms.course.materials.entity.LessonBlock;
-import com.university.lms.course.materials.entity.LessonBlockType;
+import com.university.lms.course.materials.entity.LessonPage;
+import com.university.lms.course.materials.entity.LessonPageType;
 import com.university.lms.course.materials.mapper.LearningItemMapper;
-import com.university.lms.course.materials.mapper.LessonBlockMapper;
+import com.university.lms.course.materials.mapper.LessonPageMapper;
 import com.university.lms.course.materials.repository.LearningItemRepository;
-import com.university.lms.course.materials.repository.LessonBlockRepository;
+import com.university.lms.course.materials.repository.LessonPageRepository;
 import com.university.lms.course.repository.ModuleRepository;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -38,10 +38,10 @@ import org.springframework.util.StringUtils;
 public class LearningContentService {
   private final ModuleRepository moduleRepository;
   private final LearningItemRepository learningItemRepository;
-  private final LessonBlockRepository lessonBlockRepository;
+  private final LessonPageRepository lessonPageRepository;
   private final CourseAccessService accessService;
   private final LearningItemMapper learningItemMapper;
-  private final LessonBlockMapper lessonBlockMapper;
+  private final LessonPageMapper lessonPageMapper;
 
   @Transactional(readOnly = true)
   public List<LearningItemDto> listModuleLearningItems(UUID courseId, UUID moduleId, UUID userId) {
@@ -62,11 +62,11 @@ public class LearningContentService {
   }
 
   @Transactional(readOnly = true)
-  public List<LessonBlockDto> listLessonBlocks(UUID learningItemId, UUID userId) {
+  public List<LessonPageDto> listLessonPages(UUID learningItemId, UUID userId) {
     LearningItem lesson = requireReadableLesson(learningItemId, userId);
-    return lessonBlockRepository.findByLearningItemIdOrderByPositionAsc(lesson.getId())
+    return lessonPageRepository.findByLearningItemIdOrderByPositionAsc(lesson.getId())
         .stream()
-        .map(lessonBlockMapper::toDto)
+        .map(lessonPageMapper::toDto)
         .toList();
   }
 
@@ -93,7 +93,7 @@ public class LearningContentService {
             ? learningItemRepository.findMaxPositionByModule(moduleId) + 1
             : request.order())
         .status(LearningItemStatus.fromVisible(request.visible()))
-        .content(contentFor(type, request))
+        .contentJson(contentFor(type, request))
         .settings(settingsFor(type, request))
         .build();
     return learningItemMapper.toDto(learningItemRepository.save(item));
@@ -129,10 +129,10 @@ public class LearningContentService {
     if (request.visible() != null) {
       item.setStatus(LearningItemStatus.fromVisible(request.visible()));
     }
-    Map<String, Object> content = contentFor(item.getType(), request, item.getContent(), false);
+    Map<String, Object> content = contentFor(item.getType(), request, item.getContentJson(), false);
     Map<String, Object> settings = settingsFor(item.getType(), request, item.getSettings());
     validateItemContent(item.getType(), content);
-    item.setContent(content);
+    item.setContentJson(content);
     item.setSettings(settings);
     return learningItemMapper.toDto(learningItemRepository.save(item));
   }
@@ -149,95 +149,95 @@ public class LearningContentService {
   }
 
   @Transactional
-  public LessonBlockDto createLessonBlock(UUID learningItemId, UUID userId, LessonBlockRequest request) {
+  public LessonPageDto createLessonPage(UUID learningItemId, UUID userId, LessonPageRequest request) {
     LearningItem lesson = requireWritableLesson(learningItemId, userId);
-    LessonBlockType type = request.type();
+    LessonPageType type = request.type();
     if (type == null) {
-      throw ApiException.badRequest("INVALID_LESSON_BLOCK_TYPE", "Lesson block type is required");
+      throw ApiException.badRequest("INVALID_LESSON_PAGE_TYPE", "Lesson page type is required");
     }
-    LessonBlock block = LessonBlock.builder()
+    LessonPage page = LessonPage.builder()
         .learningItem(lesson)
         .type(type)
         .title(trimToNull(request.title()))
-        .content(contentForBlock(type, request))
+        .content(contentForPage(type, request))
         .contentFormat(contentFormat(request.contentFormat()))
         .position(request.order() == null
-            ? lessonBlockRepository.findMaxPositionByLearningItem(learningItemId) + 1
+            ? lessonPageRepository.findMaxPositionByLearningItem(learningItemId) + 1
             : request.order())
-        .settings(blockSettings(type, request))
+        .settings(pageSettings(type, request))
         .build();
-    validateBlock(block);
-    return lessonBlockMapper.toDto(lessonBlockRepository.save(block));
+    validatePage(page);
+    return lessonPageMapper.toDto(lessonPageRepository.save(page));
   }
 
   @Transactional
-  public LessonBlockDto updateLessonBlock(
+  public LessonPageDto updateLessonPage(
       UUID learningItemId,
-      UUID blockId,
+      UUID pageId,
       UUID userId,
-      LessonBlockRequest request) {
+      LessonPageRequest request) {
     requireWritableLesson(learningItemId, userId);
-    LessonBlock block = lessonBlockRepository.findByIdAndLearningItemId(blockId, learningItemId)
-        .orElseThrow(() -> ApiException.notFound("Lesson block"));
-    LessonBlockType previousType = block.getType();
-    LessonBlockType type = request.type() == null ? previousType : request.type();
-    block.setType(type);
+    LessonPage page = lessonPageRepository.findByIdAndLearningItemId(pageId, learningItemId)
+        .orElseThrow(() -> ApiException.notFound("Lesson page"));
+    LessonPageType previousType = page.getType();
+    LessonPageType type = request.type() == null ? previousType : request.type();
+    page.setType(type);
     if (request.title() != null) {
-      block.setTitle(trimToNull(request.title()));
+      page.setTitle(trimToNull(request.title()));
     }
     if (request.content() != null) {
-      block.setContent(type == LessonBlockType.VIDEO ? request.content() : contentForBlock(type, request));
+      page.setContent(type == LessonPageType.VIDEO ? request.content() : contentForPage(type, request));
     }
     if (request.contentFormat() != null) {
-      block.setContentFormat(contentFormat(request.contentFormat()));
+      page.setContentFormat(contentFormat(request.contentFormat()));
     }
     if (request.order() != null) {
-      block.setPosition(request.order());
+      page.setPosition(request.order());
     }
     if (request.settings() != null || request.url() != null || type != previousType) {
-      block.setSettings(blockSettings(type, request, block.getSettings()));
+      page.setSettings(pageSettings(type, request, page.getSettings()));
     }
-    validateBlock(block);
-    return lessonBlockMapper.toDto(lessonBlockRepository.save(block));
+    validatePage(page);
+    return lessonPageMapper.toDto(lessonPageRepository.save(page));
   }
 
   @Transactional
-  public void deleteLessonBlock(UUID learningItemId, UUID blockId, UUID userId) {
+  public void deleteLessonPage(UUID learningItemId, UUID pageId, UUID userId) {
     requireWritableLesson(learningItemId, userId);
-    LessonBlock block = lessonBlockRepository.findByIdAndLearningItemId(blockId, learningItemId)
-        .orElseThrow(() -> ApiException.notFound("Lesson block"));
-    lessonBlockRepository.delete(block);
+    LessonPage page = lessonPageRepository.findByIdAndLearningItemId(pageId, learningItemId)
+        .orElseThrow(() -> ApiException.notFound("Lesson page"));
+    lessonPageRepository.delete(page);
   }
 
   @Transactional
-  public LessonDetailDto reorderLessonBlocks(
+  public LessonDetailDto reorderLessonPages(
       UUID learningItemId,
       UUID userId,
-      LessonBlockReorderRequest request) {
+      LessonPageReorderRequest request) {
     LearningItem lesson = requireWritableLesson(learningItemId, userId);
-    List<LessonBlock> existing = lessonBlockRepository.findByLearningItemIdOrderByPositionAsc(learningItemId);
-    Map<UUID, LessonBlock> byId = existing.stream()
-        .collect(java.util.stream.Collectors.toMap(LessonBlock::getId, block -> block));
+    List<LessonPage> existing = lessonPageRepository.findByLearningItemIdOrderByPositionAsc(learningItemId);
+    Map<UUID, LessonPage> byId = existing.stream()
+        .collect(java.util.stream.Collectors.toMap(LessonPage::getId, page -> page));
     Set<UUID> requestedIds = new HashSet<>();
-    for (LessonBlockReorderRequest.LessonBlockPositionDto position : request.blocks()) {
-      LessonBlock block = byId.get(position.id());
-      if (block == null) {
+    for (LessonPageReorderRequest.LessonPagePositionDto position : request.pages()) {
+      LessonPage page = byId.get(position.id());
+      if (page == null) {
         throw ApiException.badRequest(
-            "LESSON_BLOCK_MISMATCH", "One or more blocks do not belong to the lesson");
+            "LESSON_PAGE_MISMATCH", "One or more pages do not belong to the lesson");
       }
       if (!requestedIds.add(position.id())) {
-        throw ApiException.badRequest("DUPLICATE_LESSON_BLOCK", "Duplicate lesson block in reorder request");
+        throw ApiException.badRequest("DUPLICATE_LESSON_PAGE", "Duplicate lesson page in reorder request");
       }
-      block.setPosition(position.order());
+      page.setPosition(position.order());
     }
-    lessonBlockRepository.saveAll(existing);
+    lessonPageRepository.saveAll(existing);
     return toLessonDetail(lesson);
   }
 
   private LessonDetailDto toLessonDetail(LearningItem lesson) {
-    List<LessonBlockDto> blocks = lessonBlockRepository.findByLearningItemIdOrderByPositionAsc(lesson.getId())
+    List<LessonPageDto> pages = lessonPageRepository.findByLearningItemIdOrderByPositionAsc(lesson.getId())
         .stream()
-        .map(lessonBlockMapper::toDto)
+        .map(lessonPageMapper::toDto)
         .toList();
     return new LessonDetailDto(
         lesson.getId(),
@@ -246,7 +246,7 @@ public class LearningContentService {
         lesson.getDescription(),
         lesson.getPosition() == null ? 0 : lesson.getPosition(),
         lesson.getStatus(),
-        blocks);
+        pages);
   }
 
   private LearningItem requireReadableItem(UUID itemId, UUID userId) {
@@ -374,49 +374,49 @@ public class LearningContentService {
     }
   }
 
-  private String contentForBlock(LessonBlockType type, LessonBlockRequest request) {
-    if (type == LessonBlockType.VIDEO) {
-      requireText(request.url(), "url", "Video lesson block requires a URL");
+  private String contentForPage(LessonPageType type, LessonPageRequest request) {
+    if (type == LessonPageType.VIDEO) {
+      requireText(request.url(), "url", "Video lesson page requires a URL");
       requireHttpUrl(request.url(), "url");
       return request.content();
     }
-    requireText(request.content(), "content", type == LessonBlockType.TEXT
-        ? "Text lesson block requires content"
-        : "Inline quiz question block requires question content");
+    requireText(request.content(), "content", type == LessonPageType.TEXT
+        ? "Text lesson page requires content"
+        : "Inline quiz question page requires question content");
     return request.content();
   }
 
-  private Map<String, Object> blockSettings(LessonBlockType type, LessonBlockRequest request) {
-    return blockSettings(type, request, Map.of());
+  private Map<String, Object> pageSettings(LessonPageType type, LessonPageRequest request) {
+    return pageSettings(type, request, Map.of());
   }
 
-  private Map<String, Object> blockSettings(
-      LessonBlockType type,
-      LessonBlockRequest request,
+  private Map<String, Object> pageSettings(
+      LessonPageType type,
+      LessonPageRequest request,
       Map<String, Object> current) {
     Map<String, Object> settings = new HashMap<>(current == null ? Map.of() : current);
     if (request.settings() != null) {
       settings.putAll(request.settings());
     }
-    if (type == LessonBlockType.VIDEO && request.url() != null) {
+    if (type == LessonPageType.VIDEO && request.url() != null) {
       requireHttpUrl(request.url(), "url");
       settings.put("url", request.url());
       settings.putIfAbsent("provider", inferVideoProvider(request.url()));
-    } else if (type != LessonBlockType.VIDEO) {
+    } else if (type != LessonPageType.VIDEO) {
       settings.remove("url");
       settings.remove("provider");
     }
     return settings;
   }
 
-  private void validateBlock(LessonBlock block) {
-    if (block.getType() == LessonBlockType.VIDEO) {
-      requireText(asString(block.getSettings().get("url")), "url", "Video lesson block requires a URL");
+  private void validatePage(LessonPage page) {
+    if (page.getType() == LessonPageType.VIDEO) {
+      requireText(asString(page.getSettings().get("url")), "url", "Video lesson page requires a URL");
       return;
     }
-    requireText(block.getContent(), "content", block.getType() == LessonBlockType.TEXT
-        ? "Text lesson block requires content"
-        : "Inline quiz question block requires question content");
+    requireText(page.getContent(), "content", page.getType() == LessonPageType.TEXT
+        ? "Text lesson page requires content"
+        : "Inline quiz question page requires question content");
   }
 
   private String contentFormat(String value) {

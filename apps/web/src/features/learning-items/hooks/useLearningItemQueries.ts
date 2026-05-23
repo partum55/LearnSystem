@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/api/queryClient';
 import { learningItemsApi } from '../api/learning-items.api';
-import type { LearningItemRequest, LessonBlockRequest, LessonBlockReorderRequest } from '@/features/courses/api/canonical.types';
+import type { LearningItemRequest, LessonPageRequest, LessonPageReorderRequest } from '@/features/courses/api/canonical.types';
 
 export const useLearningItem = (learningItemId: string | undefined) =>
   useQuery({
@@ -10,10 +10,10 @@ export const useLearningItem = (learningItemId: string | undefined) =>
     enabled: Boolean(learningItemId),
   });
 
-export const useLessonBlocks = (learningItemId: string | undefined) =>
+export const useLessonPages = (learningItemId: string | undefined) =>
   useQuery({
     queryKey: queryKeys.learningItems.blocks(learningItemId || ''),
-    queryFn: () => learningItemsApi.listBlocks(learningItemId!),
+    queryFn: () => learningItemsApi.listPages(learningItemId!),
     enabled: Boolean(learningItemId),
   });
 
@@ -55,44 +55,44 @@ export const useDeleteLearningItem = () => {
   });
 };
 
-export const useCreateLessonBlock = () => {
+export const useCreateLessonPage = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (params: { learningItemId: string; request: LessonBlockRequest }) =>
-      learningItemsApi.createBlock(params.learningItemId, params.request),
+    mutationFn: (params: { learningItemId: string; request: LessonPageRequest }) =>
+      learningItemsApi.createPage(params.learningItemId, params.request),
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.learningItems.blocks(variables.learningItemId) });
     },
   });
 };
 
-export const useUpdateLessonBlock = () => {
+export const useUpdateLessonPage = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (params: { learningItemId: string; blockId: string; request: LessonBlockRequest }) =>
-      learningItemsApi.updateBlock(params.learningItemId, params.blockId, params.request),
+    mutationFn: (params: { learningItemId: string; pageId: string; request: LessonPageRequest }) =>
+      learningItemsApi.updatePage(params.learningItemId, params.pageId, params.request),
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.learningItems.blocks(variables.learningItemId) });
     },
   });
 };
 
-export const useDeleteLessonBlock = () => {
+export const useDeleteLessonPage = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (params: { learningItemId: string; blockId: string }) =>
-      learningItemsApi.deleteBlock(params.learningItemId, params.blockId),
+    mutationFn: (params: { learningItemId: string; pageId: string }) =>
+      learningItemsApi.deletePage(params.learningItemId, params.pageId),
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.learningItems.blocks(variables.learningItemId) });
     },
   });
 };
 
-export const useReorderLessonBlocks = () => {
+export const useReorderLessonPages = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (params: { learningItemId: string; request: LessonBlockReorderRequest }) =>
-      learningItemsApi.reorderBlocks(params.learningItemId, params.request),
+    mutationFn: (params: { learningItemId: string; request: LessonPageReorderRequest }) =>
+      learningItemsApi.reorderPages(params.learningItemId, params.request),
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.learningItems.blocks(variables.learningItemId) });
     },

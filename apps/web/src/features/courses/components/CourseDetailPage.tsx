@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import {
   AcademicCapIcon,
@@ -43,7 +44,6 @@ import type { AssignmentRequest } from '@/features/assignments/api/canonical.typ
 
 import { ModuleFormModal } from './ModuleFormModal';
 import { LearningItemFormModal } from './LearningItemFormModal';
-import { AssignmentFormModal } from './AssignmentFormModal';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 
 interface CourseDetailPageProps {
@@ -76,6 +76,7 @@ function formatDate(value?: string | null) {
 }
 
 export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [memberSearch, setMemberSearch] = useState('');
   const [todoToast, setTodoToast] = useState<string | null>(null);
@@ -326,9 +327,7 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
               showToast('Please create a module first.');
               return;
             }
-            setActiveModuleId(modules[0].id);
-            setActiveAssignment(null);
-            setIsAssignmentModalOpen(true);
+            router.push(`/courses/${courseId}/assignment-wizard?moduleId=${modules[0].id}`);
           }}
         />
       )}
@@ -375,14 +374,10 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
           }}
           onDeleteLearningItem={handleDeleteLearningItem}
           onAddAssignment={(moduleId) => {
-            setActiveModuleId(moduleId);
-            setActiveAssignment(null);
-            setIsAssignmentModalOpen(true);
+            router.push(`/courses/${courseId}/assignment-wizard?moduleId=${moduleId}`);
           }}
-          onEditAssignment={(assignment, moduleId) => {
-            setActiveModuleId(moduleId);
-            setActiveAssignment(assignment);
-            setIsAssignmentModalOpen(true);
+          onEditAssignment={(assignment) => {
+            router.push(`/courses/${courseId}/assignment-wizard?assignmentId=${assignment.id}`);
           }}
           onDeleteAssignment={handleDeleteAssignment}
         />
@@ -416,15 +411,7 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
         />
       )}
 
-      {isAssignmentModalOpen && (
-        <AssignmentFormModal
-          isOpen={isAssignmentModalOpen}
-          onClose={() => setIsAssignmentModalOpen(false)}
-          onSubmit={handleAssignmentSubmit}
-          initialData={activeAssignment}
-          loading={createAssignmentMutation.isPending || updateAssignmentMutation.isPending}
-        />
-      )}
+
 
       {isDeleteModalOpen && (
         <DeleteConfirmationModal

@@ -60,8 +60,8 @@ public class SubmissionVersion {
   private SubmissionStatus status;
 
   @JdbcTypeCode(SqlTypes.JSON)
-  @Column(nullable = false, columnDefinition = "jsonb")
-  private Map<String, Object> content;
+  @Column(name = "content_json", nullable = false, columnDefinition = "jsonb")
+  private Map<String, Object> contentJson;
 
   @Column(name = "submitted_at")
   private LocalDateTime submittedAt;

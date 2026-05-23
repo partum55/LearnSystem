@@ -11,8 +11,7 @@ import java.time.LocalDateTime;
 public record AssignmentRequest(
     @NotNull com.university.lms.course.assessment.domain.AssignmentType type,
     @NotBlank String title,
-    String description,
-    String instructions,
+    java.util.Map<String, Object> instructionsJson,
     @NotNull @DecimalMin("0.0") BigDecimal maxPoints,
     @PositiveOrZero Integer order,
     LocalDateTime dueDate,

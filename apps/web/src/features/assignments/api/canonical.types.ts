@@ -92,8 +92,7 @@ export interface AssignmentDetailDto {
   moduleId: Uuid;
   type: AssignmentType;
   title: string;
-  description?: string | null;
-  instructions?: string | null;
+  instructionsJson?: Record<string, unknown> | null;
   maxPoints: number;
   dueDate?: string | null;
   visibilityStatus: string;
@@ -104,8 +103,7 @@ export interface AssignmentDetailDto {
 export interface AssignmentRequest {
   type: AssignmentType;
   title: string;
-  description?: string;
-  instructions?: string;
+  instructionsJson?: Record<string, unknown>;
   maxPoints: number;
   order?: number;
   dueDate?: string | null;

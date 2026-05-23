@@ -81,11 +81,11 @@ export interface LearningItemRequest {
   settings?: Record<string, unknown>;
 }
 
-export type LessonBlockType = 'text' | 'video' | 'inline_quiz_question' | string;
+export type LessonPageType = 'TEXT' | 'VIDEO' | 'CODE' | 'MERMAID' | 'MATH' | 'INLINE_QUIZ_QUESTION' | string;
 
-export interface LessonBlockDto {
+export interface LessonPageDto {
   id: Uuid;
-  type: LessonBlockType;
+  type: LessonPageType;
   order: number;
   title?: string | null;
   content?: string | null;
@@ -93,8 +93,8 @@ export interface LessonBlockDto {
   settings: Record<string, unknown>;
 }
 
-export interface LessonBlockRequest {
-  type: LessonBlockType;
+export interface LessonPageRequest {
+  type: LessonPageType;
   title?: string;
   content?: string;
   contentFormat?: string;
@@ -103,8 +103,8 @@ export interface LessonBlockRequest {
   settings?: Record<string, unknown>;
 }
 
-export interface LessonBlockReorderRequest {
-  blocks: Array<{ id: Uuid; order: number }>;
+export interface LessonPageReorderRequest {
+  pages: Array<{ id: Uuid; order: number }>;
 }
 
 export interface GradePreviewDto {

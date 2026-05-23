@@ -11,5 +11,5 @@ public record LessonDetailDto(
     String summary,
     int order,
     LearningItemStatus visibilityStatus,
-    List<LessonBlockDto> blocks
+    List<LessonPageDto> pages
 ) {}

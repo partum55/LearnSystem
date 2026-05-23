@@ -29,17 +29,17 @@ import org.hibernate.type.SqlTypes;
 @Entity
 @Table(
     schema = "learning",
-    name = "lesson_blocks",
+    name = "lesson_pages",
     indexes = {
-      @Index(name = "idx_lesson_blocks_item_position", columnList = "learning_item_id, position"),
-      @Index(name = "idx_lesson_blocks_type", columnList = "type")
+      @Index(name = "idx_lesson_pages_item_position", columnList = "learning_item_id, position"),
+      @Index(name = "idx_lesson_pages_type", columnList = "type")
     })
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class LessonBlock {
+public class LessonPage {
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
   private UUID id;
@@ -50,8 +50,8 @@ public class LessonBlock {
 
   @Enumerated(EnumType.STRING)
   @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-  @Column(nullable = false, columnDefinition = "learning.lesson_block_type")
-  private LessonBlockType type;
+  @Column(nullable = false, columnDefinition = "learning.lesson_page_type")
+  private LessonPageType type;
 
   @Column(length = 255)
   private String title;

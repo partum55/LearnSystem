@@ -1,0 +1,157 @@
+'use client';
+
+import React from 'react';
+import { RichContentDocument } from '../rich-content.types';
+import { MermaidRenderer } from './MermaidRenderer';
+import { MathRenderer } from './MathRenderer';
+import { markdownToRichContent } from '../markdown-parser';
+
+interface RichContentRendererProps {
+  document?: RichContentDocument | string | null;
+}
+
+function parseInlineElements(text: string): React.ReactNode[] {
+  if (!text) return [];
+
+  // Split by $ for inline math equations
+  const parts = text.split('$');
+  const rendered: React.ReactNode[] = [];
+
+  parts.forEach((part, index) => {
+    if (index % 2 === 1) {
+      // Inline math formula
+      rendered.push(<MathRenderer key={`math-${index}`} code={part} block={false} />);
+    } else {
+      // Normal text with potential bold/italic formatting
+      const boldParts = part.split('**');
+      boldParts.forEach((bp, bIndex) => {
+        if (bIndex % 2 === 1) {
+          rendered.push(<strong key={`b-${index}-${bIndex}`}>{bp}</strong>);
+        } else {
+          const italicParts = bp.split('*');
+          italicParts.forEach((ip, iIndex) => {
+            if (iIndex % 2 === 1) {
+              rendered.push(<em key={`em-${index}-${bIndex}-${iIndex}`}>{ip}</em>);
+            } else {
+              rendered.push(ip);
+            }
+          });
+        }
+      });
+    }
+  });
+
+  return rendered;
+}
+
+export function RichContentRenderer({ document }: RichContentRendererProps) {
+  let parsedDoc: RichContentDocument | null = null;
+  if (typeof document === 'string') {
+    try {
+      parsedDoc = JSON.parse(document) as RichContentDocument;
+    } catch {
+      parsedDoc = markdownToRichContent(document);
+    }
+  } else if (document && typeof document === 'object') {
+    parsedDoc = document as RichContentDocument;
+  }
+
+  if (!parsedDoc || !parsedDoc.blocks || parsedDoc.blocks.length === 0) {
+    return (
+      <div className="py-4 text-center text-xs text-[var(--text-faint)] italic">
+        No content loaded.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 text-[var(--text-primary)] text-sm leading-relaxed max-w-none">
+      {parsedDoc.blocks.map((block) => {
+        const id = block.id;
+        switch (block.type) {
+          case 'heading': {
+            const level = block.data.level || 1;
+            const text = block.data.text || '';
+            const headingClass = "font-bold text-[var(--text-primary)] mt-6 mb-2 tracking-tight";
+            if (level === 1) return <h1 key={id} className={`${headingClass} text-2xl border-b border-[var(--border-subtle)] pb-1.5`}>{text}</h1>;
+            if (level === 2) return <h2 key={id} className={`${headingClass} text-xl`}>{text}</h2>;
+            if (level === 3) return <h3 key={id} className={`${headingClass} text-lg`}>{text}</h3>;
+            return <h4 key={id} className={`${headingClass} text-base`}>{text}</h4>;
+          }
+
+          case 'paragraph': {
+            const text = block.data.text || '';
+            return (
+              <p key={id} className="mb-4 text-[var(--text-secondary)] leading-relaxed">
+                {parseInlineElements(text)}
+              </p>
+            );
+          }
+
+          case 'quote': {
+            const text = block.data.text || '';
+            return (
+              <blockquote
+                key={id}
+                className="pl-4 py-2 my-4 border-l-4 rounded-r-lg bg-[var(--bg-elevated)] border-[var(--text-faint)] italic text-[var(--text-secondary)] whitespace-pre-wrap"
+              >
+                {text}
+              </blockquote>
+            );
+          }
+
+          case 'list': {
+            const items = block.data.items || [];
+            const listType = block.data.listType || 'bullet';
+            const listClass = "pl-6 mb-4 space-y-1.5 list-outside text-[var(--text-secondary)]";
+            if (listType === 'ordered') {
+              return (
+                <ol key={id} className={`${listClass} list-decimal`}>
+                  {items.map((item, idx) => (
+                    <li key={idx}>{parseInlineElements(item)}</li>
+                  ))}
+                </ol>
+              );
+            } else {
+              return (
+                <ul key={id} className={`${listClass} list-disc`}>
+                  {items.map((item, idx) => (
+                    <li key={idx}>{parseInlineElements(item)}</li>
+                  ))}
+                </ul>
+              );
+            }
+          }
+
+          case 'code': {
+            const code = block.data.code || '';
+            const language = block.data.language || 'text';
+            return (
+              <div key={id} className="relative group rounded-xl overflow-hidden border border-[var(--border-subtle)] my-4">
+                <div className="flex items-center justify-between px-4 py-1.5 bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)] text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
+                  <span>{language}</span>
+                </div>
+                <pre className="p-4 overflow-x-auto bg-[var(--bg-base)] text-xs font-mono leading-normal text-[var(--text-secondary)] select-all">
+                  <code>{code}</code>
+                </pre>
+              </div>
+            );
+          }
+
+          case 'mermaid': {
+            const code = block.data.code || '';
+            return <MermaidRenderer key={id} code={code} />;
+          }
+
+          case 'math': {
+            const code = block.data.code || '';
+            return <MathRenderer key={id} code={code} block={true} />;
+          }
+
+          default:
+            return null;
+        }
+      })}
+    </div>
+  );
+}

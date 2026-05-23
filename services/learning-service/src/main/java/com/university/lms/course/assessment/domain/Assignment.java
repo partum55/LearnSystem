@@ -48,11 +48,10 @@ public class Assignment {
     @Column(nullable = false, length = 255)
     private String title;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
-    private String description;
-
-    @Column(columnDefinition = "TEXT")
-    private String instructions;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "instructions_json", columnDefinition = "jsonb")
+    @Builder.Default
+    private Map<String, Object> instructionsJson = new HashMap<>();
 
     @Column(name = "max_points", precision = 6, scale = 2, nullable = false)
     private BigDecimal maxPoints;

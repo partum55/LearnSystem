@@ -2,9 +2,9 @@ import apiClient from '@/api/client';
 import type {
   LearningItemDto,
   LearningItemRequest,
-  LessonBlockDto,
-  LessonBlockReorderRequest,
-  LessonBlockRequest,
+  LessonPageDto,
+  LessonPageReorderRequest,
+  LessonPageRequest,
 } from '@/features/courses/api/canonical.types';
 
 export const learningItemsApi = {
@@ -28,33 +28,33 @@ export const learningItemsApi = {
   archive: (learningItemId: string) =>
     apiClient.request<void>({ method: 'DELETE', url: `/v1/learning-items/${learningItemId}` }),
 
-  listBlocks: (learningItemId: string) =>
-    apiClient.request<LessonBlockDto[]>({ url: `/v1/learning-items/${learningItemId}/blocks` }),
+  listPages: (learningItemId: string) =>
+    apiClient.request<LessonPageDto[]>({ url: `/v1/learning-items/${learningItemId}/pages` }),
 
-  createBlock: (learningItemId: string, request: LessonBlockRequest) =>
-    apiClient.request<LessonBlockDto>({
+  createPage: (learningItemId: string, request: LessonPageRequest) =>
+    apiClient.request<LessonPageDto>({
       method: 'POST',
-      url: `/v1/learning-items/${learningItemId}/blocks`,
+      url: `/v1/learning-items/${learningItemId}/pages`,
       data: request,
     }),
 
-  updateBlock: (learningItemId: string, blockId: string, request: Partial<LessonBlockRequest>) =>
-    apiClient.request<LessonBlockDto>({
+  updatePage: (learningItemId: string, pageId: string, request: Partial<LessonPageRequest>) =>
+    apiClient.request<LessonPageDto>({
       method: 'PATCH',
-      url: `/v1/learning-items/${learningItemId}/blocks/${blockId}`,
+      url: `/v1/learning-items/${learningItemId}/pages/${pageId}`,
       data: request,
     }),
 
-  deleteBlock: (learningItemId: string, blockId: string) =>
+  deletePage: (learningItemId: string, pageId: string) =>
     apiClient.request<void>({
       method: 'DELETE',
-      url: `/v1/learning-items/${learningItemId}/blocks/${blockId}`,
+      url: `/v1/learning-items/${learningItemId}/pages/${pageId}`,
     }),
 
-  reorderBlocks: (learningItemId: string, request: LessonBlockReorderRequest) =>
+  reorderPages: (learningItemId: string, request: LessonPageReorderRequest) =>
     apiClient.request({
       method: 'PATCH',
-      url: `/v1/learning-items/${learningItemId}/blocks/reorder`,
+      url: `/v1/learning-items/${learningItemId}/pages/reorder`,
       data: request,
     }),
 };

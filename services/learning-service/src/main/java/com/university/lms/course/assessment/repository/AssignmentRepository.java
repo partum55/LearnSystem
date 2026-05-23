@@ -67,11 +67,6 @@ public interface AssignmentRepository extends JpaRepository<Assignment, UUID> {
     List<Assignment> findAvailableAssignments(@Param("courseId") UUID courseId, @Param("now") LocalDateTime now);
 
     /**
-     * Find assignments by category.
-     */
-    List<Assignment> findByCategoryIdOrderByDueDateAsc(UUID categoryId);
-
-    /**
      * Count assignments by course.
      */
     long countByCourseId(UUID courseId);
@@ -83,11 +78,10 @@ public interface AssignmentRepository extends JpaRepository<Assignment, UUID> {
     long countPublishedByCourseId(@Param("courseId") UUID courseId);
 
     /**
-     * Search assignments by title or description.
+     * Search assignments by title.
      */
     @Query("SELECT a FROM Assignment a WHERE a.courseId = :courseId " +
-            "AND (LOWER(a.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
-            "OR LOWER(a.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+            "AND LOWER(a.title) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
     Page<Assignment> searchAssignments(@Param("courseId") UUID courseId,
                                        @Param("searchTerm") String searchTerm,
                                        Pageable pageable);

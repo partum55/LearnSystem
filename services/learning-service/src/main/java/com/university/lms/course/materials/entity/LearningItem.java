@@ -76,9 +76,9 @@ public class LearningItem {
   private LearningItemStatus status = LearningItemStatus.HIDDEN;
 
   @JdbcTypeCode(SqlTypes.JSON)
-  @Column(nullable = false, columnDefinition = "jsonb")
+  @Column(name = "content_json", nullable = false, columnDefinition = "jsonb")
   @Builder.Default
-  private Map<String, Object> content = new HashMap<>();
+  private Map<String, Object> contentJson = new HashMap<>();
 
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(nullable = false, columnDefinition = "jsonb")
@@ -88,7 +88,7 @@ public class LearningItem {
   @OneToMany(mappedBy = "learningItem", orphanRemoval = true)
   @OrderBy("position ASC")
   @Builder.Default
-  private List<LessonBlock> blocks = new ArrayList<>();
+  private List<LessonPage> pages = new ArrayList<>();
 
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)

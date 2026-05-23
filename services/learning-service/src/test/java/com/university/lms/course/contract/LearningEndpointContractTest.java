@@ -7,7 +7,7 @@ import com.university.lms.course.courses.controller.CanonicalCourseController;
 import com.university.lms.course.gradebook.controller.CanonicalGradebookController;
 import com.university.lms.course.materials.controller.CanonicalLearningItemController;
 import com.university.lms.course.materials.repository.LearningItemRepository;
-import com.university.lms.course.materials.repository.LessonBlockRepository;
+import com.university.lms.course.materials.repository.LessonPageRepository;
 import com.university.lms.course.materials.service.LearningContentService;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -53,11 +53,11 @@ class LearningEndpointContractTest {
     assertMethodPath(CanonicalLearningItemController.class, "getLearningItem", "/learning-items/{learningItemId}");
     assertMethodPath(CanonicalLearningItemController.class, "updateLearningItem", "/learning-items/{learningItemId}");
     assertMethodPath(CanonicalLearningItemController.class, "archiveLearningItem", "/learning-items/{learningItemId}");
-    assertMethodPath(CanonicalLearningItemController.class, "listBlocks", "/learning-items/{learningItemId}/blocks");
-    assertMethodPath(CanonicalLearningItemController.class, "createBlock", "/learning-items/{learningItemId}/blocks");
-    assertMethodPath(CanonicalLearningItemController.class, "updateBlock", "/learning-items/{learningItemId}/blocks/{blockId}");
-    assertMethodPath(CanonicalLearningItemController.class, "deleteBlock", "/learning-items/{learningItemId}/blocks/{blockId}");
-    assertMethodPath(CanonicalLearningItemController.class, "reorderBlocks", "/learning-items/{learningItemId}/blocks/reorder");
+    assertMethodPath(CanonicalLearningItemController.class, "listPages", "/learning-items/{learningItemId}/pages");
+    assertMethodPath(CanonicalLearningItemController.class, "createPage", "/learning-items/{learningItemId}/pages");
+    assertMethodPath(CanonicalLearningItemController.class, "updatePage", "/learning-items/{learningItemId}/pages/{pageId}");
+    assertMethodPath(CanonicalLearningItemController.class, "deletePage", "/learning-items/{learningItemId}/pages/{pageId}");
+    assertMethodPath(CanonicalLearningItemController.class, "reorderPages", "/learning-items/{learningItemId}/pages/reorder");
     assertMethodPath(CanonicalAssignmentController.class, "submitFile", "/assignments/{assignmentId}/submissions/file");
     assertMethodPath(CanonicalAssignmentController.class, "submitText", "/assignments/{assignmentId}/submissions/text");
     assertMethodPath(CanonicalAssignmentController.class, "submitForm", "/assignments/{assignmentId}/submissions/form");
@@ -90,7 +90,7 @@ class LearningEndpointContractTest {
         .map(java.lang.reflect.Field::getType)
         .collect(Collectors.toSet());
 
-    assertThat(fieldTypes).contains(LearningItemRepository.class, LessonBlockRepository.class);
+    assertThat(fieldTypes).contains(LearningItemRepository.class, LessonPageRepository.class);
     assertThat(fieldTypes.stream().map(Class::getSimpleName)).doesNotContain("ResourceRepository");
   }
 

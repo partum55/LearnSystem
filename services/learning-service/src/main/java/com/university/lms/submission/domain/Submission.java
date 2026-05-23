@@ -52,8 +52,9 @@ public class Submission {
         @Builder.Default
         private Integer submissionVersion = 1;
 
-        @Column(name = "text_answer", columnDefinition = "TEXT")
-        private String textAnswer;
+        @JdbcTypeCode(SqlTypes.JSON)
+        @Column(name = "content_json", columnDefinition = "jsonb")
+        private Map<String, Object> contentJson;
 
         @Column(name = "submission_url", length = 1000)
         private String submissionUrl;

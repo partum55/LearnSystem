@@ -7,11 +7,11 @@ import jakarta.validation.constraints.PositiveOrZero;
 import java.util.List;
 import java.util.UUID;
 
-public record LessonBlockReorderRequest(
-    @NotEmpty List<@Valid LessonBlockPositionDto> blocks
+public record LessonPageReorderRequest(
+    @NotEmpty List<@Valid LessonPagePositionDto> pages
 ) {
-  public record LessonBlockPositionDto(
+  public record LessonPagePositionDto(
       @NotNull UUID id,
-      @PositiveOrZero int order
+      @NotNull @PositiveOrZero Integer order
   ) {}
 }

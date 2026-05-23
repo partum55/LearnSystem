@@ -1,12 +1,12 @@
 package com.university.lms.course.materials.dto;
 
-import com.university.lms.course.materials.entity.LessonBlockType;
+import com.university.lms.course.materials.entity.LessonPageType;
 import java.util.Map;
 import java.util.UUID;
 
-public record LessonBlockDto(
+public record LessonPageDto(
     UUID id,
-    LessonBlockType type,
+    LessonPageType type,
     int order,
     String title,
     String content,

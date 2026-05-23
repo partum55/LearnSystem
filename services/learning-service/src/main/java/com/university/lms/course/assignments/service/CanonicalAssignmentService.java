@@ -80,8 +80,7 @@ public class CanonicalAssignmentService {
         .moduleId(moduleId)
         .assignmentType(request.type())
         .title(request.title())
-        .description(request.description() == null ? "" : request.description())
-        .instructions(request.instructions())
+        .instructionsJson(request.instructionsJson() == null ? new HashMap<>() : request.instructionsJson())
         .maxPoints(request.maxPoints())
         .position(request.order() == null ? nextAssignmentPosition(moduleId) : request.order())
         .dueDate(request.dueDate())
@@ -107,8 +106,7 @@ public class CanonicalAssignmentService {
     Map<String, Object> settings = settingsFor(request);
     validateAssignmentRequest(currentType, settings);
     assignment.setTitle(request.title());
-    assignment.setDescription(request.description() == null ? "" : request.description());
-    assignment.setInstructions(request.instructions());
+    assignment.setInstructionsJson(request.instructionsJson() == null ? new HashMap<>() : request.instructionsJson());
     assignment.setMaxPoints(request.maxPoints());
     if (request.order() != null) {
       assignment.setPosition(request.order());
@@ -167,7 +165,7 @@ public class CanonicalAssignmentService {
     submission.setSubmissionVersion(nextSubmissionVersion(submission));
     submission.setStatus(SubmissionStatus.WITHDRAWN);
     submission.setSubmittedAt(null);
-    submission.setTextAnswer(null);
+    submission.setContentJson(null);
     submission.setSubmissionUrl(null);
     submission.setFormData(null);
     submission.setAutoGradeResult(null);
@@ -540,7 +538,36 @@ public class CanonicalAssignmentService {
         if (request.text() == null || request.text().isBlank()) {
           throw ApiException.badRequest("TEXT_REQUIRED", "Submission text is required");
         }
-        int words = wordCount(request.text());
+        String plainText = request.text();
+        Map<String, Object> contentMap = null;
+        try {
+          contentMap = new com.fasterxml.jackson.databind.ObjectMapper().readValue(request.text(), Map.class);
+          StringBuilder sb = new StringBuilder();
+          if (contentMap.get("blocks") instanceof List<?> blocks) {
+            for (Object blockObj : blocks) {
+              if (blockObj instanceof Map<?, ?> block) {
+                Object dataObj = block.get("data");
+                if (dataObj instanceof Map<?, ?> data) {
+                  Object textObj = data.get("text");
+                  if (textObj != null) {
+                    sb.append(textObj.toString()).append(" ");
+                  }
+                }
+              }
+            }
+          }
+          plainText = sb.toString().trim();
+        } catch (Exception e) {
+          Map<String, Object> doc = new HashMap<>();
+          doc.put("version", 1);
+          Map<String, Object> block = new HashMap<>();
+          block.put("id", "block-init");
+          block.put("type", "paragraph");
+          block.put("data", Map.of("text", request.text()));
+          doc.put("blocks", List.of(block));
+          contentMap = doc;
+        }
+        int words = wordCount(plainText);
         Integer minWords = integerSetting(settings, "minWords");
         Integer maxWords = integerSetting(settings, "maxWords");
         if (minWords != null && words < minWords) {
@@ -549,7 +576,7 @@ public class CanonicalAssignmentService {
         if (maxWords != null && words > maxWords) {
           throw ApiException.badRequest("TEXT_TOO_LONG", "Submission text exceeds maxWords");
         }
-        submission.setTextAnswer(request.text());
+        submission.setContentJson(contentMap);
       }
       case FORM -> {
         if (request.answers() == null) {
@@ -569,7 +596,7 @@ public class CanonicalAssignmentService {
         if (!isBlank(configuredLanguage) && !configuredLanguage.equalsIgnoreCase(request.programmingLanguage())) {
           throw ApiException.badRequest("PROGRAMMING_LANGUAGE_MISMATCH", "Submission language does not match assignment language");
         }
-        submission.setTextAnswer(request.code());
+        submission.setContentJson(Map.of("code", request.code()));
         submission.setAutoGradeResult(Map.of(
             "executionStatus", "pending",
             "vplBoundary", "vpl-service",
@@ -610,7 +637,7 @@ public class CanonicalAssignmentService {
 
   private Map<String, Object> submissionContent(Submission submission) {
     Map<String, Object> content = new HashMap<>();
-    content.put("text", submission.getTextAnswer());
+    content.put("text", submission.getContentJson());
     content.put("url", submission.getSubmissionUrl());
     content.put("formAnswers", submission.getFormData());
     content.put("autoGradeResult", submission.getAutoGradeResult());
@@ -629,7 +656,7 @@ public class CanonicalAssignmentService {
         .userId(submission.getUserId())
         .versionNumber(submission.getSubmissionVersion())
         .status(submission.getStatus())
-        .content(submissionContent(submission))
+        .contentJson(submissionContent(submission))
         .submittedAt(submission.getSubmittedAt())
         .build());
   }
