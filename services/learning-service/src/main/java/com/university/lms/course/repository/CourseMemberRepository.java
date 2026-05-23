@@ -37,15 +37,18 @@ public interface CourseMemberRepository extends JpaRepository<CourseMember, UUID
   Page<CourseMember> findByUserId(UUID userId, Pageable pageable);
 
   /** Find active enrollments for user. */
-  @Query("SELECT m FROM CourseMember m WHERE m.userId = :userId AND m.status = com.university.lms.course.domain.CourseMemberStatus.ACTIVE")
-  Page<CourseMember> findActiveEnrollmentsForUser(@Param("userId") UUID userId, Pageable pageable);
+  Page<CourseMember> findByUserIdAndStatus(UUID userId, CourseMemberStatus status, Pageable pageable);
+
+  default Page<CourseMember> findActiveEnrollmentsForUser(UUID userId, Pageable pageable) {
+    return findByUserIdAndStatus(userId, CourseMemberStatus.ACTIVE, pageable);
+  }
 
   /** Count students in course. */
-  @Query(
-      "SELECT COUNT(m) FROM CourseMember m WHERE m.course.id = :courseId "
-          + "AND m.roleInCourse = com.university.lms.course.domain.CourseRole.STUDENT "
-          + "AND m.status = com.university.lms.course.domain.CourseMemberStatus.ACTIVE")
-  long countActiveStudents(@Param("courseId") UUID courseId);
+  long countByCourseIdAndRoleInCourseAndStatus(UUID courseId, CourseRole role, CourseMemberStatus status);
+
+  default long countActiveStudents(UUID courseId) {
+    return countByCourseIdAndRoleInCourseAndStatus(courseId, CourseRole.STUDENT, CourseMemberStatus.ACTIVE);
+  }
 
   /** Count all members in a course. */
   long countByCourseId(UUID courseId);
@@ -56,17 +59,27 @@ public interface CourseMemberRepository extends JpaRepository<CourseMember, UUID
       @Param("courseIds") Collection<UUID> courseIds, @Param("userIds") Collection<UUID> userIds);
 
   /** Find teachers of a course. */
-  @Query(
-      "SELECT m FROM CourseMember m WHERE m.course.id = :courseId "
-          + "AND m.roleInCourse IN (com.university.lms.course.domain.CourseRole.TEACHER, com.university.lms.course.domain.CourseRole.TA, com.university.lms.course.domain.CourseRole.OWNER) AND m.status = com.university.lms.course.domain.CourseMemberStatus.ACTIVE")
-  List<CourseMember> findCourseInstructors(@Param("courseId") UUID courseId);
+  List<CourseMember> findByCourseIdAndRoleInCourseInAndStatus(UUID courseId, Collection<CourseRole> roles, CourseMemberStatus status);
+
+  default List<CourseMember> findCourseInstructors(UUID courseId) {
+    return findByCourseIdAndRoleInCourseInAndStatus(
+        courseId,
+        List.of(CourseRole.TEACHER, CourseRole.TA, CourseRole.OWNER),
+        CourseMemberStatus.ACTIVE
+    );
+  }
 
   /** Check if user can manage course. */
-  @Query(
-      "SELECT COUNT(m) > 0 FROM CourseMember m WHERE m.course.id = :courseId "
-          + "AND m.userId = :userId AND m.roleInCourse IN (com.university.lms.course.domain.CourseRole.TEACHER, com.university.lms.course.domain.CourseRole.TA, com.university.lms.course.domain.CourseRole.OWNER) "
-          + "AND m.status = com.university.lms.course.domain.CourseMemberStatus.ACTIVE")
-  boolean canUserManageCourse(@Param("courseId") UUID courseId, @Param("userId") UUID userId);
+  boolean existsByCourseIdAndUserIdAndRoleInCourseInAndStatus(UUID courseId, UUID userId, Collection<CourseRole> roles, CourseMemberStatus status);
+
+  default boolean canUserManageCourse(UUID courseId, UUID userId) {
+    return existsByCourseIdAndUserIdAndRoleInCourseInAndStatus(
+        courseId,
+        userId,
+        List.of(CourseRole.TEACHER, CourseRole.TA, CourseRole.OWNER),
+        CourseMemberStatus.ACTIVE
+    );
+  }
 
   /** Find all enrollments by status. */
   Page<CourseMember> findByCourseIdAndStatus(
@@ -78,24 +91,43 @@ public interface CourseMemberRepository extends JpaRepository<CourseMember, UUID
   /** Delete all memberships for a specific user. */
   long deleteByUserId(UUID userId);
 
-  @Query(
-      "SELECT m.userId FROM CourseMember m WHERE m.course.id = :courseId AND m.roleInCourse = com.university.lms.course.domain.CourseRole.STUDENT")
-  List<UUID> findStudentIdsByCourseId(@Param("courseId") UUID courseId);
+  @Query("SELECT m.userId FROM CourseMember m WHERE m.course.id = :courseId AND m.roleInCourse = :role")
+  List<UUID> findUserIdsByCourseIdAndRole(@Param("courseId") UUID courseId, @Param("role") CourseRole role);
 
-  @Query(
-      "SELECT DISTINCT m.course.id FROM CourseMember m WHERE m.userId = :userId "
-          + "AND m.roleInCourse IN (com.university.lms.course.domain.CourseRole.TEACHER, com.university.lms.course.domain.CourseRole.TA, com.university.lms.course.domain.CourseRole.OWNER) "
-          + "AND m.status = com.university.lms.course.domain.CourseMemberStatus.ACTIVE")
-  List<UUID> findManagedCourseIdsByUserId(@Param("userId") UUID userId);
+  default List<UUID> findStudentIdsByCourseId(UUID courseId) {
+    return findUserIdsByCourseIdAndRole(courseId, CourseRole.STUDENT);
+  }
 
-  @Query(
-      "SELECT m.userId FROM CourseMember m WHERE m.course.id = :courseId "
-          + "AND m.roleInCourse = com.university.lms.course.domain.CourseRole.STUDENT "
-          + "AND m.status = com.university.lms.course.domain.CourseMemberStatus.ACTIVE")
-  List<UUID> findActiveStudentUserIdsByCourseId(@Param("courseId") UUID courseId);
+  @Query("SELECT DISTINCT m.course.id FROM CourseMember m WHERE m.userId = :userId AND m.roleInCourse IN :roles AND m.status = :status")
+  List<UUID> findCourseIdsByUserIdAndRolesAndStatus(
+      @Param("userId") UUID userId,
+      @Param("roles") Collection<CourseRole> roles,
+      @Param("status") CourseMemberStatus status);
 
-  @Query(
-      "SELECT DISTINCT m.course.id FROM CourseMember m WHERE m.userId = :userId "
-          + "AND m.status = com.university.lms.course.domain.CourseMemberStatus.ACTIVE")
-  List<UUID> findActiveCourseIdsByUserId(@Param("userId") UUID userId);
+  default List<UUID> findManagedCourseIdsByUserId(UUID userId) {
+    return findCourseIdsByUserIdAndRolesAndStatus(
+        userId,
+        List.of(CourseRole.TEACHER, CourseRole.TA, CourseRole.OWNER),
+        CourseMemberStatus.ACTIVE
+    );
+  }
+
+  @Query("SELECT m.userId FROM CourseMember m WHERE m.course.id = :courseId AND m.roleInCourse = :role AND m.status = :status")
+  List<UUID> findUserIdsByCourseIdAndRoleAndStatus(
+      @Param("courseId") UUID courseId,
+      @Param("role") CourseRole role,
+      @Param("status") CourseMemberStatus status);
+
+  default List<UUID> findActiveStudentUserIdsByCourseId(UUID courseId) {
+    return findUserIdsByCourseIdAndRoleAndStatus(courseId, CourseRole.STUDENT, CourseMemberStatus.ACTIVE);
+  }
+
+  @Query("SELECT DISTINCT m.course.id FROM CourseMember m WHERE m.userId = :userId AND m.status = :status")
+  List<UUID> findCourseIdsByUserIdAndStatus(
+      @Param("userId") UUID userId,
+      @Param("status") CourseMemberStatus status);
+
+  default List<UUID> findActiveCourseIdsByUserId(UUID userId) {
+    return findCourseIdsByUserIdAndStatus(userId, CourseMemberStatus.ACTIVE);
+  }
 }

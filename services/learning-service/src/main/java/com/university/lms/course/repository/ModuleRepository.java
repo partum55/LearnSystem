@@ -1,6 +1,7 @@
 package com.university.lms.course.repository;
 
 import com.university.lms.course.domain.Module;
+import com.university.lms.course.domain.ModuleStatus;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -18,10 +19,11 @@ public interface ModuleRepository extends JpaRepository<Module, UUID> {
   List<Module> findByCourseIdOrderByPositionAsc(UUID courseId);
 
   /** Find published modules for a course. */
-  @Query(
-      "SELECT m FROM Module m WHERE m.course.id = :courseId AND m.status = com.university.lms.course.domain.ModuleStatus.PUBLISHED "
-          + "ORDER BY m.position ASC")
-  List<Module> findPublishedModulesByCourse(@Param("courseId") UUID courseId);
+  List<Module> findByCourseIdAndStatusOrderByPositionAsc(UUID courseId, ModuleStatus status);
+
+  default List<Module> findPublishedModulesByCourse(UUID courseId) {
+    return findByCourseIdAndStatusOrderByPositionAsc(courseId, ModuleStatus.PUBLISHED);
+  }
 
   /** Find modules with pagination. */
   Page<Module> findByCourseId(UUID courseId, Pageable pageable);

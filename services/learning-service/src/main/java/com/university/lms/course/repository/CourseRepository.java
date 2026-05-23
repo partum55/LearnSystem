@@ -3,6 +3,8 @@ package com.university.lms.course.repository;
 import com.university.lms.common.domain.CourseStatus;
 import com.university.lms.common.domain.CourseVisibility;
 import com.university.lms.course.domain.Course;
+import com.university.lms.course.domain.CourseRole;
+import com.university.lms.course.domain.CourseMemberStatus;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -82,8 +84,21 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
 
   /** Find courses with available capacity. */
   @Query(
-      "SELECT c FROM Course c WHERE c.status = com.university.lms.common.domain.CourseStatus.PUBLISHED "
+      "SELECT c FROM Course c WHERE c.status = :status "
           + "AND (c.maxStudents IS NULL OR "
-          + "(SELECT COUNT(m) FROM CourseMember m WHERE m.course = c AND m.roleInCourse = com.university.lms.course.domain.CourseRole.STUDENT AND m.status = com.university.lms.course.domain.CourseMemberStatus.ACTIVE) < c.maxStudents)")
-  Page<Course> findCoursesWithCapacity(Pageable pageable);
+          + "(SELECT COUNT(m) FROM CourseMember m WHERE m.course = c AND m.roleInCourse = :role AND m.status = :memberStatus) < c.maxStudents)")
+  Page<Course> findCoursesWithCapacityByStatusAndRoleAndMemberStatus(
+      @Param("status") CourseStatus status,
+      @Param("role") CourseRole role,
+      @Param("memberStatus") CourseMemberStatus memberStatus,
+      Pageable pageable);
+
+  default Page<Course> findCoursesWithCapacity(Pageable pageable) {
+    return findCoursesWithCapacityByStatusAndRoleAndMemberStatus(
+        CourseStatus.PUBLISHED,
+        CourseRole.STUDENT,
+        CourseMemberStatus.ACTIVE,
+        pageable
+    );
+  }
 }
