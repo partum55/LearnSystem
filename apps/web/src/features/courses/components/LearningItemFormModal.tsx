@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import type { LearningItemDto, LearningItemRequest, LearningItemType } from '../api/canonical.types';
 import { Modal, Input, Button } from '@/components';
 
@@ -8,283 +9,250 @@ interface LearningItemFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (request: LearningItemRequest) => Promise<void>;
+  onCreateEditorItem?: (request: LearningItemRequest) => Promise<string>;
+  courseId?: string;
   initialData?: LearningItemDto | null;
   loading: boolean;
 }
 
-const LEARNING_ITEM_TYPES: Array<{ value: LearningItemType; label: string }> = [
-  { value: 'pdf', label: 'PDF Document' },
-  { value: 'link', label: 'External Link' },
-  { value: 'video', label: 'Video Lecture' },
-  { value: 'file', label: 'Downloadable File' },
-  { value: 'rte', label: 'Rich Text Article' },
-  { value: 'lesson', label: 'Interactive Lesson' },
+type SimpleType = 'pdf' | 'link' | 'video' | 'file';
+type EditorType = 'rte' | 'lesson';
+type AnyType = SimpleType | EditorType;
+
+const TYPE_CARDS: Array<{
+  value: AnyType;
+  icon: string;
+  label: string;
+  description: string;
+  group: 'simple' | 'editor';
+}> = [
+  { value: 'link', icon: '🔗', label: 'Link', description: 'External URL', group: 'simple' },
+  { value: 'video', icon: '▶', label: 'Video', description: 'Video stream', group: 'simple' },
+  { value: 'pdf', icon: '📄', label: 'PDF', description: 'PDF document', group: 'simple' },
+  { value: 'file', icon: '📁', label: 'File', description: 'Downloadable', group: 'simple' },
+  { value: 'rte', icon: '✦', label: 'Article', description: 'Rich text page', group: 'editor' },
+  { value: 'lesson', icon: '⬡', label: 'Lesson', description: 'Step-by-step lesson', group: 'editor' },
 ];
 
 export function LearningItemFormModal({
   isOpen,
   onClose,
   onSubmit,
+  onCreateEditorItem,
+  courseId,
   initialData,
   loading,
 }: LearningItemFormModalProps) {
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    type: 'link' as LearningItemType,
-    order: 1,
-    url: '',
-    textContent: '',
-    downloadable: true,
-    visible: true,
-  });
+  const router = useRouter();
+
+  const [type, setType] = useState<AnyType>('link');
+  const [title, setTitle] = useState('');
+  const [url, setUrl] = useState('');
+  const [downloadable, setDownloadable] = useState(true);
+  const [visible, setVisible] = useState(true);
+  const [order, setOrder] = useState(1);
   const [error, setError] = useState<string | null>(null);
+  const [redirecting, setRedirecting] = useState(false);
+
+  const isEditorType = type === 'rte' || type === 'lesson';
+  const needsUrl = ['link', 'video', 'pdf', 'file'].includes(type);
+  const isEditing = Boolean(initialData);
 
   useEffect(() => {
     if (initialData) {
-      setFormData({
-        title: initialData.title || '',
-        description: initialData.description || '',
-        type: initialData.type || 'link',
-        order: initialData.order || 1,
-        url: (initialData.settings?.url as string) || '',
-        textContent: (initialData.settings?.textContent as string) || '',
-        downloadable: initialData.settings?.downloadable !== false,
-        visible: initialData.visibilityStatus !== 'HIDDEN',
-      });
+      setType((initialData.type as AnyType) || 'link');
+      setTitle(initialData.title || '');
+      setUrl((initialData.settings?.url as string) || '');
+      setDownloadable(initialData.settings?.downloadable !== false);
+      setVisible(initialData.visibilityStatus !== 'HIDDEN');
+      setOrder(initialData.order || 1);
     } else {
-      setFormData({
-        title: '',
-        description: '',
-        type: 'link',
-        order: 1,
-        url: '',
-        textContent: '',
-        downloadable: true,
-        visible: true,
-      });
+      setType('link');
+      setTitle('');
+      setUrl('');
+      setDownloadable(true);
+      setVisible(true);
+      setOrder(1);
     }
     setError(null);
+    setRedirecting(false);
   }, [initialData, isOpen]);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value, type } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
-    }));
-  };
+  const buildPayload = (): LearningItemRequest => ({
+    title: title.trim(),
+    type: type as LearningItemType,
+    order: Number(order),
+    visible,
+    url: needsUrl ? url.trim() : undefined,
+    downloadable: ['pdf', 'file'].includes(type) ? downloadable : undefined,
+  });
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!formData.title.trim()) {
-      setError('Title is required');
-      return;
-    }
-
-    if (['link', 'video', 'pdf', 'file'].includes(formData.type) && !formData.url.trim()) {
-      setError(`URL/Link is required for ${formData.type.toUpperCase()} items.`);
-      return;
-    }
+    if (!title.trim()) { setError('Title is required.'); return; }
+    if (needsUrl && !url.trim()) { setError(`URL is required for ${type.toUpperCase()}.`); return; }
 
     try {
-      const payload: LearningItemRequest = {
-        title: formData.title.trim(),
-        description: formData.description.trim() || undefined,
-        type: formData.type,
-        order: Number(formData.order),
-        visible: formData.visible,
-        // Match canonical backend structure where type-specific fields are flattened or nested
-        url: ['link', 'video', 'pdf', 'file'].includes(formData.type) ? formData.url.trim() : undefined,
-        textContent: formData.type === 'rte' ? formData.textContent.trim() : undefined,
-        downloadable: ['pdf', 'file'].includes(formData.type) ? formData.downloadable : undefined,
-      };
-      
-      await onSubmit(payload);
+      if (isEditorType && !isEditing && onCreateEditorItem) {
+        setRedirecting(true);
+        const newId = await onCreateEditorItem(buildPayload());
+        onClose();
+        router.push(`/learning-items/${newId}${courseId ? `?courseId=${courseId}` : ''}`);
+        return;
+      }
+
+      await onSubmit(buildPayload());
       onClose();
     } catch (err: any) {
-      setError(err?.message || err?.response?.data?.message || 'An error occurred while saving the learning item.');
+      setRedirecting(false);
+      setError(err?.message || err?.response?.data?.message || 'Failed to save material.');
     }
   };
 
+  const submitLabel = () => {
+    if (redirecting) return 'Opening editor…';
+    if (loading) return isEditing ? 'Saving…' : 'Creating…';
+    if (isEditorType && !isEditing) return 'Create & Open Editor →';
+    return isEditing ? 'Save Changes' : 'Create';
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={initialData ? 'Edit Learning Material' : 'Create Learning Material'}>
-      <form onSubmit={handleFormSubmit} className="space-y-4">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={isEditing ? 'Edit Learning Material' : 'Add Learning Material'}
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
-          <div
-            className="rounded-md p-4"
-            style={{
-              background: 'rgba(239, 68, 68, 0.08)',
-              border: '1px solid rgba(239, 68, 68, 0.15)',
-            }}
-          >
-            <p className="text-sm font-medium" style={{ color: 'var(--fn-error)' }}>
-              {error}
-            </p>
+          <div className="rounded-lg p-3" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+            <p className="text-xs font-semibold" style={{ color: 'var(--fn-error)' }}>{error}</p>
           </div>
         )}
 
+        {/* Type selector */}
         <div>
-          <label htmlFor="item-type" className="label block mb-1 font-semibold text-sm">
-            Material Type
-          </label>
-          <select
-            id="item-type"
-            name="type"
-            value={formData.type}
-            onChange={handleChange}
-            disabled={loading || Boolean(initialData)}
-            className="input w-full"
-          >
-            {LEARNING_ITEM_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-          {initialData && (
-            <p className="text-xs text-[var(--text-faint)] mt-1">
-              Type cannot be changed after creation.
-            </p>
+          <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-faint)', letterSpacing: '0.06em' }}>Type</p>
+          <div className="grid grid-cols-6 gap-1.5">
+            {TYPE_CARDS.map((card) => {
+              const isSelected = type === card.value;
+              const locked = isEditing;
+              return (
+                <button
+                  key={card.value}
+                  type="button"
+                  disabled={locked}
+                  onClick={() => !locked && setType(card.value)}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    gap: '4px', padding: '8px 4px',
+                    border: `1px solid ${isSelected ? 'var(--border-strong)' : 'var(--border-subtle)'}`,
+                    borderRadius: '6px', cursor: locked ? 'default' : 'pointer',
+                    background: isSelected ? 'var(--bg-elevated)' : 'transparent',
+                    transition: 'all 120ms',
+                    opacity: locked && !isSelected ? 0.4 : 1,
+                  }}
+                >
+                  <span style={{ fontSize: '16px', lineHeight: 1 }}>{card.icon}</span>
+                  <span style={{ fontSize: '10px', fontWeight: 700, color: isSelected ? 'var(--text-primary)' : 'var(--text-faint)', letterSpacing: '0.02em' }}>
+                    {card.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {isEditing && (
+            <p className="text-xs mt-1.5" style={{ color: 'var(--text-faint)' }}>Type cannot be changed after creation.</p>
           )}
         </div>
 
+        {/* Editor type hint */}
+        {isEditorType && !isEditing && (
+          <div className="rounded-lg p-3 flex items-start gap-2.5" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
+            <span style={{ fontSize: '14px', marginTop: '1px' }}>✦</span>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              {type === 'rte'
+                ? 'A full-page document editor will open after creation.'
+                : 'A page-based lesson builder will open after creation.'}
+            </p>
+          </div>
+        )}
+
+        {/* Title */}
         <Input
-          label="Material Title *"
+          label="Title *"
           id="title"
           type="text"
-          name="title"
-          value={formData.title}
-          onChange={handleChange}
-          placeholder="e.g. Lecture Slide Deck"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={type === 'rte' ? 'e.g. Introduction to Recursion' : type === 'lesson' ? 'e.g. Week 3: Sorting Algorithms' : 'e.g. Lecture Slides'}
           required
-          disabled={loading}
+          disabled={loading || redirecting}
         />
 
-        <div>
-          <label htmlFor="description" className="label block mb-1 font-semibold text-sm">
-            Description
-          </label>
-          <textarea
-            id="description"
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            rows={3}
-            className="input w-full"
-            placeholder="Brief description of this learning resource..."
-            disabled={loading}
-          />
-        </div>
-
-        {['link', 'video', 'pdf', 'file'].includes(formData.type) && (
+        {/* URL field (simple types only) */}
+        {needsUrl && (
           <Input
-            label="Resource URL / Link *"
+            label="URL *"
             id="url"
             type="url"
-            name="url"
-            value={formData.url}
-            onChange={handleChange}
-            placeholder="https://example.com/resource"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://…"
             required
-            disabled={loading}
+            disabled={loading || redirecting}
           />
         )}
 
-        {formData.type === 'rte' && (
-          <div>
-            <label htmlFor="textContent" className="label block mb-1 font-semibold text-sm">
-              Article Body Content (Markdown/Text)
-            </label>
-            <textarea
-              id="textContent"
-              name="textContent"
-              value={formData.textContent}
-              onChange={handleChange}
-              rows={6}
-              className="input w-full font-mono text-sm"
-              placeholder="# Introduction..."
-              disabled={loading}
-            />
-          </div>
-        )}
-
-        {['pdf', 'file'].includes(formData.type) && (
-          <div className="flex items-center">
+        {/* Downloadable (PDF/file) */}
+        {['pdf', 'file'].includes(type) && (
+          <label className="flex items-center gap-2 cursor-pointer select-none">
             <input
               type="checkbox"
-              name="downloadable"
-              id="downloadable"
-              checked={formData.downloadable}
-              onChange={handleChange}
+              checked={downloadable}
+              onChange={(e) => setDownloadable(e.target.checked)}
               className="h-4 w-4 rounded"
               style={{ accentColor: 'var(--text-primary)' }}
-              disabled={loading}
+              disabled={loading || redirecting}
             />
-            <label
-              htmlFor="downloadable"
-              className="ml-2 block text-sm font-medium"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              Allow student download
-            </label>
-          </div>
+            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Allow student download</span>
+          </label>
         )}
 
+        {/* Order + Visibility */}
         <div className="grid grid-cols-2 gap-4">
           <Input
-            label="Order Index"
+            label="Order"
             id="order"
             type="number"
-            name="order"
-            value={formData.order}
-            onChange={handleChange}
+            value={order}
+            onChange={(e) => setOrder(Number(e.target.value))}
             min={1}
-            placeholder="1"
-            disabled={loading}
+            disabled={loading || redirecting}
           />
-
-          <div className="flex items-end pb-2">
-            <div className="flex items-center">
+          <div className="flex items-end pb-1">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
               <input
                 type="checkbox"
-                name="visible"
-                id="visible"
-                checked={formData.visible}
-                onChange={handleChange}
+                checked={visible}
+                onChange={(e) => setVisible(e.target.checked)}
                 className="h-4 w-4 rounded"
                 style={{ accentColor: 'var(--text-primary)' }}
-                disabled={loading}
+                disabled={loading || redirecting}
               />
-              <label
-                htmlFor="visible"
-                className="ml-2 block text-sm font-medium"
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                Make visible
-              </label>
-            </div>
+              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Visible</span>
+            </label>
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onClose}
-            disabled={loading}
-          >
+        {/* Actions */}
+        <div className="flex justify-end gap-3 pt-2 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={loading || redirecting}>
             Cancel
           </Button>
-          <Button
-            type="submit"
-            isLoading={loading}
-          >
-            {initialData ? 'Save Changes' : 'Create Material'}
+          <Button type="submit" isLoading={loading || redirecting}>
+            {submitLabel()}
           </Button>
         </div>
       </form>

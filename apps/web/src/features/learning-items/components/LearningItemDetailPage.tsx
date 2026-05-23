@@ -519,19 +519,17 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
         {item.type === 'rte' && (
           <div className="space-y-4">
             {isCourseStaff ? (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center border border-[var(--border-default)] bg-[var(--bg-surface)] p-3 rounded-xl">
-                  <span className="text-xs font-bold text-[var(--text-secondary)]">Syllabus Editor Mode (Obsidian-Style)</span>
-                  <button onClick={handleSaveRte} disabled={updateItemMutation.isPending} className="btn btn-success text-3xs font-extrabold px-3 py-1">
-                    {updateItemMutation.isPending ? 'Saving...' : 'Save Document'}
+              <div className="space-y-6">
+                <div className="flex justify-between items-center pb-3 border-b border-[var(--border-subtle)]">
+                  <p className="text-xs text-[var(--text-faint)]">Type / to insert blocks — supports LaTeX and Mermaid diagrams</p>
+                  <button onClick={handleSaveRte} disabled={updateItemMutation.isPending} className="btn btn-success text-3xs font-extrabold px-3 py-1.5">
+                    {updateItemMutation.isPending ? 'Saving…' : 'Save Document'}
                   </button>
                 </div>
-                <div className="border border-[var(--border-default)] rounded-xl p-6 bg-[var(--bg-base)]">
-                  <RichContentEditor value={rteContent} onChange={setRteContent} />
-                </div>
+                <RichContentEditor value={rteContent} onChange={setRteContent} />
               </div>
             ) : (
-              <div className="border border-[var(--border-default)] rounded-xl p-8 bg-[var(--bg-surface)] shadow-xs">
+              <div className="prose max-w-none">
                 <RichContentRenderer document={rteContent} />
               </div>
             )}
@@ -689,12 +687,8 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
 
                       {/* Content Workspace Area */}
                       <div className="border border-[var(--border-default)] bg-[var(--bg-base)] p-4 rounded-xl mt-4">
-                        {/* TEXT PAGE EDITOR */}
                         {localType === 'TEXT' && (
-                          <div className="space-y-2">
-                            <label className="label block text-[10px] uppercase font-bold text-[var(--text-faint)]">WYSIWYG Markdown Workspace</label>
-                            <RichContentEditor value={localRteValue} onChange={setLocalRteValue} />
-                          </div>
+                          <RichContentEditor value={localRteValue} onChange={setLocalRteValue} />
                         )}
 
                         {/* VIDEO PAGE EDITOR */}
@@ -731,20 +725,14 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
                           </div>
                         )}
 
-                        {/* CODE / MERMAID / MATH EDITORS: leverage limited specialized editor configs */}
                         {['CODE', 'MERMAID', 'MATH'].includes(localType) && (
-                          <div className="space-y-2">
-                            <label className="label block text-[10px] uppercase font-bold text-[var(--text-faint)]">
-                              WYSIWYG {localType.replace('_', ' ')} Block Editor (Live renders immediately on focus loss)
-                            </label>
-                            <RichContentEditor 
-                              value={localRteValue} 
-                              onChange={setLocalRteValue} 
-                              maxBlocks={1}
-                              allowedTypes={[localType.toLowerCase() as any]}
-                              placeholder={`Insert a ${localType.toLowerCase()} block to start drafting...`}
-                            />
-                          </div>
+                          <RichContentEditor
+                            value={localRteValue}
+                            onChange={setLocalRteValue}
+                            maxBlocks={1}
+                            allowedTypes={[localType.toLowerCase() as any]}
+                            placeholder={`Type / to insert a ${localType.toLowerCase()} block…`}
+                          />
                         )}
 
                         {/* INLINE QUIZ QUESTION EDITOR */}

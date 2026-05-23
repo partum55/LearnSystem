@@ -5,7 +5,10 @@ export type RichBlockType =
   | 'quote'
   | 'code'
   | 'mermaid'
-  | 'math';
+  | 'math'
+  | 'video'
+  | 'file'
+  | 'table';
 
 export interface RichBlock {
   id: string;
@@ -17,6 +20,9 @@ export interface RichBlock {
     listType?: 'bullet' | 'ordered';
     code?: string;
     language?: string;
+    url?: string;
+    filename?: string;
+    rows?: string[][];
   };
 }
 

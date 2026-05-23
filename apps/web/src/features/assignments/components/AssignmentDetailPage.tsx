@@ -441,13 +441,8 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold text-[var(--text-secondary)]">
-                      Draft Response (Obsidian-Style editor, live preview KaTeX/Mermaid on focus loss)
-                    </label>
-                    <div className="border border-[var(--border-default)] rounded-xl p-4 bg-[var(--bg-base)]">
-                      <RichContentEditor value={submissionValue} onChange={setSubmissionValue} />
-                    </div>
+                  <div>
+                    <RichContentEditor value={submissionValue} onChange={setSubmissionValue} />
                   </div>
 
                   <div className="flex gap-2">

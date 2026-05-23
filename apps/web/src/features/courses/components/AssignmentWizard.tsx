@@ -375,20 +375,20 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
           </div>
         )}
 
-        {/* STEP 2: INSTRUCTIONS RTE */}
+        {/* STEP 2: INSTRUCTIONS — document canvas */}
         {currentStep === 2 && (
-          <div className="space-y-4">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-secondary)] border-b border-[var(--border-subtle)] pb-2">Structured Assignment Instructions</h3>
-            <p className="text-3xs text-[var(--text-faint)] italic mb-2">
-              Draft beautiful syllabus instructions. Paste markdown syntax or use the WYSIWYG toolbox. Supports formulas ($e=mc^2$) and Mermaid diagrams!
-            </p>
-            <div className="border border-[var(--border-default)] rounded-xl p-4 bg-[var(--bg-base)]">
-              <RichContentEditor
-                value={instructionsJson}
-                onChange={setInstructionsJson}
-                placeholder="Draft exact guidelines and submission guidelines here..."
-              />
+          <div>
+            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-6">
+              <div>
+                <h3 className="text-sm font-bold text-[var(--text-primary)]">Instructions</h3>
+                <p className="text-3xs text-[var(--text-faint)] mt-0.5">Paste markdown or type / to insert blocks — formulas and diagrams supported</p>
+              </div>
             </div>
+            <RichContentEditor
+              value={instructionsJson}
+              onChange={setInstructionsJson}
+              placeholder="Write the assignment instructions here…"
+            />
           </div>
         )}
 

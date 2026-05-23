@@ -41,6 +41,8 @@ import { useStudentGradebook } from '@/features/gradebook/hooks/useGradebookQuer
 import { useCurrentUser } from '@/features/users/hooks/useUserQueries';
 import type { CourseMemberDto, CourseModuleDto, LearningItemDto, LearningItemRequest, ModuleRequest, AssignmentListItemDto } from '@/features/courses/api/canonical.types';
 import type { AssignmentRequest } from '@/features/assignments/api/canonical.types';
+import { StudentGradesView } from '@/features/gradebook/components/StudentGradesView';
+import type { StudentGradebookDto } from '@/features/gradebook/api/gradebook.types';
 
 import { ModuleFormModal } from './ModuleFormModal';
 import { LearningItemFormModal } from './LearningItemFormModal';
@@ -141,6 +143,16 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
       });
       showToast('Learning item created successfully.');
     }
+  };
+
+  const handleCreateEditorItem = async (request: LearningItemRequest): Promise<string> => {
+    if (!activeModuleId) throw new Error('No module selected');
+    const created = await createLearningItemMutation.mutateAsync({
+      courseId,
+      moduleId: activeModuleId,
+      request,
+    });
+    return (created as any).id as string;
   };
 
   const handleDeleteLearningItem = (learningItemId: string) => {
@@ -406,6 +418,8 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
           isOpen={isLearningItemModalOpen}
           onClose={() => setIsLearningItemModalOpen(false)}
           onSubmit={handleLearningItemSubmit}
+          onCreateEditorItem={handleCreateEditorItem}
+          courseId={courseId}
           initialData={activeLearningItem}
           loading={createLearningItemMutation.isPending || updateLearningItemMutation.isPending}
         />
@@ -834,15 +848,7 @@ function GradesPanel({
 }: {
   courseId: string;
   isCourseStaff: boolean;
-  gradebook?: {
-    total: { points: number; maxPoints: number; percentage?: number | null };
-    modules: Array<{
-      moduleId: string;
-      title: string;
-      total: { points: number; maxPoints: number };
-      assignments: Array<{ assignmentId: string; title: string; points?: number | null; maxPoints: number; status: string; comment?: string | null }>;
-    }>;
-  };
+  gradebook?: StudentGradebookDto;
 }) {
   if (isCourseStaff) {
     return (
@@ -862,59 +868,11 @@ function GradesPanel({
     );
   }
 
-  if (!gradebook?.modules?.length) {
+  if (!gradebook || !gradebook.modules || gradebook.modules.length === 0) {
     return <EmptyState framed title="No grades yet" description="Published grades will appear here after assignments are reviewed." />;
   }
 
-  return (
-    <section className="card">
-      <div className="card-header flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <SectionTitle icon={ChartBarIcon} title="My grades" />
-        <span className="badge">
-          Total: {gradebook.total.points}/{gradebook.total.maxPoints}
-          {gradebook.total.percentage !== undefined && gradebook.total.percentage !== null ? ` (${gradebook.total.percentage}%)` : ''}
-        </span>
-      </div>
-      <div className="card-body space-y-5">
-        {gradebook.modules.map((module) => (
-          <section key={module.moduleId} className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">{module.title}</h3>
-              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                {module.total.points}/{module.total.maxPoints}
-              </span>
-            </div>
-            <div className="overflow-x-auto rounded-md border" style={{ borderColor: 'var(--border-subtle)' }}>
-              <table className="w-full text-left text-sm">
-                <thead style={{ background: 'var(--bg-base)', color: 'var(--text-muted)' }}>
-                  <tr>
-                    <th className="px-3 py-2 font-medium">Assignment</th>
-                    <th className="px-3 py-2 font-medium">Status</th>
-                    <th className="px-3 py-2 text-right font-medium">Score</th>
-                    <th className="px-3 py-2 font-medium">Feedback</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {module.assignments.map((assignment) => (
-                    <tr key={assignment.assignmentId} className="border-t" style={{ borderColor: 'var(--border-subtle)' }}>
-                      <td className="px-3 py-2">
-                        <Link href={`/assignments/${assignment.assignmentId}`} className="font-medium">
-                          {assignment.title}
-                        </Link>
-                      </td>
-                      <td className="px-3 py-2"><span className="badge">{assignment.status}</span></td>
-                      <td className="px-3 py-2 text-right">{assignment.points ?? '-'}/{assignment.maxPoints}</td>
-                      <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{assignment.comment || '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        ))}
-      </div>
-    </section>
-  );
+  return <StudentGradesView gradebook={gradebook} />;
 }
 
 function MembersPanel({ members, search, onSearch }: { members: CourseMemberDto[]; search: string; onSearch: (value: string) => void }) {
