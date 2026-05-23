@@ -3,7 +3,6 @@ package com.university.lms.course.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -37,7 +36,5 @@ public class ModuleDto implements Serializable {
   @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
   private LocalDateTime updatedAt;
 
-  private List<ResourceDto> resources;
-  private Integer resourceCount;
   private Boolean isAvailable;
 }

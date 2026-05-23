@@ -11,8 +11,6 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -39,9 +37,6 @@ public class User {
     @Column(unique = true, nullable = false, length = 254)
     private String email;
 
-    @Column(name = "display_name", length = 150)
-    private String displayName;
-
     @Column(name = "first_name", length = 150)
     private String firstName;
 
@@ -65,34 +60,18 @@ public class User {
 
     @Column(length = 10)
     @Builder.Default
-    private String theme = "light";
+    private String theme = "LIGHT";
 
     @Column(name = "avatar_url")
     private String avatarUrl;
-
-    @Column(columnDefinition = "TEXT")
-    private String bio;
 
     @Column(name = "is_active")
     @Builder.Default
     private boolean isActive = true;
 
-    @Column(name = "is_deleted")
-    @Builder.Default
-    private boolean isDeleted = false;
-
     @Column(name = "email_verified")
     @Builder.Default
     private boolean emailVerified = false;
-
-    /**
-     * User preferences stored as JSONB for flexibility.
-     * Maps to Django's JSONField.
-     */
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
-    @Builder.Default
-    private Map<String, Object> preferences = new HashMap<>();
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -108,9 +87,6 @@ public class User {
      * Get the full name of the user.
      */
     public String getFullName() {
-        if (displayName != null && !displayName.isBlank()) {
-            return displayName;
-        }
         if (firstName != null && !firstName.isBlank() && lastName != null && !lastName.isBlank()) {
             return firstName + " " + lastName;
         }
@@ -121,6 +97,10 @@ public class User {
             return lastName;
         }
         return email;
+    }
+
+    public String getDisplayName() {
+        return getFullName();
     }
 
     /**

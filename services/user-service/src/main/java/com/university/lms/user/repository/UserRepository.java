@@ -19,19 +19,9 @@ import java.util.UUID;
 public interface UserRepository extends JpaRepository<User, UUID> {
 
     /**
-     * Find active (not soft-deleted) user by email (case-insensitive).
-     */
-    Optional<User> findByEmailIgnoreCaseAndIsDeletedFalse(String email);
-
-    /**
-     * Find user by email regardless of soft-delete status.
+     * Find user by email (case-insensitive).
      */
     Optional<User> findByEmailIgnoreCase(String email);
-
-    /**
-     * Find active (not soft-deleted) user by ID.
-     */
-    Optional<User> findByIdAndIsDeletedFalse(UUID id);
 
     /**
      * Check if email exists (case-insensitive).
@@ -44,27 +34,21 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByStudentId(String studentId);
 
     /**
-     * Count not-deleted users by role.
+     * Count users by role.
      */
-    long countByRoleAndIsDeletedFalse(UserRole role);
+    long countByRole(UserRole role);
 
     /**
-     * Find users by role (not deleted).
+     * Find users by role.
      */
-    Page<User> findByRoleAndIsDeletedFalse(UserRole role, Pageable pageable);
-
-    /**
-     * Find all active (not deleted) users.
-     */
-    Page<User> findByIsDeletedFalse(Pageable pageable);
+    Page<User> findByRole(UserRole role, Pageable pageable);
 
     /**
      * Search users by email, name or student ID.
      */
     @Query("SELECT u FROM User u WHERE " +
-            "u.isDeleted = false AND (" +
+            "(" +
             "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-            "LOWER(u.displayName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
             "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
             "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
             "LOWER(u.studentId) LIKE LOWER(CONCAT('%', :search, '%')))")

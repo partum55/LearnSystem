@@ -3,8 +3,6 @@ package com.university.lms.submission.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.Fetch;
-import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import org.hibernate.annotations.JdbcTypeCode;
@@ -12,16 +10,14 @@ import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 /**
  * Submission aggregate root.
  */
 @Entity
-@Table(schema = "assessment", name = "submissions", indexes = {
+@Table(schema = "learning", name = "assignment_submissions", indexes = {
                 @Index(name = "idx_submissions_assignment", columnList = "assignment_id"),
                 @Index(name = "idx_submissions_user", columnList = "user_id"),
                 @Index(name = "idx_submissions_status", columnList = "status"),
@@ -46,15 +42,11 @@ public class Submission {
         @Column(name = "user_id", nullable = false)
         private UUID userId;
 
-        @Column(name = "student_name", length = 255)
-        private String studentName;
-
-        @Column(name = "student_email", length = 255)
-        private String studentEmail;
-
-        @Column(name = "status", nullable = false, length = 32)
+        @Enumerated(EnumType.STRING)
+        @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+        @Column(name = "status", nullable = false, columnDefinition = "learning.submission_status")
         @Builder.Default
-        private String status = "DRAFT";
+        private SubmissionStatus status = SubmissionStatus.DRAFT;
 
         @Column(name = "submission_version", nullable = false)
         @Builder.Default
@@ -73,9 +65,6 @@ public class Submission {
         @JdbcTypeCode(SqlTypes.JSON)
         @Column(name = "auto_grade_result", columnDefinition = "jsonb")
         private Map<String, Object> autoGradeResult;
-
-        @Column(name = "programming_language", length = 50)
-        private String programmingLanguage;
 
         @Column(name = "grade", precision = 6, scale = 2)
         private BigDecimal grade;
@@ -131,16 +120,6 @@ public class Submission {
         @Column(name = "version", nullable = false)
         @Builder.Default
         private Long version = 0L;
-
-        @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL, orphanRemoval = true)
-        @Fetch(FetchMode.SUBSELECT)
-        @Builder.Default
-        private Set<SubmissionFile> files = new LinkedHashSet<>();
-
-        @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL, orphanRemoval = true)
-        @Fetch(FetchMode.SUBSELECT)
-        @Builder.Default
-        private Set<SubmissionComment> comments = new LinkedHashSet<>();
 
         @CreationTimestamp
         @Column(name = "created_at", nullable = false, updatable = false)

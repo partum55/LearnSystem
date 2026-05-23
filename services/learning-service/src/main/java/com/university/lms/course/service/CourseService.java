@@ -7,6 +7,7 @@ import com.university.lms.common.exception.ResourceNotFoundException;
 import com.university.lms.common.exception.ValidationException;
 import com.university.lms.course.domain.Course;
 import com.university.lms.course.domain.CourseMember;
+import com.university.lms.course.domain.CourseMemberStatus;
 import com.university.lms.course.dto.*;
 import com.university.lms.course.repository.CourseMemberRepository;
 import com.university.lms.course.repository.CourseRepository;
@@ -30,13 +31,10 @@ public class CourseService {
 
   private static final String ROLE_ADMIN = "ADMIN";
   private static final String ROLE_TEACHER = "TEACHER";
-  private static final String ROLE_OWNER = "OWNER";
-  private static final String ENROLLMENT_ACTIVE = "active";
 
   private final CourseRepository courseRepository;
   private final CourseMemberRepository courseMemberRepository;
   private final CourseMapper courseMapper;
-  private final CourseArchiveService courseArchiveService;
 
   /** Get course by ID. */
   @Cacheable(
@@ -87,7 +85,7 @@ public class CourseService {
       CourseVisibility visibility, Pageable pageable) {
     log.debug("Fetching published courses with visibility: {}", visibility);
     Page<Course> coursePage =
-        courseRepository.findByIsPublishedTrueAndVisibility(visibility, pageable);
+        courseRepository.findByStatusAndVisibility(CourseStatus.PUBLISHED, visibility, pageable);
     return mapToPageResponse(coursePage);
   }
 
@@ -151,7 +149,7 @@ public class CourseService {
     Course savedCourse = courseRepository.save(course);
 
     if (ROLE_TEACHER.equalsIgnoreCase(requesterRole)) {
-      addCourseMember(savedCourse, ownerId, ROLE_OWNER, ownerId);
+      addCourseMember(savedCourse, ownerId, com.university.lms.course.domain.CourseRole.OWNER, ownerId);
     }
 
     log.info("Course created successfully with ID: {}", savedCourse.getId());
@@ -172,8 +170,6 @@ public class CourseService {
       throw new ValidationException("User does not have permission to update this course");
     }
 
-    CourseStatus previousStatus = course.getStatus();
-
     // Validate dates if both are provided
     LocalDate effectiveStartDate =
         request.getStartDate() != null ? request.getStartDate() : course.getStartDate();
@@ -182,14 +178,7 @@ public class CourseService {
     validateDateRange(effectiveStartDate, effectiveEndDate);
 
     courseMapper.updateEntityFromDto(course, request);
-    if (request.getStatus() == CourseStatus.ARCHIVED) {
-      course.setIsPublished(false);
-    }
     Course updatedCourse = courseRepository.save(course);
-    if (previousStatus != CourseStatus.ARCHIVED
-        && updatedCourse.getStatus() == CourseStatus.ARCHIVED) {
-      courseArchiveService.createSnapshotIfMissing(updatedCourse.getId(), userId, userRole);
-    }
 
     log.info("Course updated successfully: {}", id);
     return courseMapper.toDto(updatedCourse);
@@ -264,7 +253,7 @@ public class CourseService {
       throw new ValidationException("User does not have permission to publish this course");
     }
 
-    course.setIsPublished(true);
+    
     course.setStatus(CourseStatus.PUBLISHED);
     Course updatedCourse = courseRepository.save(course);
 
@@ -284,7 +273,7 @@ public class CourseService {
       throw new ValidationException("User does not have permission to unpublish this course");
     }
 
-    course.setIsPublished(false);
+    
     course.setStatus(CourseStatus.DRAFT);
     Course updatedCourse = courseRepository.save(course);
 
@@ -305,11 +294,9 @@ public class CourseService {
 
     if (course.getStatus() != CourseStatus.ARCHIVED) {
       course.setStatus(CourseStatus.ARCHIVED);
-      course.setIsPublished(false);
+      
       course = courseRepository.save(course);
     }
-    courseArchiveService.createSnapshotIfMissing(course.getId(), userId, userRole);
-
     log.info("Course archived successfully: {}", id);
     return courseMapper.toDto(course);
   }
@@ -342,7 +329,7 @@ public class CourseService {
     boolean isAdmin = isAdmin(userRole);
     boolean canManage = canUserManageCourse(course, userId, userRole);
 
-    if (course.getIsPublished()) {
+    if (course.getStatus() == CourseStatus.PUBLISHED) {
       return;
     }
 
@@ -355,14 +342,14 @@ public class CourseService {
     return ROLE_ADMIN.equalsIgnoreCase(userRole);
   }
 
-  private void addCourseMember(Course course, UUID userId, String role, UUID addedBy) {
+  private void addCourseMember(Course course, UUID userId, com.university.lms.course.domain.CourseRole role, UUID addedBy) {
     CourseMember member =
         CourseMember.builder()
             .course(course)
             .userId(userId)
             .roleInCourse(role)
             .addedBy(addedBy)
-            .enrollmentStatus(ENROLLMENT_ACTIVE)
+            .status(CourseMemberStatus.ACTIVE)
             .build();
     courseMemberRepository.save(member);
   }

@@ -7,7 +7,7 @@ import lombok.*;
 
 /** Entity for tracking A/B test results for prompts. */
 @Entity
-@Table(schema = "ai", name = "ai_prompt_ab_test",
+@Table(schema = "learning", name = "ai_prompt_ab_test",
     indexes = {
       @Index(name = "idx_ab_test_experiment", columnList = "experiment_name"),
       @Index(name = "idx_ab_test_variant", columnList = "variant_name"),

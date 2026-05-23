@@ -31,7 +31,6 @@ public class CanonicalUserAdminController {
             "createdAt",
             "updatedAt",
             "email",
-            "displayName",
             "firstName",
             "lastName",
             "role"

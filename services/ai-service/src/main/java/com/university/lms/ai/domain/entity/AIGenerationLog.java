@@ -7,7 +7,7 @@ import lombok.*;
 
 /** Entity for logging AI generation requests for audit and analytics. */
 @Entity
-@Table(schema = "ai", name = "ai_generation_logs",
+@Table(schema = "learning", name = "ai_generation_logs",
     indexes = {
       @Index(name = "idx_ai_generation_logs_user", columnList = "user_id"),
       @Index(name = "idx_ai_generation_logs_created", columnList = "created_at"),

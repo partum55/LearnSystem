@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(schema = "grading", name = "gradebook_entries",
+@Table(schema = "learning", name = "grades",
         uniqueConstraints = @UniqueConstraint(name = "uk_gradebook_entry_course_student_assignment",
                 columnNames = {"course_id", "student_id", "assignment_id"}),
         indexes = {
@@ -51,7 +51,7 @@ public class GradebookEntry {
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(nullable = false, columnDefinition = "grading.grade_status")
+    @Column(nullable = false, columnDefinition = "learning.grade_status")
     @Builder.Default
     private GradeStatus status = GradeStatus.NOT_SUBMITTED;
 

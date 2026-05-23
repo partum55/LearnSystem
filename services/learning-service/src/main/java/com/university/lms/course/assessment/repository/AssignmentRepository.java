@@ -10,7 +10,6 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -37,34 +36,32 @@ public interface AssignmentRepository extends JpaRepository<Assignment, UUID> {
     /**
      * Find published assignments by course.
      */
-    @Query("SELECT a FROM Assignment a WHERE a.courseId = :courseId AND a.isPublished = true " +
-            "AND a.isArchived = false ORDER BY a.dueDate ASC")
+    @Query("SELECT a FROM Assignment a WHERE a.courseId = :courseId AND a.status = com.university.lms.course.assessment.domain.AssignmentStatus.PUBLISHED ORDER BY a.dueDate ASC")
     List<Assignment> findPublishedByCourse(@Param("courseId") UUID courseId);
 
     /**
      * Find assignments by type.
      */
-    Page<Assignment> findByCourseIdAndAssignmentType(UUID courseId, String assignmentType, Pageable pageable);
+    Page<Assignment> findByCourseIdAndAssignmentType(UUID courseId, com.university.lms.course.assessment.domain.AssignmentType assignmentType, Pageable pageable);
 
     /**
      * Find upcoming assignments (due in the future).
      */
-    @Query("SELECT a FROM Assignment a WHERE a.courseId = :courseId AND a.isPublished = true " +
+    @Query("SELECT a FROM Assignment a WHERE a.courseId = :courseId AND a.status = com.university.lms.course.assessment.domain.AssignmentStatus.PUBLISHED " +
             "AND a.dueDate > :now ORDER BY a.dueDate ASC")
     List<Assignment> findUpcomingAssignments(@Param("courseId") UUID courseId, @Param("now") LocalDateTime now);
 
     /**
      * Find overdue assignments.
      */
-    @Query("SELECT a FROM Assignment a WHERE a.courseId = :courseId AND a.isPublished = true " +
+    @Query("SELECT a FROM Assignment a WHERE a.courseId = :courseId AND a.status = com.university.lms.course.assessment.domain.AssignmentStatus.PUBLISHED " +
             "AND a.dueDate < :now AND a.dueDate IS NOT NULL ORDER BY a.dueDate DESC")
     List<Assignment> findOverdueAssignments(@Param("courseId") UUID courseId, @Param("now") LocalDateTime now);
 
     /**
      * Find available assignments (published and within available dates).
      */
-    @Query("SELECT a FROM Assignment a WHERE a.courseId = :courseId AND a.isPublished = true " +
-            "AND a.isArchived = false " +
+    @Query("SELECT a FROM Assignment a WHERE a.courseId = :courseId AND a.status = com.university.lms.course.assessment.domain.AssignmentStatus.PUBLISHED " +
             "AND (a.availableFrom IS NULL OR a.availableFrom <= :now) " +
             "AND (a.availableUntil IS NULL OR a.availableUntil >= :now)")
     List<Assignment> findAvailableAssignments(@Param("courseId") UUID courseId, @Param("now") LocalDateTime now);
@@ -82,12 +79,8 @@ public interface AssignmentRepository extends JpaRepository<Assignment, UUID> {
     /**
      * Count published assignments by course.
      */
-    long countByCourseIdAndIsPublishedTrue(UUID courseId);
-
-    /**
-     * Find templates.
-     */
-    Page<Assignment> findByIsTemplateTrue(Pageable pageable);
+    @Query("SELECT COUNT(a) FROM Assignment a WHERE a.courseId = :courseId AND a.status = com.university.lms.course.assessment.domain.AssignmentStatus.PUBLISHED")
+    long countPublishedByCourseId(@Param("courseId") UUID courseId);
 
     /**
      * Search assignments by title or description.
@@ -103,5 +96,4 @@ public interface AssignmentRepository extends JpaRepository<Assignment, UUID> {
 
     List<Assignment> findByCourseIdIn(List<UUID> courseIds);
 
-    Optional<Assignment> findFirstByQuizId(UUID quizId);
 }

@@ -43,7 +43,6 @@ public class UserController {
             "createdAt",
             "updatedAt",
             "email",
-            "displayName",
             "firstName",
             "lastName",
             "role"

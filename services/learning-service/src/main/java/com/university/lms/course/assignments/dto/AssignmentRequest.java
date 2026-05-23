@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record AssignmentRequest(
-    @NotNull String type,
+    @NotNull com.university.lms.course.assessment.domain.AssignmentType type,
     @NotBlank String title,
     String description,
     String instructions,

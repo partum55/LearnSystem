@@ -1,6 +1,8 @@
 package com.university.lms.course.service;
 
+import com.university.lms.common.domain.CourseStatus;
 import com.university.lms.course.domain.*;
+import com.university.lms.course.domain.ModuleStatus;
 import com.university.lms.course.dto.*;
 import org.springframework.stereotype.Component;
 
@@ -34,7 +36,7 @@ public class CourseMapper {
         .maxStudents(course.getMaxStudents())
         .currentEnrollment(course.getCurrentEnrollment())
         .status(course.getStatus())
-        .isPublished(course.getIsPublished())
+        .isPublished(course.getStatus() == CourseStatus.PUBLISHED)
         .createdAt(course.getCreatedAt())
         .updatedAt(course.getUpdatedAt())
         .hasCapacity(course.hasCapacity())
@@ -72,7 +74,6 @@ public class CourseMapper {
             request.getStatus() != null
                 ? request.getStatus()
                 : com.university.lms.common.domain.CourseStatus.DRAFT)
-        .isPublished(request.getIsPublished() != null ? request.getIsPublished() : false)
         .build();
   }
 
@@ -95,7 +96,6 @@ public class CourseMapper {
     if (request.getDepartmentId() != null) course.setDepartmentId(request.getDepartmentId());
     if (request.getMaxStudents() != null) course.setMaxStudents(request.getMaxStudents());
     if (request.getStatus() != null) course.setStatus(request.getStatus());
-    if (request.getIsPublished() != null) course.setIsPublished(request.getIsPublished());
   }
 
   public CourseMemberDto toDto(CourseMember member) {
@@ -113,7 +113,7 @@ public class CourseMapper {
         .addedBy(member.getAddedBy())
         .addedAt(member.getAddedAt())
         .updatedAt(member.getUpdatedAt())
-        .enrollmentStatus(member.getEnrollmentStatus())
+        .status(member.getStatus())
         .completionDate(member.getCompletionDate())
         .finalGrade(member.getFinalGrade())
         .build();
@@ -124,52 +124,17 @@ public class CourseMapper {
       return null;
     }
 
-    ModuleDto dto =
-        ModuleDto.builder()
-            .id(module.getId())
-            .courseId(module.getCourse().getId())
-            .title(module.getTitle())
-            .description(module.getDescription())
-            .position(module.getPosition())
-            .contentMeta(module.getContentMeta())
-            .isPublished(module.getIsPublished())
-            .publishDate(module.getPublishDate())
-            .createdAt(module.getCreatedAt())
-            .updatedAt(module.getUpdatedAt())
-            .resourceCount(module.getResources() != null ? module.getResources().size() : 0)
-            .isAvailable(module.isAvailable())
-            .build();
-
-    // Optionally include resources if loaded
-    if (module.getResources() != null && !module.getResources().isEmpty()) {
-      dto.setResources(module.getResources().stream().map(this::toDto).toList());
-    }
-
-    return dto;
-  }
-
-  public ResourceDto toDto(Resource resource) {
-    if (resource == null) {
-      return null;
-    }
-
-    return ResourceDto.builder()
-        .id(resource.getId())
-        .moduleId(resource.getModule().getId())
-        .topicId(resource.getTopicId())
-        .title(resource.getTitle())
-        .description(resource.getDescription())
-        .resourceType(resource.getResourceType())
-        .fileUrl(resource.getFileUrl())
-        .externalUrl(resource.getExternalUrl())
-        .fileSize(resource.getFileSize())
-        .mimeType(resource.getMimeType())
-        .position(resource.getPosition())
-        .isDownloadable(resource.getIsDownloadable())
-        .textContent(resource.getTextContent())
-        .metadata(resource.getMetadata())
-        .createdAt(resource.getCreatedAt())
-        .updatedAt(resource.getUpdatedAt())
+    return ModuleDto.builder()
+        .id(module.getId())
+        .courseId(module.getCourse().getId())
+        .title(module.getTitle())
+        .description(module.getDescription())
+        .position(module.getPosition())
+        .contentMeta(module.getContentMeta())
+        .isPublished(module.getStatus() == ModuleStatus.PUBLISHED)
+        .createdAt(module.getCreatedAt())
+        .updatedAt(module.getUpdatedAt())
+        .isAvailable(module.isAvailable())
         .build();
   }
 }

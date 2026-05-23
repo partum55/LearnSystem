@@ -21,7 +21,7 @@ public interface UserMapper {
      */
     @Mapping(target = "isActive", source = "active")
     @Mapping(target = "globalRole", source = "role")
-    @Mapping(target = "status", expression = "java(user.isDeleted() ? \"deleted\" : (user.isActive() ? \"active\" : \"inactive\"))")
+    @Mapping(target = "status", expression = "java(user.isActive() ? \"active\" : \"inactive\")")
     UserDto toDto(User user);
 
     /**
@@ -33,7 +33,6 @@ public interface UserMapper {
     @Mapping(target = "studentId", ignore = true)
     @Mapping(target = "role", ignore = true)
     @Mapping(target = "active", ignore = true)
-    @Mapping(target = "deleted", ignore = true)
     @Mapping(target = "emailVerified", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)

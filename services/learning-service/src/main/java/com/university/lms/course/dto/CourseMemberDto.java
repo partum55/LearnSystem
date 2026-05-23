@@ -28,7 +28,7 @@ public class CourseMemberDto implements Serializable {
   private String userName;
   private String userEmail;
 
-  private String roleInCourse;
+  private com.university.lms.course.domain.CourseRole roleInCourse;
   private UUID addedBy;
 
   @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
@@ -37,7 +37,7 @@ public class CourseMemberDto implements Serializable {
   @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
   private LocalDateTime updatedAt;
 
-  private String enrollmentStatus;
+  private com.university.lms.course.domain.CourseMemberStatus status;
 
   @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
   private LocalDateTime completionDate;

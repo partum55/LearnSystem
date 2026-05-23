@@ -29,11 +29,11 @@ public class LearningItemMapper {
     return new LearningItemDto(
         item.getId(),
         item.getModule().getId(),
-        item.getType().apiValue(),
+        item.getType(),
         item.getTitle(),
         item.getDescription(),
         item.getPosition() == null ? 0 : item.getPosition(),
-        item.getStatus().apiValue(),
+        item.getStatus(),
         responseSettings);
   }
 }

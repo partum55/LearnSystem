@@ -8,7 +8,7 @@ public record AssignmentListItemDto(
     UUID id,
     UUID moduleId,
     String title,
-    String type,
+    com.university.lms.course.assessment.domain.AssignmentType type,
     int order,
     BigDecimal maxPoints,
     LocalDateTime dueDate,

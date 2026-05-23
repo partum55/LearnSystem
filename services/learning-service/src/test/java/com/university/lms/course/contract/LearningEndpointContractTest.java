@@ -9,8 +9,6 @@ import com.university.lms.course.materials.controller.CanonicalLearningItemContr
 import com.university.lms.course.materials.repository.LearningItemRepository;
 import com.university.lms.course.materials.repository.LessonBlockRepository;
 import com.university.lms.course.materials.service.LearningContentService;
-import com.university.lms.course.quizzes.controller.CanonicalQuizAttemptController;
-import com.university.lms.course.repository.ResourceRepository;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -42,7 +40,6 @@ class LearningEndpointContractTest {
     assertBasePath(CanonicalCourseController.class, "/v1/courses");
     assertBasePath(CanonicalLearningItemController.class, "/v1");
     assertBasePath(CanonicalAssignmentController.class, "/v1");
-    assertBasePath(CanonicalQuizAttemptController.class, "/v1");
     assertBasePath(CanonicalGradebookController.class, "/v1/courses/{courseId}/gradebook");
   }
 
@@ -62,14 +59,11 @@ class LearningEndpointContractTest {
     assertMethodPath(CanonicalLearningItemController.class, "deleteBlock", "/learning-items/{learningItemId}/blocks/{blockId}");
     assertMethodPath(CanonicalLearningItemController.class, "reorderBlocks", "/learning-items/{learningItemId}/blocks/reorder");
     assertMethodPath(CanonicalAssignmentController.class, "submitFile", "/assignments/{assignmentId}/submissions/file");
-    assertMethodPath(CanonicalAssignmentController.class, "submitRte", "/assignments/{assignmentId}/submissions/rte");
+    assertMethodPath(CanonicalAssignmentController.class, "submitText", "/assignments/{assignmentId}/submissions/text");
     assertMethodPath(CanonicalAssignmentController.class, "submitForm", "/assignments/{assignmentId}/submissions/form");
     assertMethodPath(CanonicalAssignmentController.class, "submitVpl", "/assignments/{assignmentId}/submissions/vpl");
     assertMethodPath(CanonicalAssignmentController.class, "saveDraft", "/submissions/{submissionId}/grade-draft");
     assertMethodPath(CanonicalAssignmentController.class, "publish", "/submissions/{submissionId}/publish-grade");
-    assertMethodPath(CanonicalQuizAttemptController.class, "start", "/assignments/{assignmentId}/quiz-attempts");
-    assertMethodPath(CanonicalQuizAttemptController.class, "submit", "/quiz-attempts/{attemptId}/submit");
-    assertMethodPath(CanonicalQuizAttemptController.class, "review", "/quiz-attempts/{attemptId}/review");
   }
 
   @Test
@@ -97,7 +91,7 @@ class LearningEndpointContractTest {
         .collect(Collectors.toSet());
 
     assertThat(fieldTypes).contains(LearningItemRepository.class, LessonBlockRepository.class);
-    assertThat(fieldTypes).doesNotContain(ResourceRepository.class);
+    assertThat(fieldTypes.stream().map(Class::getSimpleName)).doesNotContain("ResourceRepository");
   }
 
   private static void assertBasePath(Class<?> controllerClass, String expectedPath) {

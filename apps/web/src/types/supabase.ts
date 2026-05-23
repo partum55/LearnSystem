@@ -2,24 +2,20 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 
 export type UserRole = 'ADMIN' | 'TEACHER' | 'USER';
 export type UserLocale = 'UK' | 'EN';
-export type UserTheme = 'light' | 'dark';
+export type UserTheme = 'LIGHT' | 'DARK';
 
 export type UserProfileRow = {
   id: string;
   email: string;
-  display_name: string | null;
   first_name: string | null;
   last_name: string | null;
   student_id: string | null;
-  bio: string | null;
   avatar_url: string | null;
   role: UserRole;
   locale: UserLocale;
   theme: UserTheme | string | null;
   is_active: boolean | null;
-  is_deleted: boolean | null;
   email_verified: boolean | null;
-  preferences: Json | null;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -27,23 +23,19 @@ export type UserProfileRow = {
 export type UserProfileInsert = {
   id: string;
   email: string;
-  display_name?: string | null;
   first_name?: string | null;
   last_name?: string | null;
   role?: UserRole;
   locale?: UserLocale;
   theme?: UserTheme;
   student_id?: string | null;
-  bio?: string | null;
   avatar_url?: string | null;
   is_active?: boolean;
-  is_deleted?: boolean;
   email_verified?: boolean;
-  preferences?: Json;
 };
 
 export type UserProfileUpdate = Partial<
-  Pick<UserProfileRow, 'display_name' | 'first_name' | 'last_name' | 'bio' | 'locale' | 'theme' | 'avatar_url'>
+  Pick<UserProfileRow, 'first_name' | 'last_name' | 'locale' | 'theme' | 'avatar_url'>
 >;
 
 export type CourseRow = {
@@ -96,17 +88,6 @@ export type ModuleRow = {
   updated_at: string;
 };
 
-export type NotificationRow = {
-  id: string;
-  user_id: string;
-  type: 'assignment_due' | 'grade_posted' | 'announcement' | 'course_update' | 'submission_graded' | 'peer_review_assigned' | 'system';
-  title: string;
-  message: string;
-  payload: Json | null;
-  is_read: boolean;
-  created_at: string;
-};
-
 export type Database = {
   public: {
     Tables: {
@@ -115,19 +96,6 @@ export type Database = {
         Insert: UserProfileInsert;
         Update: UserProfileUpdate;
         Relationships: [];
-      };
-      notifications: {
-        Row: NotificationRow;
-        Insert: Omit<NotificationRow, 'id' | 'created_at'>;
-        Update: Partial<Pick<NotificationRow, 'is_read'>>;
-        Relationships: [
-          {
-            foreignKeyName: 'notifications_user_id_fkey';
-            columns: ['user_id'];
-            referencedRelation: 'users';
-            referencedColumns: ['id'];
-          }
-        ];
       };
     };
     Views: Record<string, never>;

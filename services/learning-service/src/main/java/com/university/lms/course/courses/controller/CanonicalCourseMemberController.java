@@ -1,9 +1,9 @@
 package com.university.lms.course.courses.controller;
 
 import com.university.lms.common.dto.PageResponse;
+import com.university.lms.course.courses.service.CanonicalCourseMemberService;
 import com.university.lms.course.dto.CourseMemberDto;
 import com.university.lms.course.dto.EnrollUserRequest;
-import com.university.lms.course.service.EnrollmentService;
 import com.university.lms.course.web.RequestUserContext;
 import jakarta.validation.Valid;
 import java.util.UUID;
@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class CanonicalCourseMemberController {
 
-  private final EnrollmentService enrollmentService;
+  private final CanonicalCourseMemberService memberService;
   private final RequestUserContext requestUserContext;
 
   @GetMapping
@@ -34,14 +34,12 @@ public class CanonicalCourseMemberController {
       @RequestParam(defaultValue = "createdAt") String sortBy,
       @RequestParam(defaultValue = "DESC") Sort.Direction direction) {
     UUID userId = requestUserContext.requireUserId();
-    String userRole = requestUserContext.requireUserRole();
     Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
-    PageResponse<CourseMemberDto> members;
-    if (role != null && !role.isBlank()) {
-      members = enrollmentService.getCourseMembers(courseId, role, pageable, userId, userRole);
-    } else {
-      members = enrollmentService.getCourseMembers(courseId, pageable, userId, userRole);
-    }
+    PageResponse<CourseMemberDto> members = memberService.list(
+        courseId,
+        memberService.parseRole(role),
+        pageable,
+        userId);
     return ResponseEntity.ok(members);
   }
 
@@ -50,8 +48,7 @@ public class CanonicalCourseMemberController {
   public ResponseEntity<CourseMemberDto> enrollCourseMember(
       @PathVariable UUID courseId, @Valid @RequestBody EnrollUserRequest request) {
     UUID enrolledBy = requestUserContext.requireUserId();
-    String userRole = requestUserContext.requireUserRole();
-    CourseMemberDto member = enrollmentService.enrollUser(courseId, request, enrolledBy, userRole);
+    CourseMemberDto member = memberService.upsert(courseId, request, enrolledBy);
     return ResponseEntity.status(HttpStatus.CREATED).body(member);
   }
 
@@ -59,8 +56,7 @@ public class CanonicalCourseMemberController {
   @PreAuthorize("isAuthenticated()")
   public ResponseEntity<Void> unenrollCourseMember(@PathVariable UUID courseId, @PathVariable UUID userId) {
     UUID requestedBy = requestUserContext.requireUserId();
-    String userRole = requestUserContext.requireUserRole();
-    enrollmentService.unenrollUser(courseId, userId, requestedBy, userRole);
+    memberService.delete(courseId, userId, requestedBy);
     return ResponseEntity.noContent().build();
   }
 
@@ -71,12 +67,11 @@ public class CanonicalCourseMemberController {
       @PathVariable UUID userId,
       @Valid @RequestBody EnrollUserRequest request) {
     UUID requestedBy = requestUserContext.requireUserId();
-    String userRole = requestUserContext.requireUserRole();
     EnrollUserRequest updateRequest = EnrollUserRequest.builder()
         .userId(userId)
         .roleInCourse(request.getRoleInCourse())
         .build();
-    CourseMemberDto member = enrollmentService.enrollUser(courseId, updateRequest, requestedBy, userRole);
+    CourseMemberDto member = memberService.upsert(courseId, updateRequest, requestedBy);
     return ResponseEntity.ok(member);
   }
 }

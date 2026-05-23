@@ -2,7 +2,7 @@ import type { ListResponse, Uuid } from '@/api/types';
 import type { AssignmentType, GradePreviewDto } from '@/features/courses/api/canonical.types';
 
 export interface FileAssignmentSettings {
-  type?: 'file_submission';
+  type?: 'FILE_SUBMISSION';
   schemaVersion?: number;
   allowedFileTypes?: string[];
   maxFiles?: number;
@@ -13,7 +13,7 @@ export interface FileAssignmentSettings {
 }
 
 export interface RteAssignmentSettings {
-  type?: 'rte_submission';
+  type?: 'TEXT_SUBMISSION';
   schemaVersion?: number;
   minWords?: number;
   maxWords?: number;
@@ -22,7 +22,7 @@ export interface RteAssignmentSettings {
 }
 
 export interface FormAssignmentSettings {
-  type?: 'form';
+  type?: 'FORM';
   schemaVersion?: number;
   fields?: Array<Record<string, unknown>>;
   allowEditAfterSubmit?: boolean;
@@ -30,7 +30,7 @@ export interface FormAssignmentSettings {
 }
 
 export interface QuizAssignmentSettings {
-  type?: 'quiz';
+  type?: 'QUIZ';
   schemaVersion?: number;
   attemptLimit?: number;
   timeLimitMinutes?: number;
@@ -42,7 +42,7 @@ export interface QuizAssignmentSettings {
 }
 
 export interface VplAssignmentSettings {
-  type?: 'vpl';
+  type?: 'VPL';
   schemaVersion?: number;
   language?: string;
   runtime?: string;
@@ -55,11 +55,12 @@ export interface VplAssignmentSettings {
 }
 
 export interface SeminarAssignmentSettings {
-  type?: 'seminar';
+  type?: 'SEMINAR';
   schemaVersion?: number;
   requiresSubmission?: boolean;
   manualGradeOnly?: boolean;
 }
+
 
 export type AssignmentSettings =
   | FileAssignmentSettings

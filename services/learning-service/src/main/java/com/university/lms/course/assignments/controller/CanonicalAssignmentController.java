@@ -64,15 +64,15 @@ public class CanonicalAssignmentController {
   public SubmissionDto submitFile(
       @PathVariable UUID assignmentId,
       @Valid @RequestBody SubmissionRequest request) {
-    return assignmentService.submit(assignmentId, userContext.requireUserId(), "file_submission", request);
+    return assignmentService.submit(assignmentId, userContext.requireUserId(), "FILE_SUBMISSION", request);
   }
 
-  @PostMapping("/assignments/{assignmentId}/submissions/rte")
+  @PostMapping("/assignments/{assignmentId}/submissions/text")
   @ResponseStatus(HttpStatus.CREATED)
-  public SubmissionDto submitRte(
+  public SubmissionDto submitText(
       @PathVariable UUID assignmentId,
       @Valid @RequestBody SubmissionRequest request) {
-    return assignmentService.submit(assignmentId, userContext.requireUserId(), "rte_submission", request);
+    return assignmentService.submit(assignmentId, userContext.requireUserId(), "TEXT_SUBMISSION", request);
   }
 
   @PostMapping("/assignments/{assignmentId}/submissions/form")
@@ -80,7 +80,7 @@ public class CanonicalAssignmentController {
   public SubmissionDto submitForm(
       @PathVariable UUID assignmentId,
       @Valid @RequestBody SubmissionRequest request) {
-    return assignmentService.submit(assignmentId, userContext.requireUserId(), "form", request);
+    return assignmentService.submit(assignmentId, userContext.requireUserId(), "FORM", request);
   }
 
   @PostMapping("/assignments/{assignmentId}/submissions/vpl")
@@ -88,7 +88,7 @@ public class CanonicalAssignmentController {
   public SubmissionDto submitVpl(
       @PathVariable UUID assignmentId,
       @Valid @RequestBody SubmissionRequest request) {
-    return assignmentService.submit(assignmentId, userContext.requireUserId(), "vpl", request);
+    return assignmentService.submit(assignmentId, userContext.requireUserId(), "VPL", request);
   }
 
   @GetMapping("/assignments/{assignmentId}/submissions")

@@ -22,7 +22,7 @@ import org.hibernate.annotations.UpdateTimestamp;
     indexes = {
       @Index(name = "idx_member_course_user", columnList = "course_id, user_id"),
       @Index(name = "idx_member_role", columnList = "role_in_course"),
-      @Index(name = "idx_member_status", columnList = "enrollment_status")
+      @Index(name = "idx_member_status", columnList = "status")
     })
 @Getter
 @Setter
@@ -42,8 +42,10 @@ public class CourseMember {
   @Column(name = "user_id", nullable = false)
   private UUID userId;
 
-  @Column(name = "role_in_course", nullable = false, length = 20)
-  private String roleInCourse; // TEACHER, TA, STUDENT
+  @Enumerated(EnumType.STRING)
+  @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
+  @Column(name = "role_in_course", nullable = false, columnDefinition = "learning.course_role")
+  private CourseRole roleInCourse;
 
   @Column(name = "added_by")
   private UUID addedBy;
@@ -56,10 +58,11 @@ public class CourseMember {
   @Column(name = "updated_at", nullable = false)
   private LocalDateTime updatedAt;
 
-  // Enrollment tracking
-  @Column(name = "enrollment_status", nullable = false, length = 20)
+  @Enumerated(EnumType.STRING)
+  @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
+  @Column(nullable = false, columnDefinition = "learning.course_member_status")
   @Builder.Default
-  private String enrollmentStatus = "active"; // active, dropped, completed
+  private CourseMemberStatus status = CourseMemberStatus.ACTIVE;
 
   @Column(name = "completion_date")
   private LocalDateTime completionDate;
@@ -70,23 +73,23 @@ public class CourseMember {
 
   // Helper methods
   public boolean isOwner() {
-    return "OWNER".equalsIgnoreCase(roleInCourse);
+    return roleInCourse == CourseRole.OWNER;
   }
 
   public boolean isTeacher() {
-    return "TEACHER".equalsIgnoreCase(roleInCourse) || "OWNER".equalsIgnoreCase(roleInCourse);
+    return roleInCourse == CourseRole.TEACHER || roleInCourse == CourseRole.OWNER;
   }
 
   public boolean isTA() {
-    return "TA".equalsIgnoreCase(roleInCourse);
+    return roleInCourse == CourseRole.TA;
   }
 
   public boolean isStudent() {
-    return "STUDENT".equalsIgnoreCase(roleInCourse);
+    return roleInCourse == CourseRole.STUDENT;
   }
 
   public boolean isActive() {
-    return "active".equals(enrollmentStatus);
+    return status == CourseMemberStatus.ACTIVE;
   }
 
   public boolean canManageCourse() {

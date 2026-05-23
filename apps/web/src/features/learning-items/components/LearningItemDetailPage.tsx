@@ -3,10 +3,21 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useMemo } from 'react';
-import { useLearningItem, useLessonBlocks } from '@/features/learning-items/hooks/useLearningItemQueries';
+import { 
+  useLearningItem, 
+  useLessonBlocks,
+  useUpdateLearningItem,
+  useCreateLessonBlock,
+  useUpdateLessonBlock,
+  useDeleteLessonBlock,
+  useReorderLessonBlocks,
+} from '@/features/learning-items/hooks/useLearningItemQueries';
 import { useCurrentUser } from '@/features/users/hooks/useUserQueries';
 import { useCourseMembers } from '@/features/courses/hooks/useCourseQueries';
 import { Loading } from '@/components/Loading';
+import { LearningItemFormModal } from '@/features/courses/components/LearningItemFormModal';
+import { LessonBlockModal } from './LessonBlockModal';
+import { LessonBlockReorderModal } from './LessonBlockReorderModal';
 
 interface LearningItemDetailPageProps {
   learningItemId: string;
@@ -43,6 +54,12 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
   const searchParams = useSearchParams();
   const [todoToast, setTodoToast] = useState<string | null>(null);
 
+  // Modals state
+  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
+  const [activeBlock, setActiveBlock] = useState<any>(null);
+
   // Read courseId context from URL search params
   const courseId = searchParams.get('courseId') || '';
 
@@ -55,6 +72,13 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
   
   // Fetch course members only if courseId context is available
   const { data: membersPage } = useCourseMembers(courseId || undefined, { size: 100 });
+
+  // Core mutations
+  const updateItemMutation = useUpdateLearningItem();
+  const createBlockMutation = useCreateLessonBlock();
+  const updateBlockMutation = useUpdateLessonBlock();
+  const deleteBlockMutation = useDeleteLessonBlock();
+  const reorderBlocksMutation = useReorderLessonBlocks();
 
   // Evaluate course-specific role permissions
   const courseRole = useMemo(() => {
@@ -71,6 +95,53 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
   const showToast = (message: string) => {
     setTodoToast(message);
     setTimeout(() => setTodoToast(null), 3000);
+  };
+
+  // Mutative form submission handlers
+  const handleItemSubmit = async (request: any) => {
+    await updateItemMutation.mutateAsync({
+      learningItemId,
+      request,
+      courseId: courseId || undefined,
+    });
+    showToast('Learning item updated successfully.');
+  };
+
+  const handleBlockSubmit = async (request: any) => {
+    if (activeBlock) {
+      await updateBlockMutation.mutateAsync({
+        learningItemId,
+        blockId: activeBlock.id,
+        request,
+      });
+      showToast('Lesson step updated successfully.');
+    } else {
+      await createBlockMutation.mutateAsync({
+        learningItemId,
+        request,
+      });
+      showToast('Lesson step created successfully.');
+    }
+  };
+
+  const handleDeleteBlockClick = async (blockId: string) => {
+    if (!window.confirm('Are you sure you want to delete this lesson step?')) {
+      return;
+    }
+    try {
+      await deleteBlockMutation.mutateAsync({ learningItemId, blockId });
+      showToast('Step deleted successfully.');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to delete step.');
+    }
+  };
+
+  const handleReorderSubmit = async (request: any) => {
+    await reorderBlocksMutation.mutateAsync({
+      learningItemId,
+      request,
+    });
+    showToast('Lesson steps reordered successfully.');
   };
 
   // Safe checks for errors and access boundaries
@@ -235,7 +306,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
           {isCourseStaff && (
             <div className="flex flex-wrap gap-2 flex-shrink-0 self-start md:self-auto bg-[var(--bg-base)] border border-[var(--border-default)] p-2 rounded-xl shadow-3xs">
               <button 
-                onClick={() => showToast('TODO: Open edit learning item modal in a future pass.')} 
+                onClick={() => setIsItemModalOpen(true)} 
                 className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] px-3 py-1.5 text-3xs font-extrabold text-[var(--text-secondary)] hover:bg-[var(--bg-base)] shadow-2xs active:scale-[0.98] transition-all"
               >
                 Edit Item
@@ -243,13 +314,16 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
               {item.type === 'lesson' && (
                 <>
                   <button 
-                    onClick={() => showToast('TODO: Open add lesson block modal in a future pass.')} 
+                    onClick={() => {
+                      setActiveBlock(null);
+                      setIsBlockModalOpen(true);
+                    }} 
                     className="rounded-lg bg-[var(--text-primary)] px-3 py-1.5 text-3xs font-extrabold text-[var(--bg-base)] hover:opacity-90 shadow-2xs active:scale-[0.98] transition-all"
                   >
                     + Lesson Block
                   </button>
                   <button 
-                    onClick={() => showToast('TODO: Open reorder blocks editor in a future pass.')} 
+                    onClick={() => setIsReorderModalOpen(true)} 
                     className="rounded-lg bg-[var(--fn-success)] px-3 py-1.5 text-3xs font-extrabold text-[var(--bg-base)] hover:opacity-90 shadow-2xs active:scale-[0.98] transition-all"
                   >
                     Reorder Blocks
@@ -446,9 +520,36 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
                           <h4 className="text-xs font-bold text-[var(--text-secondary)]">{block.title}</h4>
                         )}
                       </div>
-                      <span className="text-[9px] font-extrabold text-[var(--text-primary)] bg-[var(--bg-elevated)] px-1.5 py-0.5 rounded uppercase tracking-wider">
-                        {block.type.toLowerCase()}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-extrabold text-[var(--text-primary)] bg-[var(--bg-elevated)] px-1.5 py-0.5 rounded uppercase tracking-wider">
+                          {block.type.toLowerCase()}
+                        </span>
+                        {isCourseStaff && (
+                          <div className="flex items-center gap-1 border-l border-[var(--border-default)] pl-2 ml-2">
+                            <button
+                              onClick={() => {
+                                setActiveBlock(block);
+                                setIsBlockModalOpen(true);
+                              }}
+                              className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-0.5 transition cursor-pointer"
+                              title="Edit Step"
+                            >
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteBlockClick(block.id)}
+                              className="text-[var(--text-muted)] hover:text-[var(--fn-error)] p-0.5 transition cursor-pointer"
+                              title="Delete Step"
+                            >
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Block Content Renderers */}
@@ -525,6 +626,36 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
           </div>
         )}
       </main>
+
+      {/* MODALS INTEGRATIONS FOR STAFF MANAGEMENT */}
+      {isCourseStaff && (
+        <>
+          <LearningItemFormModal
+            isOpen={isItemModalOpen}
+            onClose={() => setIsItemModalOpen(false)}
+            onSubmit={handleItemSubmit}
+            initialData={item}
+            loading={updateItemMutation.isPending}
+          />
+          <LessonBlockModal
+            isOpen={isBlockModalOpen}
+            onClose={() => {
+              setIsBlockModalOpen(false);
+              setActiveBlock(null);
+            }}
+            onSubmit={handleBlockSubmit}
+            initialData={activeBlock}
+            loading={createBlockMutation.isPending || updateBlockMutation.isPending}
+          />
+          <LessonBlockReorderModal
+            isOpen={isReorderModalOpen}
+            onClose={() => setIsReorderModalOpen(false)}
+            onSubmit={handleReorderSubmit}
+            blocks={blocks || []}
+            loading={reorderBlocksMutation.isPending}
+          />
+        </>
+      )}
     </div>
   );
 }

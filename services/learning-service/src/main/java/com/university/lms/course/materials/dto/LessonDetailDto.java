@@ -1,5 +1,6 @@
 package com.university.lms.course.materials.dto;
 
+import com.university.lms.course.materials.entity.LearningItemStatus;
 import java.util.List;
 import java.util.UUID;
 
@@ -9,6 +10,6 @@ public record LessonDetailDto(
     String title,
     String summary,
     int order,
-    String visibilityStatus,
+    LearningItemStatus visibilityStatus,
     List<LessonBlockDto> blocks
 ) {}

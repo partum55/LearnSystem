@@ -1,8 +1,11 @@
 package com.university.lms.course.courses.service;
 
+import com.university.lms.common.domain.CourseStatus;
+import com.university.lms.common.exception.ValidationException;
 import com.university.lms.course.assignments.dto.AssignmentListItemDto;
 import com.university.lms.course.assignments.service.CanonicalAssignmentMapper;
 import com.university.lms.course.assessment.domain.Assignment;
+import com.university.lms.course.assessment.domain.AssignmentStatus;
 import com.university.lms.course.assessment.repository.AssignmentRepository;
 import com.university.lms.course.common.error.ApiException;
 import com.university.lms.course.common.security.CourseAccessService;
@@ -11,8 +14,11 @@ import com.university.lms.course.courses.dto.CourseSummaryDto;
 import com.university.lms.course.courses.dto.StudentDashboardDto;
 import com.university.lms.course.courses.dto.UpcomingDeadlineDto;
 import com.university.lms.course.domain.Course;
+import com.university.lms.course.domain.CourseMemberStatus;
+import com.university.lms.course.domain.CourseRole;
 import com.university.lms.course.domain.CourseMember;
 import com.university.lms.course.domain.Module;
+import com.university.lms.course.domain.ModuleStatus;
 import com.university.lms.course.dto.CourseDto;
 import com.university.lms.course.dto.CreateCourseRequest;
 import com.university.lms.course.materials.dto.LearningItemDto;
@@ -23,7 +29,7 @@ import com.university.lms.course.modules.dto.ModuleRequest;
 import com.university.lms.course.repository.CourseMemberRepository;
 import com.university.lms.course.repository.CourseRepository;
 import com.university.lms.course.repository.ModuleRepository;
-import com.university.lms.course.service.CourseService;
+import com.university.lms.course.service.CourseMapper;
 import com.university.lms.gradebook.domain.GradebookEntry;
 import com.university.lms.gradebook.repository.GradebookEntryRepository;
 import java.math.BigDecimal;
@@ -50,7 +56,7 @@ public class CanonicalCourseService {
   private final LearningContentService learningContentService;
   private final CanonicalAssignmentMapper assignmentMapper;
   private final CourseAccessService accessService;
-  private final CourseService courseService;
+  private final CourseMapper courseMapper;
 
   @Transactional(readOnly = true)
   public StudentDashboardDto studentDashboard(UUID userId) {
@@ -65,14 +71,14 @@ public class CanonicalCourseService {
         .toList();
     List<UUID> courseIds = memberships.stream().map(m -> m.getCourse().getId()).toList();
     List<UpcomingDeadlineDto> deadlines = assignmentRepository.findByCourseIdIn(courseIds).stream()
-        .filter(a -> Boolean.TRUE.equals(a.getIsPublished()))
+        .filter(a -> a.getStatus() == AssignmentStatus.PUBLISHED)
         .filter(a -> a.getDueDate() != null && a.getDueDate().isAfter(LocalDateTime.now()))
         .sorted(Comparator.comparing(Assignment::getDueDate))
         .limit(10)
         .map(a -> upcomingDeadline(a, courseRepository.findById(a.getCourseId()).orElse(null)))
         .toList();
     long pending = assignmentRepository.findByCourseIdIn(courseIds).stream()
-        .filter(a -> Boolean.TRUE.equals(a.getIsPublished()))
+        .filter(a -> a.getStatus() == AssignmentStatus.PUBLISHED)
         .filter(a -> !hasGradeOrSubmission(a.getId(), userId))
         .count();
     return new StudentDashboardDto(courses.size(), deadlines.size(), pending, courses, deadlines);
@@ -100,7 +106,22 @@ public class CanonicalCourseService {
 
   @Transactional
   public CourseDto createCourse(CreateCourseRequest request, UUID userId, String globalRole) {
-    return courseService.createCourse(request, userId, globalRole);
+    if (!"ADMIN".equalsIgnoreCase(globalRole) && !"TEACHER".equalsIgnoreCase(globalRole)) {
+      throw new ValidationException("Only ADMIN or global TEACHER accounts can create courses");
+    }
+    if (courseRepository.existsByCode(request.getCode())) {
+      throw new ValidationException("Course with code '" + request.getCode() + "' already exists");
+    }
+    Course course = courseMapper.toEntity(request, userId);
+    Course saved = courseRepository.save(course);
+    courseMemberRepository.save(CourseMember.builder()
+        .course(saved)
+        .userId(userId)
+        .roleInCourse(CourseRole.OWNER)
+        .status(CourseMemberStatus.ACTIVE)
+        .addedBy(userId)
+        .build());
+    return courseMapper.toDto(saved);
   }
 
   @Transactional(readOnly = true)
@@ -109,7 +130,7 @@ public class CanonicalCourseService {
     Course course = courseRepository.findById(courseId)
         .orElseThrow(() -> ApiException.notFound("Course"));
     List<UpcomingDeadlineDto> deadlines = assignmentRepository.findByCourseId(courseId).stream()
-        .filter(a -> Boolean.TRUE.equals(a.getIsPublished()))
+        .filter(a -> a.getStatus() == AssignmentStatus.PUBLISHED)
         .filter(a -> a.getDueDate() != null && a.getDueDate().isAfter(LocalDateTime.now()))
         .sorted(Comparator.comparing(Assignment::getDueDate))
         .limit(5)
@@ -153,7 +174,7 @@ public class CanonicalCourseService {
         .title(request.title())
         .description(request.description())
         .position(request.order() == null ? moduleRepository.findMaxPositionByCourse(courseId) + 1 : request.order())
-        .isPublished(Boolean.TRUE.equals(request.visible()))
+        .status(Boolean.TRUE.equals(request.visible()) ? ModuleStatus.PUBLISHED : ModuleStatus.DRAFT)
         .build();
     return moduleDto(moduleRepository.save(module), userId, Map.of());
   }
@@ -169,7 +190,7 @@ public class CanonicalCourseService {
       module.setPosition(request.order());
     }
     if (request.visible() != null) {
-      module.setIsPublished(request.visible());
+      module.setStatus(request.visible() ? ModuleStatus.PUBLISHED : ModuleStatus.DRAFT);
     }
     return moduleDto(moduleRepository.save(module), userId, Map.of());
   }
@@ -191,8 +212,8 @@ public class CanonicalCourseService {
     List<AssignmentListItemDto> assignments = assignmentRepository
         .findByModuleIdOrderByPositionAsc(module.getId())
         .stream()
-        .filter(a -> !Boolean.TRUE.equals(a.getIsArchived()))
-        .filter(a -> accessService.canTeach(module.getCourse().getId(), userId) || Boolean.TRUE.equals(a.getIsPublished()))
+        .filter(a -> a.getStatus() != AssignmentStatus.ARCHIVED)
+        .filter(a -> accessService.canTeach(module.getCourse().getId(), userId) || a.getStatus() == AssignmentStatus.PUBLISHED)
         .map(a -> assignmentMapper.toListItem(a, gradesByAssignment.get(a.getId())))
         .toList();
     return new CourseModuleDto(
@@ -210,7 +231,7 @@ public class CanonicalCourseService {
         course.getId(),
         title(course),
         description(course),
-        course.getStatus().name().toLowerCase(),
+        course.getStatus().name(),
         teacherName(course),
         progress(course.getId(), userId),
         courseGrade(course.getId(), userId));
@@ -222,7 +243,7 @@ public class CanonicalCourseService {
         assignment.getCourseId(),
         course == null ? null : title(course),
         assignment.getTitle(),
-        com.university.lms.course.assignments.service.AssignmentTypeMapper.toCanonical(assignment.getAssignmentType()),
+        assignment.getAssignmentType(),
         assignment.getDueDate());
   }
 
@@ -245,7 +266,7 @@ public class CanonicalCourseService {
 
   private double progress(UUID courseId, UUID userId) {
     List<Assignment> assignments = assignmentRepository.findByCourseId(courseId).stream()
-        .filter(a -> Boolean.TRUE.equals(a.getIsPublished()))
+        .filter(a -> a.getStatus() == AssignmentStatus.PUBLISHED)
         .toList();
     if (assignments.isEmpty()) {
       return 0;

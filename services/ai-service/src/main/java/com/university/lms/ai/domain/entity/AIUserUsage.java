@@ -9,7 +9,7 @@ import lombok.*;
 
 /** Entity for tracking AI token usage and costs per user. */
 @Entity
-@Table(schema = "ai", name = "ai_user_usage",
+@Table(schema = "learning", name = "ai_user_usage",
     indexes = {
       @Index(name = "idx_ai_user_usage_user_period", columnList = "user_id, usage_period"),
       @Index(name = "idx_ai_user_usage_period", columnList = "usage_period")

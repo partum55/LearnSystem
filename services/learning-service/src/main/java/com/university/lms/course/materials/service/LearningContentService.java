@@ -78,7 +78,10 @@ public class LearningContentService {
       LearningItemRequest request) {
     accessService.requireTeacher(courseId, userId);
     Module module = requireModuleInCourse(courseId, moduleId);
-    LearningItemType type = LearningItemType.fromApiValue(request.type());
+    LearningItemType type = request.type();
+    if (type == null) {
+      throw ApiException.badRequest("INVALID_LEARNING_ITEM_TYPE", "Learning item type is required");
+    }
     requireText(request.title(), "title", "Learning item title is required");
 
     LearningItem item = LearningItem.builder()
@@ -106,9 +109,8 @@ public class LearningContentService {
     UUID courseId = item.getModule().getCourse().getId();
     accessService.requireTeacher(courseId, userId);
 
-    if (StringUtils.hasText(request.type())) {
-      LearningItemType requestedType = LearningItemType.fromApiValue(request.type());
-      if (requestedType != item.getType()) {
+    if (request.type() != null) {
+      if (request.type() != item.getType()) {
         throw ApiException.conflict(
             "LEARNING_ITEM_TYPE_IMMUTABLE",
             "Learning item type cannot be changed after creation");
@@ -149,7 +151,10 @@ public class LearningContentService {
   @Transactional
   public LessonBlockDto createLessonBlock(UUID learningItemId, UUID userId, LessonBlockRequest request) {
     LearningItem lesson = requireWritableLesson(learningItemId, userId);
-    LessonBlockType type = LessonBlockType.fromApiValue(request.type());
+    LessonBlockType type = request.type();
+    if (type == null) {
+      throw ApiException.badRequest("INVALID_LESSON_BLOCK_TYPE", "Lesson block type is required");
+    }
     LessonBlock block = LessonBlock.builder()
         .learningItem(lesson)
         .type(type)
@@ -175,9 +180,7 @@ public class LearningContentService {
     LessonBlock block = lessonBlockRepository.findByIdAndLearningItemId(blockId, learningItemId)
         .orElseThrow(() -> ApiException.notFound("Lesson block"));
     LessonBlockType previousType = block.getType();
-    LessonBlockType type = StringUtils.hasText(request.type())
-        ? LessonBlockType.fromApiValue(request.type())
-        : previousType;
+    LessonBlockType type = request.type() == null ? previousType : request.type();
     block.setType(type);
     if (request.title() != null) {
       block.setTitle(trimToNull(request.title()));
@@ -242,7 +245,7 @@ public class LearningContentService {
         lesson.getTitle(),
         lesson.getDescription(),
         lesson.getPosition() == null ? 0 : lesson.getPosition(),
-        lesson.getStatus().apiValue(),
+        lesson.getStatus(),
         blocks);
   }
 
@@ -303,7 +306,7 @@ public class LearningContentService {
       boolean creating) {
     Map<String, Object> content = new HashMap<>(current == null ? Map.of() : current);
     switch (type) {
-      case PDF, FILE -> {
+      case PDF, PRESENTATION, FILE -> {
         if (request.url() != null) {
           content.put("url", request.url());
         } else if (creating) {
@@ -360,6 +363,7 @@ public class LearningContentService {
   private void validateItemContent(LearningItemType type, Map<String, Object> content) {
     switch (type) {
       case PDF -> requireText(asString(content.get("url")), "url", "PDF learning item requires a file or URL reference");
+      case PRESENTATION -> requireText(asString(content.get("url")), "url", "Presentation learning item requires a file or URL reference");
       case LINK -> requireText(asString(content.get("url")), "url", "Link learning item requires a URL");
       case VIDEO -> requireText(asString(content.get("url")), "url", "Video learning item requires a URL");
       case FILE -> requireText(asString(content.get("url")), "url", "File learning item requires a file reference");

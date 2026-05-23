@@ -8,6 +8,6 @@ public record UpcomingDeadlineDto(
     UUID courseId,
     String courseTitle,
     String title,
-    String type,
+    com.university.lms.course.assessment.domain.AssignmentType type,
     LocalDateTime dueDate
 ) {}

@@ -100,13 +100,13 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
 
   const buildSubmissionRequest = (): SubmissionRequest => {
     switch (assignmentType) {
-      case 'rte_submission':
+      case 'TEXT_SUBMISSION':
         return { text: rteText };
-      case 'file_submission':
+      case 'FILE_SUBMISSION':
         return { files: fileList };
-      case 'form':
+      case 'FORM':
         return { answers: formAnswers };
-      case 'vpl':
+      case 'VPL':
         return { code: vplCode, programmingLanguage: (settings as VplAssignmentSettings)?.language || 'javascript' };
       default:
         return { text: rteText };
@@ -178,7 +178,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
 
   const renderSubmissionForm = () => {
     switch (assignmentType) {
-      case 'rte_submission':
+      case 'TEXT_SUBMISSION':
         return (
           <div className="space-y-4">
             <label className="block text-sm font-medium text-[var(--text-secondary)]">
@@ -194,7 +194,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
           </div>
         );
 
-      case 'file_submission': {
+      case 'FILE_SUBMISSION': {
         const fileSettings = settings as FileAssignmentSettings;
         return (
           <div className="space-y-5">
@@ -265,7 +265,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
         );
       }
 
-      case 'form': {
+      case 'FORM': {
         const formSettings = settings as FormAssignmentSettings;
         const fields = formSettings?.fields || [];
         return (
@@ -298,7 +298,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
         );
       }
 
-      case 'vpl': {
+      case 'VPL': {
         const vplSettings = settings as VplAssignmentSettings;
         return (
           <div className="space-y-4">
@@ -425,7 +425,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
       </section>
 
       {/* Submission Actions Hub */}
-      {assignmentType === 'quiz' ? (
+      {assignmentType === 'QUIZ' ? (
         <section className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">Quiz Assessment</h2>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">

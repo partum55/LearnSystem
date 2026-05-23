@@ -10,7 +10,7 @@ import lombok.*;
  * deployment.
  */
 @Entity
-@Table(schema = "ai", name = "prompt_templates",
+@Table(schema = "learning", name = "prompt_templates",
     indexes = {@Index(name = "idx_prompt_name_active", columnList = "name, active")})
 @Data
 @NoArgsConstructor

@@ -115,12 +115,12 @@ export interface GradePreviewDto {
 }
 
 export type AssignmentType =
-  | 'file_submission'
-  | 'rte_submission'
-  | 'quiz'
-  | 'form'
-  | 'vpl'
-  | 'seminar'
+  | 'FILE_SUBMISSION'
+  | 'TEXT_SUBMISSION'
+  | 'QUIZ'
+  | 'FORM'
+  | 'VPL'
+  | 'SEMINAR'
   | string;
 
 export interface AssignmentListItemDto {

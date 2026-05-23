@@ -9,7 +9,7 @@ public record AssignmentDetailDto(
     UUID id,
     UUID courseId,
     UUID moduleId,
-    String type,
+    com.university.lms.course.assessment.domain.AssignmentType type,
     String title,
     String description,
     String instructions,

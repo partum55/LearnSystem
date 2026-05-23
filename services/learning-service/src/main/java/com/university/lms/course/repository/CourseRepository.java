@@ -35,7 +35,7 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
   List<UUID> findIdsByOwnerId(@Param("ownerId") UUID ownerId);
 
   /** Find published courses. */
-  Page<Course> findByIsPublishedTrueAndVisibility(CourseVisibility visibility, Pageable pageable);
+  Page<Course> findByStatusAndVisibility(CourseStatus status, CourseVisibility visibility, Pageable pageable);
 
   /** Find courses by status. */
   Page<Course> findByStatus(CourseStatus status, Pageable pageable);
@@ -66,7 +66,7 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
 
   /** Find active courses (published and within date range if specified). */
   @Query(
-      "SELECT c FROM Course c WHERE c.isPublished = true AND c.status = :status "
+      "SELECT c FROM Course c WHERE c.status = :status "
           + "AND (c.startDate IS NULL OR c.startDate <= CURRENT_DATE) "
           + "AND (c.endDate IS NULL OR c.endDate >= CURRENT_DATE)")
   Page<Course> findActiveCourses(@Param("status") CourseStatus status, Pageable pageable);
@@ -82,8 +82,8 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
 
   /** Find courses with available capacity. */
   @Query(
-      "SELECT c FROM Course c WHERE c.isPublished = true "
+      "SELECT c FROM Course c WHERE c.status = com.university.lms.common.domain.CourseStatus.PUBLISHED "
           + "AND (c.maxStudents IS NULL OR "
-          + "(SELECT COUNT(m) FROM CourseMember m WHERE m.course = c AND m.roleInCourse = 'STUDENT' AND m.enrollmentStatus = 'active') < c.maxStudents)")
+          + "(SELECT COUNT(m) FROM CourseMember m WHERE m.course = c AND m.roleInCourse = com.university.lms.course.domain.CourseRole.STUDENT AND m.status = com.university.lms.course.domain.CourseMemberStatus.ACTIVE) < c.maxStudents)")
   Page<Course> findCoursesWithCapacity(Pageable pageable);
 }

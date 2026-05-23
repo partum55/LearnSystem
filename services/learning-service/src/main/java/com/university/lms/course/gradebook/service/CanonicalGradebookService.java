@@ -1,7 +1,7 @@
 package com.university.lms.course.gradebook.service;
 
 import com.university.lms.course.assessment.domain.Assignment;
-import com.university.lms.course.assessment.domain.QuizAttempt;
+import com.university.lms.course.assessment.domain.AssignmentStatus;
 import com.university.lms.course.assessment.repository.AssignmentRepository;
 import com.university.lms.course.common.error.ApiException;
 import com.university.lms.course.common.security.CourseAccessService;
@@ -67,13 +67,13 @@ public class CanonicalGradebookService {
   @Transactional(readOnly = true)
   public TeacherGradebookDto teacherGradebook(UUID courseId, UUID userId) {
     accessService.requireTeacher(courseId, userId);
-    List<CourseMember> students = courseMemberRepository.findByCourseIdAndRoleInCourse(courseId, "STUDENT")
+    List<CourseMember> students = courseMemberRepository.findByCourseIdAndRoleInCourse(courseId, com.university.lms.course.domain.CourseRole.STUDENT)
         .stream()
         .filter(CourseMember::isActive)
         .toList();
     List<Assignment> assignments = assignmentRepository.findByCourseId(courseId)
         .stream()
-        .filter(a -> !Boolean.TRUE.equals(a.getIsArchived()))
+        .filter(a -> a.getStatus() != AssignmentStatus.ARCHIVED)
         .sorted(Comparator.comparing(a -> a.getPosition() == null ? 0 : a.getPosition()))
         .toList();
     Map<String, Submission> submissions = submissionRepository.findByAssignmentIdIn(
@@ -100,7 +100,7 @@ public class CanonicalGradebookService {
                 a.getId(),
                 a.getModuleId(),
                 a.getTitle(),
-                com.university.lms.course.assignments.service.AssignmentTypeMapper.toCanonical(a.getAssignmentType()),
+                a.getAssignmentType(),
                 a.getMaxPoints(),
                 a.getDueDate()))
             .toList(),
@@ -215,15 +215,6 @@ public class CanonicalGradebookService {
     gradebookEntryRepository.save(entry);
   }
 
-  public void recordQuizAttempt(Assignment assignment, QuizAttempt attempt) {
-    GradebookEntry entry = findOrCreateEntry(assignment, attempt.getUserId());
-    entry.setPublishedScore(attempt.getFinalScore());
-    entry.setPublishedComment("Auto-scored quiz attempt " + attempt.getAttemptNumber());
-    entry.setPublishedAt(LocalDateTime.now());
-    entry.setStatus(GradeStatus.PUBLISHED);
-    gradebookEntryRepository.save(entry);
-  }
-
   private void requireActiveStudent(UUID courseId, UUID studentId) {
     CourseMember member = courseMemberRepository.findByCourseIdAndUserId(courseId, studentId)
         .orElseThrow(() -> ApiException.badRequest("STUDENT_NOT_ENROLLED", "Student is not enrolled in this course"));
@@ -260,7 +251,7 @@ public class CanonicalGradebookService {
         entry == null ? null : entry.getDraftScore(),
         entry == null || !published ? null : entry.getPublishedFinalScore(),
         assignment.getMaxPoints(),
-        entry == null ? "not_submitted" : entry.getStatus().name().toLowerCase(),
+        entry == null ? "NOT_SUBMITTED" : entry.getStatus().name(),
         entry == null
             ? null
             : (published ? entry.getPublishedFinalComment() : entry.getDraftComment()));
@@ -291,10 +282,10 @@ public class CanonicalGradebookService {
           return new StudentGradebookDto.AssignmentGradeDto(
               assignment.getId(),
               assignment.getTitle(),
-              com.university.lms.course.assignments.service.AssignmentTypeMapper.toCanonical(assignment.getAssignmentType()),
+              assignment.getAssignmentType(),
               entry == null ? null : entry.getPublishedFinalScore(),
               assignment.getMaxPoints(),
-              entry == null ? "not_published" : entry.getStatus().name().toLowerCase(),
+              entry == null ? "NOT_PUBLISHED" : entry.getStatus().name(),
               entry == null ? null : entry.getPublishedFinalComment());
         })
         .toList();
@@ -328,8 +319,7 @@ public class CanonicalGradebookService {
 
   private List<Assignment> visibleAssignments(UUID courseId) {
     return assignmentRepository.findByCourseId(courseId).stream()
-        .filter(a -> Boolean.TRUE.equals(a.getIsPublished()))
-        .filter(a -> !Boolean.TRUE.equals(a.getIsArchived()))
+        .filter(a -> a.getStatus() == AssignmentStatus.PUBLISHED)
         .toList();
   }
 

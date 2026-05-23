@@ -2,12 +2,16 @@ package com.university.lms.submission.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
@@ -21,7 +25,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(schema = "assessment", name = "submission_versions",
+@Table(schema = "learning", name = "submission_versions",
     uniqueConstraints = @UniqueConstraint(name = "uq_submission_versions_submission_version",
         columnNames = {"submission_id", "version_number"}),
     indexes = {
@@ -50,8 +54,10 @@ public class SubmissionVersion {
   @Column(name = "version_number", nullable = false)
   private Integer versionNumber;
 
-  @Column(nullable = false, length = 32)
-  private String status;
+  @Enumerated(EnumType.STRING)
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+  @Column(nullable = false, columnDefinition = "learning.submission_status")
+  private SubmissionStatus status;
 
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(nullable = false, columnDefinition = "jsonb")

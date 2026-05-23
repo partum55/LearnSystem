@@ -47,6 +47,27 @@ export const useCreateModule = (courseId: string) => {
   });
 };
 
+export const useUpdateModule = (courseId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ moduleId, request }: { moduleId: string; request: Partial<ModuleRequest> }) =>
+      canonicalCoursesApi.updateModule(moduleId, request),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.modules(courseId) });
+    },
+  });
+};
+
+export const useDeleteModule = (courseId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (moduleId: string) => canonicalCoursesApi.deleteModule(moduleId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.modules(courseId) });
+    },
+  });
+};
+
 export const useCreateCourse = () => {
   const queryClient = useQueryClient();
   return useMutation({

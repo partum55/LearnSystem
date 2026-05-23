@@ -30,7 +30,7 @@ public class JwtAuthenticationFilter extends com.university.lms.common.security.
 
     @Override
     protected UserDetails getUserDetails(UUID userId, String email, String roleFromToken) {
-        return userRepository.findByIdAndIsDeletedFalse(userId)
+        return userRepository.findById(userId)
                 .map(this::toUserDetails)
                 .orElseGet(() -> autoProvisionUser(userId, email, roleFromToken));
     }
@@ -44,18 +44,16 @@ public class JwtAuthenticationFilter extends com.university.lms.common.security.
         User user = User.builder()
                 .id(userId)
                 .email(normalizedEmail)
-                .displayName(defaultDisplayName(normalizedEmail))
                 .role(UserRole.fromValue(roleFromToken))
                 .locale(UserLocale.UK)
                 .isActive(true)
-                .isDeleted(false)
                 .emailVerified(true)
                 .build();
 
         try {
             return toUserDetails(userRepository.save(user));
         } catch (DataIntegrityViolationException ex) {
-            return userRepository.findByIdAndIsDeletedFalse(userId)
+            return userRepository.findById(userId)
                     .map(this::toUserDetails)
                     .orElse(null);
         }
@@ -79,14 +77,6 @@ public class JwtAuthenticationFilter extends com.university.lms.common.security.
             return null;
         }
         return email.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private String defaultDisplayName(String email) {
-        int atIndex = email.indexOf('@');
-        if (atIndex > 0) {
-            return email.substring(0, atIndex);
-        }
-        return email;
     }
 
     private static final class UserServiceUserDetails implements UserDetails {

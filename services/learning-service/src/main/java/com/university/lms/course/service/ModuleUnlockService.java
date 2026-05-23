@@ -5,6 +5,7 @@ import com.university.lms.course.assessment.repository.AssignmentRepository;
 import com.university.lms.course.domain.Module;
 import com.university.lms.course.repository.ModuleRepository;
 import com.university.lms.submission.domain.Submission;
+import com.university.lms.submission.domain.SubmissionStatus;
 import com.university.lms.submission.repository.SubmissionRepository;
 import java.util.Collection;
 import java.util.HashMap;
@@ -94,7 +95,7 @@ public class ModuleUnlockService {
   private double calculateModuleCompletionPercent(UUID moduleId, UUID studentId) {
     List<Assignment> assignments = assignmentRepository.findByModuleIdOrderByPositionAsc(moduleId);
     List<Assignment> requiredAssignments =
-        assignments.stream().filter(Assignment::requiresSubmission).toList();
+        assignments.stream().filter(assignment -> assignment.getAssignmentType().requiresStudentSubmission()).toList();
     if (requiredAssignments.isEmpty()) {
       return 100.0d;
     }
@@ -114,16 +115,14 @@ public class ModuleUnlockService {
     return (completedCount / requiredAssignments.size()) * 100.0d;
   }
 
-  private boolean isCompletedSubmissionStatus(String status) {
+  private boolean isCompletedSubmissionStatus(SubmissionStatus status) {
     if (status == null) {
       return false;
     }
-    String normalized = status.trim().toUpperCase();
-    return "SUBMITTED".equals(normalized)
-        || "IN_REVIEW".equals(normalized)
-        || "GRADED".equals(normalized)
-        || "GRADED_DRAFT".equals(normalized)
-        || "GRADED_PUBLISHED".equals(normalized);
+    return status == SubmissionStatus.SUBMITTED
+        || status == SubmissionStatus.IN_REVIEW
+        || status == SubmissionStatus.GRADED
+        || status == SubmissionStatus.PUBLISHED;
   }
 
   private UUID readUuid(Object value) {

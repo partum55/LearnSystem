@@ -19,7 +19,6 @@ public class EnrollUserRequest {
   @NotNull(message = "User ID is required")
   private UUID userId;
 
-  @NotBlank(message = "Role is required")
-  @Pattern(regexp = "^(OWNER|TEACHER|TA|STUDENT)$", message = "Role must be OWNER, TEACHER, TA, or STUDENT")
-  private String roleInCourse;
+  @NotNull(message = "Role is required")
+  private com.university.lms.course.domain.CourseRole roleInCourse;
 }

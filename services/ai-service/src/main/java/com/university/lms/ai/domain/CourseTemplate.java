@@ -14,7 +14,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 /** Entity for AI course generation templates */
 @Entity
-@Table(schema = "ai", name = "ai_course_templates")
+@Table(schema = "learning", name = "ai_course_templates")
 @Data
 @Builder
 @NoArgsConstructor

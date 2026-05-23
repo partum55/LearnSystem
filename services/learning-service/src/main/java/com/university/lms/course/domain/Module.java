@@ -9,13 +9,12 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
-/**
- * Course module/section for organizing content. Supports hierarchical content organization with
- * metadata.
- */
 @Entity
 @Table(schema = "learning", name = "modules",
-    indexes = {@Index(name = "idx_module_course_position", columnList = "course_id, position")})
+    indexes = {
+        @Index(name = "idx_module_course_position", columnList = "course_id, position"),
+        @Index(name = "idx_modules_status", columnList = "status")
+    })
 @Getter
 @Setter
 @NoArgsConstructor
@@ -41,18 +40,16 @@ public class Module {
   @Builder.Default
   private Integer position = 0;
 
-  // Flexible metadata storage for content customization
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "content_meta", columnDefinition = "jsonb")
   @Builder.Default
   private Map<String, Object> contentMeta = new HashMap<>();
 
-  @Column(name = "is_published", nullable = false)
+  @Enumerated(EnumType.STRING)
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+  @Column(nullable = false, columnDefinition = "learning.module_status")
   @Builder.Default
-  private Boolean isPublished = false;
-
-  @Column(name = "publish_date")
-  private LocalDateTime publishDate;
+  private ModuleStatus status = ModuleStatus.DRAFT;
 
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)
@@ -62,30 +59,7 @@ public class Module {
   @Column(name = "updated_at", nullable = false)
   private LocalDateTime updatedAt;
 
-  // Relationships
-  @OneToMany(mappedBy = "module", cascade = CascadeType.ALL, orphanRemoval = true)
-  @OrderBy("position ASC")
-  @Builder.Default
-  private Set<Resource> resources = new HashSet<>();
-
-  // Helper methods
   public boolean isAvailable() {
-    if (!Boolean.TRUE.equals(isPublished)) {
-      return false;
-    }
-    if (publishDate == null) {
-      return true;
-    }
-    return !LocalDateTime.now().isBefore(publishDate);
-  }
-
-  public void addResource(Resource resource) {
-    resources.add(resource);
-    resource.setModule(this);
-  }
-
-  public void removeResource(Resource resource) {
-    resources.remove(resource);
-    resource.setModule(null);
+    return status == ModuleStatus.PUBLISHED;
   }
 }

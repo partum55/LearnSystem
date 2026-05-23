@@ -27,6 +27,8 @@ class JwtAuthenticationFilterTest {
         User.builder()
             .id(userId)
             .email("teacher@example.com")
+            .firstName("Teacher")
+            .lastName("User")
             .role(UserRole.TEACHER)
             .locale(UserLocale.UK)
             .isActive(true)
@@ -77,11 +79,10 @@ class JwtAuthenticationFilterTest {
 
     assertThat(savedUser.getId()).isEqualTo(userId);
     assertThat(savedUser.getEmail()).isEqualTo("new.user@example.com");
-    assertThat(savedUser.getDisplayName()).isEqualTo("new.user");
+    assertThat(savedUser.getDisplayName()).isEqualTo("new.user@example.com");
     assertThat(savedUser.getRole()).isEqualTo(UserRole.USER);
     assertThat(savedUser.getLocale()).isEqualTo(UserLocale.UK);
     assertThat(savedUser.isActive()).isTrue();
-    assertThat(savedUser.isDeleted()).isFalse();
     assertThat(savedUser.isEmailVerified()).isTrue();
 
     assertThat(details).isNotNull();
@@ -151,7 +152,7 @@ class JwtAuthenticationFilterTest {
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) {
       return switch (method.getName()) {
-        case "findByIdAndIsDeletedFalse" -> findResults.isEmpty() ? Optional.empty() : findResults.remove();
+        case "findById" -> findResults.isEmpty() ? Optional.empty() : findResults.remove();
         case "save" -> save(args[0]);
         case "toString" -> "StubUserRepository";
         case "hashCode" -> System.identityHashCode(proxy);

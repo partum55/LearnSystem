@@ -8,8 +8,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Map;
-
 /**
  * Request DTO for updating user profile.
  */
@@ -19,17 +17,11 @@ import java.util.Map;
 @AllArgsConstructor
 public class UpdateUserRequest {
 
-    @Size(max = 150, message = "Display name must not exceed 150 characters")
-    private String displayName;
-
     @Size(max = 150, message = "First name must not exceed 150 characters")
     private String firstName;
 
     @Size(max = 150, message = "Last name must not exceed 150 characters")
     private String lastName;
-
-    @Size(max = 1000, message = "Bio must not exceed 1000 characters")
-    private String bio;
 
     private UserLocale locale;
 
@@ -38,6 +30,4 @@ public class UpdateUserRequest {
 
     @Size(max = 2048, message = "Avatar URL must not exceed 2048 characters")
     private String avatarUrl;
-
-    private Map<String, Object> preferences;
 }

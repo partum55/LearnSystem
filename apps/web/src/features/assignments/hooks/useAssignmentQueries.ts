@@ -52,13 +52,13 @@ export const useSubmitAssignment = () =>
   useMutation({
     mutationFn: (params: { assignmentId: string; type: string; request: SubmissionRequest }) => {
       switch (params.type) {
-        case 'file_submission':
+        case 'FILE_SUBMISSION':
           return canonicalSubmissionsApi.submitFile(params.assignmentId, params.request);
-        case 'form':
+        case 'FORM':
           return canonicalSubmissionsApi.submitForm(params.assignmentId, params.request);
-        case 'vpl':
+        case 'VPL':
           return canonicalSubmissionsApi.submitVpl(params.assignmentId, params.request);
-        case 'rte_submission':
+        case 'TEXT_SUBMISSION':
         default:
           return canonicalSubmissionsApi.submitRte(params.assignmentId, params.request);
       }
@@ -86,3 +86,16 @@ export const usePublishGrade = () =>
   useMutation({
     mutationFn: (submissionId: string) => canonicalSubmissionsApi.publishGrade(submissionId),
   });
+
+export const useDeleteCanonicalAssignment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { assignmentId: string; courseId?: string }) =>
+      canonicalAssignmentsApi.archive(params.assignmentId),
+    onSuccess: (_data, variables) => {
+      if (variables.courseId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.courses.modules(variables.courseId) });
+      }
+    },
+  });
+};

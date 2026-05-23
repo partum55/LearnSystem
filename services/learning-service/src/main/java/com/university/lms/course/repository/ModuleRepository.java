@@ -19,8 +19,7 @@ public interface ModuleRepository extends JpaRepository<Module, UUID> {
 
   /** Find published modules for a course. */
   @Query(
-      "SELECT m FROM Module m WHERE m.course.id = :courseId AND m.isPublished = true "
-          + "AND (m.publishDate IS NULL OR m.publishDate <= CURRENT_TIMESTAMP) "
+      "SELECT m FROM Module m WHERE m.course.id = :courseId AND m.status = com.university.lms.course.domain.ModuleStatus.PUBLISHED "
           + "ORDER BY m.position ASC")
   List<Module> findPublishedModulesByCourse(@Param("courseId") UUID courseId);
 

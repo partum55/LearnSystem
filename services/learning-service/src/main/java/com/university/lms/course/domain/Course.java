@@ -23,7 +23,6 @@ import org.hibernate.type.SqlTypes;
     indexes = {
       @Index(name = "idx_course_code", columnList = "code"),
       @Index(name = "idx_course_owner", columnList = "owner_id"),
-      @Index(name = "idx_course_published", columnList = "is_published"),
       @Index(name = "idx_course_status", columnList = "status")
     })
 @Getter
@@ -96,10 +95,6 @@ public class Course {
   @Builder.Default
   private CourseStatus status = CourseStatus.DRAFT;
 
-  @Column(name = "is_published", nullable = false)
-  @Builder.Default
-  private Boolean isPublished = false;
-
   @Column(name = "qr_attendance_enabled", nullable = false)
   @Builder.Default
   private Boolean qrAttendanceEnabled = false;
@@ -137,10 +132,7 @@ public class Course {
   public int getCurrentEnrollment() {
     return (int)
         members.stream()
-            .filter(
-                m ->
-                    "STUDENT".equals(m.getRoleInCourse())
-                        && "active".equals(m.getEnrollmentStatus()))
+            .filter(m -> m.getRoleInCourse() == CourseRole.STUDENT && m.isActive())
             .count();
   }
 
@@ -149,6 +141,6 @@ public class Course {
   }
 
   public boolean isActive() {
-    return Boolean.TRUE.equals(isPublished) && status == CourseStatus.PUBLISHED;
+    return status == CourseStatus.PUBLISHED;
   }
 }

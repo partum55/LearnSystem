@@ -14,7 +14,7 @@ public class LessonBlockMapper {
         : new HashMap<>(block.getSettings());
     return new LessonBlockDto(
         block.getId(),
-        block.getType().apiValue(),
+        block.getType(),
         block.getPosition() == null ? 0 : block.getPosition(),
         block.getTitle(),
         block.getContent(),

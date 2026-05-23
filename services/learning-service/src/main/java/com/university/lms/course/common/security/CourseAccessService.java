@@ -2,6 +2,7 @@ package com.university.lms.course.common.security;
 
 import com.university.lms.course.common.error.ApiException;
 import com.university.lms.course.domain.CourseMember;
+import com.university.lms.course.domain.CourseRole;
 import com.university.lms.course.repository.CourseMemberRepository;
 import com.university.lms.course.web.RequestUserContext;
 import java.util.UUID;
@@ -27,7 +28,7 @@ public class CourseAccessService {
     java.util.Optional<CourseMember> memberOpt = courseMemberRepository.findByCourseIdAndUserId(courseId, userId);
     if (memberOpt.isPresent()) {
       CourseMember member = memberOpt.get();
-      if (!"active".equalsIgnoreCase(member.getEnrollmentStatus())) {
+      if (!member.isActive()) {
         throw ApiException.forbidden("Your course membership is not active");
       }
       return member;
@@ -40,7 +41,7 @@ public class CourseAccessService {
     java.util.Optional<CourseMember> memberOpt = courseMemberRepository.findByCourseIdAndUserId(courseId, userId);
     if (memberOpt.isPresent()) {
       CourseMember member = memberOpt.get();
-      if (!"active".equalsIgnoreCase(member.getEnrollmentStatus()) && !isAdmin()) {
+      if (!member.isActive() && !isAdmin()) {
         throw ApiException.forbidden("Your course membership is not active");
       }
       return CourseAccessContext.member(userId, requestUserContext.requireUserRole(), member.getRoleInCourse());
@@ -54,7 +55,7 @@ public class CourseAccessService {
   public void requireStudent(UUID courseId, UUID userId) {
     // Admins must be explicitly enrolled as STUDENT to perform student-only actions
     CourseMember member = requireActiveMember(courseId, userId);
-    if (!"STUDENT".equalsIgnoreCase(member.getRoleInCourse())) {
+    if (member.getRoleInCourse() != CourseRole.STUDENT) {
       throw ApiException.forbidden("Student course membership is required");
     }
   }
@@ -64,8 +65,8 @@ public class CourseAccessService {
       return; // Platform admin override context
     }
     CourseMember member = requireActiveMember(courseId, userId);
-    String role = member.getRoleInCourse();
-    if (role == null || (!"TEACHER".equalsIgnoreCase(role) && !"TA".equalsIgnoreCase(role) && !"OWNER".equalsIgnoreCase(role))) {
+    CourseRole role = member.getRoleInCourse();
+    if (role == null || (role != CourseRole.TEACHER && role != CourseRole.TA && role != CourseRole.OWNER)) {
       throw ApiException.forbidden("Teacher course access is required");
     }
   }
@@ -77,13 +78,13 @@ public class CourseAccessService {
     return courseMemberRepository.findByCourseIdAndUserId(courseId, userId)
         .filter(CourseMember::isActive)
         .map(member -> {
-          String role = member.getRoleInCourse();
-          return role != null && ("TEACHER".equalsIgnoreCase(role) || "TA".equalsIgnoreCase(role) || "OWNER".equalsIgnoreCase(role));
+          CourseRole role = member.getRoleInCourse();
+          return role != null && (role == CourseRole.TEACHER || role == CourseRole.TA || role == CourseRole.OWNER);
         })
         .orElse(false);
   }
 
-  public void requireCanEnroll(UUID courseId, UUID targetUserId, String targetRole) {
+  public void requireCanEnroll(UUID courseId, UUID targetUserId, CourseRole targetRole) {
     UUID requesterId = requestUserContext.requireUserId();
     boolean isSelfEnrollment = requesterId.equals(targetUserId);
     boolean isOwner = canOwn(courseId, requesterId);
@@ -97,7 +98,7 @@ public class CourseAccessService {
       throw ApiException.forbidden("Only instructors or admins can enroll other users");
     }
 
-    if (!"STUDENT".equalsIgnoreCase(targetRole)) {
+    if (targetRole != CourseRole.STUDENT) {
       throw ApiException.forbidden("Self-enrollment is only permitted for students");
     }
   }
@@ -145,7 +146,7 @@ public class CourseAccessService {
   public boolean canOwn(UUID courseId, UUID userId) {
     return courseMemberRepository.findByCourseIdAndUserId(courseId, userId)
         .filter(CourseMember::isActive)
-        .map(member -> "OWNER".equalsIgnoreCase(member.getRoleInCourse()))
+        .map(member -> member.getRoleInCourse() == CourseRole.OWNER)
         .orElse(false);
   }
 }

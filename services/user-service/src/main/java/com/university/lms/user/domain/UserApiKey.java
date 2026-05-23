@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(schema = "ai", name = "user_api_keys", uniqueConstraints = {
+@Table(schema = "public", name = "user_api_keys", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"user_id", "provider"})
 })
 @EntityListeners(AuditingEntityListener.class)

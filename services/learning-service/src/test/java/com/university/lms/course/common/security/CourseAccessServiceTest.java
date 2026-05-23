@@ -6,6 +6,8 @@ import static org.mockito.Mockito.*;
 
 import com.university.lms.course.common.error.ApiException;
 import com.university.lms.course.domain.CourseMember;
+import com.university.lms.course.domain.CourseMemberStatus;
+import com.university.lms.course.domain.CourseRole;
 import com.university.lms.course.repository.CourseMemberRepository;
 import com.university.lms.course.web.RequestUserContext;
 import java.util.Optional;
@@ -49,8 +51,8 @@ class CourseAccessServiceTest {
     UUID userId = UUID.randomUUID();
     CourseMember mockMember = CourseMember.builder()
         .userId(userId)
-        .roleInCourse("STUDENT")
-        .enrollmentStatus("active")
+        .roleInCourse(CourseRole.STUDENT)
+        .status(CourseMemberStatus.ACTIVE)
         .build();
 
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, userId))
@@ -60,7 +62,7 @@ class CourseAccessServiceTest {
 
     assertThat(member).isNotNull();
     assertThat(member.getUserId()).isEqualTo(userId);
-    assertThat(member.getRoleInCourse()).isEqualTo("STUDENT");
+    assertThat(member.getRoleInCourse()).isEqualTo(CourseRole.STUDENT);
   }
 
   @Test
@@ -68,7 +70,6 @@ class CourseAccessServiceTest {
     UUID courseId = UUID.randomUUID();
     UUID userId = UUID.randomUUID();
 
-    when(requestUserContext.requireUserRole()).thenReturn("USER");
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, userId))
         .thenReturn(Optional.empty());
 
@@ -81,8 +82,14 @@ class CourseAccessServiceTest {
   void adminWithoutStudentEnrollmentThrowsRequireStudent() {
     UUID courseId = UUID.randomUUID();
     UUID userId = UUID.randomUUID();
+    CourseMember mockMember = CourseMember.builder()
+        .userId(userId)
+        .roleInCourse(CourseRole.TEACHER)
+        .status(CourseMemberStatus.ACTIVE)
+        .build();
 
-    when(requestUserContext.requireUserRole()).thenReturn("ADMIN");
+    when(courseMemberRepository.findByCourseIdAndUserId(courseId, userId))
+        .thenReturn(Optional.of(mockMember));
 
     assertThatThrownBy(() -> courseAccessService.requireStudent(courseId, userId))
         .isInstanceOf(ApiException.class)
@@ -133,8 +140,8 @@ class CourseAccessServiceTest {
     UUID userId = UUID.randomUUID();
     CourseMember owner = CourseMember.builder()
         .userId(userId)
-        .roleInCourse("OWNER")
-        .enrollmentStatus("active")
+        .roleInCourse(CourseRole.OWNER)
+        .status(CourseMemberStatus.ACTIVE)
         .build();
 
     when(requestUserContext.requireUserId()).thenReturn(userId);
@@ -142,6 +149,6 @@ class CourseAccessServiceTest {
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, userId))
         .thenReturn(Optional.of(owner));
 
-    courseAccessService.requireCanEnroll(courseId, UUID.randomUUID(), "STUDENT");
+    courseAccessService.requireCanEnroll(courseId, UUID.randomUUID(), CourseRole.STUDENT);
   }
 }

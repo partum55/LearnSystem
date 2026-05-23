@@ -41,7 +41,7 @@ import java.util.UUID;
 @Slf4j
 public class UserService {
 
-    private static final Set<String> ALLOWED_THEMES = Set.of("light", "dark");
+    private static final Set<String> ALLOWED_THEMES = Set.of("LIGHT", "DARK");
     private static final String USERS_CACHE = "users";
 
     private final UserRepository userRepository;
@@ -85,13 +85,12 @@ public class UserService {
             body.put("email_confirm", true);
 
             Map<String, String> userMetadata = new HashMap<>();
-            String displayName = request.getDisplayName();
-            if (displayName == null || displayName.isBlank()) {
-                displayName = email.split("@")[0];
+            if (request.getFirstName() != null && !request.getFirstName().isBlank()) {
+                userMetadata.put("first_name", request.getFirstName().trim());
             }
-            userMetadata.put("display_name", displayName);
-            if (request.getFirstName() != null) userMetadata.put("first_name", request.getFirstName());
-            if (request.getLastName() != null) userMetadata.put("last_name", request.getLastName());
+            if (request.getLastName() != null && !request.getLastName().isBlank()) {
+                userMetadata.put("last_name", request.getLastName().trim());
+            }
             body.put("user_metadata", userMetadata);
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
@@ -110,19 +109,14 @@ public class UserService {
 
         // 2. Fetch the created profile from public.users (inserted via Postgres trigger)
         User user = userRepository.findById(userId)
-                .orElseGet(() -> userRepository.findByEmailIgnoreCaseAndIsDeletedFalse(email)
+                .orElseGet(() -> userRepository.findByEmailIgnoreCase(email)
                         .orElseThrow(() -> new ResourceNotFoundException("User", userId.toString())));
 
         // 3. Update with role and other details
         user.setRole(request.getRole() == null ? UserRole.USER : request.getRole());
-        if (request.getDisplayName() != null && !request.getDisplayName().isBlank()) {
-            user.setDisplayName(request.getDisplayName().trim());
-        } else {
-            user.setDisplayName(email.split("@")[0]);
-        }
-        if (request.getFirstName() != null) user.setFirstName(request.getFirstName().trim());
-        if (request.getLastName() != null) user.setLastName(request.getLastName().trim());
-        if (request.getStudentId() != null) user.setStudentId(request.getStudentId().trim());
+        user.setFirstName(normalizeOptional(request.getFirstName()));
+        user.setLastName(normalizeOptional(request.getLastName()));
+        user.setStudentId(normalizeOptional(request.getStudentId()));
         if (request.getLocale() != null) {
             user.setLocale(request.getLocale());
         } else {
@@ -146,7 +140,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public UserDto getUserByEmail(String email) {
         String normalizedEmail = normalizeEmail(email);
-        User user = userRepository.findByEmailIgnoreCaseAndIsDeletedFalse(normalizedEmail)
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User", normalizedEmail));
         return userMapper.toDto(user);
     }
@@ -158,10 +152,6 @@ public class UserService {
 
         UpdateUserRequest normalizedRequest = normalizeUpdateRequest(request);
         userMapper.updateUserFromRequest(normalizedRequest, user);
-
-        if (normalizedRequest.getPreferences() != null) {
-            user.setPreferences(new HashMap<>(normalizedRequest.getPreferences()));
-        }
 
         User updatedUser = userRepository.save(user);
         log.info("User updated: {}", id);
@@ -198,7 +188,7 @@ public class UserService {
     public PageResponse<UserDto> searchUsers(String query, Pageable pageable) {
         String normalizedQuery = normalizeOptional(query);
         Page<User> userPage = normalizedQuery == null
-                ? userRepository.findByIsDeletedFalse(pageable)
+                ? userRepository.findAll(pageable)
                 : userRepository.searchUsers(normalizedQuery, pageable);
 
         return PageResponse.of(
@@ -215,7 +205,7 @@ public class UserService {
             throw new ValidationException("role", "Role is required");
         }
 
-        Page<User> userPage = userRepository.findByRoleAndIsDeletedFalse(role, pageable);
+        Page<User> userPage = userRepository.findByRole(role, pageable);
         return PageResponse.of(
                 userPage.getContent().stream().map(userMapper::toDto).toList(),
                 userPage.getNumber(),
@@ -245,14 +235,8 @@ public class UserService {
     @Transactional
     @CacheEvict(value = USERS_CACHE, key = "#userId")
     public void deleteUser(UUID userId) {
-        User user = getRequiredUserById(userId);
-
-        try {
-            courseClient.deleteUserData(userId);
-        } catch (Exception ex) {
-            log.error("Failed to cleanup course data for user {}: {}", userId, ex.getMessage());
-            // We might want to allow deletion even if course cleanup fails, or retry.
-        }
+        getRequiredUserById(userId);
+        courseClient.deleteUserData(userId);
 
         if (hasSupabaseAdminCredentials()) {
             deleteSupabaseAuthUser(userId);
@@ -261,7 +245,7 @@ public class UserService {
             }
         } else {
             log.warn("SUPABASE_SECRET_KEY is not configured; deleting only local profile {}", userId);
-            userRepository.delete(user);
+            userRepository.deleteById(userId);
         }
         log.info("User deleted: {}", userId);
     }
@@ -288,20 +272,17 @@ public class UserService {
     }
 
     private User getRequiredUserById(UUID userId) {
-        return userRepository.findByIdAndIsDeletedFalse(userId)
+        return userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId.toString()));
     }
 
     private UpdateUserRequest normalizeUpdateRequest(UpdateUserRequest request) {
         return UpdateUserRequest.builder()
-                .displayName(normalizeOptional(request.getDisplayName()))
                 .firstName(normalizeOptional(request.getFirstName()))
                 .lastName(normalizeOptional(request.getLastName()))
-                .bio(normalizeOptional(request.getBio()))
                 .locale(request.getLocale())
                 .theme(normalizeTheme(request.getTheme()))
                 .avatarUrl(normalizeOptional(request.getAvatarUrl()))
-                .preferences(request.getPreferences() == null ? null : new HashMap<>(request.getPreferences()))
                 .build();
     }
 
@@ -320,10 +301,11 @@ public class UserService {
         }
 
         String lowerCaseTheme = normalizedTheme.toLowerCase(Locale.ROOT);
-        if (!ALLOWED_THEMES.contains(lowerCaseTheme)) {
+        String upperCaseTheme = lowerCaseTheme.toUpperCase(Locale.ROOT);
+        if (!ALLOWED_THEMES.contains(upperCaseTheme)) {
             throw new ValidationException("theme", "Supported values are: light, dark");
         }
-        return lowerCaseTheme;
+        return upperCaseTheme;
     }
 
     private String normalizeOptional(String value) {

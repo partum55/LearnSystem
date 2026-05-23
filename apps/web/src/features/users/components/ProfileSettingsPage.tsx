@@ -35,19 +35,15 @@ export function ProfileSettingsPage() {
 
   const [message, setMessage] = useState<Message>(null);
   const [profileData, setProfileData] = useState({
-    displayName: '',
     firstName: '',
     lastName: '',
-    bio: '',
   });
 
   useEffect(() => {
     if (!user) return;
     setProfileData({
-      displayName: user.displayName ?? '',
       firstName: user.firstName ?? '',
       lastName: user.lastName ?? '',
-      bio: user.bio ?? '',
     });
     if (user.theme) {
       setTheme(normalizeTheme(user.theme));
@@ -90,10 +86,8 @@ export function ProfileSettingsPage() {
     setMessage(null);
     try {
       await updateCurrentUser.mutateAsync({
-        displayName: profileData.displayName.trim() || null,
         firstName: profileData.firstName.trim() || null,
         lastName: profileData.lastName.trim() || null,
-        bio: profileData.bio.trim() || null,
         locale: localeToApi(language),
         theme: themeToApi(theme),
       });
@@ -129,7 +123,7 @@ export function ProfileSettingsPage() {
           </p>
           <h1 className="mt-1 text-2xl font-semibold">Profile settings</h1>
           <p className="mt-2 max-w-2xl text-sm" style={{ color: 'var(--text-muted)' }}>
-            Manage identity, appearance, language, and account metadata.
+            Manage identity, appearance, and language.
           </p>
         </div>
 
@@ -177,47 +171,24 @@ export function ProfileSettingsPage() {
             </div>
 
             <div className="input-group">
-              <label className="label" htmlFor="displayName">Display name</label>
+              <label className="label" htmlFor="firstName">First name</label>
               <input
-                id="displayName"
+                id="firstName"
                 className="input"
-                value={profileData.displayName}
-                onChange={(event) => setProfileData((current) => ({ ...current, displayName: event.target.value }))}
+                value={profileData.firstName}
+                onChange={(event) => setProfileData((current) => ({ ...current, firstName: event.target.value }))}
                 maxLength={150}
               />
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="input-group">
-                <label className="label" htmlFor="firstName">First name</label>
-                <input
-                  id="firstName"
-                  className="input"
-                  value={profileData.firstName}
-                  onChange={(event) => setProfileData((current) => ({ ...current, firstName: event.target.value }))}
-                  maxLength={150}
-                />
-              </div>
-              <div className="input-group">
-                <label className="label" htmlFor="lastName">Last name</label>
-                <input
-                  id="lastName"
-                  className="input"
-                  value={profileData.lastName}
-                  onChange={(event) => setProfileData((current) => ({ ...current, lastName: event.target.value }))}
-                  maxLength={150}
-                />
-              </div>
-            </div>
-
             <div className="input-group">
-              <label className="label" htmlFor="bio">Bio</label>
-              <textarea
-                id="bio"
-                className="input min-h-28"
-                value={profileData.bio}
-                onChange={(event) => setProfileData((current) => ({ ...current, bio: event.target.value }))}
-                maxLength={1000}
+              <label className="label" htmlFor="lastName">Last name</label>
+              <input
+                id="lastName"
+                className="input"
+                value={profileData.lastName}
+                onChange={(event) => setProfileData((current) => ({ ...current, lastName: event.target.value }))}
+                maxLength={150}
               />
             </div>
           </div>

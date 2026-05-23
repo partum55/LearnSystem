@@ -38,13 +38,15 @@ class UserServiceTest {
     User user = User.builder()
         .id(userId)
         .email("user@example.com")
+        .firstName("User")
+        .lastName("Person")
         .role(UserRole.USER)
         .locale(UserLocale.EN)
         .isActive(true)
         .build();
     UserDto dto = UserDto.builder().id(userId).email("user@example.com").build();
 
-    when(userRepository.findByIdAndIsDeletedFalse(userId)).thenReturn(Optional.of(user));
+    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
     when(userMapper.toDto(user)).thenReturn(dto);
 
     UserDto result = service.getUserById(userId);
@@ -56,7 +58,7 @@ class UserServiceTest {
   @Test
   void getUserById_notFound_throws() {
     UUID userId = UUID.randomUUID();
-    when(userRepository.findByIdAndIsDeletedFalse(userId)).thenReturn(Optional.empty());
+    when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.getUserById(userId))
         .isInstanceOf(ResourceNotFoundException.class);
@@ -73,12 +75,13 @@ class UserServiceTest {
         .isActive(true)
         .build();
     UpdateUserRequest request = UpdateUserRequest.builder()
-        .displayName("  Test User  ")
+        .firstName("  Test  ")
+        .lastName("  User  ")
         .theme("DARK")
         .build();
     UserDto dto = UserDto.builder().id(userId).displayName("Test User").theme("dark").build();
 
-    when(userRepository.findByIdAndIsDeletedFalse(userId)).thenReturn(Optional.of(user));
+    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
     when(userRepository.save(user)).thenReturn(user);
     when(userMapper.toDto(user)).thenReturn(dto);
 
@@ -106,7 +109,7 @@ class UserServiceTest {
         .build();
     UserDto dto = UserDto.builder().id(targetId).role(UserRole.TEACHER).build();
 
-    when(userRepository.findByIdAndIsDeletedFalse(targetId)).thenReturn(Optional.of(target));
+    when(userRepository.findById(targetId)).thenReturn(Optional.of(target));
     when(userRepository.save(target)).thenReturn(target);
     when(userMapper.toDto(target)).thenReturn(dto);
 
@@ -131,7 +134,7 @@ class UserServiceTest {
         .isActive(true)
         .build();
 
-    when(userRepository.findByIdAndIsDeletedFalse(actorId)).thenReturn(Optional.of(target));
+    when(userRepository.findById(actorId)).thenReturn(Optional.of(target));
 
     assertThatThrownBy(() -> service.adminUpdateUser(
         actorId,

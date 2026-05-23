@@ -20,7 +20,7 @@ public record StudentGradebookDto(
   public record AssignmentGradeDto(
       UUID assignmentId,
       String title,
-      String type,
+      com.university.lms.course.assessment.domain.AssignmentType type,
       BigDecimal points,
       BigDecimal maxPoints,
       String status,

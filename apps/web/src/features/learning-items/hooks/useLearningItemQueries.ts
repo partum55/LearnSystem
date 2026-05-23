@@ -31,10 +31,26 @@ export const useCreateLearningItem = () => {
 export const useUpdateLearningItem = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (params: { learningItemId: string; request: LearningItemRequest }) =>
+    mutationFn: (params: { learningItemId: string; request: LearningItemRequest; courseId?: string }) =>
       learningItemsApi.update(params.learningItemId, params.request),
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.learningItems.detail(variables.learningItemId) });
+      if (variables.courseId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.courses.modules(variables.courseId) });
+      }
+    },
+  });
+};
+
+export const useDeleteLearningItem = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { learningItemId: string; courseId?: string }) =>
+      learningItemsApi.archive(params.learningItemId),
+    onSuccess: (_data, variables) => {
+      if (variables.courseId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.courses.modules(variables.courseId) });
+      }
     },
   });
 };

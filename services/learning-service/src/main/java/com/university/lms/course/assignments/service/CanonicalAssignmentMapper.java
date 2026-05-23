@@ -5,12 +5,11 @@ import com.university.lms.course.assignments.dto.AssignmentListItemDto;
 import com.university.lms.course.assignments.dto.GradePreviewDto;
 import com.university.lms.course.assignments.dto.StudentAssignmentStateDto;
 import com.university.lms.course.assessment.domain.Assignment;
-import com.university.lms.course.assessment.domain.Quiz;
-import com.university.lms.course.assessment.domain.QuizAttempt;
+import com.university.lms.course.assessment.domain.AssignmentStatus;
+import com.university.lms.course.assessment.domain.AssignmentType;
 import com.university.lms.gradebook.domain.GradebookEntry;
 import com.university.lms.submission.domain.Submission;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -18,28 +17,27 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class CanonicalAssignmentMapper {
+
   public AssignmentListItemDto toListItem(Assignment assignment, GradebookEntry grade) {
     return new AssignmentListItemDto(
         assignment.getId(),
         assignment.getModuleId(),
         assignment.getTitle(),
-        AssignmentTypeMapper.toCanonical(assignment.getAssignmentType()),
+        assignment.getAssignmentType(),
         assignment.getPosition() == null ? 0 : assignment.getPosition(),
         assignment.getMaxPoints(),
         assignment.getDueDate(),
-        Boolean.TRUE.equals(assignment.getIsPublished()) ? "visible" : "hidden",
+        assignment.getStatus().name(),
         toPublishedGradePreview(grade));
   }
 
   public AssignmentDetailDto toDetail(
       Assignment assignment,
-      Quiz quiz,
       Submission submission,
-      QuizAttempt latestAttempt,
       GradebookEntry grade,
       long attemptsUsed) {
-    String type = AssignmentTypeMapper.toCanonical(assignment.getAssignmentType());
-    Integer attemptLimit = quiz == null ? null : quiz.getAttemptsAllowed();
+    AssignmentType type = assignment.getAssignmentType();
+    Integer attemptLimit = integerSetting(assignment, "attemptLimit");
     return new AssignmentDetailDto(
         assignment.getId(),
         assignment.getCourseId(),
@@ -50,96 +48,74 @@ public class CanonicalAssignmentMapper {
         assignment.getInstructions(),
         assignment.getMaxPoints(),
         assignment.getDueDate(),
-        Boolean.TRUE.equals(assignment.getIsPublished()) ? "visible" : "hidden",
-        settings(assignment, quiz),
+        assignment.getStatus().name(),
+        settings(assignment),
         new StudentAssignmentStateDto(
-            state(type, submission, latestAttempt, grade),
+            state(type, submission, grade),
             submission == null ? null : submission.getId(),
-            latestAttempt == null ? null : latestAttempt.getId(),
+            null,
             submission == null ? null : submission.getSubmittedAt(),
             toPublishedGradePreview(grade),
             canSubmit(type, assignment, submission, attemptsUsed, attemptLimit),
             canEdit(assignment, submission),
             canDelete(assignment, submission),
             canResubmit(assignment, submission),
-            "quiz".equals(type) && (attemptLimit == null || attemptsUsed < attemptLimit),
-            "quiz".equals(type) ? Math.toIntExact(attemptsUsed) : null,
+            type == AssignmentType.QUIZ && (attemptLimit == null || attemptsUsed < attemptLimit),
+            type == AssignmentType.QUIZ ? Math.toIntExact(attemptsUsed) : null,
             attemptLimit));
   }
 
-  public Map<String, Object> settings(Assignment assignment, Quiz quiz) {
-    String type = AssignmentTypeMapper.toCanonical(assignment.getAssignmentType());
+  public Map<String, Object> settings(Assignment assignment) {
+    AssignmentType type = assignment.getAssignmentType();
     Map<String, Object> settings = new HashMap<>();
     settings.put("type", type);
-    settings.put("schemaVersion", Optional.ofNullable(nestedSetting(assignment, "schemaVersion")).orElse(1));
+    settings.put("schemaVersion", Optional.ofNullable(setting(assignment, "schemaVersion")).orElse(1));
     settings.put("allowLateSubmission", Boolean.TRUE.equals(assignment.getAllowLateSubmission()));
     settings.put("availableFrom", assignment.getAvailableFrom());
     settings.put("availableUntil", assignment.getAvailableUntil());
-    settings.put("allowResubmission", booleanNestedSetting(assignment, "allowResubmission", true));
+    settings.put("allowResubmission", booleanSetting(assignment, "allowResubmission", true));
     switch (type) {
-      case "file_submission" -> {
-        settings.put("allowedFileTypes", Optional.ofNullable(nestedSetting(assignment, "allowedFileTypes"))
-            .orElse(safeList(assignment.getAllowedFileTypes())));
-        settings.put("maxFiles", Optional.ofNullable(nestedSetting(assignment, "maxFiles"))
-            .orElse(assignment.getMaxFiles()));
-        settings.put("maxFileSizeMb", Optional.ofNullable(nestedSetting(assignment, "maxFileSizeMb"))
-            .orElse(assignment.getMaxFileSize() == null ? null : assignment.getMaxFileSize() / 1024 / 1024));
-        settings.put("allowEditAfterSubmit", booleanNestedSetting(assignment, "allowEditAfterSubmit", true));
-        settings.put("allowDeleteAfterSubmit", booleanNestedSetting(assignment, "allowDeleteAfterSubmit", false));
+      case FILE_SUBMISSION -> {
+        settings.put("allowedFileTypes", setting(assignment, "allowedFileTypes"));
+        settings.put("maxFiles", setting(assignment, "maxFiles"));
+        settings.put("maxFileSizeMb", setting(assignment, "maxFileSizeMb"));
+        settings.put("allowEditAfterSubmit", booleanSetting(assignment, "allowEditAfterSubmit", true));
+        settings.put("allowDeleteAfterSubmit", booleanSetting(assignment, "allowDeleteAfterSubmit", false));
       }
-      case "rte_submission" -> {
-        settings.put("minWords", nestedSetting(assignment, "minWords"));
-        settings.put("maxWords", nestedSetting(assignment, "maxWords"));
-        settings.put("allowEditAfterSubmit", booleanNestedSetting(assignment, "allowEditAfterSubmit", true));
+      case TEXT_SUBMISSION -> {
+        settings.put("minWords", setting(assignment, "minWords"));
+        settings.put("maxWords", setting(assignment, "maxWords"));
+        settings.put("allowEditAfterSubmit", booleanSetting(assignment, "allowEditAfterSubmit", true));
       }
-      case "form" -> {
-        settings.put("fields", nestedSetting(assignment, "fields"));
-        settings.put("allowEditAfterSubmit", booleanNestedSetting(assignment, "allowEditAfterSubmit", true));
+      case FORM -> {
+        settings.put("fields", setting(assignment, "fields"));
+        settings.put("allowEditAfterSubmit", booleanSetting(assignment, "allowEditAfterSubmit", true));
       }
-      case "quiz" -> {
-        settings.put("attemptLimit", Optional.ofNullable(nestedSetting(assignment, "attemptLimit"))
-            .orElse(quiz == null ? null : quiz.getAttemptsAllowed()));
-        settings.put("timeLimitMinutes", Optional.ofNullable(nestedSetting(assignment, "timeLimitMinutes"))
-            .orElse(quiz == null || !Boolean.TRUE.equals(quiz.getTimerEnabled()) ? null : quiz.getTimeLimit()));
-        settings.put("canReviewAttempts", booleanNestedSetting(assignment, "canReviewAttempts", true));
-        settings.put("showCorrectAnswers", booleanNestedSetting(assignment, "showCorrectAnswers", false));
-        settings.put("showScoreAfterSubmit", booleanNestedSetting(assignment, "showScoreAfterSubmit", true));
-        settings.put("shuffleQuestions", booleanNestedSetting(assignment, "shuffleQuestions", false));
-        settings.put("gradingMode", Optional.ofNullable(nestedSetting(assignment, "gradingMode"))
-            .orElse(quiz == null ? null : quiz.getAttemptScorePolicy().name().toLowerCase()));
+      case QUIZ -> {
+        settings.put("attemptLimit", setting(assignment, "attemptLimit"));
+        settings.put("timeLimitMinutes", setting(assignment, "timeLimitMinutes"));
+        settings.put("canReviewAttempts", booleanSetting(assignment, "canReviewAttempts", true));
+        settings.put("showCorrectAnswers", booleanSetting(assignment, "showCorrectAnswers", false));
+        settings.put("showScoreAfterSubmit", booleanSetting(assignment, "showScoreAfterSubmit", true));
+        settings.put("shuffleQuestions", booleanSetting(assignment, "shuffleQuestions", false));
+        settings.put("gradingMode", setting(assignment, "gradingMode"));
       }
-      case "vpl" -> {
-        settings.put("language", Optional.ofNullable(nestedSetting(assignment, "language"))
-            .orElse(assignment.getProgrammingLanguage()));
-        settings.put("templateCode", Optional.ofNullable(nestedSetting(assignment, "templateCode"))
-            .orElse(assignment.getStarterCode()));
-        settings.put("visibleTests", Optional.ofNullable(nestedSetting(assignment, "visibleTests"))
-            .orElse(assignment.getTestCases()));
-        settings.put("hiddenTestsReference", nestedSetting(assignment, "hiddenTestsReference"));
-        settings.put("runtime", nestedSetting(assignment, "runtime"));
-        settings.put("timeLimit", nestedSetting(assignment, "timeLimit"));
-        settings.put("memoryLimit", nestedSetting(assignment, "memoryLimit"));
-        settings.put("gradingMode", Boolean.TRUE.equals(assignment.getAutoGradingEnabled()) ? "auto" : "manual");
+      case VPL -> {
+        settings.put("language", setting(assignment, "language"));
+        settings.put("templateCode", setting(assignment, "templateCode"));
+        settings.put("visibleTests", setting(assignment, "visibleTests"));
+        settings.put("hiddenTestsReference", setting(assignment, "hiddenTestsReference"));
+        settings.put("runtime", setting(assignment, "runtime"));
+        settings.put("timeLimit", setting(assignment, "timeLimit"));
+        settings.put("memoryLimit", setting(assignment, "memoryLimit"));
+        settings.put("gradingMode", Optional.ofNullable(setting(assignment, "gradingMode")).orElse("manual"));
       }
-      case "seminar" -> {
+      case SEMINAR -> {
         settings.put("requiresSubmission", false);
         settings.put("manualGradeOnly", true);
       }
-      default -> {
-      }
     }
     return settings;
-  }
-
-  public GradePreviewDto toGradePreview(GradebookEntry entry) {
-    if (entry == null) {
-      return null;
-    }
-    return new GradePreviewDto(
-        entry.getFinalScore(),
-        entry.getMaxScore(),
-        entry.getStatus().name().toLowerCase(),
-        entry.getNotes());
   }
 
   public GradePreviewDto toPublishedGradePreview(GradebookEntry entry) {
@@ -149,64 +125,49 @@ public class CanonicalAssignmentMapper {
     return new GradePreviewDto(
         entry.getPublishedFinalScore(),
         entry.getMaxScore(),
-        "published",
+        "PUBLISHED",
         entry.getPublishedFinalComment());
   }
 
-  private List<String> safeList(List<String> values) {
-    return values == null ? List.of() : values;
+  private Object setting(Assignment assignment, String key) {
+    return Optional.ofNullable(assignment.getSettings()).orElse(Map.of()).get(key);
   }
 
-  private Object nestedSetting(Assignment assignment, String key) {
-    Map<String, Object> config = Optional.ofNullable(assignment.getExternalToolConfig()).orElse(Map.of());
-    Object canonicalSettings = config.get("canonicalSettings");
-    if (canonicalSettings instanceof Map<?, ?> map) {
-      return map.get(key);
-    }
-    Map<String, Object> vplConfig = Optional.ofNullable(assignment.getVplConfig()).orElse(Map.of());
-    return vplConfig.get(key);
+  private Integer integerSetting(Assignment assignment, String key) {
+    Object value = setting(assignment, key);
+    return value instanceof Number number ? number.intValue() : null;
   }
 
-  private boolean booleanNestedSetting(Assignment assignment, String key, boolean defaultValue) {
-    Object value = nestedSetting(assignment, key);
+  private boolean booleanSetting(Assignment assignment, String key, boolean defaultValue) {
+    Object value = setting(assignment, key);
     return value instanceof Boolean bool ? bool : defaultValue;
   }
 
   private String state(
-      String type,
+      AssignmentType type,
       Submission submission,
-      QuizAttempt latestAttempt,
       GradebookEntry grade) {
     if (grade != null && grade.isPublishedGrade() && grade.getPublishedFinalScore() != null) {
       return "graded";
     }
-    if ("seminar".equals(type)) {
+    if (type == AssignmentType.SEMINAR) {
       return "waiting_for_teacher_grade";
     }
-    if ("quiz".equals(type)) {
-      if (latestAttempt == null) {
-        return "not_started";
-      }
-      return latestAttempt.isSubmitted() ? "submitted" : "in_progress";
+    if (type == AssignmentType.QUIZ) {
+      return grade == null ? "not_submitted" : "submitted";
     }
-    if (submission == null) {
-      return "not_submitted";
-    }
-    return submission.getStatus().toLowerCase();
+    if (submission == null) return "not_submitted";
+    return submission.getStatus().name();
   }
 
   private boolean canSubmit(
-      String type,
+      AssignmentType type,
       Assignment assignment,
       Submission submission,
       long attemptsUsed,
       Integer attemptLimit) {
-    if ("seminar".equals(type) || "quiz".equals(type)) {
-      return false;
-    }
-    if (!assignment.acceptsLateSubmission()) {
-      return false;
-    }
+    if (type == AssignmentType.SEMINAR || type == AssignmentType.QUIZ) return false;
+    if (!assignment.acceptsLateSubmission()) return false;
     return submission == null || canResubmit(assignment, submission);
   }
 
@@ -214,20 +175,20 @@ public class CanonicalAssignmentMapper {
     return submission != null
         && submission.getPublishedAt() == null
         && assignment.acceptsLateSubmission()
-        && booleanNestedSetting(assignment, "allowEditAfterSubmit", true);
+        && booleanSetting(assignment, "allowEditAfterSubmit", true);
   }
 
   private boolean canDelete(Assignment assignment, Submission submission) {
     return submission != null
         && submission.getPublishedAt() == null
         && assignment.acceptsLateSubmission()
-        && booleanNestedSetting(assignment, "allowDeleteAfterSubmit", false);
+        && booleanSetting(assignment, "allowDeleteAfterSubmit", false);
   }
 
   private boolean canResubmit(Assignment assignment, Submission submission) {
     return submission != null
         && submission.getPublishedAt() == null
         && assignment.acceptsLateSubmission()
-        && booleanNestedSetting(assignment, "allowResubmission", true);
+        && booleanSetting(assignment, "allowResubmission", true);
   }
 }

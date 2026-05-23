@@ -13,16 +13,38 @@ import {
   MagnifyingGlassIcon,
   Squares2X2Icon,
   UserGroupIcon,
+  PencilIcon,
+  TrashIcon,
+  PlusIcon,
 } from '@heroicons/react/24/outline';
 import { Loading } from '@/components/Loading';
 import {
   useCourseMembers,
   useCourseModules,
   useCourseOverview,
+  useCreateModule,
+  useUpdateModule,
+  useDeleteModule,
 } from '@/features/courses/hooks/useCourseQueries';
+import {
+  useCreateLearningItem,
+  useUpdateLearningItem,
+  useDeleteLearningItem,
+} from '@/features/learning-items/hooks/useLearningItemQueries';
+import {
+  useCreateCanonicalAssignment,
+  useUpdateCanonicalAssignment,
+  useDeleteCanonicalAssignment,
+} from '@/features/assignments/hooks/useAssignmentQueries';
 import { useStudentGradebook } from '@/features/gradebook/hooks/useGradebookQueries';
 import { useCurrentUser } from '@/features/users/hooks/useUserQueries';
-import type { CourseMemberDto, CourseModuleDto } from '@/features/courses/api/canonical.types';
+import type { CourseMemberDto, CourseModuleDto, LearningItemDto, LearningItemRequest, ModuleRequest, AssignmentListItemDto } from '@/features/courses/api/canonical.types';
+import type { AssignmentRequest } from '@/features/assignments/api/canonical.types';
+
+import { ModuleFormModal } from './ModuleFormModal';
+import { LearningItemFormModal } from './LearningItemFormModal';
+import { AssignmentFormModal } from './AssignmentFormModal';
+import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 
 interface CourseDetailPageProps {
   courseId: string;
@@ -57,6 +79,128 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [memberSearch, setMemberSearch] = useState('');
   const [todoToast, setTodoToast] = useState<string | null>(null);
+
+  const [activeModule, setActiveModule] = useState<CourseModuleDto | null>(null);
+  const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
+  const [activeLearningItem, setActiveLearningItem] = useState<LearningItemDto | null>(null);
+  const [activeAssignment, setActiveAssignment] = useState<any | null>(null);
+  const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
+  const [isLearningItemModalOpen, setIsLearningItemModalOpen] = useState(false);
+  const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteItemName, setDeleteItemName] = useState('');
+  const [deleteItemType, setDeleteItemType] = useState<'module' | 'material' | 'assignment'>('module');
+  const [deleteItemId, setDeleteItemId] = useState('');
+
+  const createModuleMutation = useCreateModule(courseId);
+  const updateModuleMutation = useUpdateModule(courseId);
+  const deleteModuleMutation = useDeleteModule(courseId);
+
+  const createLearningItemMutation = useCreateLearningItem();
+  const updateLearningItemMutation = useUpdateLearningItem();
+  const deleteLearningItemMutation = useDeleteLearningItem();
+
+  const createAssignmentMutation = useCreateCanonicalAssignment();
+  const updateAssignmentMutation = useUpdateCanonicalAssignment();
+  const deleteAssignmentMutation = useDeleteCanonicalAssignment();
+
+  const handleModuleSubmit = async (request: ModuleRequest) => {
+    if (activeModule) {
+      await updateModuleMutation.mutateAsync({ moduleId: activeModule.id, request });
+      showToast('Module updated successfully.');
+    } else {
+      await createModuleMutation.mutateAsync(request);
+      showToast('Module created successfully.');
+    }
+  };
+
+  const handleDeleteModule = (moduleId: string) => {
+    const mod = modules.find((m) => m.id === moduleId);
+    if (!mod) return;
+    setDeleteItemId(moduleId);
+    setDeleteItemName(mod.title);
+    setDeleteItemType('module');
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleLearningItemSubmit = async (request: LearningItemRequest) => {
+    if (activeLearningItem) {
+      await updateLearningItemMutation.mutateAsync({
+        learningItemId: activeLearningItem.id,
+        request,
+        courseId,
+      });
+      showToast('Learning item updated successfully.');
+    } else if (activeModuleId) {
+      await createLearningItemMutation.mutateAsync({
+        courseId,
+        moduleId: activeModuleId,
+        request,
+      });
+      showToast('Learning item created successfully.');
+    }
+  };
+
+  const handleDeleteLearningItem = (learningItemId: string) => {
+    let foundTitle = 'Learning Material';
+    for (const mod of modules) {
+      const item = mod.learningItems.find((i) => i.id === learningItemId);
+      if (item) {
+        foundTitle = item.title;
+        break;
+      }
+    }
+    setDeleteItemId(learningItemId);
+    setDeleteItemName(foundTitle);
+    setDeleteItemType('material');
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleAssignmentSubmit = async (request: AssignmentRequest) => {
+    if (activeAssignment) {
+      await updateAssignmentMutation.mutateAsync({
+        assignmentId: activeAssignment.id,
+        request,
+      });
+      showToast('Assignment updated successfully.');
+    } else if (activeModuleId) {
+      await createAssignmentMutation.mutateAsync({
+        courseId,
+        moduleId: activeModuleId,
+        request,
+      });
+      showToast('Assignment created successfully.');
+    }
+  };
+
+  const handleDeleteAssignment = (assignmentId: string) => {
+    let foundTitle = 'Assignment';
+    for (const mod of modules) {
+      const ass = mod.assignments.find((a) => a.id === assignmentId);
+      if (ass) {
+        foundTitle = ass.title;
+        break;
+      }
+    }
+    setDeleteItemId(assignmentId);
+    setDeleteItemName(foundTitle);
+    setDeleteItemType('assignment');
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (deleteItemType === 'module') {
+      await deleteModuleMutation.mutateAsync(deleteItemId);
+      showToast('Module deleted successfully.');
+    } else if (deleteItemType === 'material') {
+      await deleteLearningItemMutation.mutateAsync({ learningItemId: deleteItemId, courseId });
+      showToast('Learning item archived successfully.');
+    } else if (deleteItemType === 'assignment') {
+      await deleteAssignmentMutation.mutateAsync({ assignmentId: deleteItemId, courseId });
+      showToast('Assignment archived successfully.');
+    }
+  };
 
   const { data: currentUser, isLoading: isUserLoading } = useCurrentUser();
   const { data: overview, isLoading: isOverviewLoading, error: overviewError } = useCourseOverview(courseId);
@@ -161,7 +305,33 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
         courseRole={courseRole}
       />
 
-      {isCourseStaff && <StaffToolbar courseId={courseId} onTodo={showToast} />}
+      {isCourseStaff && (
+        <StaffToolbar
+          courseId={courseId}
+          onAddModule={() => {
+            setActiveModule(null);
+            setIsModuleModalOpen(true);
+          }}
+          onAddLearningItem={() => {
+            if (modules.length === 0) {
+              showToast('Please create a module first.');
+              return;
+            }
+            setActiveModuleId(modules[0].id);
+            setActiveLearningItem(null);
+            setIsLearningItemModalOpen(true);
+          }}
+          onAddAssignment={() => {
+            if (modules.length === 0) {
+              showToast('Please create a module first.');
+              return;
+            }
+            setActiveModuleId(modules[0].id);
+            setActiveAssignment(null);
+            setIsAssignmentModalOpen(true);
+          }}
+        />
+      )}
 
       <nav className="flex flex-wrap gap-2 border-b pb-0" style={{ borderColor: 'var(--border-default)' }}>
         {tabs.map((tab) => (
@@ -183,7 +353,40 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
         />
       )}
 
-      {activeTab === 'modules' && <ModulesPanel modules={modules} courseId={courseId} isCourseStaff={isCourseStaff} />}
+      {activeTab === 'modules' && (
+        <ModulesPanel
+          modules={modules}
+          courseId={courseId}
+          isCourseStaff={isCourseStaff}
+          onEditModule={(mod) => {
+            setActiveModule(mod);
+            setIsModuleModalOpen(true);
+          }}
+          onDeleteModule={handleDeleteModule}
+          onAddLearningItem={(moduleId) => {
+            setActiveModuleId(moduleId);
+            setActiveLearningItem(null);
+            setIsLearningItemModalOpen(true);
+          }}
+          onEditLearningItem={(item, moduleId) => {
+            setActiveModuleId(moduleId);
+            setActiveLearningItem(item);
+            setIsLearningItemModalOpen(true);
+          }}
+          onDeleteLearningItem={handleDeleteLearningItem}
+          onAddAssignment={(moduleId) => {
+            setActiveModuleId(moduleId);
+            setActiveAssignment(null);
+            setIsAssignmentModalOpen(true);
+          }}
+          onEditAssignment={(assignment, moduleId) => {
+            setActiveModuleId(moduleId);
+            setActiveAssignment(assignment);
+            setIsAssignmentModalOpen(true);
+          }}
+          onDeleteAssignment={handleDeleteAssignment}
+        />
+      )}
 
       {activeTab === 'grades' && (
         <GradesPanel courseId={courseId} isCourseStaff={isCourseStaff} gradebook={gradebook} />
@@ -191,6 +394,47 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
 
       {activeTab === 'members' && (
         <MembersPanel members={filteredMembers} search={memberSearch} onSearch={setMemberSearch} />
+      )}
+
+      {isModuleModalOpen && (
+        <ModuleFormModal
+          isOpen={isModuleModalOpen}
+          onClose={() => setIsModuleModalOpen(false)}
+          onSubmit={handleModuleSubmit}
+          initialData={activeModule}
+          loading={createModuleMutation.isPending || updateModuleMutation.isPending}
+        />
+      )}
+
+      {isLearningItemModalOpen && (
+        <LearningItemFormModal
+          isOpen={isLearningItemModalOpen}
+          onClose={() => setIsLearningItemModalOpen(false)}
+          onSubmit={handleLearningItemSubmit}
+          initialData={activeLearningItem}
+          loading={createLearningItemMutation.isPending || updateLearningItemMutation.isPending}
+        />
+      )}
+
+      {isAssignmentModalOpen && (
+        <AssignmentFormModal
+          isOpen={isAssignmentModalOpen}
+          onClose={() => setIsAssignmentModalOpen(false)}
+          onSubmit={handleAssignmentSubmit}
+          initialData={activeAssignment}
+          loading={createAssignmentMutation.isPending || updateAssignmentMutation.isPending}
+        />
+      )}
+
+      {isDeleteModalOpen && (
+        <DeleteConfirmationModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={handleConfirmDelete}
+          itemName={deleteItemName}
+          itemType={deleteItemType}
+          loading={deleteModuleMutation.isPending || deleteLearningItemMutation.isPending || deleteAssignmentMutation.isPending}
+        />
       )}
     </div>
   );
@@ -246,7 +490,17 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function StaffToolbar({ courseId, onTodo }: { courseId: string; onTodo: (message: string) => void }) {
+function StaffToolbar({
+  courseId,
+  onAddModule,
+  onAddLearningItem,
+  onAddAssignment,
+}: {
+  courseId: string;
+  onAddModule: () => void;
+  onAddLearningItem: () => void;
+  onAddAssignment: () => void;
+}) {
   return (
     <section className="card">
       <div className="card-body flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -262,13 +516,13 @@ function StaffToolbar({ courseId, onTodo }: { courseId: string; onTodo: (message
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" className="btn btn-secondary" onClick={() => onTodo('Module editor is not wired in this pass yet.')}>
+          <button type="button" className="btn btn-secondary" onClick={onAddModule}>
             Manage modules
           </button>
-          <button type="button" className="btn btn-primary" onClick={() => onTodo('Learning item builder is not wired in this pass yet.')}>
+          <button type="button" className="btn btn-primary" onClick={onAddLearningItem}>
             + Learning item
           </button>
-          <button type="button" className="btn btn-primary" onClick={() => onTodo('Assignment builder is not wired in this pass yet.')}>
+          <button type="button" className="btn btn-primary" onClick={onAddAssignment}>
             + Assignment
           </button>
           <Link href={`/courses/${courseId}/gradebook`} className="btn btn-secondary">
@@ -376,7 +630,31 @@ function OverviewPanel({
   );
 }
 
-function ModulesPanel({ modules, courseId, isCourseStaff }: { modules: CourseModuleDto[]; courseId: string; isCourseStaff: boolean }) {
+function ModulesPanel({
+  modules,
+  courseId,
+  isCourseStaff,
+  onEditModule,
+  onDeleteModule,
+  onAddLearningItem,
+  onEditLearningItem,
+  onDeleteLearningItem,
+  onAddAssignment,
+  onEditAssignment,
+  onDeleteAssignment,
+}: {
+  modules: CourseModuleDto[];
+  courseId: string;
+  isCourseStaff: boolean;
+  onEditModule: (module: CourseModuleDto) => void;
+  onDeleteModule: (moduleId: string) => void;
+  onAddLearningItem: (moduleId: string) => void;
+  onEditLearningItem: (item: LearningItemDto, moduleId: string) => void;
+  onDeleteLearningItem: (itemId: string) => void;
+  onAddAssignment: (moduleId: string) => void;
+  onEditAssignment: (assignment: AssignmentListItemDto, moduleId: string) => void;
+  onDeleteAssignment: (assignmentId: string) => void;
+}) {
   if (modules.length === 0) {
     return <EmptyState framed title="No modules yet" description="There are no active modules registered for this course." />;
   }
@@ -386,46 +664,136 @@ function ModulesPanel({ modules, courseId, isCourseStaff }: { modules: CourseMod
       {modules.map((module) => (
         <article key={module.id} className="card">
           <div className="card-header flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>
-                Module {module.order}
-              </p>
-              <h2 className="mt-1 text-lg font-semibold">{module.title}</h2>
-              {module.description && <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>{module.description}</p>}
+            <div className="flex items-start gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>
+                  Module {module.order}
+                </p>
+                <h2 className="mt-1 text-lg font-semibold">{module.title}</h2>
+                {module.description && <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>{module.description}</p>}
+              </div>
+              {isCourseStaff && (
+                <div className="flex gap-1 ml-4 mt-5">
+                  <button
+                    onClick={() => onEditModule(module)}
+                    className="p-1 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] hover:text-[var(--text-primary)] transition cursor-pointer"
+                    title="Edit Module"
+                  >
+                    <PencilIcon className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => onDeleteModule(module.id)}
+                    className="p-1 rounded-md text-red-500 hover:bg-red-500/10 transition cursor-pointer"
+                    title="Delete Module"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
             </div>
             {isCourseStaff && <span className="badge">{module.availabilityStatus || 'VISIBLE'}</span>}
           </div>
 
           <div className="card-body grid gap-6 lg:grid-cols-2">
-            <ModuleColumn title="Learning materials" count={module.learningItems.length}>
+            <ModuleColumn
+              title="Learning materials"
+              count={module.learningItems.length}
+              isCourseStaff={isCourseStaff}
+              onAddClick={() => onAddLearningItem(module.id)}
+            >
               {module.learningItems.length > 0 ? (
                 module.learningItems.map((item) => (
-                  <Link key={item.id} href={`/learning-items/${item.id}?courseId=${courseId}`} className="block rounded-md border px-3 py-2" style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-base)' }}>
-                    <p className="text-sm font-medium">{item.title}</p>
-                    <p className="mt-1 line-clamp-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                      {item.description || String(item.type).toUpperCase()}
-                    </p>
-                  </Link>
+                  <div
+                    key={item.id}
+                    className="group relative flex items-center justify-between gap-2 rounded-md border px-3 py-2 transition hover:bg-[var(--bg-overlay)]"
+                    style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-base)' }}
+                  >
+                    <Link href={`/learning-items/${item.id}?courseId=${courseId}`} className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{item.title}</p>
+                      <p className="mt-1 line-clamp-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {item.description || String(item.type).toUpperCase()}
+                      </p>
+                    </Link>
+                    {isCourseStaff && (
+                      <div className="flex gap-1 shrink-0 ml-2">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            onEditLearningItem(item, module.id);
+                          }}
+                          className="p-1 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[var(--text-primary)] transition cursor-pointer"
+                          title="Edit Material"
+                        >
+                          <PencilIcon className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            onDeleteLearningItem(item.id);
+                          }}
+                          className="p-1 rounded-md text-red-500 hover:bg-red-500/10 transition cursor-pointer"
+                          title="Delete Material"
+                        >
+                          <TrashIcon className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 ))
               ) : (
                 <EmptyState title="No learning items" description="Materials will appear here." />
               )}
             </ModuleColumn>
 
-            <ModuleColumn title="Assignments" count={module.assignments.length}>
+            <ModuleColumn
+              title="Assignments"
+              count={module.assignments.length}
+              isCourseStaff={isCourseStaff}
+              onAddClick={() => onAddAssignment(module.id)}
+            >
               {module.assignments.length > 0 ? (
                 module.assignments.map((assignment) => (
-                  <Link key={assignment.id} href={`/assignments/${assignment.id}`} className="block rounded-md border px-3 py-2" style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-base)' }}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{assignment.title}</p>
-                        <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                          {String(assignment.type).replaceAll('_', ' ')} · {assignment.maxPoints} pts
-                        </p>
+                  <div
+                    key={assignment.id}
+                    className="group relative flex items-center justify-between gap-2 rounded-md border px-3 py-2 transition hover:bg-[var(--bg-overlay)]"
+                    style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-base)' }}
+                  >
+                    <Link href={`/assignments/${assignment.id}`} className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{assignment.title}</p>
+                          <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                            {String(assignment.type).replaceAll('_', ' ')} · {assignment.maxPoints} pts
+                          </p>
+                        </div>
+                        <span className="badge">{assignment.grade?.points ?? assignment.status}</span>
                       </div>
-                      <span className="badge">{assignment.grade?.points ?? assignment.status}</span>
-                    </div>
-                  </Link>
+                    </Link>
+                    {isCourseStaff && (
+                      <div className="flex gap-1 shrink-0 ml-2">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            onEditAssignment(assignment, module.id);
+                          }}
+                          className="p-1 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[var(--text-primary)] transition cursor-pointer"
+                          title="Edit Assignment"
+                        >
+                          <PencilIcon className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            onDeleteAssignment(assignment.id);
+                          }}
+                          className="p-1 rounded-md text-red-500 hover:bg-red-500/10 transition cursor-pointer"
+                          title="Delete Assignment"
+                        >
+                          <TrashIcon className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 ))
               ) : (
                 <EmptyState title="No assignments" description="Assignments will appear here." />
@@ -438,12 +806,34 @@ function ModulesPanel({ modules, courseId, isCourseStaff }: { modules: CourseMod
   );
 }
 
-function ModuleColumn({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
+function ModuleColumn({
+  title,
+  count,
+  onAddClick,
+  isCourseStaff,
+  children,
+}: {
+  title: string;
+  count: number;
+  onAddClick?: () => void;
+  isCourseStaff?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: 'var(--border-subtle)' }}>
-        <h3 className="text-sm font-semibold">{title}</h3>
-        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{count}</span>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold">{title}</h3>
+          <span className="text-xs px-1.5 py-0.5 rounded-full bg-[var(--bg-base)] border border-[var(--border-subtle)]" style={{ color: 'var(--text-muted)' }}>{count}</span>
+        </div>
+        {isCourseStaff && onAddClick && (
+          <button
+            onClick={onAddClick}
+            className="flex items-center gap-1 text-xs font-semibold text-[var(--text-primary)] hover:underline cursor-pointer"
+          >
+            <PlusIcon className="h-3 w-3" /> Add
+          </button>
+        )}
       </div>
       <div className="space-y-2">{children}</div>
     </section>

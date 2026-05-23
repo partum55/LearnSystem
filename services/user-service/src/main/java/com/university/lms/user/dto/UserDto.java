@@ -13,7 +13,6 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -39,11 +38,9 @@ public class UserDto implements Serializable {
     private UserLocale locale;
     private String theme;
     private String avatarUrl;
-    private String bio;
     @JsonProperty("isActive")
     private boolean isActive;
     private boolean emailVerified;
-    private Map<String, Object> preferences;
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
