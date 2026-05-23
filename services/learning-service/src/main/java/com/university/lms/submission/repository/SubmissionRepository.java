@@ -29,16 +29,33 @@ public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
     @EntityGraph(attributePaths = {"files", "comments"})
     List<Submission> findByAssignmentIdAndUserIdOrderByCreatedAtAsc(UUID assignmentId, UUID userId);
 
-    @Query("""
-            SELECT s FROM Submission s
-            WHERE s.assignmentId = :assignmentId
+    @Query(value = """
+            SELECT s.* FROM learning.assignment_submissions s
+            LEFT JOIN public.users u ON s.user_id = u.id
+            WHERE s.assignment_id = :assignmentId
               AND (:status IS NULL OR s.status = UPPER(:status))
               AND (
                 :search IS NULL
-                OR LOWER(COALESCE(s.studentName, '')) LIKE LOWER(CONCAT('%', :search, '%'))
-                OR LOWER(COALESCE(s.studentEmail, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+                OR LOWER(COALESCE(u.first_name, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+                OR LOWER(COALESCE(u.last_name, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+                OR LOWER(COALESCE(u.display_name, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+                OR LOWER(COALESCE(u.email, '')) LIKE LOWER(CONCAT('%', :search, '%'))
               )
-            """)
+            """,
+            countQuery = """
+            SELECT COUNT(*) FROM learning.assignment_submissions s
+            LEFT JOIN public.users u ON s.user_id = u.id
+            WHERE s.assignment_id = :assignmentId
+              AND (:status IS NULL OR s.status = UPPER(:status))
+              AND (
+                :search IS NULL
+                OR LOWER(COALESCE(u.first_name, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+                OR LOWER(COALESCE(u.last_name, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+                OR LOWER(COALESCE(u.display_name, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+                OR LOWER(COALESCE(u.email, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+              )
+            """,
+            nativeQuery = true)
     Page<Submission> findReviewQueue(
             @Param("assignmentId") UUID assignmentId,
             @Param("status") String status,
