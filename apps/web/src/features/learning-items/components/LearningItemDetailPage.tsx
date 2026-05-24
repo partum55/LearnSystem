@@ -731,6 +731,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
                             maxBlocks={1}
                             allowedTypes={[localType.toLowerCase() as any]}
                             placeholder={`Type / to insert a ${localType.toLowerCase()} block…`}
+                            sidePanel={false}
                           />
                         )}
 
@@ -744,6 +745,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
                                 maxBlocks={3}
                                 allowedTypes={['paragraph', 'code', 'math', 'mermaid']}
                                 placeholder="Formulate your question stem or scenario..."
+                                sidePanel={false}
                               />
                             </div>
 

@@ -14,7 +14,7 @@ import { MathRenderer } from './MathRenderer';
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
-// ─── Slash command groups ─────────────────────────────────────────────────────
+// ─── Block type definitions ───────────────────────────────────────────────────
 
 interface SlashItem {
   type: RichBlockType;
@@ -24,7 +24,7 @@ interface SlashItem {
   listType?: 'bullet' | 'ordered';
 }
 
-const SLASH_GROUPS: Array<{ label: string; items: SlashItem[] }> = [
+const PANEL_GROUPS: Array<{ label: string; items: SlashItem[] }> = [
   {
     label: 'Text',
     items: [
@@ -37,17 +37,17 @@ const SLASH_GROUPS: Array<{ label: string; items: SlashItem[] }> = [
   {
     label: 'Lists',
     items: [
-      { type: 'list',  label: 'Bullet List',   icon: '•',  listType: 'bullet'  },
-      { type: 'list',  label: 'Numbered List', icon: '1.', listType: 'ordered' },
-      { type: 'quote', label: 'Quote',         icon: '"'                        },
+      { type: 'list',  label: 'Bullet',   icon: '•',  listType: 'bullet'  },
+      { type: 'list',  label: 'Numbered', icon: '1.', listType: 'ordered' },
+      { type: 'quote', label: 'Quote',    icon: '"'                        },
     ],
   },
   {
-    label: 'Code & Science',
+    label: 'Code',
     items: [
-      { type: 'code',    label: 'Code Block', icon: '</>' },
-      { type: 'math',    label: 'Math',       icon: '∑'   },
-      { type: 'mermaid', label: 'Diagram',    icon: '⬡'   },
+      { type: 'code',    label: 'Code',    icon: '</>' },
+      { type: 'math',    label: 'Math',    icon: '∑'   },
+      { type: 'mermaid', label: 'Diagram', icon: '⬡'   },
     ],
   },
   {
@@ -55,19 +55,14 @@ const SLASH_GROUPS: Array<{ label: string; items: SlashItem[] }> = [
     items: [
       { type: 'video', label: 'Video', icon: '▶' },
       { type: 'file',  label: 'File',  icon: '↓' },
-    ],
-  },
-  {
-    label: 'Data',
-    items: [
       { type: 'table', label: 'Table', icon: '⊞' },
     ],
   },
 ];
 
-const ALL_SLASH_ITEMS: SlashItem[] = SLASH_GROUPS.flatMap((g) => g.items);
+const ALL_SLASH_ITEMS: SlashItem[] = PANEL_GROUPS.flatMap((g) => g.items);
 
-// ─── Editor props ─────────────────────────────────────────────────────────────
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface RichContentEditorProps {
   value?: RichContentDocument;
@@ -76,6 +71,8 @@ interface RichContentEditorProps {
   allowedTypes?: RichBlockType[];
   placeholder?: string;
   className?: string;
+  /** Show the left block-type panel. Default true. Set false for compact embedded uses. */
+  sidePanel?: boolean;
 }
 
 // ─── Main editor ─────────────────────────────────────────────────────────────
@@ -87,20 +84,18 @@ export function RichContentEditor({
   allowedTypes = ['paragraph', 'heading', 'list', 'quote', 'code', 'mermaid', 'math', 'video', 'file', 'table'],
   placeholder = 'Start writing… or type / to insert a block',
   className = '',
+  sidePanel = true,
 }: RichContentEditorProps) {
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
   const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null);
   const [slashMenu, setSlashMenu] = useState<{ blockId: string; query: string } | null>(null);
   const [slashMenuFlatIndex, setSlashMenuFlatIndex] = useState(0);
-  // Selection toolbar (B/I)
   const [selectionBlockId, setSelectionBlockId] = useState<string | null>(null);
 
   const blockRefs = useRef<Map<string, HTMLElement>>(new Map());
-  // Map blockId → primary input element (textarea / input[type=text])
   const inputRefs = useRef<Map<string, HTMLTextAreaElement | HTMLInputElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Compute slash menu filtered list
   const filteredSlashItems: SlashItem[] = slashMenu
     ? ALL_SLASH_ITEMS.filter(
         (item) =>
@@ -111,7 +106,6 @@ export function RichContentEditor({
       )
     : [];
 
-  // When filtered list changes, clamp flat index
   useEffect(() => {
     setSlashMenuFlatIndex((i) => Math.min(i, Math.max(filteredSlashItems.length - 1, 0)));
   }, [filteredSlashItems.length]);
@@ -139,7 +133,7 @@ export function RichContentEditor({
           el.setSelectionRange(len, len);
         }
       }
-    }, 20);
+    }, 30);
   }, []);
 
   const deleteBlock = useCallback(
@@ -159,8 +153,8 @@ export function RichContentEditor({
         type,
         data: {
           text: ['paragraph', 'heading', 'quote'].includes(type) ? '' : undefined,
-          level: type === 'heading' ? 1 : undefined,
-          listType: type === 'list' ? 'bullet' : undefined,
+          level: type === 'heading' ? (extra?.level ?? 1) : undefined,
+          listType: type === 'list' ? (extra?.listType ?? 'bullet') : undefined,
           items: type === 'list' ? [''] : undefined,
           code: ['code', 'mermaid', 'math'].includes(type) ? '' : undefined,
           language: type === 'code' ? 'javascript' : undefined,
@@ -170,6 +164,7 @@ export function RichContentEditor({
             ? [['Column 1', 'Column 2', 'Column 3'], ['', '', ''], ['', '', '']]
             : undefined,
           ...extra,
+          // extra.level / listType already applied above; avoid double-apply
         },
       };
       const next = [...value.blocks];
@@ -180,7 +175,11 @@ export function RichContentEditor({
         next.splice(idx + 1, 0, newBlock);
       }
       updateBlocks(next);
-      focusBlock(newBlock.id, false);
+      // Activate + focus new block after React re-renders
+      setTimeout(() => {
+        setFocusedBlockId(newBlock.id);
+        focusBlock(newBlock.id, false);
+      }, 10);
       return newBlock.id;
     },
     [value.blocks, maxBlocks, updateBlocks, focusBlock]
@@ -198,7 +197,7 @@ export function RichContentEditor({
     [value.blocks, updateBlocks]
   );
 
-  // ── Slash command apply ────────────────────────────────────────────────────
+  // ── Slash apply ────────────────────────────────────────────────────────────
 
   const applySlashItem = useCallback(
     (item: SlashItem, blockId: string) => {
@@ -215,24 +214,23 @@ export function RichContentEditor({
       if (['video', 'file'].includes(item.type)) extra.url = '';
       if (item.type === 'file') extra.filename = '';
       if (item.type === 'table') extra.rows = [['Column 1', 'Column 2', 'Column 3'], ['', '', ''], ['', '', '']];
-
       const updated: RichBlock = {
         ...value.blocks[idx],
         type: item.type,
-        data: {
-          text: ['paragraph', 'heading', 'quote'].includes(item.type) ? '' : undefined,
-          ...extra,
-        },
+        data: { text: ['paragraph', 'heading', 'quote'].includes(item.type) ? '' : undefined, ...extra },
       };
       const next = [...value.blocks];
       next[idx] = updated;
       updateBlocks(next);
-      focusBlock(blockId, false);
+      setTimeout(() => {
+        setFocusedBlockId(blockId);
+        focusBlock(blockId, false);
+      }, 10);
     },
     [value.blocks, updateBlocks, focusBlock]
   );
 
-  // ── Inline formatting (bold / italic) ─────────────────────────────────────
+  // ── Inline formatting ─────────────────────────────────────────────────────
 
   const wrapSelection = useCallback(
     (blockId: string, prefix: string, suffix: string) => {
@@ -271,27 +269,21 @@ export function RichContentEditor({
     [slashMenu, updateBlockData]
   );
 
-  // ── Shared keyboard handler ────────────────────────────────────────────────
+  // ── Keyboard handler ─────────────────────────────────────────────────────
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>, block: RichBlock) => {
       const idx = value.blocks.findIndex((b) => b.id === block.id);
 
-      // Inline formatting shortcuts
       if ((e.metaKey || e.ctrlKey) && !e.shiftKey) {
         if (e.key === 'b' && ['paragraph', 'heading', 'quote'].includes(block.type)) {
-          e.preventDefault();
-          wrapSelection(block.id, '**', '**');
-          return;
+          e.preventDefault(); wrapSelection(block.id, '**', '**'); return;
         }
         if (e.key === 'i' && ['paragraph', 'heading', 'quote'].includes(block.type)) {
-          e.preventDefault();
-          wrapSelection(block.id, '_', '_');
-          return;
+          e.preventDefault(); wrapSelection(block.id, '_', '_'); return;
         }
       }
 
-      // Slash menu navigation
       if (slashMenu?.blockId === block.id && filteredSlashItems.length > 0) {
         if (e.key === 'ArrowDown') { e.preventDefault(); setSlashMenuFlatIndex((i) => Math.min(i + 1, filteredSlashItems.length - 1)); return; }
         if (e.key === 'ArrowUp')   { e.preventDefault(); setSlashMenuFlatIndex((i) => Math.max(i - 1, 0)); return; }
@@ -299,7 +291,6 @@ export function RichContentEditor({
         if (e.key === 'Escape')    { setSlashMenu(null); return; }
       }
 
-      // Enter → split / new paragraph (skip for code/mermaid/math)
       if (e.key === 'Enter' && !e.shiftKey && !['code', 'mermaid', 'math', 'video', 'file', 'table'].includes(block.type)) {
         e.preventDefault();
         const target = e.target as HTMLTextAreaElement | HTMLInputElement;
@@ -311,7 +302,6 @@ export function RichContentEditor({
         return;
       }
 
-      // Backspace on empty → delete block
       if (e.key === 'Backspace' && value.blocks.length > 1) {
         const isEmpty =
           (!block.data.text || block.data.text === '') &&
@@ -321,7 +311,6 @@ export function RichContentEditor({
         if (isEmpty) { e.preventDefault(); deleteBlock(block.id); return; }
       }
 
-      // Arrow up/down to navigate blocks
       if (e.key === 'ArrowUp' && idx > 0) {
         const target = e.target as HTMLTextAreaElement;
         if ((target.selectionStart ?? 0) === 0) {
@@ -375,161 +364,252 @@ export function RichContentEditor({
   const isLimitReached = maxBlocks ? value.blocks.length >= maxBlocks : false;
   const lastBlockId = value.blocks[value.blocks.length - 1]?.id ?? null;
 
+  const handlePanelInsert = useCallback(
+    (item: SlashItem) => {
+      const afterId = focusedBlockId ?? lastBlockId;
+      insertBlock(afterId, item.type, { level: item.level, listType: item.listType });
+    },
+    [focusedBlockId, lastBlockId, insertBlock]
+  );
+
+  // ── Render: empty state ───────────────────────────────────────────────────
+
   if (value.blocks.length === 0) {
     return (
-      <div
-        ref={containerRef}
-        className={className}
-        style={{ cursor: 'text', padding: '4px 0', minHeight: '48px' }}
-        onClick={() => !isLimitReached && insertBlock(null, 'paragraph')}
-      >
-        <p style={{ color: 'var(--text-faint)', fontSize: '0.9375rem', lineHeight: 1.75, fontFamily: 'var(--font-body)', userSelect: 'none' }}>
-          {placeholder}
-        </p>
+      <div ref={containerRef} className={className} style={{ display: 'flex', gap: 0, alignItems: 'flex-start' }}>
+        {sidePanel && (
+          <DocSidePanel
+            groups={PANEL_GROUPS}
+            allowedTypes={allowedTypes}
+            isLimitReached={isLimitReached}
+            onInsert={handlePanelInsert}
+          />
+        )}
+        <div
+          style={{ flex: 1, cursor: 'text', padding: '8px 0 8px 16px', minHeight: '48px' }}
+          onClick={() => !isLimitReached && insertBlock(null, 'paragraph')}
+        >
+          <p style={{ color: 'var(--text-faint)', fontSize: '0.9375rem', lineHeight: 1.75, fontFamily: 'var(--font-body)', userSelect: 'none' }}>
+            {placeholder}
+          </p>
+        </div>
       </div>
     );
   }
 
+  // ── Render: document canvas ───────────────────────────────────────────────
+
   return (
-    <div
-      ref={containerRef}
-      className={className}
-      style={{ paddingLeft: '36px', paddingRight: '28px', position: 'relative' }}
-    >
-      {value.blocks.map((block, idx) => {
-        const isHovered  = hoveredBlockId === block.id;
-        const isFocused  = focusedBlockId === block.id;
-        const hasSelection = selectionBlockId === block.id;
-        const isTextBlock = ['paragraph', 'heading', 'quote'].includes(block.type);
+    <div ref={containerRef} className={className} style={{ display: 'flex', gap: 0, alignItems: 'flex-start' }}>
+      {/* Left block-type panel */}
+      {sidePanel && (
+        <DocSidePanel
+          groups={PANEL_GROUPS}
+          allowedTypes={allowedTypes}
+          isLimitReached={isLimitReached}
+          onInsert={handlePanelInsert}
+        />
+      )}
 
-        return (
-          <div
-            key={block.id}
-            data-block-id={block.id}
-            ref={(el) => { if (el) blockRefs.current.set(block.id, el); else blockRefs.current.delete(block.id); }}
-            style={{ position: 'relative', margin: block.type === 'heading' ? '18px 0 4px' : '3px 0' }}
-            onMouseEnter={() => setHoveredBlockId(block.id)}
-            onMouseLeave={() => setHoveredBlockId(null)}
-          >
-            {/* ── Left handle ─────────────────────────────────── */}
-            <div style={{
-              position: 'absolute', left: '-32px', top: '4px',
-              display: 'flex', flexDirection: 'column', gap: '1px',
-              opacity: isHovered ? 1 : 0, transition: 'opacity 120ms',
-              pointerEvents: isHovered ? 'auto' : 'none',
-            }}>
-              <button type="button" onClick={() => moveBlock(block.id, 'up')} disabled={idx === 0} title="Move up"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', padding: '1px 3px', fontSize: '9px', opacity: idx === 0 ? 0.2 : 0.7, lineHeight: 1 }}>▲</button>
-              <button type="button" onClick={() => moveBlock(block.id, 'down')} disabled={idx === value.blocks.length - 1} title="Move down"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', padding: '1px 3px', fontSize: '9px', opacity: idx === value.blocks.length - 1 ? 0.2 : 0.7, lineHeight: 1 }}>▼</button>
-            </div>
+      {/* Document canvas */}
+      <div style={{ flex: 1, paddingLeft: sidePanel ? '20px' : '36px', paddingRight: '28px', position: 'relative', minWidth: 0 }}>
+        {value.blocks.map((block, idx) => {
+          const isHovered    = hoveredBlockId === block.id;
+          const isFocused    = focusedBlockId === block.id;
+          const hasSelection = selectionBlockId === block.id;
+          const isTextBlock  = ['paragraph', 'heading', 'quote'].includes(block.type);
 
-            {/* ── Selection toolbar (B/I) ──────────────────────── */}
-            {hasSelection && isTextBlock && (
+          return (
+            <div
+              key={block.id}
+              data-block-id={block.id}
+              ref={(el) => { if (el) blockRefs.current.set(block.id, el); else blockRefs.current.delete(block.id); }}
+              style={{ position: 'relative', margin: block.type === 'heading' ? '18px 0 4px' : '3px 0' }}
+              onMouseEnter={() => setHoveredBlockId(block.id)}
+              onMouseLeave={() => setHoveredBlockId(null)}
+            >
+              {/* Move handle */}
               <div style={{
-                position: 'absolute', top: '-32px', left: 0, zIndex: 20,
-                display: 'flex', alignItems: 'center',
-                background: 'var(--bg-overlay)', border: '1px solid var(--border-default)',
-                borderRadius: '99px', overflow: 'hidden',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
+                position: 'absolute', left: '-28px', top: '4px',
+                display: 'flex', flexDirection: 'column', gap: '1px',
+                opacity: isHovered ? 1 : 0, transition: 'opacity 120ms',
+                pointerEvents: isHovered ? 'auto' : 'none',
               }}>
-                <button
-                  type="button"
-                  onMouseDown={(e) => { e.preventDefault(); wrapSelection(block.id, '**', '**'); }}
-                  style={{ padding: '4px 10px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', borderRight: '1px solid var(--border-subtle)' }}
-                  title="Bold (⌘B)"
-                >B</button>
-                <button
-                  type="button"
-                  onMouseDown={(e) => { e.preventDefault(); wrapSelection(block.id, '_', '_'); }}
-                  style={{ padding: '4px 10px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontStyle: 'italic', color: 'var(--text-primary)' }}
-                  title="Italic (⌘I)"
-                >I</button>
+                <button type="button" onClick={() => moveBlock(block.id, 'up')} disabled={idx === 0} title="Move up"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', padding: '1px 3px', fontSize: '9px', opacity: idx === 0 ? 0.2 : 0.7, lineHeight: 1 }}>▲</button>
+                <button type="button" onClick={() => moveBlock(block.id, 'down')} disabled={idx === value.blocks.length - 1} title="Move down"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', padding: '1px 3px', fontSize: '9px', opacity: idx === value.blocks.length - 1 ? 0.2 : 0.7, lineHeight: 1 }}>▼</button>
               </div>
-            )}
 
-            {/* ── Block content ────────────────────────────────── */}
-            <BlockEditor
-              block={block}
-              isFocused={isFocused}
-              onFocus={() => setFocusedBlockId(block.id)}
-              onBlur={() => { setFocusedBlockId(null); setSelectionBlockId(null); }}
-              onSelect={(blockId, hasSelection) => setSelectionBlockId(hasSelection ? blockId : null)}
-              onTextChange={handleTextChange}
-              onKeyDown={handleKeyDown}
-              onPaste={handlePaste}
-              onUpdateData={updateBlockData}
-              registerInput={(blockId, el) => {
-                if (el) inputRefs.current.set(blockId, el);
-                else inputRefs.current.delete(blockId);
-              }}
-            />
+              {/* B/I toolbar on text selection */}
+              {hasSelection && isTextBlock && (
+                <div style={{
+                  position: 'absolute', top: '-32px', left: 0, zIndex: 20,
+                  display: 'flex', alignItems: 'center',
+                  background: 'var(--bg-overlay)', border: '1px solid var(--border-default)',
+                  borderRadius: '99px', overflow: 'hidden',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
+                }}>
+                  <button type="button"
+                    onMouseDown={(e) => { e.preventDefault(); wrapSelection(block.id, '**', '**'); }}
+                    style={{ padding: '4px 10px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', borderRight: '1px solid var(--border-subtle)' }}
+                    title="Bold (⌘B)">B</button>
+                  <button type="button"
+                    onMouseDown={(e) => { e.preventDefault(); wrapSelection(block.id, '_', '_'); }}
+                    style={{ padding: '4px 10px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontStyle: 'italic', color: 'var(--text-primary)' }}
+                    title="Italic (⌘I)">I</button>
+                </div>
+              )}
 
-            {/* ── Delete button ────────────────────────────────── */}
-            {isHovered && value.blocks.length > 1 && (
-              <button type="button" onClick={() => deleteBlock(block.id)} title="Delete block"
-                style={{
-                  position: 'absolute', right: '-24px', top: '6px',
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: 'var(--text-faint)', padding: '2px 4px', fontSize: '11px', lineHeight: 1,
-                  opacity: 0.5, transition: 'opacity 120ms',
+              {/* Block content */}
+              <BlockEditor
+                block={block}
+                isFocused={isFocused}
+                onFocus={() => setFocusedBlockId(block.id)}
+                onBlur={() => { setFocusedBlockId(null); setSelectionBlockId(null); }}
+                onSelect={(blockId, hasSel) => setSelectionBlockId(hasSel ? blockId : null)}
+                onTextChange={handleTextChange}
+                onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
+                onUpdateData={updateBlockData}
+                onActivate={() => { setFocusedBlockId(block.id); focusBlock(block.id, false); }}
+                registerInput={(blockId, el) => {
+                  if (el) inputRefs.current.set(blockId, el);
+                  else inputRefs.current.delete(blockId);
                 }}
-                onMouseOver={(e) => (e.currentTarget.style.opacity = '1')}
-                onMouseOut={(e) => (e.currentTarget.style.opacity = '0.5')}
-              >✕</button>
-            )}
-
-            {/* ── Slash menu ───────────────────────────────────── */}
-            {slashMenu?.blockId === block.id && (
-              <SlashMenu
-                query={slashMenu.query}
-                groups={SLASH_GROUPS}
-                allowedTypes={allowedTypes}
-                filteredItems={filteredSlashItems}
-                activeIndex={slashMenuFlatIndex}
-                onSelect={(item) => applySlashItem(item, block.id)}
-                onHover={(i) => setSlashMenuFlatIndex(i)}
               />
-            )}
-          </div>
-        );
-      })}
 
-      {/* Add block */}
-      {!isLimitReached && (
-        <button
-          type="button"
-          onClick={() => insertBlock(lastBlockId, 'paragraph')}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            marginTop: '8px', padding: '3px 8px',
-            background: 'none', border: 'none', cursor: 'pointer',
-            color: 'var(--text-faint)', fontSize: '12px',
-            borderRadius: '4px', transition: 'all 120ms',
-          }}
-          onMouseOver={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}
-          onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-faint)'; e.currentTarget.style.background = 'none'; }}
-        >
-          <span style={{ fontSize: '15px', lineHeight: 1, fontWeight: 300 }}>+</span>
-          <span>Add block</span>
-        </button>
-      )}
+              {/* Delete button */}
+              {isHovered && value.blocks.length > 1 && (
+                <button type="button" onClick={() => deleteBlock(block.id)} title="Delete block"
+                  style={{
+                    position: 'absolute', right: '-24px', top: '6px',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--text-faint)', padding: '2px 4px', fontSize: '11px', lineHeight: 1,
+                    opacity: 0.5, transition: 'opacity 120ms',
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.opacity = '1')}
+                  onMouseOut={(e) => (e.currentTarget.style.opacity = '0.5')}
+                >✕</button>
+              )}
 
-      {maxBlocks && (
-        <p style={{ fontSize: '10px', color: 'var(--text-faint)', marginTop: '4px', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-          {value.blocks.length} / {maxBlocks}
-          {isLimitReached && <span style={{ color: 'var(--fn-warning)', marginLeft: '6px' }}>limit reached</span>}
-        </p>
-      )}
+              {/* Slash menu */}
+              {slashMenu?.blockId === block.id && (
+                <SlashMenu
+                  query={slashMenu.query}
+                  groups={PANEL_GROUPS}
+                  allowedTypes={allowedTypes}
+                  filteredItems={filteredSlashItems}
+                  activeIndex={slashMenuFlatIndex}
+                  onSelect={(item) => applySlashItem(item, block.id)}
+                  onHover={(i) => setSlashMenuFlatIndex(i)}
+                />
+              )}
+            </div>
+          );
+        })}
+
+        {/* Add block */}
+        {!isLimitReached && (
+          <button type="button"
+            onClick={() => insertBlock(lastBlockId, 'paragraph')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              marginTop: '8px', padding: '3px 8px',
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--text-faint)', fontSize: '12px',
+              borderRadius: '4px', transition: 'all 120ms',
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-faint)'; e.currentTarget.style.background = 'none'; }}
+          >
+            <span style={{ fontSize: '15px', lineHeight: 1, fontWeight: 300 }}>+</span>
+            <span>Add block</span>
+          </button>
+        )}
+
+        {maxBlocks && (
+          <p style={{ fontSize: '10px', color: 'var(--text-faint)', marginTop: '4px', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            {value.blocks.length} / {maxBlocks}
+            {isLimitReached && <span style={{ color: 'var(--fn-warning)', marginLeft: '6px' }}>limit reached</span>}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
 
-// ─── Slash menu component ──────────────────────────────────────────────────────
+// ─── Doc side panel ───────────────────────────────────────────────────────────
+
+interface DocSidePanelProps {
+  groups: typeof PANEL_GROUPS;
+  allowedTypes: RichBlockType[];
+  isLimitReached: boolean;
+  onInsert: (item: SlashItem) => void;
+}
+
+function DocSidePanel({ groups, allowedTypes, isLimitReached, onInsert }: DocSidePanelProps) {
+  return (
+    <div style={{
+      width: '112px',
+      flexShrink: 0,
+      borderRight: '1px solid var(--border-subtle)',
+      paddingRight: '10px',
+      paddingTop: '2px',
+    }}>
+      {groups.map((group, gi) => {
+        const visible = group.items.filter((i) => allowedTypes.includes(i.type));
+        if (visible.length === 0) return null;
+        return (
+          <div key={group.label} style={{ marginBottom: gi < groups.length - 1 ? '8px' : 0 }}>
+            <p style={{
+              fontSize: '8px', fontWeight: 800, color: 'var(--text-faint)',
+              textTransform: 'uppercase', letterSpacing: '0.08em',
+              padding: '5px 4px 2px', margin: 0,
+            }}>{group.label}</p>
+            {visible.map((item) => (
+              <button
+                key={`${item.type}-${item.label}`}
+                type="button"
+                onClick={() => !isLimitReached && onInsert(item)}
+                disabled={isLimitReached}
+                title={item.label}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  width: '100%', padding: '3px 4px', marginBottom: '1px',
+                  background: 'none', border: 'none',
+                  cursor: isLimitReached ? 'not-allowed' : 'pointer',
+                  borderRadius: '4px', textAlign: 'left',
+                  opacity: isLimitReached ? 0.4 : 1,
+                  transition: 'background 80ms',
+                }}
+                onMouseOver={(e) => { if (!isLimitReached) e.currentTarget.style.background = 'var(--bg-elevated)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.background = 'none'; }}
+              >
+                <span style={{
+                  width: '17px', height: '17px', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'var(--bg-base)', border: '1px solid var(--border-subtle)',
+                  borderRadius: '3px', fontSize: '8px', fontWeight: 700,
+                  color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)',
+                }}>{item.icon}</span>
+                <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+                  {item.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Slash menu ───────────────────────────────────────────────────────────────
 
 interface SlashMenuProps {
   query: string;
-  groups: typeof SLASH_GROUPS;
+  groups: typeof PANEL_GROUPS;
   allowedTypes: RichBlockType[];
   filteredItems: SlashItem[];
   activeIndex: number;
@@ -540,13 +620,11 @@ interface SlashMenuProps {
 function SlashMenu({ query, groups, allowedTypes, filteredItems, activeIndex, onSelect, onHover }: SlashMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Scroll active item into view
   useEffect(() => {
     const el = menuRef.current?.querySelector<HTMLElement>(`[data-slash-index="${activeIndex}"]`);
     el?.scrollIntoView({ block: 'nearest' });
   }, [activeIndex]);
 
-  // When query is non-empty, show flat filtered list (no group headers)
   const showFlat = query.length > 0;
 
   return (
@@ -572,11 +650,10 @@ function SlashMenu({ query, groups, allowedTypes, filteredItems, activeIndex, on
         groups.map((group, gi) => {
           const visible = group.items.filter((i) => allowedTypes.includes(i.type));
           if (visible.length === 0) return null;
-          // Compute flat index offset for this group
           const offset = groups.slice(0, gi).reduce((sum, g) => sum + g.items.filter((i) => allowedTypes.includes(i.type)).length, 0);
           return (
             <div key={group.label} style={{ borderTop: gi > 0 ? '1px solid var(--border-subtle)' : 'none' }}>
-              <p style={{ padding: '7px 10px 3px', fontSize: '9px', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+              <p style={{ padding: '7px 10px 3px', fontSize: '9px', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>
                 {group.label}
               </p>
               {visible.map((item, li) => (
@@ -622,7 +699,7 @@ function SlashMenuItem({ item, flatIndex, isActive, onSelect, onHover }: {
   );
 }
 
-// ─── Block editor component ────────────────────────────────────────────────────
+// ─── Block editor ─────────────────────────────────────────────────────────────
 
 interface BlockEditorProps {
   block: RichBlock;
@@ -634,6 +711,8 @@ interface BlockEditorProps {
   onKeyDown: (e: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>, block: RichBlock) => void;
   onPaste: (e: React.ClipboardEvent, blockId: string) => void;
   onUpdateData: (blockId: string, data: Partial<RichBlock['data']>) => void;
+  /** Called when clicking an inactive rendered block to switch it into edit mode. */
+  onActivate: () => void;
   registerInput: (blockId: string, el: HTMLTextAreaElement | HTMLInputElement | null) => void;
 }
 
@@ -643,6 +722,7 @@ const autoResize = (el: HTMLTextAreaElement | null) => {
   el.style.height = `${el.scrollHeight}px`;
 };
 
+// Shared styles for transparent inline editing
 const BASE_TA: React.CSSProperties = {
   width: '100%', border: 'none', outline: 'none',
   background: 'transparent', resize: 'none', overflow: 'hidden',
@@ -658,17 +738,11 @@ const BASE_IN: React.CSSProperties = {
 
 function BlockEditor({
   block, isFocused, onFocus, onBlur, onSelect,
-  onTextChange, onKeyDown, onPaste, onUpdateData, registerInput,
+  onTextChange, onKeyDown, onPaste, onUpdateData, onActivate, registerInput,
 }: BlockEditorProps) {
   const taRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { autoResize(taRef.current); }, [block.data.text]);
-
-  // Register primary input
-  useEffect(() => {
-    registerInput(block.id, taRef.current);
-    return () => registerInput(block.id, null);
-  }, [block.id, registerInput]);
 
   const handleSelect = (e: React.SyntheticEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     const target = e.target as HTMLTextAreaElement | HTMLInputElement;
@@ -799,11 +873,50 @@ function BlockEditor({
     );
   }
 
-  // ── Code ─────────────────────────────────────────────────────────────────────
+  // ── Code — always editable, document-style pre block when inactive ────────────
   if (block.type === 'code') {
+    // When inactive and has content: show as a proper document code block, click to edit
+    if (!isFocused && block.data.code) {
+      return (
+        <div
+          onClick={onActivate}
+          title="Click to edit"
+          style={{
+            cursor: 'text', margin: '6px 0', borderRadius: '7px',
+            overflow: 'hidden',
+            border: '1px solid var(--border-subtle)',
+          }}
+        >
+          <div style={{
+            padding: '3px 12px', borderBottom: '1px solid var(--border-subtle)',
+            background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', gap: '6px',
+          }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--text-faint)', display: 'inline-block', opacity: 0.4 }} />
+            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              {block.data.language || 'code'}
+            </span>
+          </div>
+          <pre style={{
+            padding: '12px 14px', margin: 0, background: 'var(--bg-base)',
+            fontFamily: 'var(--font-mono)', fontSize: '13px', lineHeight: '1.65',
+            color: 'var(--text-secondary)', overflowX: 'auto', whiteSpace: 'pre',
+          }}>
+            <code>{block.data.code}</code>
+          </pre>
+        </div>
+      );
+    }
+
+    // Active (editing) view
     return (
-      <div style={{ borderRadius: '6px', border: '1px solid var(--border-default)', overflow: 'hidden', background: 'var(--bg-base)', margin: '4px 0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '4px 10px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)' }}>
+      <div style={{
+        borderRadius: '7px', border: '1px solid var(--border-default)',
+        overflow: 'hidden', background: 'var(--bg-base)', margin: '4px 0',
+        boxShadow: isFocused ? '0 0 0 2px rgba(var(--color-accent-rgb, 99,102,241),0.12)' : 'none',
+        transition: 'box-shadow 150ms',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '4px 12px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)' }}>
+          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--text-faint)', display: 'inline-block', marginRight: '8px', opacity: 0.4 }} />
           <input
             type="text"
             value={block.data.language ?? 'javascript'}
@@ -813,7 +926,7 @@ function BlockEditor({
           />
         </div>
         <textarea
-          ref={(el) => registerInput(block.id, el)}
+          ref={(el) => { (taRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = el; registerInput(block.id, el); }}
           rows={4}
           value={block.data.code ?? ''}
           placeholder="// Write code here…"
@@ -830,28 +943,46 @@ function BlockEditor({
             if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); onKeyDown(e, { ...block, type: 'paragraph', data: { text: '' } }); }
           }}
           onFocus={onFocus} onBlur={onBlur}
-          style={{ ...BASE_TA, fontFamily: 'var(--font-mono)', fontSize: '13px', lineHeight: '1.6', padding: '10px 12px', minHeight: '80px' }}
+          style={{ ...BASE_TA, fontFamily: 'var(--font-mono)', fontSize: '13px', lineHeight: '1.65', padding: '12px 14px', minHeight: '80px' }}
         />
       </div>
     );
   }
 
-  // ── Math ─────────────────────────────────────────────────────────────────────
+  // ── Math — rendered when inactive, source+preview when focused ────────────────
   if (block.type === 'math') {
+    if (!isFocused) {
+      return (
+        <div
+          onClick={onActivate}
+          title="Click to edit"
+          style={{ cursor: 'text', padding: '8px 4px', margin: '4px 0', minHeight: '32px' }}
+        >
+          {block.data.code
+            ? <MathRenderer code={block.data.code} block={true} />
+            : <span style={{ color: 'var(--text-faint)', fontSize: '0.875rem', fontStyle: 'italic' }}>Math equation — click to edit</span>
+          }
+        </div>
+      );
+    }
     return (
       <div style={{ margin: '4px 0' }}>
-        <div style={{ borderRadius: '6px', border: '1px solid var(--border-default)', overflow: 'hidden', background: 'var(--bg-base)' }}>
-          <div style={{ padding: '3px 10px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)' }}>
+        <div style={{
+          borderRadius: '7px', border: '1px solid var(--border-subtle)',
+          overflow: 'hidden', background: 'var(--bg-base)',
+          boxShadow: '0 0 0 2px rgba(var(--color-accent-rgb, 99,102,241),0.10)',
+        }}>
+          <div style={{ padding: '3px 12px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)' }}>
             <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>LaTeX</span>
           </div>
           <textarea
-            ref={(el) => registerInput(block.id, el)}
+            ref={(el) => { (taRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = el; registerInput(block.id, el); }}
             rows={2}
             value={block.data.code ?? ''}
             placeholder="\int_{-\infty}^{\infty} e^{-x^2}\,dx = \sqrt{\pi}"
             onChange={(e) => { autoResize(e.target); onUpdateData(block.id, { code: e.target.value }); }}
             onFocus={onFocus} onBlur={onBlur}
-            style={{ ...BASE_TA, fontFamily: 'var(--font-mono)', fontSize: '13px', padding: '8px 10px', minHeight: '48px' }}
+            style={{ ...BASE_TA, fontFamily: 'var(--font-mono)', fontSize: '13px', padding: '10px 12px', minHeight: '48px' }}
           />
         </div>
         {block.data.code && (
@@ -863,22 +994,40 @@ function BlockEditor({
     );
   }
 
-  // ── Mermaid ───────────────────────────────────────────────────────────────────
+  // ── Mermaid — rendered when inactive, source+diagram when focused ─────────────
   if (block.type === 'mermaid') {
+    if (!isFocused) {
+      return (
+        <div
+          onClick={onActivate}
+          title="Click to edit"
+          style={{ cursor: 'pointer', margin: '4px 0', minHeight: '32px' }}
+        >
+          {block.data.code
+            ? <MermaidRenderer code={block.data.code} />
+            : <span style={{ color: 'var(--text-faint)', fontSize: '0.875rem', fontStyle: 'italic' }}>Mermaid diagram — click to edit</span>
+          }
+        </div>
+      );
+    }
     return (
       <div style={{ margin: '4px 0' }}>
-        <div style={{ borderRadius: '6px', border: '1px solid var(--border-default)', overflow: 'hidden', background: 'var(--bg-base)' }}>
-          <div style={{ padding: '3px 10px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)' }}>
+        <div style={{
+          borderRadius: '7px', border: '1px solid var(--border-subtle)',
+          overflow: 'hidden', background: 'var(--bg-base)',
+          boxShadow: '0 0 0 2px rgba(var(--color-accent-rgb, 99,102,241),0.10)',
+        }}>
+          <div style={{ padding: '3px 12px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)' }}>
             <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Mermaid Diagram</span>
           </div>
           <textarea
-            ref={(el) => registerInput(block.id, el)}
+            ref={(el) => { (taRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = el; registerInput(block.id, el); }}
             rows={4}
             value={block.data.code ?? ''}
             placeholder={'graph TD;\n  A-->B;\n  B-->C;'}
             onChange={(e) => { autoResize(e.target); onUpdateData(block.id, { code: e.target.value }); }}
             onFocus={onFocus} onBlur={onBlur}
-            style={{ ...BASE_TA, fontFamily: 'var(--font-mono)', fontSize: '13px', padding: '8px 10px', minHeight: '80px' }}
+            style={{ ...BASE_TA, fontFamily: 'var(--font-mono)', fontSize: '13px', padding: '10px 12px', minHeight: '80px' }}
           />
         </div>
         {block.data.code && (
@@ -890,7 +1039,7 @@ function BlockEditor({
     );
   }
 
-  // ── Video ─────────────────────────────────────────────────────────────────────
+  // ── Video — iframe when inactive, URL input when focused ─────────────────────
   if (block.type === 'video') {
     const url = block.data.url ?? '';
     let embedSrc = '';
@@ -902,14 +1051,27 @@ function BlockEditor({
         embedSrc = `https://www.youtube.com/embed/${vid}`;
       } else if (url.includes('vimeo.com')) {
         embedSrc = `https://player.vimeo.com/video/${url.split('/').pop()?.split('?')[0]}`;
-      } else {
+      } else if (url) {
         embedSrc = url;
       }
     }
+
+    if (!isFocused && embedSrc) {
+      return (
+        <div
+          onClick={onActivate}
+          title="Click to edit URL"
+          style={{ margin: '8px 0', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-subtle)', aspectRatio: '16/9', cursor: 'pointer' }}
+        >
+          <iframe src={embedSrc} style={{ width: '100%', height: '100%', border: 'none' }} allowFullScreen title="Video" />
+        </div>
+      );
+    }
+
     return (
       <div style={{ margin: '4px 0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: embedSrc ? '8px' : 0 }}>
-          <span style={{ fontSize: '10px', color: 'var(--text-faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>▶</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '3px 0' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-faint)', flexShrink: 0 }}>▶</span>
           <input
             ref={(el) => registerInput(block.id, el)}
             type="text"
@@ -922,21 +1084,40 @@ function BlockEditor({
           />
         </div>
         {embedSrc && (
-          <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-default)', aspectRatio: '16/9' }}>
-            <iframe src={embedSrc} className="w-full h-full border-none" allowFullScreen title="Video preview" />
+          <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-subtle)', aspectRatio: '16/9', marginTop: '8px' }}>
+            <iframe src={embedSrc} style={{ width: '100%', height: '100%', border: 'none' }} allowFullScreen title="Video preview" />
           </div>
         )}
       </div>
     );
   }
 
-  // ── File ──────────────────────────────────────────────────────────────────────
+  // ── File — download card when inactive, edit inputs when focused ──────────────
   if (block.type === 'file') {
     const url = block.data.url ?? '';
     const filename = block.data.filename ?? '';
+
+    if (!isFocused && url) {
+      return (
+        <div
+          onClick={onActivate}
+          title="Click to edit"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '10px',
+            padding: '8px 14px', background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-default)', borderRadius: '8px',
+            margin: '4px 0', cursor: 'pointer', minWidth: '180px',
+          }}
+        >
+          <span style={{ fontSize: '14px', opacity: 0.6 }}>↓</span>
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}>{filename || url}</span>
+        </div>
+      );
+    }
+
     return (
       <div style={{ margin: '4px 0' }}>
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
+        <div style={{ display: 'flex', gap: '8px', padding: '3px 0' }}>
           <input
             ref={(el) => registerInput(block.id, el)}
             type="text"
@@ -946,7 +1127,7 @@ function BlockEditor({
             onFocus={onFocus} onBlur={onBlur}
             style={{ ...BASE_IN, flex: 1, fontSize: '0.875rem', fontWeight: 500 }}
           />
-          <span style={{ color: 'var(--text-faint)', fontSize: '12px', alignSelf: 'center' }}>·</span>
+          <span style={{ color: 'var(--border-strong)', fontSize: '12px', alignSelf: 'center', flexShrink: 0 }}>·</span>
           <input
             type="text"
             value={url}
@@ -957,8 +1138,8 @@ function BlockEditor({
           />
         </div>
         {url && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: '6px' }}>
-            <span style={{ fontSize: '12px' }}>↓</span>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: '6px', marginTop: '6px' }}>
+            <span style={{ fontSize: '12px', opacity: 0.6 }}>↓</span>
             <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{filename || url}</span>
           </div>
         )}
@@ -997,16 +1178,8 @@ function BlockEditor({
                         value={cell}
                         placeholder={ri === 0 ? `Column ${ci + 1}` : ''}
                         onChange={(e) => setCell(ri, ci, e.target.value)}
-                        onFocus={onFocus}
-                        onBlur={onBlur}
-                        style={{
-                          width: '100%', border: 'none', outline: 'none',
-                          background: 'transparent', padding: '6px 10px',
-                          fontSize: ri === 0 ? '11px' : '12px',
-                          fontWeight: ri === 0 ? 700 : 400,
-                          color: ri === 0 ? 'var(--text-secondary)' : 'var(--text-primary)',
-                          fontFamily: 'var(--font-body)',
-                        }}
+                        onFocus={onFocus} onBlur={onBlur}
+                        style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', padding: '6px 10px', fontSize: ri === 0 ? '11px' : '12px', fontWeight: ri === 0 ? 700 : 400, color: ri === 0 ? 'var(--text-secondary)' : 'var(--text-primary)', fontFamily: 'var(--font-body)' }}
                       />
                     </td>
                   ))}
@@ -1023,8 +1196,7 @@ function BlockEditor({
               { label: '+ Col', action: addCol },
               { label: '− Col', action: removeCol },
             ].map(({ label, action }) => (
-              <button
-                key={label} type="button"
+              <button key={label} type="button"
                 onMouseDown={(e) => { e.preventDefault(); action(); }}
                 style={{ padding: '2px 8px', fontSize: '10px', fontWeight: 700, cursor: 'pointer', border: '1px solid var(--border-default)', borderRadius: '3px', background: 'transparent', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}
               >{label}</button>
