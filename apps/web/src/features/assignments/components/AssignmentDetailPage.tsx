@@ -21,7 +21,9 @@ import type {
   FileAssignmentSettings,
   SubmissionFileItem,
   SubmissionRequest,
+  SeminarAttendanceOverviewDto,
 } from '../api/canonical.types';
+import { seminarAttendanceApi } from '../api/assignments.api';
 
 interface AssignmentDetailPageProps {
   assignmentId: string;
@@ -75,6 +77,81 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const { studentState, settings, type: assignmentType } = assignment || {};
+
+  // Seminar Attendance state
+  const [attendanceOverview, setAttendanceOverview] = useState<SeminarAttendanceOverviewDto | null>(null);
+  const [sessionTimer, setSessionTimer] = useState<number | null>(null); // remaining seconds
+  const [rawToken, setRawToken] = useState<string | null>(null);
+
+  const fetchAttendance = async () => {
+    if (assignmentType !== 'SEMINAR') return;
+    try {
+      const res = await seminarAttendanceApi.getOverview(assignmentId);
+      setAttendanceOverview(res);
+    } catch (err) {
+      console.error('Failed to fetch attendance overview', err);
+    }
+  };
+
+  useEffect(() => {
+    if (assignmentType === 'SEMINAR') {
+      fetchAttendance();
+      const interval = setInterval(fetchAttendance, 5000); // Polling every 5 seconds for live check-in updates
+      return () => clearInterval(interval);
+    }
+  }, [assignmentId, assignmentType]);
+
+  useEffect(() => {
+    if (!attendanceOverview?.activeSession) {
+      setSessionTimer(null);
+      return;
+    }
+    const expiresAt = new Date(attendanceOverview.activeSession.expiresAt).getTime();
+    const updateTimer = () => {
+      const now = Date.now();
+      const diff = Math.max(0, Math.floor((expiresAt - now) / 1000));
+      setSessionTimer(diff);
+      if (diff === 0) {
+        void fetchAttendance();
+      }
+    };
+    updateTimer();
+    const timerInterval = setInterval(updateTimer, 1000);
+    return () => clearInterval(timerInterval);
+  }, [attendanceOverview?.activeSession]);
+
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleCreateSession = async () => {
+    try {
+      setStatusMessage(null);
+      const res = await seminarAttendanceApi.createSession(assignmentId);
+      setRawToken(res.rawToken || null);
+      setStatusMessage({ type: 'success', text: 'Seminar check-in session started successfully!' });
+      void fetchAttendance();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to start check-in';
+      setStatusMessage({ type: 'error', text: msg });
+    }
+  };
+
+  const handleCloseSession = async () => {
+    if (!attendanceOverview?.activeSession) return;
+    try {
+      setStatusMessage(null);
+      await seminarAttendanceApi.closeSession(attendanceOverview.activeSession.id);
+      setRawToken(null);
+      setStatusMessage({ type: 'success', text: 'Seminar check-in session closed.' });
+      void fetchAttendance();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to close session';
+      setStatusMessage({ type: 'error', text: msg });
+    }
+  };
 
   // Fetch current submission text answer and version history directly from Supabase
   useEffect(() => {
@@ -665,6 +742,154 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
                 )}
               </div>
             </form>
+          )}
+        </section>
+      )}
+
+      {/* SEMINAR ATTENDANCE */}
+      {assignmentType === 'SEMINAR' && (
+        <section className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-xs space-y-6">
+          <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-3">
+            <h2 className="text-sm font-extrabold uppercase tracking-wide text-[var(--text-secondary)]">Seminar Attendance</h2>
+            {attendanceOverview?.activeSession && (
+              <span className="rounded-lg bg-[rgba(16,185,129,0.08)] border border-[rgba(16,185,129,0.2)] px-2.5 py-0.5 text-xs font-bold text-[var(--fn-success)]">
+                Session Active
+              </span>
+            )}
+          </div>
+
+          {isStaff ? (
+            /* TEACHER FLOW */
+            <div className="space-y-6">
+              {!attendanceOverview?.activeSession ? (
+                <div className="text-center py-8 space-y-4">
+                  <div className="text-xs text-[var(--text-muted)] max-w-sm mx-auto leading-relaxed">
+                    Start a new QR check-in session for this seminar. Students will scan the code to register their attendance instantly.
+                  </div>
+                  <button
+                    onClick={handleCreateSession}
+                    className="btn btn-primary text-xs px-6 py-2.5 font-bold cursor-pointer transition-all duration-200"
+                  >
+                    Create QR Check-in
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {rawToken ? (
+                    <div className="text-center space-y-4">
+                      <div className="p-4 border rounded-2xl bg-[var(--bg-base)] max-w-xs mx-auto" style={{ borderColor: 'var(--border-subtle)' }}>
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+                            `${window.location.origin}/seminars/check-in?token=${rawToken}`
+                          )}`}
+                          alt="Check-in QR Code"
+                          className="w-56 h-56 mx-auto rounded-lg shadow-sm border border-[var(--border-subtle)] bg-white p-1"
+                        />
+                      </div>
+                      <div className="text-3xs text-[var(--text-muted)] max-w-xs mx-auto leading-relaxed">
+                        Project this QR code on a screen. The link is valid for 15 minutes.
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center p-6 border rounded-xl bg-[var(--bg-base)] max-w-md mx-auto" style={{ borderColor: 'var(--border-subtle)' }}>
+                      <p className="text-xs text-[var(--text-secondary)] font-bold">QR Code Unavailable</p>
+                      <p className="text-2xs text-[var(--text-muted)] mt-2 leading-relaxed">
+                        The QR code is no longer viewable because the page was refreshed. Active session remains valid for students who have the link or scanned it.
+                      </p>
+                      <p className="text-2xs text-[var(--text-muted)] mt-1">
+                        To show a new QR code, close this session and start a new one.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+                    <div className="p-4 border rounded-xl text-center" style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-base)' }}>
+                      <div className="text-3xs font-extrabold uppercase text-[var(--text-muted)] tracking-wider">Time Remaining</div>
+                      <div className="text-xl font-black mt-1 text-[var(--text-primary)] font-mono">
+                        {sessionTimer !== null ? formatTimer(sessionTimer) : '0:00'}
+                      </div>
+                    </div>
+                    <div className="p-4 border rounded-xl text-center" style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-base)' }}>
+                      <div className="text-3xs font-extrabold uppercase text-[var(--text-muted)] tracking-wider">Checked In</div>
+                      <div className="text-xl font-black mt-1 text-[var(--text-primary)]">
+                        {attendanceOverview.checkedInCount}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-center pt-2">
+                    <button
+                      onClick={handleCloseSession}
+                      className="btn btn-danger btn-sm text-xs font-bold cursor-pointer transition-all duration-200"
+                    >
+                      Close Session
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Checked-In Students List */}
+              <div className="border-t border-[var(--border-subtle)] pt-6 space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Checked-In Students</h3>
+                {attendanceOverview && attendanceOverview.records.length > 0 ? (
+                  <div className="overflow-x-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)]">
+                    <table className="w-full border-collapse text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-[var(--border-subtle)]" style={{ background: 'var(--bg-overlay)' }}>
+                          <th className="p-3 font-bold text-[var(--text-muted)] text-3xs uppercase tracking-wider">Student Name</th>
+                          <th className="p-3 font-bold text-[var(--text-muted)] text-3xs uppercase tracking-wider">Email</th>
+                          <th className="p-3 font-bold text-[var(--text-muted)] text-3xs uppercase tracking-wider text-right">Check-In Time</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--border-subtle)]">
+                        {attendanceOverview.records.map((record) => (
+                          <tr key={record.id} className="hover:bg-[var(--bg-overlay)] transition-colors">
+                            <td className="p-3 font-semibold text-[var(--text-primary)]">{record.studentName}</td>
+                            <td className="p-3 text-[var(--text-secondary)]">{record.studentEmail}</td>
+                            <td className="p-3 text-right text-[var(--text-muted)] font-mono">
+                              {new Date(record.checkedInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-3xs text-[var(--text-faint)] bg-[var(--bg-base)] rounded-xl border border-[var(--border-subtle)] border-dashed">
+                    No students checked in yet.
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* STUDENT FLOW */
+            <div className="space-y-4">
+              {attendanceOverview && attendanceOverview.records.length > 0 ? (
+                <div className="flex flex-col items-center justify-center p-6 border rounded-xl border-[rgba(16,185,129,0.2)] bg-[rgba(16,185,129,0.02)] text-center space-y-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[rgba(16,185,129,0.08)] text-[var(--fn-success)] text-xl font-bold">
+                    ✓
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-[var(--text-primary)]">Attendance Approved</h3>
+                    <p className="text-3xs text-[var(--text-muted)] mt-1">
+                      Checked In: {new Date(attendanceOverview.records[0].checkedInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center p-6 border rounded-xl border-[rgba(245,158,11,0.2)] bg-[rgba(245,158,11,0.02)] text-center space-y-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[rgba(245,158,11,0.08)] text-[var(--fn-warning)] text-xl font-semibold font-mono">
+                    !
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-[var(--text-primary)]">Not Checked In</h3>
+                    <p className="text-3xs text-[var(--text-muted)] mt-1 max-w-xs leading-relaxed">
+                      Please scan the QR code displayed by your instructor in the classroom to record your attendance.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </section>
       )}

@@ -8,6 +8,9 @@ import type {
   SubmissionListResponse,
   SubmissionRequest,
   SubmissionReviewDto,
+  SeminarAttendanceSessionDto,
+  SeminarAttendanceRecordDto,
+  SeminarAttendanceOverviewDto,
 } from './canonical.types';
 
 export const canonicalAssignmentsApi = {
@@ -88,3 +91,30 @@ export const canonicalSubmissionsApi = {
 };
 
 export type SubmissionList = ListResponse<SubmissionDto>;
+
+export const seminarAttendanceApi = {
+  createSession: (assignmentId: string) =>
+    apiClient.request<SeminarAttendanceSessionDto>({
+      method: 'POST',
+      url: `/v1/assignments/${assignmentId}/seminar-attendance/sessions`,
+    }),
+
+  getOverview: (assignmentId: string) =>
+    apiClient.request<SeminarAttendanceOverviewDto>({
+      url: `/v1/assignments/${assignmentId}/seminar-attendance`,
+    }),
+
+  checkIn: (token: string) =>
+    apiClient.request<SeminarAttendanceRecordDto>({
+      method: 'POST',
+      url: `/v1/seminar-attendance/check-in`,
+      data: { token },
+    }),
+
+  closeSession: (sessionId: string) =>
+    apiClient.request<void>({
+      method: 'POST',
+      url: `/v1/seminar-attendance/sessions/${sessionId}/close`,
+    }),
+};
+

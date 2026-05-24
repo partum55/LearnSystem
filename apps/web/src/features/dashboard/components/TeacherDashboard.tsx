@@ -5,19 +5,16 @@ import { Loading } from '@/components/Loading';
 import { useTeachingCourses } from '@/features/courses/hooks/useCourseQueries';
 import type { UserProfileDto } from '@/features/users/api/users.types';
 import {
-  CourseSummaryCard,
   DashboardError,
   DashboardLayout,
   DashboardLink,
-  EmptyState,
-  SectionHeader,
-  Shortcut,
   StatCard,
   displayName,
 } from './DashboardLayout';
+import { DashboardGrid } from './DashboardGrid';
 
 export function TeacherDashboard({ currentUser }: { currentUser: UserProfileDto }) {
-  const { data: courses, isLoading, error } = useTeachingCourses(true);
+  const { data: courses, isLoading, error } = useTeachingCourses();
   const teachingCourses = courses ?? [];
   const publishedCount = teachingCourses.filter((course) => course.status === 'PUBLISHED').length;
 
@@ -37,27 +34,7 @@ export function TeacherDashboard({ currentUser }: { currentUser: UserProfileDto 
         <StatCard icon={DocumentTextIcon} label="Draft or archived" value={Math.max(teachingCourses.length - publishedCount, 0)} tone="warning" />
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <section className="card">
-          <SectionHeader title="Teaching courses" actionHref="/courses" actionLabel="Open courses" />
-          <div className="card-body grid gap-3 md:grid-cols-2">
-            {teachingCourses.length > 0 ? (
-              teachingCourses.map((course) => <CourseSummaryCard key={course.id} course={course} staff />)
-            ) : (
-              <EmptyState title="No teaching courses" description="Courses where you teach will appear here." />
-            )}
-          </div>
-        </section>
-
-        <section className="card">
-          <SectionHeader title="Teacher shortcuts" />
-          <div className="card-body space-y-2">
-            <Shortcut href="/courses" label="Course authoring" description="Open modules, learning items, assignments, and members." />
-            <Shortcut href="/gradebook" label="Gradebook" description="Review student grade state by course." />
-            <Shortcut href="/teacher/todo" label="To-do view" description="Focused teaching queue based on canonical courses." />
-          </div>
-        </section>
-      </div>
+      <DashboardGrid dashboardType="TEACHER" />
     </DashboardLayout>
   );
 }

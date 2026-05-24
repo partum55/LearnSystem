@@ -162,3 +162,33 @@ export interface GradeDraftRequest {
 }
 
 export type SubmissionListResponse = ListResponse<SubmissionDto>;
+
+export interface SeminarAttendanceSessionDto {
+  id: Uuid;
+  assignmentId: Uuid;
+  createdBy: Uuid;
+  status: 'ACTIVE' | 'CLOSED' | 'EXPIRED';
+  startsAt: string;
+  expiresAt: string;
+  closedAt?: string | null;
+  rawToken?: string | null;
+}
+
+export interface SeminarAttendanceRecordDto {
+  id: Uuid;
+  sessionId: Uuid;
+  assignmentId: Uuid;
+  studentId: Uuid;
+  studentName: string;
+  studentEmail: string;
+  status: 'PRESENT';
+  method: 'QR';
+  checkedInAt: string;
+}
+
+export interface SeminarAttendanceOverviewDto {
+  activeSession?: SeminarAttendanceSessionDto | null;
+  checkedInCount: number;
+  records: SeminarAttendanceRecordDto[];
+}
+

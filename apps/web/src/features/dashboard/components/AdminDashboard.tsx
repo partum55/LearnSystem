@@ -23,6 +23,7 @@ import {
   displayName,
 } from './DashboardLayout';
 import { EnrollmentGroupsTab } from './EnrollmentGroupsTab';
+import { DashboardGrid } from './DashboardGrid';
 
 type AdminTab = 'overview' | 'services' | 'users' | 'courses' | 'groups';
 
@@ -88,11 +89,8 @@ export function AdminDashboard({ currentUser }: { currentUser: UserProfileDto })
         </div>
 
         {activeTab === 'overview' && (
-          <div className="card-body grid gap-6 lg:grid-cols-2">
-            <ServicesPanel health={health} loading={healthLoading} error={Boolean(healthError)} compact />
-            <OperationalPanel />
-            <UsersPanel users={users?.content ?? []} loading={usersLoading} />
-            <CoursesPanel courses={courses?.content ?? []} loading={coursesLoading} />
+          <div className="card-body">
+            <DashboardGrid dashboardType="ADMIN" />
           </div>
         )}
 
