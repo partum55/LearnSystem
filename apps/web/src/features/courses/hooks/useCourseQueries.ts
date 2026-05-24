@@ -118,3 +118,104 @@ export const useRemoveCourseMember = (courseId: string) => {
     },
   });
 };
+
+export const useEnrollmentGroups = () =>
+  useQuery({
+    queryKey: ['enrollment-groups', 'list'],
+    queryFn: canonicalCoursesApi.getEnrollmentGroups,
+  });
+
+export const useCreateEnrollmentGroup = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => canonicalCoursesApi.createEnrollmentGroup(name),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['enrollment-groups'] });
+    },
+  });
+};
+
+export const useDeleteEnrollmentGroup = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (groupId: string) => canonicalCoursesApi.deleteEnrollmentGroup(groupId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['enrollment-groups'] });
+    },
+  });
+};
+
+export const useEnrollmentGroupMembers = (groupId: string | undefined) =>
+  useQuery({
+    queryKey: ['enrollment-groups', 'members', groupId],
+    queryFn: () => canonicalCoursesApi.getEnrollmentGroupMembers(groupId!),
+    enabled: Boolean(groupId),
+  });
+
+export const useAddEnrollmentGroupMember = (groupId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (email: string) => canonicalCoursesApi.addEnrollmentGroupMember(groupId, email),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['enrollment-groups', 'members', groupId] });
+      void queryClient.invalidateQueries({ queryKey: ['enrollment-groups', 'list'] });
+    },
+  });
+};
+
+export const useRemoveEnrollmentGroupMember = (groupId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => canonicalCoursesApi.removeEnrollmentGroupMember(groupId, userId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['enrollment-groups', 'members', groupId] });
+      void queryClient.invalidateQueries({ queryKey: ['enrollment-groups', 'list'] });
+    },
+  });
+};
+
+export const useCourseEnrollmentGroups = (courseId: string | undefined) =>
+  useQuery({
+    queryKey: ['courses', courseId, 'enrollment-groups'],
+    queryFn: () => canonicalCoursesApi.getCourseEnrollmentGroups(courseId!),
+    enabled: Boolean(courseId),
+  });
+
+export const useEnrollGroupToCourse = (courseId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (groupId: string) => canonicalCoursesApi.enrollGroupToCourse(courseId, groupId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['courses', courseId, 'enrollment-groups'] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.members(courseId) });
+    },
+  });
+};
+
+export const useRemoveCourseEnrollmentGroup = (courseId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (groupId: string) => canonicalCoursesApi.removeCourseEnrollmentGroup(courseId, groupId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['courses', courseId, 'enrollment-groups'] });
+    },
+  });
+};
+
+export const useBulkEnrollPreview = (courseId: string) => {
+  return useMutation({
+    mutationFn: (rows: Array<{ email: string; role: string }>) =>
+      canonicalCoursesApi.bulkEnrollPreview(courseId, rows),
+  });
+};
+
+export const useBulkEnrollConfirm = (courseId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (enrollments: Array<{ userId: string; role: string }>) =>
+      canonicalCoursesApi.bulkEnrollConfirm(courseId, enrollments),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.members(courseId) });
+    },
+  });
+};

@@ -15,6 +15,10 @@ import {
   ExclamationTriangleIcon,
   InformationCircleIcon,
 } from '@heroicons/react/24/outline';
+import { RichContentEditor } from '@/features/rich-content/components/RichContentEditor';
+import { RichContentRenderer } from '@/features/rich-content/components/RichContentRenderer';
+import { markdownToRichContent } from '@/features/rich-content/markdown-parser';
+import type { RichContentDocument } from '@/features/rich-content/rich-content.types';
 
 interface QuizAttemptPageProps {
   attemptId: string;
@@ -330,12 +334,7 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
                   ) : (
                     /* Free Text Essay Display */
                     <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-base)] p-4">
-                      <span className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-faint)] mb-1.5">
-                        Your Submission
-                      </span>
-                      <p className="text-sm text-[var(--text-primary)] whitespace-pre-wrap font-mono">
-                        {String(studentAns || 'No response provided')}
-                      </p>
+                      <RichContentRenderer document={studentAns as RichContentDocument | string | null} />
                     </div>
                   )}
                 </div>
@@ -507,16 +506,17 @@ export function QuizAttemptPage({ attemptId }: QuizAttemptPageProps) {
                 </div>
               ) : (
                 /* Text Input Panel */
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-faint)]">
-                    Your Response
-                  </label>
-                  <textarea
-                    rows={6}
-                    placeholder="Type your response here..."
-                    className="input min-h-32 font-mono"
-                    value={String(currentAnswer || '')}
-                    onChange={(e) => handleAnswerChange(currentQuestion.questionId, e.target.value)}
+                <div style={{ paddingTop: '4px' }}>
+                  <RichContentEditor
+                    value={
+                      currentAnswer && typeof currentAnswer === 'object'
+                        ? (currentAnswer as RichContentDocument)
+                        : currentAnswer
+                        ? markdownToRichContent(String(currentAnswer))
+                        : { version: 1, blocks: [] }
+                    }
+                    onChange={(doc) => handleAnswerChange(currentQuestion.questionId, doc)}
+                    placeholder="Start writing your response… or type / to insert a block"
                   />
                 </div>
               )}

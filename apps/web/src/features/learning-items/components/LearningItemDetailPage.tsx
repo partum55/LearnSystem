@@ -520,8 +520,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
           <div className="space-y-4">
             {isCourseStaff ? (
               <div className="space-y-6">
-                <div className="flex justify-between items-center pb-3 border-b border-[var(--border-subtle)]">
-                  <p className="text-xs text-[var(--text-faint)]">Type / to insert blocks — supports LaTeX and Mermaid diagrams</p>
+                <div className="flex justify-end pb-3 border-b border-[var(--border-subtle)]">
                   <button onClick={handleSaveRte} disabled={updateItemMutation.isPending} className="btn btn-success text-3xs font-extrabold px-3 py-1.5">
                     {updateItemMutation.isPending ? 'Saving…' : 'Save Document'}
                   </button>
@@ -738,17 +737,14 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
                         {/* INLINE QUIZ QUESTION EDITOR */}
                         {localType === 'INLINE_QUIZ_QUESTION' && (
                           <div className="space-y-4">
-                            <div>
-                              <label className="label block text-xs font-semibold text-[var(--text-secondary)] mb-1">Question Prompt (RTE)</label>
-                              <div className="border border-[var(--border-default)] p-3 rounded-lg bg-[var(--bg-surface)]">
-                                <RichContentEditor 
-                                  value={localQuizPrompt} 
-                                  onChange={setLocalQuizPrompt} 
-                                  maxBlocks={3}
-                                  allowedTypes={['paragraph', 'code', 'math', 'mermaid']}
-                                  placeholder="Formulate your question stem or scenario..."
-                                />
-                              </div>
+                            <div className="border border-[var(--border-default)] p-3 rounded-lg bg-[var(--bg-surface)]">
+                              <RichContentEditor
+                                value={localQuizPrompt}
+                                onChange={setLocalQuizPrompt}
+                                maxBlocks={3}
+                                allowedTypes={['paragraph', 'code', 'math', 'mermaid']}
+                                placeholder="Formulate your question stem or scenario..."
+                              />
                             </div>
 
                             <div className="space-y-2">

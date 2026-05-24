@@ -406,8 +406,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
 
           {/* TAB 1: INSTRUCTIONS */}
           {activeTab === 'instructions' && (
-            <div className="prose max-w-none text-xs">
-              <span className="text-3xs uppercase font-extrabold text-[var(--text-faint)] block mb-1">Assignment Guidelines</span>
+            <div>
               <RichContentRenderer document={assignment.instructionsJson as any} />
             </div>
           )}
@@ -418,7 +417,6 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
               {studentState?.submittedAt && !isEditing ? (
                 <div className="space-y-4">
                   <div className="bg-[var(--bg-base)] border border-[var(--border-default)] rounded-xl p-6">
-                    <span className="text-3xs uppercase font-extrabold text-[var(--text-faint)] block mb-2">My Submitted Response</span>
                     <RichContentRenderer document={submissionValue} />
                   </div>
                   

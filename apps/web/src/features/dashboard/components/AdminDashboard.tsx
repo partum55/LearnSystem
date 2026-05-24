@@ -22,8 +22,9 @@ import {
   StatCard,
   displayName,
 } from './DashboardLayout';
+import { EnrollmentGroupsTab } from './EnrollmentGroupsTab';
 
-type AdminTab = 'overview' | 'services' | 'users' | 'courses';
+type AdminTab = 'overview' | 'services' | 'users' | 'courses' | 'groups';
 
 export function AdminDashboard({ currentUser }: { currentUser: UserProfileDto }) {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
@@ -43,6 +44,7 @@ export function AdminDashboard({ currentUser }: { currentUser: UserProfileDto })
       { id: 'services', label: 'Services' },
       { id: 'users', label: 'Users' },
       { id: 'courses', label: 'Courses' },
+      { id: 'groups', label: 'Groups' },
     ],
     [],
   );
@@ -109,6 +111,12 @@ export function AdminDashboard({ currentUser }: { currentUser: UserProfileDto })
         {activeTab === 'courses' && (
           <div className="card-body">
             <CoursesPanel courses={courses?.content ?? []} loading={coursesLoading} expanded />
+          </div>
+        )}
+
+        {activeTab === 'groups' && (
+          <div className="card-body">
+            <EnrollmentGroupsTab />
           </div>
         )}
       </section>

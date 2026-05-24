@@ -2,10 +2,10 @@ package com.university.lms.course.courses.controller;
 
 import com.university.lms.common.dto.PageResponse;
 import com.university.lms.course.courses.service.CanonicalCourseMemberService;
-import com.university.lms.course.dto.CourseMemberDto;
-import com.university.lms.course.dto.EnrollUserRequest;
+import com.university.lms.course.dto.*;
 import com.university.lms.course.web.RequestUserContext;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -73,5 +73,21 @@ public class CanonicalCourseMemberController {
         .build();
     CourseMemberDto member = memberService.upsert(courseId, updateRequest, requestedBy);
     return ResponseEntity.ok(member);
+  }
+
+  @PostMapping("/bulk/preview")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<BulkPreviewResponse> bulkPreview(
+      @PathVariable UUID courseId, @Valid @RequestBody BulkPreviewRequest request) {
+    UUID requestedBy = requestUserContext.requireUserId();
+    return ResponseEntity.ok(memberService.bulkPreview(courseId, request, requestedBy));
+  }
+
+  @PostMapping("/bulk/confirm")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<List<CourseMemberDto>> bulkConfirm(
+      @PathVariable UUID courseId, @Valid @RequestBody BulkConfirmRequest request) {
+    UUID requestedBy = requestUserContext.requireUserId();
+    return ResponseEntity.ok(memberService.bulkConfirm(courseId, request, requestedBy));
   }
 }

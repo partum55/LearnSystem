@@ -11,6 +11,11 @@ import type {
   CourseMembersResponse,
   CreateCourseRequest,
   ModuleRequest,
+  EnrollmentGroupDto,
+  EnrollmentGroupMemberDto,
+  BulkPreviewRow,
+  BulkPreviewResponse,
+  BulkConfirmEnrollment,
 } from './canonical.types';
 
 export const canonicalCoursesApi = {
@@ -69,4 +74,37 @@ export const canonicalCoursesApi = {
       method: 'DELETE',
       url: `/v1/courses/${courseId}/members/${userId}`,
     }),
+
+  getEnrollmentGroups: () =>
+    apiClient.request<EnrollmentGroupDto[]>({ url: '/v1/enrollment-groups' }),
+
+  createEnrollmentGroup: (name: string) =>
+    apiClient.request<EnrollmentGroupDto>({ method: 'POST', url: '/v1/enrollment-groups', data: { name } }),
+
+  deleteEnrollmentGroup: (groupId: string) =>
+    apiClient.request<void>({ method: 'DELETE', url: `/v1/enrollment-groups/${groupId}` }),
+
+  getEnrollmentGroupMembers: (groupId: string) =>
+    apiClient.request<EnrollmentGroupMemberDto[]>({ url: `/v1/enrollment-groups/${groupId}/members` }),
+
+  addEnrollmentGroupMember: (groupId: string, email: string) =>
+    apiClient.request<EnrollmentGroupMemberDto>({ method: 'POST', url: `/v1/enrollment-groups/${groupId}/members`, data: { email } }),
+
+  removeEnrollmentGroupMember: (groupId: string, userId: string) =>
+    apiClient.request<void>({ method: 'DELETE', url: `/v1/enrollment-groups/${groupId}/members/${userId}` }),
+
+  enrollGroupToCourse: (courseId: string, groupId: string) =>
+    apiClient.request<void>({ method: 'POST', url: `/v1/courses/${courseId}/enrollment-groups`, data: { groupId } }),
+
+  getCourseEnrollmentGroups: (courseId: string) =>
+    apiClient.request<EnrollmentGroupDto[]>({ url: `/v1/courses/${courseId}/enrollment-groups` }),
+
+  removeCourseEnrollmentGroup: (courseId: string, groupId: string) =>
+    apiClient.request<void>({ method: 'DELETE', url: `/v1/courses/${courseId}/enrollment-groups/${groupId}` }),
+
+  bulkEnrollPreview: (courseId: string, rows: BulkPreviewRow[]) =>
+    apiClient.request<BulkPreviewResponse>({ method: 'POST', url: `/v1/courses/${courseId}/members/bulk/preview`, data: { rows } }),
+
+  bulkEnrollConfirm: (courseId: string, enrollments: BulkConfirmEnrollment[]) =>
+    apiClient.request<CourseMemberDto[]>({ method: 'POST', url: `/v1/courses/${courseId}/members/bulk/confirm`, data: { enrollments } }),
 };

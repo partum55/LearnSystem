@@ -188,3 +188,45 @@ export interface CreateCourseRequest {
 export type CourseMembersResponse = PageResponse<CourseMemberDto>;
 
 export type CanonicalListResponse<T> = ListResponse<T>;
+
+export interface EnrollmentGroupDto {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  memberCount: number;
+}
+
+export interface EnrollmentGroupMemberDto {
+  id: string;
+  groupId: string;
+  userId: string;
+  userName?: string | null;
+  userEmail?: string | null;
+  createdAt: string;
+}
+
+export interface BulkPreviewRow {
+  email: string;
+  role: string;
+}
+
+export interface BulkPreviewResult {
+  email: string;
+  userId?: string | null;
+  userName?: string | null;
+  role: string;
+  status: 'VALID' | 'INVALID';
+  reason?: 'NOT_FOUND' | 'DUPLICATE_IN_CSV' | 'ALREADY_ENROLLED' | 'OWNER_NOT_ALLOWED' | 'ROLE_CONFLICT' | null;
+}
+
+export interface BulkPreviewResponse {
+  validRows: BulkPreviewResult[];
+  invalidRows: BulkPreviewResult[];
+  hasErrors: boolean;
+}
+
+export interface BulkConfirmEnrollment {
+  userId: string;
+  role: string;
+}

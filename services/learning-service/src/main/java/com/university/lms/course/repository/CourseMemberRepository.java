@@ -21,6 +21,9 @@ public interface CourseMemberRepository extends JpaRepository<CourseMember, UUID
   /** Find member by course and user. */
   Optional<CourseMember> findByCourseIdAndUserId(UUID courseId, UUID userId);
 
+  /** Find members in a course by their user IDs. */
+  List<CourseMember> findByCourseIdAndUserIdIn(UUID courseId, Collection<UUID> userIds);
+
   /** Check if user is member of course. */
   boolean existsByCourseIdAndUserId(UUID courseId, UUID userId);
 

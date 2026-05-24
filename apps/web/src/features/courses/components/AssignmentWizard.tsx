@@ -379,10 +379,7 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
         {currentStep === 2 && (
           <div>
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-6">
-              <div>
-                <h3 className="text-sm font-bold text-[var(--text-primary)]">Instructions</h3>
-                <p className="text-3xs text-[var(--text-faint)] mt-0.5">Paste markdown or type / to insert blocks — formulas and diagrams supported</p>
-              </div>
+              <h3 className="text-sm font-bold text-[var(--text-primary)]">Instructions</h3>
             </div>
             <RichContentEditor
               value={instructionsJson}
@@ -602,11 +599,8 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
               </div>
             </div>
 
-            <div className="border border-[var(--border-default)] rounded-xl p-5 bg-[var(--bg-base)] space-y-2">
-              <span className="text-3xs uppercase font-extrabold text-[var(--text-faint)] block mb-1">Instructions Preview</span>
-              <div className="prose max-w-none text-xs">
-                <RichContentRenderer document={instructionsJson} />
-              </div>
+            <div className="border border-[var(--border-default)] rounded-xl p-5 bg-[var(--bg-base)]">
+              <RichContentRenderer document={instructionsJson} />
             </div>
 
             <div className="flex items-center bg-[var(--bg-base)] p-3 rounded-lg border border-[var(--border-default)]/60">

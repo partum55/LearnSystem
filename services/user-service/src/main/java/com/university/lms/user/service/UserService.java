@@ -32,6 +32,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -143,6 +144,19 @@ public class UserService {
         User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User", normalizedEmail));
         return userMapper.toDto(user);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserDto> getUsersByEmails(List<String> emails) {
+        if (emails == null || emails.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        List<String> normalizedEmails = emails.stream()
+                .map(this::normalizeEmail)
+                .toList();
+        return userRepository.findByEmailInIgnoreCase(normalizedEmails).stream()
+                .map(userMapper::toDto)
+                .toList();
     }
 
     @Transactional
