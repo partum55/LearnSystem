@@ -106,7 +106,6 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
   const { data: overview, isLoading: isOverviewLoading, error: overviewError } = useCourseOverview(courseId);
   const { data: modulesData, isLoading: isModulesLoading, error: modulesError } = useCourseModules(courseId);
   const { data: membersPage, isLoading: isMembersLoading } = useCourseMembers(courseId, { size: 100 });
-  const { data: gradebook } = useStudentGradebook(courseId);
 
   const createModuleMutation = useCreateModule(courseId);
   const updateModuleMutation = useUpdateModule(courseId);
@@ -153,6 +152,7 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
   }), [canManageStudents, canManageStaff, canManageCourseContent, canAccessTeacherTools]);
 
   const isCourseStaff = canAccessTeacherTools;
+  const { data: gradebook } = useStudentGradebook(courseId, !isCourseStaff);
 
   const isForbidden = useMemo(() => {
     const err = overviewError as { status?: number; response?: { status?: number } } | null;

@@ -3,11 +3,11 @@ import { queryKeys } from '@/api/queryClient';
 import { canonicalGradebookApi } from '../api/gradebook.api';
 import type { GradebookCellUpdateRequest, GradebookPublishRequest } from '../api/gradebook.types';
 
-export const useStudentGradebook = (courseId: string | undefined) =>
+export const useStudentGradebook = (courseId: string | undefined, enabled = true) =>
   useQuery({
     queryKey: queryKeys.gradebook.studentCourse(courseId || ''),
     queryFn: () => canonicalGradebookApi.getStudent(courseId!),
-    enabled: Boolean(courseId),
+    enabled: Boolean(courseId) && enabled,
   });
 
 export const useTeacherGradebook = (courseId: string | undefined) =>

@@ -31,7 +31,7 @@ public class CanonicalCourseMemberController {
       @RequestParam(required = false) String role,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size,
-      @RequestParam(defaultValue = "createdAt") String sortBy,
+      @RequestParam(defaultValue = "addedAt") String sortBy,
       @RequestParam(defaultValue = "DESC") Sort.Direction direction) {
     UUID userId = requestUserContext.requireUserId();
     Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
