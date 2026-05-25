@@ -109,7 +109,7 @@ spring:
         - id: learning-assignments
           uri: ${LEARNING_SERVICE_URL:http://learning-service:8089}
           predicates:
-            - Path=/api/assignments/**
+            - Path=/api/v1/assignments/**, /api/assignments/**
 
         - id: learning-assignment-documents
           uri: ${LEARNING_SERVICE_URL:http://learning-service:8089}

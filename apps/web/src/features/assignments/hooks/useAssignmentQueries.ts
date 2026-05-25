@@ -60,7 +60,7 @@ export const useSubmitAssignment = () =>
           return canonicalSubmissionsApi.submitVpl(params.assignmentId, params.request);
         case 'TEXT_SUBMISSION':
         default:
-          return canonicalSubmissionsApi.submitRte(params.assignmentId, params.request);
+          return canonicalSubmissionsApi.submitText(params.assignmentId, params.request);
       }
     },
   });

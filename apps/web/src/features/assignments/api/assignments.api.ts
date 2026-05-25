@@ -43,10 +43,10 @@ export const canonicalSubmissionsApi = {
       data: request,
     }),
 
-  submitRte: (assignmentId: string, request: SubmissionRequest) =>
+  submitText: (assignmentId: string, request: SubmissionRequest) =>
     apiClient.request<SubmissionDto>({
       method: 'POST',
-      url: `/v1/assignments/${assignmentId}/submissions/rte`,
+      url: `/v1/assignments/${assignmentId}/submissions/text`,
       data: request,
     }),
 
