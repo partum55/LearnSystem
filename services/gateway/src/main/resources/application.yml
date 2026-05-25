@@ -69,6 +69,11 @@ spring:
           predicates:
             - Path=/api/v1/learning-items/**
 
+        - id: enrollment-groups
+          uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/v1/enrollment-groups/**
+
         - id: user-service
           uri: ${USER_SERVICE_URL:http://localhost:8081}
           predicates:

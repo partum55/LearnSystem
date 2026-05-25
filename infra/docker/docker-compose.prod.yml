@@ -89,6 +89,7 @@ services:
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
       - LEARNING_SERVICE_URL=http://learning-service:8089
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN:-}
       - FRONTEND_URL=${FRONTEND_URL:-https://app.learnsystem.app}
       - JWT_EXPIRATION=${JWT_EXPIRATION:-86400000}
       - BOOTSTRAP_ADMIN_ENABLED=${BOOTSTRAP_ADMIN_ENABLED:-false}
@@ -134,6 +135,8 @@ services:
       - SPRING_DATASOURCE_PASSWORD=${SUPABASE_DB_PASSWORD:-postgres}
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
+      - USER_SERVICE_URL=http://user-service:8081/api
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN:-}
       - EXECUTION_SERVICE_URL=http://execution-service:3000
       - JAVA_OPTS=-Xmx512m -Xms256m
     depends_on:

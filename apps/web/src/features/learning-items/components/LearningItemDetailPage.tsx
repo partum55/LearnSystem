@@ -68,8 +68,9 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
 
   // Core canonical API queries
   const { data: item, isLoading: isItemLoading, error: itemError } = useLearningItem(learningItemId);
+  const itemType = item?.type?.toLowerCase();
   const { data: pages, isLoading: isPagesLoading } = useLessonPages(
-    item?.type === 'lesson' ? learningItemId : undefined
+    itemType === 'lesson' ? learningItemId : undefined
   );
   const { data: currentUser, isLoading: isUserLoading } = useCurrentUser();
   
@@ -129,7 +130,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
     return errStatus === 404 || (!isItemLoading && !item);
   }, [itemError, isItemLoading, item]);
 
-  const isLoading = isItemLoading || isUserLoading || (item?.type === 'lesson' && isPagesLoading);
+  const isLoading = isItemLoading || isUserLoading || (itemType === 'lesson' && isPagesLoading);
 
   // Resolve active page
   const activePage = useMemo(() => {
@@ -139,11 +140,11 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
 
   // Sync RTE material data
   useEffect(() => {
-    if (item && item.type === 'rte') {
+    if (item && itemType === 'rte') {
       const textVal = item.settings?.textContent || item.settings?.content || '';
       setRteContent(parseDocument(String(textVal)));
     }
-  }, [item]);
+  }, [item, itemType]);
 
   // Sync active lesson page details to editing states
   useEffect(() => {
@@ -416,7 +417,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
       {/* Main Viewport */}
       <main className="space-y-6">
         {/* PDF */}
-        {item.type === 'pdf' && (
+        {itemType === 'pdf' && (
           <div className="space-y-4">
             {urlSetting ? (
               <div className="rounded-xl overflow-hidden border border-[var(--border-default)] shadow-sm aspect-video w-full h-[650px] bg-[var(--bg-base)]">
@@ -438,7 +439,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
         )}
 
         {/* LINK */}
-        {item.type === 'link' && (
+        {itemType === 'link' && (
           <div className="mx-auto max-w-2xl">
             {urlSetting ? (
               <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-sm transition-all">
@@ -461,7 +462,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
         )}
 
         {/* VIDEO */}
-        {item.type === 'video' && (
+        {itemType === 'video' && (
           <div className="space-y-4">
             {urlSetting ? (
               <div className="rounded-xl overflow-hidden border border-[var(--border-default)] shadow-sm aspect-video w-full bg-[var(--bg-base)] max-w-3xl mx-auto">
@@ -490,7 +491,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
         )}
 
         {/* FILE */}
-        {item.type === 'file' && (
+        {itemType === 'file' && (
           <div className="mx-auto max-w-2xl">
             {urlSetting ? (
               <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-xs flex flex-col items-center text-center space-y-4">
@@ -516,7 +517,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
         )}
 
         {/* RTE DOCUMENT */}
-        {item.type === 'rte' && (
+        {itemType === 'rte' && (
           <div className="space-y-4">
             {isCourseStaff ? (
               <div className="space-y-6">
@@ -536,7 +537,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
         )}
 
         {/* PAGE-BASED LESSON WORKSPACE */}
-        {item.type === 'lesson' && (
+        {itemType === 'lesson' && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
             
             {/* Sidebar List */}
