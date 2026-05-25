@@ -15,8 +15,8 @@ interface LearningItemFormModalProps {
   loading: boolean;
 }
 
-type SimpleType = 'pdf' | 'link' | 'video' | 'file';
-type EditorType = 'rte' | 'lesson';
+type SimpleType = 'PDF' | 'LINK' | 'VIDEO' | 'FILE';
+type EditorType = 'RTE' | 'LESSON';
 type AnyType = SimpleType | EditorType;
 
 const TYPE_CARDS: Array<{
@@ -26,12 +26,12 @@ const TYPE_CARDS: Array<{
   description: string;
   group: 'simple' | 'editor';
 }> = [
-  { value: 'link', icon: '🔗', label: 'Link', description: 'External URL', group: 'simple' },
-  { value: 'video', icon: '▶', label: 'Video', description: 'Video stream', group: 'simple' },
-  { value: 'pdf', icon: '📄', label: 'PDF', description: 'PDF document', group: 'simple' },
-  { value: 'file', icon: '📁', label: 'File', description: 'Downloadable', group: 'simple' },
-  { value: 'rte', icon: '✦', label: 'Article', description: 'Rich text page', group: 'editor' },
-  { value: 'lesson', icon: '⬡', label: 'Lesson', description: 'Step-by-step lesson', group: 'editor' },
+  { value: 'LINK', icon: '🔗', label: 'Link', description: 'External URL', group: 'simple' },
+  { value: 'VIDEO', icon: '▶', label: 'Video', description: 'Video stream', group: 'simple' },
+  { value: 'PDF', icon: '📄', label: 'PDF', description: 'PDF document', group: 'simple' },
+  { value: 'FILE', icon: '📁', label: 'File', description: 'Downloadable', group: 'simple' },
+  { value: 'RTE', icon: '✦', label: 'Article', description: 'Rich text page', group: 'editor' },
+  { value: 'LESSON', icon: '⬡', label: 'Lesson', description: 'Step-by-step lesson', group: 'editor' },
 ];
 
 export function LearningItemFormModal({
@@ -45,7 +45,7 @@ export function LearningItemFormModal({
 }: LearningItemFormModalProps) {
   const router = useRouter();
 
-  const [type, setType] = useState<AnyType>('link');
+  const [type, setType] = useState<AnyType>('LINK');
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [downloadable, setDownloadable] = useState(true);
@@ -54,20 +54,20 @@ export function LearningItemFormModal({
   const [error, setError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
 
-  const isEditorType = type === 'rte' || type === 'lesson';
-  const needsUrl = ['link', 'video', 'pdf', 'file'].includes(type);
+  const isEditorType = type === 'RTE' || type === 'LESSON';
+  const needsUrl = ['LINK', 'VIDEO', 'PDF', 'FILE'].includes(type);
   const isEditing = Boolean(initialData);
 
   useEffect(() => {
     if (initialData) {
-      setType((initialData.type as AnyType) || 'link');
+      setType((initialData.type?.toUpperCase() as AnyType) || 'LINK');
       setTitle(initialData.title || '');
       setUrl((initialData.settings?.url as string) || '');
       setDownloadable(initialData.settings?.downloadable !== false);
       setVisible(initialData.visibilityStatus !== 'HIDDEN');
       setOrder(initialData.order || 1);
     } else {
-      setType('link');
+      setType('LINK');
       setTitle('');
       setUrl('');
       setDownloadable(true);
@@ -84,7 +84,7 @@ export function LearningItemFormModal({
     order: Number(order),
     visible,
     url: needsUrl ? url.trim() : undefined,
-    downloadable: ['pdf', 'file'].includes(type) ? downloadable : undefined,
+    downloadable: ['PDF', 'FILE'].includes(type) ? downloadable : undefined,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -172,7 +172,7 @@ export function LearningItemFormModal({
           <div className="rounded-lg p-3 flex items-start gap-2.5" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
             <span style={{ fontSize: '14px', marginTop: '1px' }}>✦</span>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              {type === 'rte'
+              {type === 'RTE'
                 ? 'A full-page document editor will open after creation.'
                 : 'A page-based lesson builder will open after creation.'}
             </p>
@@ -186,7 +186,7 @@ export function LearningItemFormModal({
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder={type === 'rte' ? 'e.g. Introduction to Recursion' : type === 'lesson' ? 'e.g. Week 3: Sorting Algorithms' : 'e.g. Lecture Slides'}
+          placeholder={type === 'RTE' ? 'e.g. Introduction to Recursion' : type === 'LESSON' ? 'e.g. Week 3: Sorting Algorithms' : 'e.g. Lecture Slides'}
           required
           disabled={loading || redirecting}
         />
@@ -206,7 +206,7 @@ export function LearningItemFormModal({
         )}
 
         {/* Downloadable (PDF/file) */}
-        {['pdf', 'file'].includes(type) && (
+        {['PDF', 'FILE'].includes(type) && (
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <input
               type="checkbox"

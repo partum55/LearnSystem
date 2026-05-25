@@ -56,7 +56,7 @@ export interface AdminCourseDto {
   updatedAt?: string | null;
 }
 
-export type LearningItemType = 'pdf' | 'link' | 'video' | 'file' | 'rte' | 'lesson' | string;
+export type LearningItemType = 'PDF' | 'LINK' | 'VIDEO' | 'FILE' | 'RTE' | 'LESSON' | string;
 
 export interface LearningItemDto {
   id: Uuid;

@@ -68,9 +68,9 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
 
   // Core canonical API queries
   const { data: item, isLoading: isItemLoading, error: itemError } = useLearningItem(learningItemId);
-  const itemType = item?.type?.toLowerCase();
+  const itemType = item?.type?.toUpperCase();
   const { data: pages, isLoading: isPagesLoading } = useLessonPages(
-    itemType === 'lesson' ? learningItemId : undefined
+    itemType === 'LESSON' ? learningItemId : undefined
   );
   const { data: currentUser, isLoading: isUserLoading } = useCurrentUser();
   
@@ -130,7 +130,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
     return errStatus === 404 || (!isItemLoading && !item);
   }, [itemError, isItemLoading, item]);
 
-  const isLoading = isItemLoading || isUserLoading || (itemType === 'lesson' && isPagesLoading);
+  const isLoading = isItemLoading || isUserLoading || (itemType === 'LESSON' && isPagesLoading);
 
   // Resolve active page
   const activePage = useMemo(() => {
@@ -140,7 +140,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
 
   // Sync RTE material data
   useEffect(() => {
-    if (item && itemType === 'rte') {
+    if (item && itemType === 'RTE') {
       const textVal = item.settings?.textContent || item.settings?.content || '';
       setRteContent(parseDocument(String(textVal)));
     }
@@ -185,7 +185,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
         learningItemId,
         request: {
           title: item.title,
-          type: 'rte',
+          type: 'RTE',
           textContent: JSON.stringify(rteContent),
         },
         courseId: courseId || undefined,
@@ -417,7 +417,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
       {/* Main Viewport */}
       <main className="space-y-6">
         {/* PDF */}
-        {itemType === 'pdf' && (
+        {itemType === 'PDF' && (
           <div className="space-y-4">
             {urlSetting ? (
               <div className="rounded-xl overflow-hidden border border-[var(--border-default)] shadow-sm aspect-video w-full h-[650px] bg-[var(--bg-base)]">
@@ -439,7 +439,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
         )}
 
         {/* LINK */}
-        {itemType === 'link' && (
+        {itemType === 'LINK' && (
           <div className="mx-auto max-w-2xl">
             {urlSetting ? (
               <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-sm transition-all">
@@ -462,7 +462,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
         )}
 
         {/* VIDEO */}
-        {itemType === 'video' && (
+        {itemType === 'VIDEO' && (
           <div className="space-y-4">
             {urlSetting ? (
               <div className="rounded-xl overflow-hidden border border-[var(--border-default)] shadow-sm aspect-video w-full bg-[var(--bg-base)] max-w-3xl mx-auto">
@@ -491,7 +491,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
         )}
 
         {/* FILE */}
-        {itemType === 'file' && (
+        {itemType === 'FILE' && (
           <div className="mx-auto max-w-2xl">
             {urlSetting ? (
               <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-xs flex flex-col items-center text-center space-y-4">
@@ -517,7 +517,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
         )}
 
         {/* RTE DOCUMENT */}
-        {itemType === 'rte' && (
+        {itemType === 'RTE' && (
           <div className="space-y-4">
             {isCourseStaff ? (
               <div className="space-y-6">
@@ -537,7 +537,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
         )}
 
         {/* PAGE-BASED LESSON WORKSPACE */}
-        {itemType === 'lesson' && (
+        {itemType === 'LESSON' && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
             
             {/* Sidebar List */}
