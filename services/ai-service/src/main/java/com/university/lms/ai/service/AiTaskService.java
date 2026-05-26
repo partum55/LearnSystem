@@ -63,7 +63,7 @@ public class AiTaskService {
 
         // Resolve API key
         AiKeyResolution keyResolution = userAiSettingsService.resolveKey(userId, role);
-        if ("NONE".equals(keyResolution.keySource()) || keyResolution.resolvedKey() == null) {
+        if (keyResolution.keySource() == com.university.lms.ai.domain.AiKeySource.NONE || keyResolution.apiKey() == null) {
             throw new AiException(AiErrorCode.AI_KEY_REQUIRED, "An active AI API key is required");
         }
 
@@ -78,7 +78,7 @@ public class AiTaskService {
         generation.setStatus(AiGenerationStatus.PROCESSING);
         generation.setProvider(configService.getDefaultProvider().name());
         generation.setModel(configService.getGeminiModel());
-        generation.setKeySource(keyResolution.keySource());
+        generation.setKeySource(keyResolution.keySource().name());
         
         try {
             generation.setInputJson(objectMapper.writeValueAsString(request.input()));
@@ -89,7 +89,7 @@ public class AiTaskService {
         generation = generationRepository.save(generation);
 
         try {
-            JsonNode output = handler.execute(request.context(), request.input(), keyResolution.resolvedKey());
+            JsonNode output = handler.execute(request.context(), request.input(), keyResolution.apiKey());
             
             generation.setStatus(AiGenerationStatus.COMPLETED);
             generation.setOutputJson(objectMapper.writeValueAsString(output));

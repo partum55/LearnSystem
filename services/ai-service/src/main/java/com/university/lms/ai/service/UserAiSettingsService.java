@@ -24,6 +24,27 @@ public class UserAiSettingsService {
         return toResponse(provider, userRole, userKey, resolution);
     }
 
+    public AiKeyResolution resolveKey(UUID userId, String userRole) {
+        AiProvider provider = configService.getDefaultProvider();
+        UserApiKey userKey = keyService.findActiveUserKey(userId, provider);
+        
+        if (!configService.isAiFeaturesEnabled()) {
+            return new AiKeyResolution(false, provider, AiKeySource.NONE, null);
+        }
+        
+        if (userKey != null && userKey.getApiKey() != null) {
+            return new AiKeyResolution(true, provider, AiKeySource.USER_KEY, userKey.getApiKey());
+        }
+        
+        if (isAdmin(userRole) && configService.hasSystemGeminiApiKey()) {
+            // Need to make getSystemGeminiApiKey public in config service, but for now we can access it if it's package-private and we are in same package
+            // Let's assume it's in same package.
+            return new AiKeyResolution(true, provider, AiKeySource.SYSTEM_KEY, configService.getSystemGeminiApiKey());
+        }
+        
+        return new AiKeyResolution(true, provider, AiKeySource.NONE, null);
+    }
+
     public AiSettingsResponse saveApiKey(UUID userId, String userRole, SaveAiApiKeyRequest request) {
         keyService.saveUserKey(userId, request.provider(), request.apiKey());
         return getSettings(userId, userRole);
