@@ -1,10 +1,57 @@
 package com.university.lms.ai;
 
+import com.university.lms.ai.config.SecurityConfig;
+import com.university.lms.ai.domain.entity.UserApiKey;
+import com.university.lms.ai.repository.UserApiKeyRepository;
+import com.university.lms.ai.security.ApiKeyValidationFilter;
+import com.university.lms.ai.security.JwtAuthenticationFilter;
+import com.university.lms.ai.service.AiKeyEncryptionService;
+import com.university.lms.ai.service.AiKeyResolver;
+import com.university.lms.ai.service.AiProviderConfigService;
+import com.university.lms.ai.service.UserAiProviderKeyService;
+import com.university.lms.ai.service.UserAiSettingsService;
+import com.university.lms.ai.web.AIHealthController;
+import com.university.lms.ai.web.AiExceptionHandler;
+import com.university.lms.ai.web.UserAiSettingsController;
+import com.university.lms.common.security.JwtService;
+import com.university.lms.common.security.SecurityAuditLogger;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 /** Main application class for LMS AI Service */
-@SpringBootApplication(scanBasePackages = {"com.university.lms.ai", "com.university.lms.common"})
+@SpringBootApplication
+@ComponentScan(
+    basePackageClasses = {AiServiceApplication.class, JwtService.class},
+    useDefaultFilters = false,
+    includeFilters =
+        @ComponentScan.Filter(
+            type = FilterType.ASSIGNABLE_TYPE,
+            classes = {
+              SecurityConfig.class,
+              ApiKeyValidationFilter.class,
+              JwtAuthenticationFilter.class,
+              UserAiSettingsController.class,
+              AIHealthController.class,
+              AiExceptionHandler.class,
+              AiKeyResolver.class,
+              AiKeyEncryptionService.class,
+              AiProviderConfigService.class,
+              UserAiProviderKeyService.class,
+              UserAiSettingsService.class,
+              JwtService.class,
+              SecurityAuditLogger.class
+            }))
+@EntityScan(basePackageClasses = UserApiKey.class)
+@EnableJpaRepositories(
+    basePackageClasses = UserApiKeyRepository.class,
+    includeFilters =
+        @ComponentScan.Filter(
+            type = FilterType.ASSIGNABLE_TYPE,
+            classes = UserApiKeyRepository.class))
 public class AiServiceApplication {
 
   public static void main(String[] args) {
