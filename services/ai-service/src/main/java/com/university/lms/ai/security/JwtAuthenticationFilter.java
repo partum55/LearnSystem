@@ -33,7 +33,7 @@ public class JwtAuthenticationFilter
 
       @Override
       public String getRole() {
-        return null;
+        return roleFromToken;
       }
 
       @Override
