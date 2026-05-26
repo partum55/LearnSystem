@@ -82,7 +82,7 @@ public class CourseDraftService {
                 .code(draft.course().code())
                 .descriptionUk(draft.course().description())
                 .descriptionEn(draft.course().description())
-                .syllabusJson(draft.course().syllabusJson() != null ? draft.course().syllabusJson().toString() : null)
+                .syllabus(draft.course().syllabusJson() != null ? draft.course().syllabusJson().toString() : null)
                 .status(CourseStatus.DRAFT) // Enforce DRAFT
                 .ownerId(userId)
                 .createdAt(LocalDateTime.now())
@@ -117,14 +117,14 @@ public class CourseDraftService {
                 if (moduleDraft.learningItems() != null) {
                     for (int j = 0; j < moduleDraft.learningItems().size(); j++) {
                         LearningItemDraft itemDraft = moduleDraft.learningItems().get(j);
+                        Map<String, Object> cJson = itemDraft.contentJson() != null ? objectMapper.convertValue(itemDraft.contentJson(), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}) : new java.util.HashMap<>();
                         LearningItem item = LearningItem.builder()
-                                .courseId(course.getId())
-                                .moduleId(module.getId())
+                                .module(module)
                                 .type(LearningItemType.RTE) // Default or map if needed
                                 .title(itemDraft.title())
-                                .contentJson(itemDraft.contentJson() != null ? itemDraft.contentJson().toString() : "{}")
+                                .contentJson(cJson)
                                 .position(j)
-                                .status(LearningItemStatus.DRAFT)
+                                .status(LearningItemStatus.HIDDEN)
                                 .createdAt(LocalDateTime.now())
                                 .build();
                         learningItemRepository.save(item);
@@ -137,17 +137,21 @@ public class CourseDraftService {
                         AssignmentDraft assignDraft = moduleDraft.assignments().get(k);
                         AssignmentType type = AssignmentType.valueOf(assignDraft.type().toUpperCase());
                         
+                        Map<String, Object> iJson = assignDraft.instructionsJson() != null ? objectMapper.convertValue(assignDraft.instructionsJson(), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}) : new java.util.HashMap<>();
+                        Map<String, Object> sJson = assignDraft.settings() != null ? objectMapper.convertValue(assignDraft.settings(), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}) : new java.util.HashMap<>();
+
                         Assignment assignment = Assignment.builder()
                                 .courseId(course.getId())
                                 .moduleId(module.getId())
                                 .assignmentType(type)
                                 .title(assignDraft.title())
-                                .maxScore(assignDraft.points() != null ? assignDraft.points() : 10)
-                                .instructions(assignDraft.instructionsJson() != null ? assignDraft.instructionsJson().toString() : "{}")
+                                .maxPoints(assignDraft.points() != null ? java.math.BigDecimal.valueOf(assignDraft.points()) : java.math.BigDecimal.TEN)
+                                .instructionsJson(iJson)
                                 .position(k)
                                 .status(AssignmentStatus.DRAFT)
+                                .createdBy(userId)
                                 .createdAt(LocalDateTime.now())
-                                .canonicalSettings(assignDraft.settings() != null ? assignDraft.settings().toString() : "{}")
+                                .settings(sJson)
                                 .build();
                         assignmentRepository.save(assignment);
                     }
