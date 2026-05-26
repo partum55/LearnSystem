@@ -11,7 +11,7 @@ import com.university.lms.ai.provider.GeminiProviderClient;
 import com.university.lms.ai.repository.AiGenerationRepository;
 import com.university.lms.ai.web.dto.AiTaskRequest;
 import com.university.lms.ai.web.dto.AiTaskResponse;
-import com.university.lms.ai.domain.model.AiKeyResolution;
+import com.university.lms.ai.service.AiKeyResolution;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
