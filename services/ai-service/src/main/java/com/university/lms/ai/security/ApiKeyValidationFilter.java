@@ -48,16 +48,6 @@ public class ApiKeyValidationFilter extends OncePerRequestFilter {
             return;
         }
 
-        if (path.startsWith("/v1/ai/")) {
-            writeError(
-                    response,
-                    HttpServletResponse.SC_NOT_IMPLEMENTED,
-                    "AI_GENERATION_NOT_IMPLEMENTED",
-                    "AI generation endpoints are not enabled in this readiness pass"
-            );
-            return;
-        }
-
         UUID userId = (UUID) request.getAttribute("userId");
         String userRole = (String) request.getAttribute("userRole");
 

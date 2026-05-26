@@ -29,7 +29,7 @@ public class AiTaskController {
             HttpServletRequest httpRequest
     ) {
         UUID userId = (UUID) httpRequest.getAttribute("userId");
-        String role = (String) httpRequest.getAttribute("role"); // Extract role if available in common filter
+        String role = (String) httpRequest.getAttribute("userRole");
         
         try {
             AiTaskResponse response = aiTaskService.executeTask(request, userId, role);

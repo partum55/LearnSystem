@@ -355,6 +355,7 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
                       if (!aiPrompt) return;
                       await generateTask.executeTask({
                         type: 'GENERATE_ASSIGNMENT',
+                        context: { courseId },
                         input: { topic: aiPrompt, maxPoints: maxPoints || 100 }
                       });
                     }}
@@ -373,6 +374,7 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
                       if (out.maxPoints) setMaxPoints(out.maxPoints);
                       if (out.type) setType(out.type as AssignmentType);
                       if (out.instructionsJson) setInstructionsJson(out.instructionsJson);
+                      setVisible(false);
                       setAiMode(null);
                       generateTask.reset();
                       setAiPrompt('');
@@ -413,6 +415,7 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
                     onClick={async () => {
                       await improveTask.executeTask({
                         type: 'IMPROVE_ASSIGNMENT_INSTRUCTIONS',
+                        context: { courseId },
                         input: { feedback: aiPrompt, currentInstructionsJson: instructionsJson }
                       });
                     }}

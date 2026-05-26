@@ -99,6 +99,19 @@ export function LearningItemFormModal({
     textContent: (aiTask.data?.output && type === 'RTE') ? JSON.stringify((aiTask.data.output as any).contentJson) : undefined,
   });
 
+  const buildAiDraftPayload = (): LearningItemRequest | null => {
+    const output = aiTask.data?.output;
+    if (!output) return null;
+
+    return {
+      title: output.title?.trim() || 'AI Generated Document',
+      type: 'RTE',
+      order: Number(order),
+      visible: false,
+      textContent: JSON.stringify(output.contentJson),
+    };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -171,6 +184,7 @@ export function LearningItemFormModal({
                           if (!aiPrompt) return;
                           await aiTask.executeTask({
                             type: 'GENERATE_RTE_MATERIAL',
+                            context: courseId ? { courseId } : undefined,
                             input: { topic: aiPrompt }
                           });
                         }}
@@ -185,10 +199,17 @@ export function LearningItemFormModal({
                         data={aiTask.data.output}
                         isAccepting={loading || redirecting}
                         onAccept={async () => {
-                          setType('RTE');
-                          setTitle(aiTask.data?.output?.title || 'AI Generated Document');
-                          // The submit handler will pick up the textContent from aiTask
-                          await handleSubmit(new Event('submit') as any);
+                          const payload = buildAiDraftPayload();
+                          if (!payload || !onCreateEditorItem) return;
+                          try {
+                            setRedirecting(true);
+                            const newId = await onCreateEditorItem(payload);
+                            onClose();
+                            router.push(`/learning-items/${newId}${courseId ? `?courseId=${courseId}` : ''}`);
+                          } catch (err: any) {
+                            setRedirecting(false);
+                            setError(err?.message || err?.response?.data?.message || 'Failed to save AI material draft.');
+                          }
                         }}
                         onReject={() => { aiTask.reset(); setAiPrompt(''); }}
                       />

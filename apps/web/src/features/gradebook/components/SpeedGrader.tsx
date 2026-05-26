@@ -419,6 +419,7 @@ export function SpeedGrader({
                               }
                               await suggestGradeTask.executeTask({
                                 type: 'SUGGEST_GRADE',
+                                context: { courseId },
                                 input: { 
                                   assignmentId,
                                   studentId: activeStudentId,
@@ -437,11 +438,16 @@ export function SpeedGrader({
                             data={suggestGradeTask.data.output}
                             onAccept={() => {
                               const out = suggestGradeTask.data!.output;
+                              const nextPoints = out?.points !== undefined ? String(out.points) : editPoints;
+                              const nextComment = out?.comment ?? editComment;
                               if (out?.points !== undefined) {
-                                handleLocalChange(String(out.points), editComment);
+                                setEditPoints(String(out.points));
                               }
                               if (out?.comment) {
-                                handleLocalChange(editPoints, out.comment);
+                                setEditComment(out.comment);
+                              }
+                              if (out?.points !== undefined || out?.comment) {
+                                handleLocalChange(nextPoints, nextComment);
                               }
                               setShowAiPlaceholder(false);
                               suggestGradeTask.reset();
