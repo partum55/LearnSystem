@@ -1,4 +1,4 @@
-package com.university.lms.ai.domain.entity;
+package com.university.lms.ai.domain.generation;
 
 import com.university.lms.ai.domain.model.AiGenerationStatus;
 import com.university.lms.ai.domain.model.AiTaskType;

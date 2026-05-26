@@ -1,6 +1,6 @@
 package com.university.lms.ai.repository;
 
-import com.university.lms.ai.domain.entity.AiGeneration;
+import com.university.lms.ai.domain.generation.AiGeneration;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

@@ -1,7 +1,7 @@
 package com.university.lms.ai;
 
 import com.university.lms.ai.config.SecurityConfig;
-import com.university.lms.ai.domain.entity.AiGeneration;
+import com.university.lms.ai.domain.generation.AiGeneration;
 import com.university.lms.ai.domain.key.UserApiKey;
 import com.university.lms.ai.handler.GenerateAssignmentHandler;
 import com.university.lms.ai.handler.GenerateCourseHandler;

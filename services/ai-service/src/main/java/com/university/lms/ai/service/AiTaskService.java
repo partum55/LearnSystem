@@ -2,7 +2,7 @@ package com.university.lms.ai.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.university.lms.ai.domain.entity.AiGeneration;
+import com.university.lms.ai.domain.generation.AiGeneration;
 import com.university.lms.ai.domain.model.AiErrorCode;
 import com.university.lms.ai.domain.model.AiGenerationStatus;
 import com.university.lms.ai.domain.model.AiTaskType;
