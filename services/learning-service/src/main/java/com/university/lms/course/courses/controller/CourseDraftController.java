@@ -29,7 +29,7 @@ public class CourseDraftController {
             HttpServletRequest request
     ) {
         UUID userId = (UUID) request.getAttribute("userId");
-        String role = (String) request.getAttribute("role");
+        String role = (String) request.getAttribute("userRole");
         
         CourseDto course = courseDraftService.createFromDraft(draft, userId, role);
         return ResponseEntity.ok(course);

@@ -56,11 +56,18 @@ export function SpeedGrader({
   const [unsavedEdits, setUnsavedEdits] = useState<Record<string, UnsavedCellEdit>>({});
   const [validationError, setValidationError] = useState<string | null>(null);
   const [todoToast, setTodoToast] = useState<string | null>(null);
-  const [showAiPlaceholder, setShowAiPlaceholder] = useState(false);
+  const [showAiPanel, setShowAiPanel] = useState(false);
 
   const suggestGradeTask = useAiTask<{
-    points?: number;
-    comment?: string;
+    suggestedScore?: number;
+    feedbackJson?: unknown;
+    reasoningSummary?: string[];
+    rubricBreakdown?: Array<{
+      criterion?: string;
+      suggestedPoints?: number;
+      maxPoints?: number;
+      comment?: string;
+    }>;
   }>();
 
   // Select first student by default
@@ -395,13 +402,13 @@ export function SpeedGrader({
                   </p>
                 )}
 
-                {showAiPlaceholder && (
+                {showAiPanel && (
                   <AiFeatureGate compact>
                     <div className="rounded-lg border p-4 bg-[var(--bg-base)]">
                       <AiErrorDisplay error={suggestGradeTask.error} />
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="text-sm font-bold">AI Grade Suggestion</h4>
-                        <button type="button" onClick={() => { setShowAiPlaceholder(false); suggestGradeTask.reset(); }} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">Cancel</button>
+                        <button type="button" onClick={() => { setShowAiPanel(false); suggestGradeTask.reset(); }} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">Cancel</button>
                       </div>
                       
                       {!suggestGradeTask.data ? (
@@ -438,18 +445,13 @@ export function SpeedGrader({
                             data={suggestGradeTask.data.output}
                             onAccept={() => {
                               const out = suggestGradeTask.data!.output;
-                              const nextPoints = out?.points !== undefined ? String(out.points) : editPoints;
-                              const nextComment = out?.comment ?? editComment;
-                              if (out?.points !== undefined) {
-                                setEditPoints(String(out.points));
-                              }
-                              if (out?.comment) {
-                                setEditComment(out.comment);
-                              }
-                              if (out?.points !== undefined || out?.comment) {
+                              const feedbackText = richContentToPlainText(out?.feedbackJson);
+                              const nextPoints = out?.suggestedScore !== undefined ? String(out.suggestedScore) : editPoints;
+                              const nextComment = feedbackText || editComment;
+                              if (out?.suggestedScore !== undefined || feedbackText) {
                                 handleLocalChange(nextPoints, nextComment);
                               }
-                              setShowAiPlaceholder(false);
+                              setShowAiPanel(false);
                               suggestGradeTask.reset();
                             }}
                             onReject={() => { suggestGradeTask.reset(); }}
@@ -489,7 +491,7 @@ export function SpeedGrader({
                 <div className="flex flex-wrap justify-end gap-2">
                   <button
                     type="button"
-                    onClick={() => setShowAiPlaceholder((current) => !current)}
+                    onClick={() => setShowAiPanel((current) => !current)}
                     className="btn btn-secondary text-xs"
                   >
                     AI suggest grade
@@ -521,4 +523,23 @@ export function SpeedGrader({
       )}
     </div>
   );
+}
+
+function richContentToPlainText(document: unknown) {
+  if (!document || typeof document !== 'object') return '';
+  const blocks = (document as { blocks?: unknown }).blocks;
+  if (!Array.isArray(blocks)) return '';
+
+  return blocks
+    .map((block) => {
+      if (!block || typeof block !== 'object') return '';
+      const data = (block as { data?: Record<string, unknown> }).data;
+      if (!data) return '';
+      const values = [data.text, data.content, data.caption]
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+      return values.join(' ');
+    })
+    .filter(Boolean)
+    .join('\n\n')
+    .trim();
 }

@@ -5,6 +5,7 @@ import com.university.lms.ai.service.AiTaskService;
 import com.university.lms.ai.web.dto.AiTaskRequest;
 import com.university.lms.ai.web.dto.AiTaskResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -43,9 +44,18 @@ public class AiTaskController {
                     e.getErrorCode().name(),
                     e.getMessage()
             );
-            // In a real app we might return 400/403/422 based on error code, but returning 200 with error structure is often fine for AI tasks if frontend expects it, or better return 400.
-            // Let's return 400 for errors so frontend apiFetch catches it.
-            return ResponseEntity.badRequest().body(errorResponse);
+            return ResponseEntity.status(statusFor(e)).body(errorResponse);
         }
+    }
+
+    private HttpStatus statusFor(AiException exception) {
+        return switch (exception.getErrorCode()) {
+            case AI_KEY_REQUIRED, AI_FEATURES_DISABLED, AI_PERMISSION_DENIED -> HttpStatus.FORBIDDEN;
+            case AI_PROVIDER_AUTH_FAILED -> HttpStatus.UNAUTHORIZED;
+            case AI_PROVIDER_RATE_LIMITED -> HttpStatus.TOO_MANY_REQUESTS;
+            case AI_PROVIDER_UNAVAILABLE -> HttpStatus.SERVICE_UNAVAILABLE;
+            case AI_OUTPUT_INVALID -> HttpStatus.UNPROCESSABLE_ENTITY;
+            case AI_TASK_FAILED -> HttpStatus.INTERNAL_SERVER_ERROR;
+        };
     }
 }

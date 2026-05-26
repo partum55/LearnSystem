@@ -23,6 +23,8 @@ class GatewayRouteContractTest {
   private static final String LEARNING_SERVICE_URI_DOCKER = "${LEARNING_SERVICE_URL:http://learning-service:8089}";
   private static final String USER_SERVICE_URI_MAIN = "${USER_SERVICE_URL:http://localhost:8081}";
   private static final String USER_SERVICE_URI_DOCKER = "${USER_SERVICE_URL:http://user-service:8081}";
+  private static final String AI_SERVICE_URI_MAIN = "${AI_SERVICE_URL:http://localhost:8085}";
+  private static final String AI_SERVICE_URI_DOCKER = "${AI_SERVICE_URL:http://ai-service:8085}";
 
   @ParameterizedTest
   @ValueSource(strings = {"application.yml", "application-docker.yml"})
@@ -101,6 +103,20 @@ class GatewayRouteContractTest {
 
     assertLearningRoute(
         routes,
+        "ai-service-v1",
+        expectedAiUri(resourceName),
+        Set.of("/api/v1/ai/**"));
+
+    assertThat(
+            routes.stream()
+                .flatMap(route -> extractPathPatterns(route).stream())
+                .filter("/api/ai/**"::equals)
+                .collect(Collectors.toSet()))
+        .as("AI generation must use the production-facing /api/v1/ai/** route")
+        .isEmpty();
+
+    assertLearningRoute(
+        routes,
         "learning-risk-analytics",
         expectedLearningUri(resourceName),
         Set.of(
@@ -163,6 +179,10 @@ class GatewayRouteContractTest {
 
   private static String expectedUserUri(String resourceName) {
     return "application-docker.yml".equals(resourceName) ? USER_SERVICE_URI_DOCKER : USER_SERVICE_URI_MAIN;
+  }
+
+  private static String expectedAiUri(String resourceName) {
+    return "application-docker.yml".equals(resourceName) ? AI_SERVICE_URI_DOCKER : AI_SERVICE_URI_MAIN;
   }
 
   private static Set<String> extractPathPatterns(Map<String, Object> route) {

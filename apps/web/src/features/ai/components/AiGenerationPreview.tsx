@@ -1,4 +1,6 @@
 import React from 'react';
+import { RichContentRenderer } from '@/features/rich-content/components/RichContentRenderer';
+import type { RichContentDocument } from '@/features/rich-content/rich-content.types';
 
 interface AiGenerationPreviewProps {
   data: unknown;
@@ -14,6 +16,15 @@ export const AiGenerationPreview: React.FC<AiGenerationPreviewProps> = ({
   isAccepting = false 
 }) => {
   if (!data) return null;
+  const draft = data as Record<string, unknown>;
+  const richContent = firstRichContentDocument(draft);
+  const reasoning = Array.isArray(draft.reasoningSummary) ? draft.reasoningSummary.filter((item): item is string => typeof item === 'string') : [];
+  const rubric = Array.isArray(draft.rubricBreakdown) ? draft.rubricBreakdown as Array<Record<string, unknown>> : [];
+  const score = typeof draft.suggestedScore === 'number'
+    ? draft.suggestedScore
+    : typeof draft.points === 'number'
+      ? draft.points
+      : null;
 
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden my-4 shadow-sm">
@@ -26,8 +37,70 @@ export const AiGenerationPreview: React.FC<AiGenerationPreviewProps> = ({
         </h3>
         <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">Review before saving</span>
       </div>
-      <div className="p-4 max-h-96 overflow-y-auto font-mono text-xs text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900">
-        <pre>{JSON.stringify(data, null, 2)}</pre>
+      <div className="p-4 max-h-96 overflow-y-auto text-sm text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 space-y-4">
+        {typeof draft.title === 'string' && (
+          <div>
+            <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Title</p>
+            <p className="mt-1 font-semibold">{draft.title}</p>
+          </div>
+        )}
+
+        {typeof draft.type === 'string' && (
+          <div>
+            <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Type</p>
+            <p className="mt-1 font-mono text-xs">{draft.type}</p>
+          </div>
+        )}
+
+        {score !== null && (
+          <div>
+            <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Score</p>
+            <p className="mt-1 font-semibold">
+              {score}
+              {typeof draft.maxScore === 'number' ? ` / ${draft.maxScore}` : ''}
+            </p>
+          </div>
+        )}
+
+        {richContent && (
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Rich content preview</p>
+            <div className="rounded-md border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+              <RichContentRenderer document={richContent} />
+            </div>
+          </div>
+        )}
+
+        {reasoning.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Reasoning summary</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              {reasoning.map((item, index) => <li key={index}>{item}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {rubric.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Rubric breakdown</p>
+            <div className="mt-2 space-y-2">
+              {rubric.map((row, index) => (
+                <div key={index} className="rounded-md border border-gray-200 bg-white p-2 text-xs dark:border-gray-700 dark:bg-gray-800">
+                  <div className="flex justify-between gap-3 font-semibold">
+                    <span>{String(row.criterion ?? `Criterion ${index + 1}`)}</span>
+                    <span>{String(row.suggestedPoints ?? '')}{row.maxPoints !== undefined ? ` / ${String(row.maxPoints)}` : ''}</span>
+                  </div>
+                  {typeof row.comment === 'string' && <p className="mt-1 text-gray-600 dark:text-gray-300">{row.comment}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <details>
+          <summary className="cursor-pointer text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Raw JSON</summary>
+          <pre className="mt-2 overflow-x-auto font-mono text-xs">{JSON.stringify(data, null, 2)}</pre>
+        </details>
       </div>
       <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
         <button
@@ -58,3 +131,18 @@ export const AiGenerationPreview: React.FC<AiGenerationPreviewProps> = ({
     </div>
   );
 };
+
+function firstRichContentDocument(draft: Record<string, unknown>) {
+  for (const key of ['contentJson', 'instructionsJson', 'feedbackJson']) {
+    const value = draft[key];
+    if (
+      value &&
+      typeof value === 'object' &&
+      (value as { type?: unknown }).type === 'RICH_CONTENT' &&
+      Array.isArray((value as { blocks?: unknown }).blocks)
+    ) {
+      return value as RichContentDocument;
+    }
+  }
+  return null;
+}

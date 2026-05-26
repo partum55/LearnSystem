@@ -12,23 +12,25 @@ export function CourseAiWizard() {
   const router = useRouter();
   const [topic, setTopic] = useState('');
   const [audience, setAudience] = useState('');
+  const [editableDraft, setEditableDraft] = useState<CourseDraft | null>(null);
   
   const aiTask = useAiTask<CourseDraft>();
   const createCourse = useCreateCourseFromDraft();
 
   const handleGenerate = async () => {
     if (!topic) return;
-    await aiTask.executeTask({
+    const response = await aiTask.executeTask({
       type: 'GENERATE_COURSE',
       input: { topic, targetAudience: audience }
     });
+    setEditableDraft(response.output);
   };
 
   const handleSave = async () => {
-    if (!aiTask.data?.output) return;
+    if (!editableDraft) return;
     
     try {
-      const created = await createCourse.createCourse(aiTask.data.output);
+      const created = await createCourse.createCourse(editableDraft);
       // @ts-expect-error type
       if (created?.id) {
         // @ts-expect-error type
@@ -93,12 +95,51 @@ export function CourseAiWizard() {
             )}
 
             {aiTask.data?.output && (
-              <AiGenerationPreview
-                data={aiTask.data.output}
-                isAccepting={createCourse.isLoading}
-                onAccept={handleSave}
-                onReject={() => router.push('/courses')}
-              />
+              <>
+                {editableDraft && (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="input-group">
+                      <span className="label">Course title</span>
+                      <input
+                        className="input"
+                        value={editableDraft.course.title}
+                        onChange={(event) => setEditableDraft((draft) => draft ? ({
+                          ...draft,
+                          course: { ...draft.course, title: event.target.value },
+                        }) : draft)}
+                      />
+                    </label>
+                    <label className="input-group">
+                      <span className="label">Course code</span>
+                      <input
+                        className="input"
+                        value={editableDraft.course.code}
+                        onChange={(event) => setEditableDraft((draft) => draft ? ({
+                          ...draft,
+                          course: { ...draft.course, code: event.target.value.toUpperCase() },
+                        }) : draft)}
+                      />
+                    </label>
+                    <label className="input-group md:col-span-2">
+                      <span className="label">Description</span>
+                      <textarea
+                        className="input min-h-24"
+                        value={editableDraft.course.description}
+                        onChange={(event) => setEditableDraft((draft) => draft ? ({
+                          ...draft,
+                          course: { ...draft.course, description: event.target.value },
+                        }) : draft)}
+                      />
+                    </label>
+                  </div>
+                )}
+                <AiGenerationPreview
+                  data={editableDraft ?? aiTask.data.output}
+                  isAccepting={createCourse.isLoading}
+                  onAccept={handleSave}
+                  onReject={() => router.push('/courses')}
+                />
+              </>
             )}
             
           </div>

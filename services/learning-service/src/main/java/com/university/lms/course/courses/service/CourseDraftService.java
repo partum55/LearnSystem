@@ -1,6 +1,7 @@
 package com.university.lms.course.courses.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.university.lms.common.domain.CourseStatus;
 import com.university.lms.course.assessment.domain.Assignment;
 import com.university.lms.course.assessment.domain.AssignmentStatus;
@@ -68,9 +69,11 @@ public class CourseDraftService {
             throw new ValidationException("Only ADMIN or global TEACHER accounts can create courses");
         }
 
-        if (draft.course() == null || draft.course().code() == null || draft.course().title() == null) {
+        if (draft.course() == null || isBlank(draft.course().code()) || isBlank(draft.course().title())) {
             throw new ValidationException("Course draft must have a title and a code");
         }
+        rejectLegacyFields(draft);
+        requireRichContentDocument(draft.course().syllabusJson(), "course.syllabusJson", true);
 
         if (courseRepository.existsByCode(draft.course().code())) {
             throw new ValidationException("Course with code '" + draft.course().code() + "' already exists");
@@ -103,6 +106,7 @@ public class CourseDraftService {
         if (draft.modules() != null) {
             for (int i = 0; i < draft.modules().size(); i++) {
                 ModuleDraft moduleDraft = draft.modules().get(i);
+                requireText(moduleDraft.title(), "modules[" + i + "].title");
                 
                 Module module = Module.builder()
                         .course(course)
@@ -118,10 +122,13 @@ public class CourseDraftService {
                 if (moduleDraft.learningItems() != null) {
                     for (int j = 0; j < moduleDraft.learningItems().size(); j++) {
                         LearningItemDraft itemDraft = moduleDraft.learningItems().get(j);
+                        requireText(itemDraft.title(), "modules[" + i + "].learningItems[" + j + "].title");
+                        LearningItemType itemType = parseLearningItemType(itemDraft.type());
+                        requireRichContentDocument(itemDraft.contentJson(), "modules[" + i + "].learningItems[" + j + "].contentJson", false);
                         Map<String, Object> cJson = itemDraft.contentJson() != null ? objectMapper.convertValue(itemDraft.contentJson(), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}) : new java.util.HashMap<>();
                         LearningItem item = LearningItem.builder()
                                 .module(module)
-                                .type(LearningItemType.RTE) // Default or map if needed
+                                .type(itemType)
                                 .title(itemDraft.title())
                                 .contentJson(cJson)
                                 .position(j)
@@ -136,7 +143,12 @@ public class CourseDraftService {
                 if (moduleDraft.assignments() != null) {
                     for (int k = 0; k < moduleDraft.assignments().size(); k++) {
                         AssignmentDraft assignDraft = moduleDraft.assignments().get(k);
-                        AssignmentType type = AssignmentType.valueOf(assignDraft.type().toUpperCase());
+                        requireText(assignDraft.title(), "modules[" + i + "].assignments[" + k + "].title");
+                        if (assignDraft.points() == null || assignDraft.points() < 0) {
+                            throw new ValidationException("modules[" + i + "].assignments[" + k + "].points must be non-negative");
+                        }
+                        AssignmentType type = parseAssignmentType(assignDraft.type());
+                        requireRichContentDocument(assignDraft.instructionsJson(), "modules[" + i + "].assignments[" + k + "].instructionsJson", false);
                         
                         Map<String, Object> iJson = assignDraft.instructionsJson() != null ? objectMapper.convertValue(assignDraft.instructionsJson(), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}) : new java.util.HashMap<>();
                         Map<String, Object> sJson = assignDraft.settings() != null ? objectMapper.convertValue(assignDraft.settings(), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}) : new java.util.HashMap<>();
@@ -146,7 +158,7 @@ public class CourseDraftService {
                                 .moduleId(module.getId())
                                 .assignmentType(type)
                                 .title(assignDraft.title())
-                                .maxPoints(assignDraft.points() != null ? java.math.BigDecimal.valueOf(assignDraft.points()) : java.math.BigDecimal.TEN)
+                                .maxPoints(java.math.BigDecimal.valueOf(assignDraft.points()))
                                 .instructionsJson(iJson)
                                 .position(k)
                                 .status(AssignmentStatus.DRAFT)
@@ -161,5 +173,107 @@ public class CourseDraftService {
         }
 
         return courseMapper.toDto(course);
+    }
+
+    private LearningItemType parseLearningItemType(String value) {
+        if (value == null || value.isBlank()) {
+            throw new ValidationException("Learning item type is required");
+        }
+        try {
+            return LearningItemType.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("Learning item type must be a canonical uppercase enum value: " + value);
+        }
+    }
+
+    private AssignmentType parseAssignmentType(String value) {
+        if (value == null || value.isBlank()) {
+            throw new ValidationException("Assignment type is required");
+        }
+        try {
+            return AssignmentType.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("Assignment type must be a canonical uppercase enum value: " + value);
+        }
+    }
+
+    private void requireText(String value, String path) {
+        if (isBlank(value)) {
+            throw new ValidationException(path + " is required");
+        }
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    private void rejectLegacyFields(CourseDraftDto draft) {
+        rejectLegacyFields(draft.course().resources(), "course.resources");
+        rejectLegacyFields(draft.course().topics(), "course.topics");
+        rejectLegacyFields(draft.course().lessonBlocks(), "course.lessonBlocks");
+        rejectLegacyFields(draft.course().lesson_blocks(), "course.lesson_blocks");
+
+        if (draft.modules() == null) {
+            return;
+        }
+        for (int i = 0; i < draft.modules().size(); i++) {
+            ModuleDraft module = draft.modules().get(i);
+            rejectLegacyFields(module.resources(), "modules[" + i + "].resources");
+            rejectLegacyFields(module.topics(), "modules[" + i + "].topics");
+            rejectLegacyFields(module.lessonBlocks(), "modules[" + i + "].lessonBlocks");
+            rejectLegacyFields(module.lesson_blocks(), "modules[" + i + "].lesson_blocks");
+
+            if (module.learningItems() != null) {
+                for (int j = 0; j < module.learningItems().size(); j++) {
+                    LearningItemDraft item = module.learningItems().get(j);
+                    rejectLegacyFields(item.resources(), "modules[" + i + "].learningItems[" + j + "].resources");
+                    rejectLegacyFields(item.topics(), "modules[" + i + "].learningItems[" + j + "].topics");
+                    rejectLegacyFields(item.lessonBlocks(), "modules[" + i + "].learningItems[" + j + "].lessonBlocks");
+                    rejectLegacyFields(item.lesson_blocks(), "modules[" + i + "].learningItems[" + j + "].lesson_blocks");
+                }
+            }
+
+            if (module.assignments() != null) {
+                for (int k = 0; k < module.assignments().size(); k++) {
+                    AssignmentDraft assignment = module.assignments().get(k);
+                    rejectLegacyFields(assignment.resources(), "modules[" + i + "].assignments[" + k + "].resources");
+                    rejectLegacyFields(assignment.topics(), "modules[" + i + "].assignments[" + k + "].topics");
+                    rejectLegacyFields(assignment.lessonBlocks(), "modules[" + i + "].assignments[" + k + "].lessonBlocks");
+                    rejectLegacyFields(assignment.lesson_blocks(), "modules[" + i + "].assignments[" + k + "].lesson_blocks");
+                }
+            }
+        }
+    }
+
+    private void rejectLegacyFields(JsonNode value, String path) {
+        if (value != null && !value.isNull()) {
+            throw new ValidationException("Legacy draft field is not supported: " + path);
+        }
+    }
+
+    private void requireRichContentDocument(JsonNode value, String path, boolean optional) {
+        if (value == null || value.isNull()) {
+            if (optional) {
+                return;
+            }
+            throw new ValidationException(path + " is required");
+        }
+        if (!value.isObject()) {
+            throw new ValidationException(path + " must be a RichContentDocument object");
+        }
+        if (!value.has("version") || value.get("version").asInt() != 1) {
+            throw new ValidationException(path + " must have version 1");
+        }
+        if (!value.has("type") || !"RICH_CONTENT".equals(value.get("type").asText())) {
+            throw new ValidationException(path + " must have type RICH_CONTENT");
+        }
+        if (!value.has("blocks") || !value.get("blocks").isArray()) {
+            throw new ValidationException(path + " must contain a blocks array");
+        }
+        for (JsonNode block : value.get("blocks")) {
+            if (!block.isObject() || !block.has("type") || !block.has("data")) {
+                throw new ValidationException(path + " contains an invalid block");
+            }
+        }
     }
 }

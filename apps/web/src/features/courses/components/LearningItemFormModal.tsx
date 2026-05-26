@@ -57,7 +57,7 @@ export function LearningItemFormModal({
   const [order, setOrder] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
-  const [showAiPlaceholder, setShowAiPlaceholder] = useState(false);
+  const [showAiPanel, setShowAiPanel] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
 
   const aiTask = useAiTask<{ title: string; contentJson: unknown }>();
@@ -84,7 +84,7 @@ export function LearningItemFormModal({
     }
     setError(null);
     setRedirecting(false);
-    setShowAiPlaceholder(false);
+    setShowAiPanel(false);
     setAiPrompt('');
     aiTask.reset();
   }, [initialData, isOpen]);
@@ -158,10 +158,10 @@ export function LearningItemFormModal({
 
         {!isEditing && (
           <div className="space-y-3">
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAiPlaceholder((current) => !current)}>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAiPanel((current) => !current)}>
               Generate material with AI
             </button>
-            {showAiPlaceholder && (
+            {showAiPanel && (
               <AiFeatureGate compact>
                 <div className="rounded-lg border p-3 bg-[var(--bg-base)]">
                   <AiErrorDisplay error={aiTask.error} />

@@ -2,6 +2,7 @@ package com.university.lms.course.config;
 
 import com.university.lms.common.security.RateLimitingFilter;
 import com.university.lms.common.security.SecurityHeadersFilter;
+import com.university.lms.course.security.InternalTokenFilter;
 import com.university.lms.course.security.JwtAuthenticationFilter;
 import java.util.Arrays;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class SecurityConfig {
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
   private final SecurityHeadersFilter securityHeadersFilter;
   private final RateLimitingFilter rateLimitingFilter;
+  private final InternalTokenFilter internalTokenFilter;
 
   @Value("${security.cors.allowed-origins:http://localhost:3000,https://localhost:3000,http://localhost:8080,https://localhost:8080}")
   private String allowedOriginsStr;
@@ -85,6 +87,8 @@ public class SecurityConfig {
             auth ->
                 auth
                     // Public endpoints (paths are relative to context-path /api)
+                    .requestMatchers("/internal/**", "/v1/internal/**")
+                    .permitAll()
                     .requestMatchers("/actuator/health", "/actuator/info")
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/courses/published")
@@ -108,6 +112,7 @@ public class SecurityConfig {
         .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(securityHeadersFilter, RateLimitingFilter.class)
         .addFilterBefore(jwtAuthenticationFilter, SecurityHeadersFilter.class)
+        .addFilterAfter(internalTokenFilter, JwtAuthenticationFilter.class)
 
         // Exception handling
         .exceptionHandling(

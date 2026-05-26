@@ -8,10 +8,12 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.UUID;
 
 @Component
+@Slf4j
 public class LearningServiceClient {
 
     private final RestTemplate restTemplate;
@@ -19,7 +21,7 @@ public class LearningServiceClient {
     private final String internalToken;
 
     public LearningServiceClient(
-            @Value("${services.learning-service.url:http://localhost:8082}") String learningServiceUrl,
+            @Value("${services.learning-service.url:http://localhost:8089}") String learningServiceUrl,
             @Value("${security.internal-token:}") String internalToken
     ) {
         this.restTemplate = new RestTemplate();
@@ -46,7 +48,7 @@ public class LearningServiceClient {
                 }
             }
         } catch (Exception e) {
-            // Log error
+            log.warn("Unable to resolve course role for user {} in course {}: {}", userId, courseId, e.getMessage());
         }
         return null;
     }

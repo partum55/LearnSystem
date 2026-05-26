@@ -167,23 +167,6 @@ spring:
                 name: aiServiceCircuitBreaker
                 fallbackUri: forward:/fallback/ai
 
-        - id: ai-service
-          uri: ${AI_SERVICE_URL:http://localhost:8085}
-          predicates:
-            - Path=/api/ai/**
-          filters:
-            - RewritePath=/api/ai/(?<segment>.*), /api/v1/ai/${segment}
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: ${gateway.ai-rate-limit.replenish-rate:10}
-                redis-rate-limiter.burstCapacity: ${gateway.ai-rate-limit.burst-capacity:20}
-                redis-rate-limiter.requestedTokens: ${gateway.ai-rate-limit.requested-tokens:1}
-                key-resolver: "#{@userKeyResolver}"
-            - name: CircuitBreaker
-              args:
-                name: aiServiceCircuitBreaker
-                fallbackUri: forward:/fallback/ai
-
         - id: learning-risk-analytics
           uri: ${LEARNING_SERVICE_URL:http://localhost:8089}
           predicates:

@@ -53,7 +53,7 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
     title: string;
     instructionsJson: unknown;
     type: string;
-    maxPoints?: number;
+    points?: number;
     settings?: unknown;
   }>();
 
@@ -371,7 +371,7 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
                     onAccept={() => {
                       const out = generateTask.data!.output;
                       if (out.title) setTitle(out.title);
-                      if (out.maxPoints) setMaxPoints(out.maxPoints);
+                      if (out.points !== undefined) setMaxPoints(out.points);
                       if (out.type) setType(out.type as AssignmentType);
                       if (out.instructionsJson) setInstructionsJson(out.instructionsJson);
                       setVisible(false);
