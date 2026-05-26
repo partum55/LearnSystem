@@ -7,6 +7,7 @@
 #   - gateway
 #   - user-service
 #   - learning-service
+#   - ai-service
 #   - redis
 #
 # Usage:
@@ -152,6 +153,57 @@ services:
       start_period: 60s
 
   # ==========================================
+  # AI READINESS & PROVIDER SETTINGS SERVICE
+  # ==========================================
+  ai-service:
+    build:
+      context: ../../services
+      dockerfile: ai-service/Dockerfile
+    container_name: lms-ai-service
+    restart: always
+    expose:
+      - "8085"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
+      - SERVER_PORT=8085
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
+      - SUPABASE_JWKS_URL=${SUPABASE_JWKS_URL}
+      - SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET:-}
+      - JWT_SECRET=${JWT_SECRET:-}
+      - SUPABASE_DB_URL=${SUPABASE_DB_URL}
+      - SUPABASE_DB_USER=${SUPABASE_DB_USER}
+      - SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - SPRING_DATASOURCE_URL=${SUPABASE_DB_URL}
+      - SPRING_DATASOURCE_USERNAME=${SUPABASE_DB_USER:-postgres}
+      - SPRING_DATASOURCE_PASSWORD=${SUPABASE_DB_PASSWORD:-postgres}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - AI_FEATURES_ENABLED=${AI_FEATURES_ENABLED:-false}
+      - AI_DEFAULT_PROVIDER=${AI_DEFAULT_PROVIDER:-GEMINI}
+      - AI_SYSTEM_GEMINI_API_KEY=${AI_SYSTEM_GEMINI_API_KEY:-}
+      - AI_KEY_ENCRYPTION_SECRET=${AI_KEY_ENCRYPTION_SECRET:-}
+      - LEARNING_SERVICE_URL=http://learning-service:8089
+      - USER_SERVICE_URL=http://user-service:8081
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN:-}
+      - JAVA_OPTS=-Xmx384m -Xms192m
+    depends_on:
+      redis:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      learning-service:
+        condition: service_healthy
+    networks:
+      - lms-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/api/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ==========================================
   # API GATEWAY — the only public backend entry point
   # ==========================================
   gateway:
@@ -188,6 +240,8 @@ services:
       user-service:
         condition: service_healthy
       learning-service:
+        condition: service_healthy
+      ai-service:
         condition: service_healthy
     networks:
       - lms-network
