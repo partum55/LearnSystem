@@ -6,8 +6,6 @@ interface CourseHeaderProps {
   courseId: string;
   title: string;
   description?: string | null;
-  teacherName?: string | null;
-  moduleCount: number;
   progress?: number | null;
   courseRole?: string | null;
 }
@@ -20,45 +18,35 @@ export function CourseHeader({
   courseId,
   title,
   description,
-  teacherName,
-  moduleCount,
   progress,
   courseRole,
 }: CourseHeaderProps) {
-  return (
-    <header className="rounded-lg border p-5 md:p-6" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-surface)' }}>
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap gap-2">
-            <span className="badge">Course code: {courseCode(courseId)}</span>
-            {courseRole && <span className="badge">{courseRole}</span>}
-          </div>
-          <h1 className="mt-4 text-3xl font-semibold md:text-4xl">{title}</h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6" style={{ color: 'var(--text-muted)' }}>
-            {description || 'No course description has been registered yet.'}
-          </p>
-        </div>
+  const progressValue = Math.max(0, Math.min(100, progress ?? 0));
 
-        <div className="grid min-w-72 gap-2 sm:grid-cols-3 lg:min-w-[28rem]">
-          <Metric label="Instructor" value={teacherName || 'Faculty'} />
-          <Metric label="Modules" value={String(moduleCount)} />
-          <Metric label="Progress" value={`${progress ?? 0}%`} />
+  return (
+    <header className="rounded-lg border px-5 py-5 md:px-6" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-surface)' }}>
+      <div className="max-w-4xl">
+        <div className="flex flex-wrap gap-2">
+          <span className="badge">Course code: {courseCode(courseId)}</span>
+          {courseRole && <span className="badge">{courseRole}</span>}
+        </div>
+        <h1 className="mt-4 text-3xl font-semibold md:text-4xl">{title}</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-6" style={{ color: 'var(--text-muted)' }}>
+          {description || 'No course description has been registered yet.'}
+        </p>
+        <div className="mt-5 max-w-sm">
+          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-faint)' }}>
+            <span>Progress</span>
+            <span>{progressValue}%</span>
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full border" style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-base)' }}>
+            <div
+              className="h-full rounded-full"
+              style={{ width: `${progressValue}%`, background: 'var(--text-primary)' }}
+            />
+          </div>
         </div>
       </div>
     </header>
-  );
-}
-
-interface MetricProps {
-  label: string;
-  value: string;
-}
-
-function Metric({ label, value }: MetricProps) {
-  return (
-    <div className="rounded-md border px-3 py-2" style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-base)' }}>
-      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</p>
-      <p className="mt-1 truncate text-sm font-semibold">{value}</p>
-    </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { Loading } from '@/components/Loading';
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
@@ -45,7 +45,6 @@ import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 
 // Extracted Subcomponents
 import { CourseHeader } from './CourseHeader';
-import { StaffToolbar } from './StaffToolbar';
 import { OverviewPanel } from './OverviewPanel';
 import { ModulesPanel } from './ModulesPanel';
 import { GradesPanel } from './GradesPanel';
@@ -93,8 +92,6 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
   const [activeModule, setActiveModule] = useState<CourseModuleDto | null>(null);
   const [activeLearningItem, setActiveLearningItem] = useState<LearningItemDto | null>(null);
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
-  const [activeAssignment, setActiveAssignment] = useState<AssignmentListItemDto | null>(null);
-
   const [deleteItemId, setDeleteItemId] = useState('');
   const [deleteItemName, setDeleteItemName] = useState('');
   const [deleteItemType, setDeleteItemType] = useState<'module' | 'material' | 'assignment'>('module');
@@ -151,8 +148,7 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
     canAccessTeacherTools,
   }), [canManageStudents, canManageStaff, canManageCourseContent, canAccessTeacherTools]);
 
-  const isCourseStaff = canAccessTeacherTools;
-  const { data: gradebook } = useStudentGradebook(courseId, !isCourseStaff);
+  const { data: gradebook } = useStudentGradebook(courseId, !canAccessTeacherTools);
 
   const isForbidden = useMemo(() => {
     const err = overviewError as { status?: number; response?: { status?: number } } | null;
@@ -308,38 +304,9 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
         courseId={courseId}
         title={overview.title}
         description={overview.description}
-        teacherName={overview.teacherName}
-        moduleCount={modules.length}
         progress={overview.progress}
         courseRole={courseRole}
       />
-
-      {/* Course Staff Tools Bar */}
-      {canAccessTeacherTools && (
-        <StaffToolbar
-          courseId={courseId}
-          onAddModule={() => {
-            setActiveModule(null);
-            setIsModuleModalOpen(true);
-          }}
-          onAddLearningItem={() => {
-            if (modules.length === 0) {
-              showToast('Please create a module first.');
-              return;
-            }
-            setActiveModuleId(modules[0].id);
-            setActiveLearningItem(null);
-            setIsLearningItemModalOpen(true);
-          }}
-          onAddAssignment={() => {
-            if (modules.length === 0) {
-              showToast('Please create a module first.');
-              return;
-            }
-            router.push(`/courses/${courseId}/assignment-wizard?moduleId=${modules[0].id}`);
-          }}
-        />
-      )}
 
       {/* Tab bar Navigation */}
       <nav className="flex flex-wrap gap-2 border-b pb-0" style={{ borderColor: 'var(--border-default)' }}>
@@ -350,11 +317,7 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
             active={activeTab === tab.id}
             count={tab.id === 'modules' ? modules.length : tab.id === 'members' ? members.length : undefined}
             onClick={() => {
-              if (tab.id === 'grades' && canAccessTeacherTools) {
-                router.push(`/courses/${courseId}/gradebook`);
-              } else {
-                setActiveTab(tab.id);
-              }
+              setActiveTab(tab.id);
             }}
           />
         ))}
@@ -408,6 +371,8 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
         <GradesPanel
           courseId={courseId}
           isCourseStaff={canAccessTeacherTools}
+          courseRole={courseRole || null}
+          modules={modules}
           gradebook={gradebook}
         />
       )}
