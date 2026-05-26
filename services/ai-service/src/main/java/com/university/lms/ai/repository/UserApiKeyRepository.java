@@ -2,7 +2,7 @@ package com.university.lms.ai.repository;
 
 import com.university.lms.ai.domain.AiProvider;
 import com.university.lms.ai.domain.AiProviderKeyStatus;
-import com.university.lms.ai.domain.entity.UserApiKey;
+import com.university.lms.ai.domain.key.UserApiKey;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;

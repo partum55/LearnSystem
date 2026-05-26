@@ -2,7 +2,7 @@ package com.university.lms.ai.service;
 
 import com.university.lms.ai.domain.AiKeySource;
 import com.university.lms.ai.domain.AiProvider;
-import com.university.lms.ai.domain.entity.UserApiKey;
+import com.university.lms.ai.domain.key.UserApiKey;
 import com.university.lms.ai.dto.AiSettingsResponse;
 import com.university.lms.ai.dto.SaveAiApiKeyRequest;
 import java.util.UUID;

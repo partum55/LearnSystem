@@ -1,7 +1,7 @@
 package com.university.lms.ai;
 
 import com.university.lms.ai.config.SecurityConfig;
-import com.university.lms.ai.domain.entity.UserApiKey;
+import com.university.lms.ai.domain.key.UserApiKey;
 import com.university.lms.ai.repository.UserApiKeyRepository;
 import com.university.lms.ai.security.ApiKeyValidationFilter;
 import com.university.lms.ai.security.JwtAuthenticationFilter;
@@ -20,6 +20,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 /** Main application class for LMS AI Service */
@@ -46,6 +47,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
               SecurityAuditLogger.class
             }))
 @EntityScan(basePackageClasses = UserApiKey.class)
+@EnableJpaAuditing
 @EnableJpaRepositories(
     basePackageClasses = UserApiKeyRepository.class,
     includeFilters =
