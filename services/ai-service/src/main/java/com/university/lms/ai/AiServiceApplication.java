@@ -13,7 +13,7 @@ import com.university.lms.ai.repository.AiGenerationRepository;
 import com.university.lms.ai.repository.UserApiKeyRepository;
 import com.university.lms.ai.security.ApiKeyValidationFilter;
 import com.university.lms.ai.security.JwtAuthenticationFilter;
-import com.university.lms.ai.service.AiSchemaRegistry;
+import com.university.lms.ai.prompt.AiSchemaRegistry;
 import com.university.lms.ai.service.AiKeyEncryptionService;
 import com.university.lms.ai.service.AiKeyResolver;
 import com.university.lms.ai.service.AiProviderConfigService;
