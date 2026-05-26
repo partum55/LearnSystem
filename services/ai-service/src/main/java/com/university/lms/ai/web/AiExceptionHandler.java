@@ -2,6 +2,7 @@ package com.university.lms.ai.web;
 
 import com.university.lms.ai.exception.AiContentValidationException;
 import com.university.lms.common.dto.ErrorResponse;
+import com.university.lms.common.exception.LmsException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.util.Map;
@@ -14,6 +15,23 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 @Slf4j
 public class AiExceptionHandler {
+
+  @ExceptionHandler(LmsException.class)
+  public ResponseEntity<ErrorResponse> handleLmsException(
+      LmsException ex, HttpServletRequest request) {
+    if (ex.getHttpStatus().is5xxServerError()) {
+      log.error("AI service exception: {}", ex.getMessage(), ex);
+    } else {
+      log.warn("AI service exception: {}", ex.getMessage());
+    }
+    return ResponseEntity.status(ex.getHttpStatus())
+        .body(
+            ErrorResponse.of(
+                ex.getErrorCode(),
+                ex.getMessage(),
+                request.getRequestURI(),
+                ex.getHttpStatus().value()));
+  }
 
   @ExceptionHandler(AiContentValidationException.class)
   public ResponseEntity<ErrorResponse> handleAiValidation(

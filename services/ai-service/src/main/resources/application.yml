@@ -148,6 +148,11 @@ kafka:
 
 # AI Cache Configuration
 ai:
+  features:
+    enabled: ${AI_FEATURES_ENABLED:false}
+  default-provider: ${AI_DEFAULT_PROVIDER:GEMINI}
+  system-gemini-api-key: ${AI_SYSTEM_GEMINI_API_KEY:}
+  key-encryption-secret: ${AI_KEY_ENCRYPTION_SECRET:}
   cache:
     enabled: ${AI_CACHE_ENABLED:true}
     ttl-minutes: ${AI_CACHE_TTL_MINUTES:60}

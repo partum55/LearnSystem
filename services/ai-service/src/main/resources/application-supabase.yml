@@ -52,6 +52,13 @@ llama:
     timeout: 120000  # 2 minutes for long generations
     max-retries: 3
 
+ai:
+  features:
+    enabled: ${AI_FEATURES_ENABLED:false}
+  default-provider: ${AI_DEFAULT_PROVIDER:GEMINI}
+  system-gemini-api-key: ${AI_SYSTEM_GEMINI_API_KEY:}
+  key-encryption-secret: ${AI_KEY_ENCRYPTION_SECRET:}
+
 # Supabase Configuration
 supabase:
   url: ${SUPABASE_URL:https://aarkyaevxuhlkefayzro.supabase.co}

@@ -12,6 +12,7 @@ import {
   useUpdateCanonicalAssignment 
 } from '@/features/assignments/hooks/useAssignmentQueries';
 import { Loading } from '@/components/Loading';
+import { AiFeatureGate } from '@/features/ai/components/AiFeatureGate';
 
 interface AssignmentWizardProps {
   courseId: string;
@@ -42,6 +43,7 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [aiPlaceholder, setAiPlaceholder] = useState<'generate' | 'improve' | null>(null);
 
   // Queries & Mutations
   const { data: initialData, isLoading: isInitialLoading } = useCanonicalAssignment(
@@ -298,6 +300,28 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
           <div className="rounded-lg p-4 border border-[var(--fn-success)] bg-[var(--bg-base)]" style={{ borderColor: 'rgba(34, 197, 94, 0.15)' }}>
             <p className="text-xs font-bold text-[var(--fn-success)]">{success}</p>
           </div>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAiPlaceholder('generate')}>
+            Generate with AI
+          </button>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAiPlaceholder('improve')}>
+            Improve instructions with AI
+          </button>
+        </div>
+
+        {aiPlaceholder && (
+          <AiFeatureGate compact>
+            <div
+              className="rounded-lg border px-3 py-2 text-xs"
+              style={{ borderColor: 'var(--border-default)', background: 'var(--bg-base)', color: 'var(--text-muted)' }}
+            >
+              {aiPlaceholder === 'generate'
+                ? 'AI assignment generation is coming next.'
+                : 'AI instruction improvement is coming next.'}
+            </div>
+          </AiFeatureGate>
         )}
 
         {/* STEP 1: BASICS */}

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { LearningItemDto, LearningItemRequest, LearningItemType } from '../api/canonical.types';
 import { Modal, Input, Button } from '@/components';
+import { AiFeatureGate } from '@/features/ai/components/AiFeatureGate';
 
 interface LearningItemFormModalProps {
   isOpen: boolean;
@@ -53,6 +54,7 @@ export function LearningItemFormModal({
   const [order, setOrder] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
+  const [showAiPlaceholder, setShowAiPlaceholder] = useState(false);
 
   const isEditorType = type === 'RTE' || type === 'LESSON';
   const needsUrl = ['LINK', 'VIDEO', 'PDF', 'FILE'].includes(type);
@@ -76,6 +78,7 @@ export function LearningItemFormModal({
     }
     setError(null);
     setRedirecting(false);
+    setShowAiPlaceholder(false);
   }, [initialData, isOpen]);
 
   const buildPayload = (): LearningItemRequest => ({
@@ -169,13 +172,28 @@ export function LearningItemFormModal({
 
         {/* Editor type hint */}
         {isEditorType && !isEditing && (
-          <div className="rounded-lg p-3 flex items-start gap-2.5" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
-            <span style={{ fontSize: '14px', marginTop: '1px' }}>✦</span>
-            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              {type === 'RTE'
-                ? 'A full-page document editor will open after creation.'
-                : 'A page-based lesson builder will open after creation.'}
-            </p>
+          <div className="space-y-3">
+            <div className="rounded-lg p-3 flex items-start gap-2.5" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
+              <span style={{ fontSize: '14px', marginTop: '1px' }}>*</span>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                {type === 'RTE'
+                  ? 'A full-page document editor will open after creation.'
+                  : 'A page-based lesson builder will open after creation.'}
+              </p>
+            </div>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAiPlaceholder((current) => !current)}>
+              Generate material with AI
+            </button>
+            {showAiPlaceholder && (
+              <AiFeatureGate compact>
+                <div
+                  className="rounded-lg border px-3 py-2 text-xs"
+                  style={{ borderColor: 'var(--border-default)', background: 'var(--bg-base)', color: 'var(--text-muted)' }}
+                >
+                  AI material generation is coming next.
+                </div>
+              </AiFeatureGate>
+            )}
           </div>
         )}
 

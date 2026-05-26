@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import type { TeacherGradebookDto } from '../api/gradebook.types';
 import { useUpdateGradebookCells } from '../hooks/useGradebookQueries';
+import { AiFeatureGate } from '@/features/ai/components/AiFeatureGate';
 
 interface SpeedGraderProps {
   courseId: string;
@@ -52,6 +53,7 @@ export function SpeedGrader({
   const [unsavedEdits, setUnsavedEdits] = useState<Record<string, UnsavedCellEdit>>({});
   const [validationError, setValidationError] = useState<string | null>(null);
   const [todoToast, setTodoToast] = useState<string | null>(null);
+  const [showAiPlaceholder, setShowAiPlaceholder] = useState(false);
 
   // Select first student by default
   useEffect(() => {
@@ -384,6 +386,17 @@ export function SpeedGrader({
                     ⚠️ {validationError}
                   </p>
                 )}
+
+                {showAiPlaceholder && (
+                  <AiFeatureGate compact>
+                    <div
+                      className="rounded-lg border px-3 py-2 text-xs"
+                      style={{ borderColor: 'var(--border-default)', background: 'var(--bg-base)', color: 'var(--text-muted)' }}
+                    >
+                      AI grade suggestions are coming next.
+                    </div>
+                  </AiFeatureGate>
+                )}
               </div>
 
               {/* Deck Navigation & Save Commands footer */}
@@ -411,15 +424,23 @@ export function SpeedGrader({
                   </button>
                 </div>
 
-                {/* Direct save trigger */}
-                <button
-                  onClick={handleSaveStudentGrade}
-                  disabled={updateCellsMutation.isPending}
-                  className="btn btn-primary text-xs flex items-center gap-1.5 self-end sm:self-center cursor-pointer"
-                >
-                  <CheckIcon className="h-4 w-4" />
-                  <span>{updateCellsMutation.isPending ? 'Saving...' : 'Submit Grade Draft'}</span>
-                </button>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAiPlaceholder((current) => !current)}
+                    className="btn btn-secondary text-xs"
+                  >
+                    AI suggest grade
+                  </button>
+                  <button
+                    onClick={handleSaveStudentGrade}
+                    disabled={updateCellsMutation.isPending}
+                    className="btn btn-primary text-xs flex items-center gap-1.5 self-end sm:self-center cursor-pointer"
+                  >
+                    <CheckIcon className="h-4 w-4" />
+                    <span>{updateCellsMutation.isPending ? 'Saving...' : 'Submit Grade Draft'}</span>
+                  </button>
+                </div>
               </div>
             </div>
           ) : (

@@ -13,6 +13,7 @@ import { Loading } from '@/components/Loading';
 import { useCurrentUser, useUpdateCurrentUser } from '../hooks/useUserQueries';
 import { normalizeTheme, themeToApi, useUIStore, type ThemeMode, type UILang, type UISize } from '@/store/uiStore';
 import { extractErrorMessage } from '@/api/client';
+import { AiSettingsPanel } from './AiSettingsPanel';
 
 type Message = { type: 'success' | 'error'; text: string } | null;
 
@@ -155,49 +156,53 @@ export function ProfileSettingsPage() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <form onSubmit={handleProfileSubmit} className="card">
-          <div className="card-header flex items-center gap-2">
-            <UserCircleIcon className="h-5 w-5" style={{ color: 'var(--text-secondary)' }} />
-            <h2 className="text-base font-semibold">Profile information</h2>
-          </div>
-          <div className="card-body space-y-4">
-            <div className="input-group">
-              <label className="label">Email</label>
-              <div className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-base)' }}>
-                <EnvelopeIcon className="h-4 w-4" style={{ color: 'var(--text-faint)' }} />
-                <span>{user.email}</span>
-                <span className="ml-auto text-xs" style={{ color: 'var(--text-muted)' }}>Read-only</span>
+        <div className="space-y-6">
+          <form onSubmit={handleProfileSubmit} className="card">
+            <div className="card-header flex items-center gap-2">
+              <UserCircleIcon className="h-5 w-5" style={{ color: 'var(--text-secondary)' }} />
+              <h2 className="text-base font-semibold">Profile information</h2>
+            </div>
+            <div className="card-body space-y-4">
+              <div className="input-group">
+                <label className="label">Email</label>
+                <div className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-base)' }}>
+                  <EnvelopeIcon className="h-4 w-4" style={{ color: 'var(--text-faint)' }} />
+                  <span>{user.email}</span>
+                  <span className="ml-auto text-xs" style={{ color: 'var(--text-muted)' }}>Read-only</span>
+                </div>
+              </div>
+
+              <div className="input-group">
+                <label className="label" htmlFor="firstName">First name</label>
+                <input
+                  id="firstName"
+                  className="input"
+                  value={profileData.firstName}
+                  onChange={(event) => setProfileData((current) => ({ ...current, firstName: event.target.value }))}
+                  maxLength={150}
+                />
+              </div>
+
+              <div className="input-group">
+                <label className="label" htmlFor="lastName">Last name</label>
+                <input
+                  id="lastName"
+                  className="input"
+                  value={profileData.lastName}
+                  onChange={(event) => setProfileData((current) => ({ ...current, lastName: event.target.value }))}
+                  maxLength={150}
+                />
               </div>
             </div>
-
-            <div className="input-group">
-              <label className="label" htmlFor="firstName">First name</label>
-              <input
-                id="firstName"
-                className="input"
-                value={profileData.firstName}
-                onChange={(event) => setProfileData((current) => ({ ...current, firstName: event.target.value }))}
-                maxLength={150}
-              />
+            <div className="card-footer flex justify-end">
+              <button type="submit" className="btn btn-primary" disabled={updateCurrentUser.isPending}>
+                {updateCurrentUser.isPending ? 'Saving...' : 'Save profile'}
+              </button>
             </div>
+          </form>
 
-            <div className="input-group">
-              <label className="label" htmlFor="lastName">Last name</label>
-              <input
-                id="lastName"
-                className="input"
-                value={profileData.lastName}
-                onChange={(event) => setProfileData((current) => ({ ...current, lastName: event.target.value }))}
-                maxLength={150}
-              />
-            </div>
-          </div>
-          <div className="card-footer flex justify-end">
-            <button type="submit" className="btn btn-primary" disabled={updateCurrentUser.isPending}>
-              {updateCurrentUser.isPending ? 'Saving...' : 'Save profile'}
-            </button>
-          </div>
-        </form>
+          <AiSettingsPanel />
+        </div>
 
         <aside className="space-y-6">
           <section className="card">

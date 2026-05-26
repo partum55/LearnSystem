@@ -12,6 +12,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { Loading } from '@/components/Loading';
+import { AiFeatureGate } from '@/features/ai/components/AiFeatureGate';
 import { useActiveCourses, useAdminCourses, useCreateCourse, useTeachingCourses } from '@/features/courses/hooks/useCourseQueries';
 import type { AdminCourseDto, CourseSummaryDto, CreateCourseRequest } from '@/features/courses/api/canonical.types';
 import { useCurrentUser } from '@/features/users/hooks/useUserQueries';
@@ -71,6 +72,7 @@ export function CoursesPage() {
   const [teacherFilter, setTeacherFilter] = useState<TeacherFilter>('ALL');
   const [activeTab, setActiveTab] = useState<CourseTab>('TEACHING');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isAiCourseOpen, setIsAiCourseOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [courseForm, setCourseForm] = useState<CreateCourseRequest>({
     code: '',
@@ -206,10 +208,15 @@ export function CoursesPage() {
             </div>
 
             {showTeacherSection && (
-              <button type="button" className="btn btn-primary" onClick={() => setIsCreateOpen(true)}>
-                <PlusIcon className="h-4 w-4" />
-                Create course
-              </button>
+              <>
+                <button type="button" className="btn btn-secondary" onClick={() => setIsAiCourseOpen(true)}>
+                  Create course with AI
+                </button>
+                <button type="button" className="btn btn-primary" onClick={() => setIsCreateOpen(true)}>
+                  <PlusIcon className="h-4 w-4" />
+                  Create course
+                </button>
+              </>
             )}
 
             {showTeacherSection && (
@@ -429,6 +436,37 @@ export function CoursesPage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {showTeacherSection && isAiCourseOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
+          style={{ background: 'color-mix(in srgb, var(--bg-base) 78%, transparent)' }}
+        >
+          <section className="card w-full max-w-xl shadow-2xl">
+            <div className="card-header flex items-center justify-between gap-4">
+              <h2 className="text-lg font-semibold">Create course with AI</h2>
+              <button
+                type="button"
+                onClick={() => setIsAiCourseOpen(false)}
+                className="btn btn-ghost"
+                aria-label="Close AI course dialog"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="card-body">
+              <AiFeatureGate>
+                <div
+                  className="rounded-lg border p-4 text-sm"
+                  style={{ borderColor: 'var(--border-default)', background: 'var(--bg-base)' }}
+                >
+                  AI course generation is coming next.
+                </div>
+              </AiFeatureGate>
+            </div>
+          </section>
         </div>
       )}
     </div>

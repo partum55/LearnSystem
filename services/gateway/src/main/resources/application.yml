@@ -74,6 +74,11 @@ spring:
           predicates:
             - Path=/api/v1/enrollment-groups/**
 
+        - id: ai-user-settings
+          uri: ${AI_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/v1/users/me/ai-settings, /api/v1/users/me/ai-settings/**
+
         - id: user-service
           uri: ${USER_SERVICE_URL:http://localhost:8081}
           predicates:

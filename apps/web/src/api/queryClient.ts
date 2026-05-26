@@ -35,6 +35,10 @@ export const queryKeys = {
     me: () => [...queryKeys.users.all, 'me'] as const,
     adminList: (params?: unknown) => [...queryKeys.users.all, 'admin', params ?? {}] as const,
   },
+  ai: {
+    all: ['ai'] as const,
+    settings: () => [...queryKeys.ai.all, 'settings'] as const,
+  },
   learningItems: {
     all: ['learning-items'] as const,
     detail: (id: string) => [...queryKeys.learningItems.all, 'detail', id] as const,
