@@ -32,8 +32,11 @@ public class UserAiSettingsService {
             return new AiKeyResolution(false, provider, AiKeySource.NONE, null);
         }
         
-        if (userKey != null && userKey.getApiKey() != null) {
-            return new AiKeyResolution(true, provider, AiKeySource.USER_KEY, userKey.getApiKey());
+        if (userKey != null) {
+            String rawKey = keyService.getRawApiKey(userKey);
+            if (rawKey != null) {
+                return new AiKeyResolution(true, provider, AiKeySource.USER_KEY, rawKey);
+            }
         }
         
         if (isAdmin(userRole) && configService.hasSystemGeminiApiKey()) {

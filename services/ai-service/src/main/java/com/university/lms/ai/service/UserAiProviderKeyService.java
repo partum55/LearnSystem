@@ -78,6 +78,15 @@ public class UserAiProviderKeyService {
                 .orElse(null);
     }
 
+    public String getRawApiKey(UserApiKey userKey) {
+        if (userKey == null || userKey.getEncryptedApiKey() == null) return null;
+        try {
+            return encryptionService.decrypt(userKey.getEncryptedApiKey());
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
     private String normalizeAndValidateKey(String rawApiKey) {
         String normalized = rawApiKey == null ? "" : rawApiKey.trim();
         if (!GEMINI_API_KEY_PATTERN.matcher(normalized).matches()) {
