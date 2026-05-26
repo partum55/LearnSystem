@@ -62,7 +62,7 @@ export function GradebookAssignmentActions({
               onClick={() => setIsOpen(false)}
             >
               <BookOpenIcon className="h-4 w-4 shrink-0 text-[var(--text-faint)]" />
-              <span>Open assignment details</span>
+              <span>Open assignment</span>
             </Link>
           </div>
           <div className="py-1">
@@ -75,7 +75,7 @@ export function GradebookAssignmentActions({
               className="w-full flex items-center gap-2.5 px-4 py-2 text-left text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-base)] transition cursor-pointer"
             >
               <TableCellsIcon className="h-4 w-4 shrink-0 text-[var(--text-faint)]" />
-              <span>Filter in Full Gradebook</span>
+              <span>Open full gradebook filtered</span>
             </button>
             <button
               onClick={(e) => {
@@ -86,7 +86,7 @@ export function GradebookAssignmentActions({
               className="w-full flex items-center gap-2.5 px-4 py-2 text-left text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-base)] transition cursor-pointer"
             >
               <SparklesIcon className="h-4 w-4 shrink-0 text-[var(--text-faint)]" />
-              <span>Launch SpeedGrader</span>
+              <span>Open SpeedGrader</span>
             </button>
           </div>
         </div>

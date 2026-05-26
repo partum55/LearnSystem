@@ -134,6 +134,24 @@ export function LearningItemFormModal({
           </div>
         )}
 
+        {!isEditing && (
+          <div className="space-y-3">
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAiPlaceholder((current) => !current)}>
+              Generate material with AI
+            </button>
+            {showAiPlaceholder && (
+              <AiFeatureGate compact>
+                <div
+                  className="rounded-lg border px-3 py-2 text-xs"
+                  style={{ borderColor: 'var(--border-default)', background: 'var(--bg-base)', color: 'var(--text-muted)' }}
+                >
+                  AI material generation is coming next.
+                </div>
+              </AiFeatureGate>
+            )}
+          </div>
+        )}
+
         {/* Type selector */}
         <div>
           <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-faint)', letterSpacing: '0.06em' }}>Type</p>
@@ -172,7 +190,7 @@ export function LearningItemFormModal({
 
         {/* Editor type hint */}
         {isEditorType && !isEditing && (
-          <div className="space-y-3">
+          <div>
             <div className="rounded-lg p-3 flex items-start gap-2.5" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
               <span style={{ fontSize: '14px', marginTop: '1px' }}>*</span>
               <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
@@ -181,19 +199,6 @@ export function LearningItemFormModal({
                   : 'A page-based lesson builder will open after creation.'}
               </p>
             </div>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAiPlaceholder((current) => !current)}>
-              Generate material with AI
-            </button>
-            {showAiPlaceholder && (
-              <AiFeatureGate compact>
-                <div
-                  className="rounded-lg border px-3 py-2 text-xs"
-                  style={{ borderColor: 'var(--border-default)', background: 'var(--bg-base)', color: 'var(--text-muted)' }}
-                >
-                  AI material generation is coming next.
-                </div>
-              </AiFeatureGate>
-            )}
           </div>
         )}
 
