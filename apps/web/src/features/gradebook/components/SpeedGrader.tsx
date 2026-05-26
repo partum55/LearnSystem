@@ -14,6 +14,9 @@ import {
 import type { TeacherGradebookDto } from '../api/gradebook.types';
 import { useUpdateGradebookCells } from '../hooks/useGradebookQueries';
 import { AiFeatureGate } from '@/features/ai/components/AiFeatureGate';
+import { useAiTask } from '@/features/ai/hooks/useAiTask';
+import { AiGenerationPreview } from '@/features/ai/components/AiGenerationPreview';
+import { AiErrorDisplay } from '@/features/ai/components/AiErrorDisplay';
 
 interface SpeedGraderProps {
   courseId: string;
@@ -54,6 +57,11 @@ export function SpeedGrader({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [todoToast, setTodoToast] = useState<string | null>(null);
   const [showAiPlaceholder, setShowAiPlaceholder] = useState(false);
+
+  const suggestGradeTask = useAiTask<{
+    points?: number;
+    comment?: string;
+  }>();
 
   // Select first student by default
   useEffect(() => {
@@ -389,11 +397,59 @@ export function SpeedGrader({
 
                 {showAiPlaceholder && (
                   <AiFeatureGate compact>
-                    <div
-                      className="rounded-lg border px-3 py-2 text-xs"
-                      style={{ borderColor: 'var(--border-default)', background: 'var(--bg-base)', color: 'var(--text-muted)' }}
-                    >
-                      AI grade suggestions are coming next.
+                    <div className="rounded-lg border p-4 bg-[var(--bg-base)]">
+                      <AiErrorDisplay error={suggestGradeTask.error} />
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-bold">AI Grade Suggestion</h4>
+                        <button type="button" onClick={() => { setShowAiPlaceholder(false); suggestGradeTask.reset(); }} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">Cancel</button>
+                      </div>
+                      
+                      {!suggestGradeTask.data ? (
+                        <>
+                          <p className="text-xs text-[var(--text-secondary)] mb-3">
+                            The AI will analyze the student's submission against the assignment instructions and suggest a grade and feedback.
+                          </p>
+                          <button 
+                            type="button"
+                            className="btn btn-primary btn-sm" 
+                            onClick={async () => {
+                              if (!activeGrade?.submissionId) {
+                                setValidationError('Cannot suggest grade without a submission.');
+                                return;
+                              }
+                              await suggestGradeTask.executeTask({
+                                type: 'SUGGEST_GRADE',
+                                input: { 
+                                  assignmentId,
+                                  studentId: activeStudentId,
+                                  submissionId: activeGrade.submissionId,
+                                }
+                              });
+                            }}
+                            disabled={suggestGradeTask.isLoading || !activeGrade?.submissionId}
+                          >
+                            {suggestGradeTask.isLoading ? 'Analyzing...' : 'Analyze Submission & Suggest Grade'}
+                          </button>
+                        </>
+                      ) : (
+                        <div className="space-y-3 mt-2">
+                          <AiGenerationPreview
+                            data={suggestGradeTask.data.output}
+                            onAccept={() => {
+                              const out = suggestGradeTask.data!.output;
+                              if (out?.points !== undefined) {
+                                handleLocalChange(String(out.points), editComment);
+                              }
+                              if (out?.comment) {
+                                handleLocalChange(editPoints, out.comment);
+                              }
+                              setShowAiPlaceholder(false);
+                              suggestGradeTask.reset();
+                            }}
+                            onReject={() => { suggestGradeTask.reset(); }}
+                          />
+                        </div>
+                      )}
                     </div>
                   </AiFeatureGate>
                 )}

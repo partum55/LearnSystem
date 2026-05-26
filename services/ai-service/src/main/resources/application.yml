@@ -151,6 +151,7 @@ ai:
   features:
     enabled: ${AI_FEATURES_ENABLED:false}
   default-provider: ${AI_DEFAULT_PROVIDER:GEMINI}
+  gemini-model: ${AI_GEMINI_MODEL:gemini-2.5-flash}
   system-gemini-api-key: ${AI_SYSTEM_GEMINI_API_KEY:}
   key-encryption-secret: ${AI_KEY_ENCRYPTION_SECRET:}
   cache:

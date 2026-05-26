@@ -1,0 +1,12 @@
+package com.university.lms.ai.domain.model;
+
+public enum AiErrorCode {
+    AI_KEY_REQUIRED,
+    AI_FEATURES_DISABLED,
+    AI_PROVIDER_AUTH_FAILED,
+    AI_PROVIDER_RATE_LIMITED,
+    AI_PROVIDER_UNAVAILABLE,
+    AI_OUTPUT_INVALID,
+    AI_TASK_FAILED,
+    AI_PERMISSION_DENIED
+}

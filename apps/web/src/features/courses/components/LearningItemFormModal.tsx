@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import type { LearningItemDto, LearningItemRequest, LearningItemType } from '../api/canonical.types';
 import { Modal, Input, Button } from '@/components';
 import { AiFeatureGate } from '@/features/ai/components/AiFeatureGate';
+import { useAiTask } from '@/features/ai/hooks/useAiTask';
+import { AiGenerationPreview } from '@/features/ai/components/AiGenerationPreview';
+import { AiErrorDisplay } from '@/features/ai/components/AiErrorDisplay';
 
 interface LearningItemFormModalProps {
   isOpen: boolean;
@@ -55,6 +58,9 @@ export function LearningItemFormModal({
   const [error, setError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
   const [showAiPlaceholder, setShowAiPlaceholder] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+
+  const aiTask = useAiTask<{ title: string; contentJson: unknown }>();
 
   const isEditorType = type === 'RTE' || type === 'LESSON';
   const needsUrl = ['LINK', 'VIDEO', 'PDF', 'FILE'].includes(type);
@@ -79,6 +85,8 @@ export function LearningItemFormModal({
     setError(null);
     setRedirecting(false);
     setShowAiPlaceholder(false);
+    setAiPrompt('');
+    aiTask.reset();
   }, [initialData, isOpen]);
 
   const buildPayload = (): LearningItemRequest => ({
@@ -88,6 +96,7 @@ export function LearningItemFormModal({
     visible,
     url: needsUrl ? url.trim() : undefined,
     downloadable: ['PDF', 'FILE'].includes(type) ? downloadable : undefined,
+    textContent: (aiTask.data?.output && type === 'RTE') ? JSON.stringify((aiTask.data.output as any).contentJson) : undefined,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -141,11 +150,50 @@ export function LearningItemFormModal({
             </button>
             {showAiPlaceholder && (
               <AiFeatureGate compact>
-                <div
-                  className="rounded-lg border px-3 py-2 text-xs"
-                  style={{ borderColor: 'var(--border-default)', background: 'var(--bg-base)', color: 'var(--text-muted)' }}
-                >
-                  AI material generation is coming next.
+                <div className="rounded-lg border p-3 bg-[var(--bg-base)]">
+                  <AiErrorDisplay error={aiTask.error} />
+                  {!aiTask.data ? (
+                    <>
+                      <label className="input-group mb-3">
+                        <span className="label">Topic or instructions for AI</span>
+                        <input
+                          className="input text-xs"
+                          value={aiPrompt}
+                          onChange={e => setAiPrompt(e.target.value)}
+                          placeholder="e.g. Explain binary search trees"
+                          disabled={aiTask.isLoading}
+                        />
+                      </label>
+                      <button 
+                        type="button"
+                        className="btn btn-primary btn-sm" 
+                        onClick={async () => {
+                          if (!aiPrompt) return;
+                          await aiTask.executeTask({
+                            type: 'GENERATE_RTE_MATERIAL',
+                            input: { topic: aiPrompt }
+                          });
+                        }}
+                        disabled={!aiPrompt || aiTask.isLoading}
+                      >
+                        {aiTask.isLoading ? 'Generating...' : 'Generate with AI'}
+                      </button>
+                    </>
+                  ) : (
+                    <div className="space-y-3 mt-2">
+                      <AiGenerationPreview
+                        data={aiTask.data.output}
+                        isAccepting={loading || redirecting}
+                        onAccept={async () => {
+                          setType('RTE');
+                          setTitle(aiTask.data?.output?.title || 'AI Generated Document');
+                          // The submit handler will pick up the textContent from aiTask
+                          await handleSubmit(new Event('submit') as any);
+                        }}
+                        onReject={() => { aiTask.reset(); setAiPrompt(''); }}
+                      />
+                    </div>
+                  )}
                 </div>
               </AiFeatureGate>
             )}

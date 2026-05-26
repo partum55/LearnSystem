@@ -13,6 +13,9 @@ import {
 } from '@/features/assignments/hooks/useAssignmentQueries';
 import { Loading } from '@/components/Loading';
 import { AiFeatureGate } from '@/features/ai/components/AiFeatureGate';
+import { useAiTask } from '@/features/ai/hooks/useAiTask';
+import { AiGenerationPreview } from '@/features/ai/components/AiGenerationPreview';
+import { AiErrorDisplay } from '@/features/ai/components/AiErrorDisplay';
 
 interface AssignmentWizardProps {
   courseId: string;
@@ -43,7 +46,20 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [aiPlaceholder, setAiPlaceholder] = useState<'generate' | 'improve' | null>(null);
+  const [aiMode, setAiMode] = useState<'generate' | 'improve' | null>(null);
+  const [aiPrompt, setAiPrompt] = useState('');
+
+  const generateTask = useAiTask<{
+    title: string;
+    instructionsJson: unknown;
+    type: string;
+    maxPoints?: number;
+    settings?: unknown;
+  }>();
+
+  const improveTask = useAiTask<{
+    instructionsJson: unknown;
+  }>();
 
   // Queries & Mutations
   const { data: initialData, isLoading: isInitialLoading } = useCanonicalAssignment(
@@ -303,23 +319,123 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
         )}
 
         <div className="flex flex-wrap gap-2">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAiPlaceholder('generate')}>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAiMode('generate')}>
             Generate with AI
           </button>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAiPlaceholder('improve')}>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAiMode('improve')}>
             Improve instructions with AI
           </button>
         </div>
 
-        {aiPlaceholder && (
+        {aiMode === 'generate' && (
           <AiFeatureGate compact>
-            <div
-              className="rounded-lg border px-3 py-2 text-xs"
-              style={{ borderColor: 'var(--border-default)', background: 'var(--bg-base)', color: 'var(--text-muted)' }}
-            >
-              {aiPlaceholder === 'generate'
-                ? 'AI assignment generation is coming next.'
-                : 'AI instruction improvement is coming next.'}
+            <div className="rounded-lg border p-4 bg-[var(--bg-base)]">
+              <AiErrorDisplay error={generateTask.error} />
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-bold">Generate Assignment</h4>
+                <button type="button" onClick={() => { setAiMode(null); generateTask.reset(); setAiPrompt(''); }} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">Cancel</button>
+              </div>
+              
+              {!generateTask.data ? (
+                <>
+                  <label className="input-group mb-3">
+                    <span className="label">Assignment Topic / Instructions</span>
+                    <input
+                      className="input text-sm"
+                      value={aiPrompt}
+                      onChange={e => setAiPrompt(e.target.value)}
+                      placeholder="e.g. Build a REST API using Express"
+                      disabled={generateTask.isLoading}
+                    />
+                  </label>
+                  <button 
+                    type="button"
+                    className="btn btn-primary btn-sm" 
+                    onClick={async () => {
+                      if (!aiPrompt) return;
+                      await generateTask.executeTask({
+                        type: 'GENERATE_ASSIGNMENT',
+                        input: { topic: aiPrompt, maxPoints: maxPoints || 100 }
+                      });
+                    }}
+                    disabled={!aiPrompt || generateTask.isLoading}
+                  >
+                    {generateTask.isLoading ? 'Generating...' : 'Generate Assignment'}
+                  </button>
+                </>
+              ) : (
+                <div className="space-y-3 mt-2">
+                  <AiGenerationPreview
+                    data={generateTask.data.output}
+                    onAccept={() => {
+                      const out = generateTask.data!.output;
+                      if (out.title) setTitle(out.title);
+                      if (out.maxPoints) setMaxPoints(out.maxPoints);
+                      if (out.type) setType(out.type as AssignmentType);
+                      if (out.instructionsJson) setInstructionsJson(out.instructionsJson);
+                      setAiMode(null);
+                      generateTask.reset();
+                      setAiPrompt('');
+                      setCurrentStep(2);
+                    }}
+                    onReject={() => { generateTask.reset(); setAiPrompt(''); }}
+                  />
+                </div>
+              )}
+            </div>
+          </AiFeatureGate>
+        )}
+
+        {aiMode === 'improve' && (
+          <AiFeatureGate compact>
+            <div className="rounded-lg border p-4 bg-[var(--bg-base)]">
+              <AiErrorDisplay error={improveTask.error} />
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-bold">Improve Instructions</h4>
+                <button type="button" onClick={() => { setAiMode(null); improveTask.reset(); setAiPrompt(''); }} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">Cancel</button>
+              </div>
+              
+              {!improveTask.data ? (
+                <>
+                  <label className="input-group mb-3">
+                    <span className="label">Improvement Feedback (Optional)</span>
+                    <input
+                      className="input text-sm"
+                      value={aiPrompt}
+                      onChange={e => setAiPrompt(e.target.value)}
+                      placeholder="e.g. Make it more detailed, format as a list..."
+                      disabled={improveTask.isLoading}
+                    />
+                  </label>
+                  <button 
+                    type="button"
+                    className="btn btn-primary btn-sm" 
+                    onClick={async () => {
+                      await improveTask.executeTask({
+                        type: 'IMPROVE_ASSIGNMENT_INSTRUCTIONS',
+                        input: { feedback: aiPrompt, currentInstructionsJson: instructionsJson }
+                      });
+                    }}
+                    disabled={improveTask.isLoading}
+                  >
+                    {improveTask.isLoading ? 'Improving...' : 'Improve Instructions'}
+                  </button>
+                </>
+              ) : (
+                <div className="space-y-3 mt-2">
+                  <AiGenerationPreview
+                    data={improveTask.data.output}
+                    onAccept={() => {
+                      const out = improveTask.data!.output;
+                      if (out.instructionsJson) setInstructionsJson(out.instructionsJson);
+                      setAiMode(null);
+                      improveTask.reset();
+                      setAiPrompt('');
+                    }}
+                    onReject={() => { improveTask.reset(); setAiPrompt(''); }}
+                  />
+                </div>
+              )}
             </div>
           </AiFeatureGate>
         )}
