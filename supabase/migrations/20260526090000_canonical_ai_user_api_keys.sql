@@ -9,6 +9,7 @@ REVOKE ALL ON SCHEMA ai FROM PUBLIC, anon;
 GRANT USAGE ON SCHEMA ai TO authenticated;
 
 DROP TABLE IF EXISTS public.user_api_keys CASCADE;
+DROP TABLE IF EXISTS ai.user_api_keys CASCADE;
 
 DO $$
 BEGIN
