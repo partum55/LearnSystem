@@ -161,6 +161,7 @@ function normalizeCourseDraft(draft: CourseDraft): CourseDraft {
     course: {
       ...draft.course,
       code: (draft.course.code || 'AI-DRAFT').toUpperCase(),
+      syllabusJson: ensureOptionalRichContentDocument(draft.course.syllabusJson),
     },
     modules: (draft.modules ?? []).map((module, moduleIndex) => ({
       ...module,
@@ -219,4 +220,18 @@ function ensureRichContentDocument(value: unknown, title: string, fallback?: str
       },
     ],
   };
+}
+
+function ensureOptionalRichContentDocument(value: unknown) {
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+  if (
+    (value as { version?: unknown }).version === 1 &&
+    (value as { type?: unknown }).type === 'RICH_CONTENT' &&
+    Array.isArray((value as { blocks?: unknown }).blocks)
+  ) {
+    return value;
+  }
+  return undefined;
 }
