@@ -46,6 +46,8 @@ export const normalizeApiError = (error: unknown): ApiErrorShape => {
   const axiosError = error as AxiosError<{
     message?: string;
     error?: string;
+    errorCode?: string;
+    errorMessage?: string;
     detail?: string;
     non_field_errors?: string[];
     code?: string;
@@ -62,6 +64,7 @@ export const normalizeApiError = (error: unknown): ApiErrorShape => {
     const message =
       typeof data.message === 'string' ? data.message :
         typeof data.error === 'string' ? data.error :
+          typeof data.errorMessage === 'string' ? data.errorMessage :
           typeof data.detail === 'string' ? data.detail :
             Array.isArray(data.non_field_errors) && typeof data.non_field_errors[0] === 'string'
               ? data.non_field_errors[0]
@@ -71,7 +74,7 @@ export const normalizeApiError = (error: unknown): ApiErrorShape => {
 
     return {
       message,
-      code: typeof data.code === 'string' ? data.code : undefined,
+      code: typeof data.code === 'string' ? data.code : typeof data.errorCode === 'string' ? data.errorCode : undefined,
       fieldErrors: data.fieldErrors && typeof data.fieldErrors === 'object' ? data.fieldErrors : {},
       status: axiosError.response?.status,
     };
