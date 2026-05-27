@@ -49,6 +49,11 @@ class LearningEndpointContractTest {
     assertMethodPath(CanonicalCourseController.class, "overview", "/{courseId}/overview");
     assertMethodPath(CanonicalCourseController.class, "modules", "/{courseId}/modules");
     assertMethodPath(CanonicalCourseController.class, "myGradebook", "/{courseId}/gradebook/me");
+    assertMethodPath(CanonicalCourseController.class, "settings", "/{courseId}/settings");
+    assertMethodPath(CanonicalCourseController.class, "updateSettings", "/{courseId}/settings");
+    assertMethodPath(CanonicalCourseController.class, "archive", "/{courseId}/archive");
+    assertMethodPath(CanonicalCourseController.class, "restore", "/{courseId}/restore");
+    assertMethodPath(CanonicalCourseController.class, "delete", "/{courseId}");
     assertMethodPath(CanonicalLearningItemController.class, "createLearningItem", "/courses/{courseId}/modules/{moduleId}/learning-items");
     assertMethodPath(CanonicalLearningItemController.class, "getLearningItem", "/learning-items/{learningItemId}");
     assertMethodPath(CanonicalLearningItemController.class, "updateLearningItem", "/learning-items/{learningItemId}");

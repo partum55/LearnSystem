@@ -2,6 +2,7 @@ import type { ListResponse, Uuid } from '@/api/types';
 import type { CourseRole, PageResponse } from '@/features/users/api/users.types';
 
 export type CourseStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | string;
+export type CourseVisibility = 'PUBLIC' | 'PRIVATE' | 'DRAFT' | string;
 export type VisibilityStatus = 'VISIBLE' | 'HIDDEN' | 'ARCHIVED' | 'LOCKED' | string;
 
 export interface UpcomingDeadlineDto {
@@ -54,6 +55,31 @@ export interface AdminCourseDto {
   isPublished: boolean;
   createdAt?: string | null;
   updatedAt?: string | null;
+}
+
+export interface CourseSettingsDto {
+  id: Uuid;
+  code: string;
+  titleUk: string;
+  titleEn?: string | null;
+  descriptionUk?: string | null;
+  descriptionEn?: string | null;
+  syllabus?: string | null;
+  visibility: CourseVisibility;
+  status: CourseStatus;
+  ownerId: Uuid;
+  updatedAt?: string | null;
+}
+
+export interface UpdateCourseSettingsRequest {
+  code: string;
+  titleUk: string;
+  titleEn?: string | null;
+  descriptionUk?: string | null;
+  descriptionEn?: string | null;
+  syllabus?: string | null;
+  visibility?: CourseVisibility;
+  status?: CourseStatus;
 }
 
 export type LearningItemType = 'PDF' | 'LINK' | 'VIDEO' | 'FILE' | 'RTE' | 'LESSON' | string;

@@ -49,6 +49,7 @@ import { OverviewPanel } from './OverviewPanel';
 import { ModulesPanel } from './ModulesPanel';
 import { GradesPanel } from './GradesPanel';
 import { MembersPanel } from './MembersPanel';
+import { CourseSettingsPanel } from './CourseSettingsPanel';
 
 // Icons for Tab Nav
 import {
@@ -56,9 +57,10 @@ import {
   Squares2X2Icon,
   ChartBarIcon,
   UserGroupIcon,
+  Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
 
-type TabId = 'overview' | 'modules' | 'grades' | 'members';
+type TabId = 'overview' | 'modules' | 'grades' | 'members' | 'settings';
 
 const tabs: Array<{ id: TabId; label: string; icon: typeof BookOpenIcon }> = [
   { id: 'overview', label: 'Overview', icon: BookOpenIcon },
@@ -139,14 +141,40 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
   const canManageStaff = isAdmin || isOwner;
   const canManageCourseContent = isAdmin || isOwner || isTeacher;
   const canAccessTeacherTools = isAdmin || isOwner || isTeacher || isTA;
+  const canManageCourseSettings = isAdmin || isOwner;
+  const canArchiveCourse = isAdmin || isOwner;
+  const canDeleteCourse = isAdmin || isOwner;
 
   // Pass fine-grained permissions object to child components
   const permissions = useMemo(() => ({
+    isAdmin,
+    isOwner,
     canManageStudents,
     canManageStaff,
     canManageCourseContent,
     canAccessTeacherTools,
-  }), [canManageStudents, canManageStaff, canManageCourseContent, canAccessTeacherTools]);
+    canManageCourseSettings,
+    canArchiveCourse,
+    canDeleteCourse,
+  }), [
+    isAdmin,
+    isOwner,
+    canManageStudents,
+    canManageStaff,
+    canManageCourseContent,
+    canAccessTeacherTools,
+    canManageCourseSettings,
+    canArchiveCourse,
+    canDeleteCourse,
+  ]);
+
+  const visibleTabs = useMemo(() => {
+    const baseTabs = [...tabs];
+    if (canManageCourseSettings) {
+      baseTabs.push({ id: 'settings', label: 'Settings', icon: Cog6ToothIcon });
+    }
+    return baseTabs;
+  }, [canManageCourseSettings]);
 
   const { data: gradebook } = useStudentGradebook(courseId, !canAccessTeacherTools);
 
@@ -310,7 +338,7 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
 
       {/* Tab bar Navigation */}
       <nav className="flex flex-wrap gap-2 border-b pb-0" style={{ borderColor: 'var(--border-default)' }}>
-        {tabs.map((tab) => (
+        {visibleTabs.map((tab) => (
           <TabButton
             key={tab.id}
             tab={tab}
@@ -382,6 +410,14 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
           courseId={courseId}
           currentUser={currentUser}
           permissions={permissions}
+        />
+      )}
+
+      {activeTab === 'settings' && canManageCourseSettings && (
+        <CourseSettingsPanel
+          courseId={courseId}
+          permissions={permissions}
+          onToast={showToast}
         />
       )}
 

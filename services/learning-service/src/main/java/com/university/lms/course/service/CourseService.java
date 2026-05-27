@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -166,8 +167,8 @@ public class CourseService {
     Course course = findCourseById(id);
 
     // Check permissions
-    if (!canUserManageCourse(course, userId, userRole)) {
-      throw new ValidationException("User does not have permission to update this course");
+    if (!canUserAdministerCourse(course.getId(), userId, userRole)) {
+      throw new AccessDeniedException("Course owner or ADMIN access is required");
     }
 
     // Validate dates if both are provided
@@ -192,8 +193,8 @@ public class CourseService {
     log.info("Updating syllabus for course: {} by user: {}", id, userId);
 
     Course course = findCourseById(id);
-    if (!canUserManageCourse(course, userId, userRole)) {
-      throw new ValidationException("User does not have permission to update this course syllabus");
+    if (!canUserAdministerCourse(course.getId(), userId, userRole)) {
+      throw new AccessDeniedException("Course owner or ADMIN access is required");
     }
 
     course.setSyllabus(request.getSyllabus());
@@ -213,13 +214,13 @@ public class CourseService {
 
     Course course = findCourseById(id);
 
-    // Course OWNER and ADMIN can delete
-    if (!isCourseOwner(course.getId(), userId) && !isAdmin(userRole)) {
-      throw new ValidationException("Only course owner or ADMIN can delete the course");
+    if (!canUserAdministerCourse(course.getId(), userId, userRole)) {
+      throw new AccessDeniedException("Course owner or ADMIN access is required");
     }
 
-    courseRepository.delete(course);
-    log.info("Course deleted successfully: {}", id);
+    course.setStatus(CourseStatus.ARCHIVED);
+    courseRepository.save(course);
+    log.info("Course soft-deleted by archiving: {}", id);
   }
 
   /**
@@ -249,8 +250,8 @@ public class CourseService {
 
     Course course = findCourseById(id);
 
-    if (!canUserManageCourse(course, userId, userRole)) {
-      throw new ValidationException("User does not have permission to publish this course");
+    if (!canUserAdministerCourse(course.getId(), userId, userRole)) {
+      throw new AccessDeniedException("Course owner or ADMIN access is required");
     }
 
     
@@ -269,8 +270,8 @@ public class CourseService {
 
     Course course = findCourseById(id);
 
-    if (!canUserManageCourse(course, userId, userRole)) {
-      throw new ValidationException("User does not have permission to unpublish this course");
+    if (!canUserAdministerCourse(course.getId(), userId, userRole)) {
+      throw new AccessDeniedException("Course owner or ADMIN access is required");
     }
 
     
@@ -288,8 +289,8 @@ public class CourseService {
     log.info("Archiving course: {} by user: {}", id, userId);
 
     Course course = findCourseById(id);
-    if (!canUserManageCourse(course, userId, userRole)) {
-      throw new ValidationException("User does not have permission to archive this course");
+    if (!canUserAdministerCourse(course.getId(), userId, userRole)) {
+      throw new AccessDeniedException("Course owner or ADMIN access is required");
     }
 
     if (course.getStatus() != CourseStatus.ARCHIVED) {
@@ -298,6 +299,62 @@ public class CourseService {
       course = courseRepository.save(course);
     }
     log.info("Course archived successfully: {}", id);
+    return courseMapper.toDto(course);
+  }
+
+  public CourseSettingsDto getCourseSettings(UUID id, UUID userId, String userRole) {
+    Course course = findCourseById(id);
+    if (!canUserAdministerCourse(course.getId(), userId, userRole)) {
+      throw new AccessDeniedException("Course owner or ADMIN access is required");
+    }
+    return toSettingsDto(course);
+  }
+
+  @Transactional
+  @CacheEvict(value = "courses", allEntries = true)
+  public CourseSettingsDto updateCourseSettings(
+      UUID id, UpdateCourseSettingsRequest request, UUID userId, String userRole) {
+    Course course = findCourseById(id);
+    if (!canUserAdministerCourse(course.getId(), userId, userRole)) {
+      throw new AccessDeniedException("Course owner or ADMIN access is required");
+    }
+
+    String normalizedCode = normalizeRequired(request.getCode(), "Course code");
+    String normalizedTitle = normalizeRequired(request.getTitleUk(), "Course title");
+    courseRepository.findByCode(normalizedCode)
+        .filter(existing -> !existing.getId().equals(course.getId()))
+        .ifPresent(existing -> {
+          throw new ValidationException("Course with code '" + normalizedCode + "' already exists");
+        });
+
+    course.setCode(normalizedCode);
+    course.setTitleUk(normalizedTitle);
+    course.setTitleEn(blankToNull(request.getTitleEn()));
+    course.setDescriptionUk(blankToNull(request.getDescriptionUk()));
+    course.setDescriptionEn(blankToNull(request.getDescriptionEn()));
+    course.setSyllabus(blankToNull(request.getSyllabus()));
+    if (request.getVisibility() != null) {
+      course.setVisibility(request.getVisibility());
+    }
+    if (request.getStatus() != null) {
+      course.setStatus(request.getStatus());
+    }
+
+    return toSettingsDto(courseRepository.save(course));
+  }
+
+  @Transactional
+  @CacheEvict(value = "courses", allEntries = true)
+  public CourseDto restoreCourse(UUID id, UUID userId, String userRole) {
+    Course course = findCourseById(id);
+    if (!canUserAdministerCourse(course.getId(), userId, userRole)) {
+      throw new AccessDeniedException("Course owner or ADMIN access is required");
+    }
+
+    if (course.getStatus() == CourseStatus.ARCHIVED) {
+      course.setStatus(CourseStatus.DRAFT);
+      course = courseRepository.save(course);
+    }
     return courseMapper.toDto(course);
   }
 
@@ -323,6 +380,10 @@ public class CourseService {
         .filter(CourseMember::isActive)
         .map(CourseMember::isOwner)
         .orElse(false);
+  }
+
+  private boolean canUserAdministerCourse(UUID courseId, UUID userId, String userRole) {
+    return isAdmin(userRole) || isCourseOwner(courseId, userId);
   }
 
   private void enforceCourseVisibility(Course course, UUID userId, String userRole) {
@@ -365,6 +426,36 @@ public class CourseService {
       throw new ValidationException("Role is required");
     }
     return role.trim().toUpperCase();
+  }
+
+  private String normalizeRequired(String value, String label) {
+    if (value == null || value.isBlank()) {
+      throw new ValidationException(label + " is required");
+    }
+    return value.trim();
+  }
+
+  private String blankToNull(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    return value.trim();
+  }
+
+  private CourseSettingsDto toSettingsDto(Course course) {
+    return CourseSettingsDto.builder()
+        .id(course.getId())
+        .code(course.getCode())
+        .titleUk(course.getTitleUk())
+        .titleEn(course.getTitleEn())
+        .descriptionUk(course.getDescriptionUk())
+        .descriptionEn(course.getDescriptionEn())
+        .syllabus(course.getSyllabus())
+        .visibility(course.getVisibility())
+        .status(course.getStatus())
+        .ownerId(course.getOwnerId())
+        .updatedAt(course.getUpdatedAt())
+        .build();
   }
 
   private PageResponse<CourseDto> mapToPageResponse(Page<Course> page) {

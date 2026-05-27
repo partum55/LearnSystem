@@ -16,6 +16,8 @@ import type {
   BulkPreviewRow,
   BulkPreviewResponse,
   BulkConfirmEnrollment,
+  CourseSettingsDto,
+  UpdateCourseSettingsRequest,
 } from './canonical.types';
 
 export const canonicalCoursesApi = {
@@ -36,6 +38,25 @@ export const canonicalCoursesApi = {
 
   getOverview: (courseId: string) =>
     apiClient.request<CourseOverviewDto>({ url: `/v1/courses/${courseId}/overview` }),
+
+  getCourseSettings: (courseId: string) =>
+    apiClient.request<CourseSettingsDto>({ url: `/v1/courses/${courseId}/settings` }),
+
+  updateCourseSettings: (courseId: string, request: UpdateCourseSettingsRequest) =>
+    apiClient.request<CourseSettingsDto>({
+      method: 'PATCH',
+      url: `/v1/courses/${courseId}/settings`,
+      data: request,
+    }),
+
+  archiveCourse: (courseId: string) =>
+    apiClient.request<AdminCourseDto>({ method: 'POST', url: `/v1/courses/${courseId}/archive` }),
+
+  restoreCourse: (courseId: string) =>
+    apiClient.request<AdminCourseDto>({ method: 'POST', url: `/v1/courses/${courseId}/restore` }),
+
+  deleteCourse: (courseId: string) =>
+    apiClient.request<void>({ method: 'DELETE', url: `/v1/courses/${courseId}` }),
 
   getModules: (courseId: string) =>
     apiClient.request<CourseModulesResponse>({ url: `/v1/courses/${courseId}/modules` }),
