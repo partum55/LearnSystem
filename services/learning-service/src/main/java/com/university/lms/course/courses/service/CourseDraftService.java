@@ -73,7 +73,7 @@ public class CourseDraftService {
             throw new ValidationException("Course draft must have a title and a code");
         }
         rejectLegacyFields(draft);
-        requireRichContentDocument(draft.course().syllabusJson(), "course.syllabusJson", true);
+        String syllabus = optionalRichContentDocumentString(draft.course().syllabusJson(), "course.syllabusJson");
 
         if (courseRepository.existsByCode(draft.course().code())) {
             throw new ValidationException("Course with code '" + draft.course().code() + "' already exists");
@@ -86,7 +86,7 @@ public class CourseDraftService {
                 .code(draft.course().code())
                 .descriptionUk(draft.course().description())
                 .descriptionEn(draft.course().description())
-                .syllabus(draft.course().syllabusJson() != null ? draft.course().syllabusJson().toString() : null)
+                .syllabus(syllabus)
                 .status(CourseStatus.DRAFT) // Enforce DRAFT
                 .ownerId(userId)
                 .createdAt(LocalDateTime.now())
@@ -275,5 +275,13 @@ public class CourseDraftService {
                 throw new ValidationException(path + " contains an invalid block");
             }
         }
+    }
+
+    private String optionalRichContentDocumentString(JsonNode value, String path) {
+        if (value == null || value.isNull() || value.isEmpty()) {
+            return null;
+        }
+        requireRichContentDocument(value, path, false);
+        return value.toString();
     }
 }
