@@ -54,7 +54,6 @@ export function LearningItemFormModal({
   const [url, setUrl] = useState('');
   const [downloadable, setDownloadable] = useState(true);
   const [visible, setVisible] = useState(true);
-  const [order, setOrder] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
   const [showAiPanel, setShowAiPanel] = useState(false);
@@ -73,14 +72,12 @@ export function LearningItemFormModal({
       setUrl((initialData.settings?.url as string) || '');
       setDownloadable(initialData.settings?.downloadable !== false);
       setVisible(initialData.visibilityStatus !== 'HIDDEN');
-      setOrder(initialData.order || 1);
     } else {
       setType('LINK');
       setTitle('');
       setUrl('');
       setDownloadable(true);
       setVisible(true);
-      setOrder(1);
     }
     setError(null);
     setRedirecting(false);
@@ -92,7 +89,6 @@ export function LearningItemFormModal({
   const buildPayload = (): LearningItemRequest => ({
     title: title.trim(),
     type: type as LearningItemType,
-    order: Number(order),
     visible,
     url: needsUrl ? url.trim() : undefined,
     downloadable: ['PDF', 'FILE'].includes(type) ? downloadable : undefined,
@@ -106,7 +102,6 @@ export function LearningItemFormModal({
     return {
       title: output.title?.trim() || 'AI Generated Document',
       type: 'RTE',
-      order: Number(order),
       visible: false,
       textContent: JSON.stringify(output.contentJson),
     };
@@ -312,31 +307,17 @@ export function LearningItemFormModal({
           </label>
         )}
 
-        {/* Order + Visibility */}
-        <div className="grid grid-cols-2 gap-4">
-          <Input
-            label="Order"
-            id="order"
-            type="number"
-            value={order}
-            onChange={(e) => setOrder(Number(e.target.value))}
-            min={1}
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={visible}
+            onChange={(e) => setVisible(e.target.checked)}
+            className="h-4 w-4 rounded"
+            style={{ accentColor: 'var(--text-primary)' }}
             disabled={loading || redirecting}
           />
-          <div className="flex items-end pb-1">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={visible}
-                onChange={(e) => setVisible(e.target.checked)}
-                className="h-4 w-4 rounded"
-                style={{ accentColor: 'var(--text-primary)' }}
-                disabled={loading || redirecting}
-              />
-              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Visible</span>
-            </label>
-          </div>
-        </div>
+          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Visible</span>
+        </label>
 
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-2 border-t" style={{ borderColor: 'var(--border-subtle)' }}>

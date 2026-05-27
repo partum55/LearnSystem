@@ -58,6 +58,9 @@ export const canonicalCoursesApi = {
   deleteCourse: (courseId: string) =>
     apiClient.request<void>({ method: 'DELETE', url: `/v1/courses/${courseId}` }),
 
+  getAdminCourse: (courseId: string) =>
+    apiClient.request<AdminCourseDto>({ url: `/v1/admin/courses/${courseId}` }),
+
   getModules: (courseId: string) =>
     apiClient.request<CourseModulesResponse>({ url: `/v1/courses/${courseId}/modules` }),
 

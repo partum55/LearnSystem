@@ -1,7 +1,7 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import { Loading } from '@/components/Loading';
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
@@ -82,9 +82,15 @@ interface CourseDetailPageProps {
 
 export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const requestedTab = searchParams.get('tab') as TabId | null;
+  const [activeTab, setActiveTab] = useState<TabId>(
+    requestedTab && ['overview', 'modules', 'grades', 'members', 'settings'].includes(requestedTab)
+      ? requestedTab
+      : 'overview'
+  );
 
   // Orchestrator Modal & Edit States
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
@@ -175,6 +181,16 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
     }
     return baseTabs;
   }, [canManageCourseSettings]);
+
+  useEffect(() => {
+    if (!requestedTab || !['overview', 'modules', 'grades', 'members', 'settings'].includes(requestedTab)) {
+      return;
+    }
+    if (requestedTab === 'settings' && !canManageCourseSettings) {
+      return;
+    }
+    setActiveTab(requestedTab);
+  }, [requestedTab, canManageCourseSettings]);
 
   const { data: gradebook } = useStudentGradebook(courseId, !canAccessTeacherTools);
 

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import {
   ClipboardDocumentListIcon,
   DocumentTextIcon,
@@ -83,22 +84,6 @@ export function ModulesPanel({
                   <span className="badge">{module.availabilityStatus || 'VISIBLE'}</span>
                   <IconButton title="Edit module" onClick={() => onEditModule(module)} icon={PencilIcon} />
                   <IconButton title="Delete module" onClick={() => onDeleteModule(module.id)} icon={TrashIcon} danger />
-                  <button
-                    type="button"
-                    onClick={() => onAddLearningItem(module.id)}
-                    className="btn btn-secondary btn-sm flex items-center gap-1.5"
-                  >
-                    <PlusIcon className="h-4 w-4" />
-                    <span>Add learning material</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onAddAssignment(module.id)}
-                    className="btn btn-primary btn-sm flex items-center gap-1.5"
-                  >
-                    <PlusIcon className="h-4 w-4" />
-                    <span>Add assignment</span>
-                  </button>
                 </div>
               )}
             </div>
@@ -110,8 +95,10 @@ export function ModulesPanel({
                 canManageCourseContent={canManageCourseContent}
                 onEditLearningItem={onEditLearningItem}
                 onDeleteLearningItem={onDeleteLearningItem}
+                onAddLearningItem={onAddLearningItem}
                 onEditAssignment={onEditAssignment}
                 onDeleteAssignment={onDeleteAssignment}
+                onAddAssignment={onAddAssignment}
               />
             </div>
           </article>
@@ -121,18 +108,16 @@ export function ModulesPanel({
   );
 }
 
-type ModuleContentItem =
-  | { kind: 'learning-item'; order: number; item: LearningItemDto }
-  | { kind: 'assignment'; order: number; item: AssignmentListItemDto };
-
 interface ModuleContentListProps {
   module: CourseModuleDto;
   courseId: string;
   canManageCourseContent: boolean;
   onEditLearningItem: (item: LearningItemDto, moduleId: string) => void;
   onDeleteLearningItem: (itemId: string) => void;
+  onAddLearningItem: (moduleId: string) => void;
   onEditAssignment: (assignment: AssignmentListItemDto, moduleId: string) => void;
   onDeleteAssignment: (assignmentId: string) => void;
+  onAddAssignment: (moduleId: string) => void;
 }
 
 function ModuleContentList({
@@ -141,47 +126,115 @@ function ModuleContentList({
   canManageCourseContent,
   onEditLearningItem,
   onDeleteLearningItem,
+  onAddLearningItem,
   onEditAssignment,
   onDeleteAssignment,
+  onAddAssignment,
 }: ModuleContentListProps) {
-  const contents: ModuleContentItem[] = [
-    ...module.learningItems.map((item) => ({ kind: 'learning-item' as const, order: item.order ?? 0, item })),
-    ...module.assignments.map((item) => ({ kind: 'assignment' as const, order: item.order ?? 0, item })),
-  ].sort((a, b) => a.order - b.order || (a.kind === 'learning-item' ? -1 : 1));
+  const learningItems = [...module.learningItems].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const assignments = [...module.assignments].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
-  if (contents.length === 0) {
+  if (learningItems.length === 0 && assignments.length === 0 && !canManageCourseContent) {
     return <EmptyState title="No module contents" description="Materials and assignments will appear here." />;
   }
 
   return (
-    <section className="space-y-2">
-      <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>
-        Module contents
-      </h3>
-      <div className="divide-y rounded-lg border" style={{ borderColor: 'var(--border-subtle)' }}>
-        {contents.map((entry) =>
-          entry.kind === 'learning-item' ? (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <ContentGroup
+        title="Learning materials"
+        count={learningItems.length}
+        emptyTitle="No learning materials"
+        emptyDescription="Add readings, links, videos, files, or lesson pages for this module."
+        action={canManageCourseContent ? (
+          <button
+            type="button"
+            onClick={() => onAddLearningItem(module.id)}
+            className="btn btn-secondary btn-sm flex items-center gap-1.5"
+          >
+            <PlusIcon className="h-4 w-4" />
+            <span>Add material</span>
+          </button>
+        ) : null}
+      >
+        {learningItems.map((item) => (
             <LearningItemRow
-              key={`learning-${entry.item.id}`}
-              item={entry.item}
+              key={item.id}
+              item={item}
               courseId={courseId}
               moduleId={module.id}
               canManageCourseContent={canManageCourseContent}
               onEditLearningItem={onEditLearningItem}
               onDeleteLearningItem={onDeleteLearningItem}
             />
-          ) : (
+        ))}
+      </ContentGroup>
+
+      <ContentGroup
+        title="Assignments"
+        count={assignments.length}
+        emptyTitle="No assignments"
+        emptyDescription="Add graded tasks, quizzes, VPL labs, or submission activities."
+        action={canManageCourseContent ? (
+          <button
+            type="button"
+            onClick={() => onAddAssignment(module.id)}
+            className="btn btn-primary btn-sm flex items-center gap-1.5"
+          >
+            <PlusIcon className="h-4 w-4" />
+            <span>Add assignment</span>
+          </button>
+        ) : null}
+      >
+        {assignments.map((assignment) => (
             <AssignmentRow
-              key={`assignment-${entry.item.id}`}
-              assignment={entry.item}
+              key={assignment.id}
+              assignment={assignment}
               moduleId={module.id}
               canManageCourseContent={canManageCourseContent}
               onEditAssignment={onEditAssignment}
               onDeleteAssignment={onDeleteAssignment}
             />
-          )
-        )}
+        ))}
+      </ContentGroup>
+    </div>
+  );
+}
+
+function ContentGroup({
+  title,
+  count,
+  emptyTitle,
+  emptyDescription,
+  action,
+  children,
+}: {
+  title: string;
+  count: number;
+  emptyTitle: string;
+  emptyDescription: string;
+  action: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-lg border" style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-base)' }}>
+      <div className="flex min-h-12 items-center justify-between gap-3 border-b px-3 py-2" style={{ borderColor: 'var(--border-subtle)' }}>
+        <div className="min-w-0">
+          <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>
+            {title}
+          </h3>
+          <p className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>{count} item{count === 1 ? '' : 's'}</p>
+        </div>
+        {action}
       </div>
+      {count > 0 ? (
+        <div className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
+          {children}
+        </div>
+      ) : (
+        <div className="p-3">
+          <EmptyState title={emptyTitle} description={emptyDescription} />
+        </div>
+      )}
     </section>
   );
 }

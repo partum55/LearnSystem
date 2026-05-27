@@ -73,7 +73,6 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
   const [maxPoints, setMaxPoints] = useState(100);
   const [type, setType] = useState<AssignmentType>('FILE_SUBMISSION');
   const [dueDate, setDueDate] = useState('');
-  const [order, setOrder] = useState(1);
   const [visible, setVisible] = useState(true);
 
   // Instructions RichContentDocument state
@@ -104,7 +103,6 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
       setTitle(initialData.title || '');
       setMaxPoints(Number(initialData.maxPoints ?? 100));
       setType(initialData.type.toUpperCase() as AssignmentType);
-      setOrder(1); // Default sequence placeholder
       setVisible(initialData.visibilityStatus !== 'HIDDEN');
       
       const initialDueDate = initialData.dueDate
@@ -181,7 +179,6 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
         instructionsJson,
         type,
         maxPoints: Number(maxPoints),
-        order: Number(order),
         dueDate: dueDate ? new Date(dueDate).toISOString() : null,
         visible,
       };
@@ -493,27 +490,14 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="label block mb-1 font-semibold text-xs text-[var(--text-secondary)]">Due Date & Time</label>
-                <input
-                  type="datetime-local"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className="input w-full font-medium text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="label block mb-1 font-semibold text-xs text-[var(--text-secondary)]">Sequence Order Index</label>
-                <input
-                  type="number"
-                  value={order}
-                  onChange={(e) => setOrder(Number(e.target.value))}
-                  min={1}
-                  className="input w-full font-medium text-sm"
-                />
-              </div>
+            <div>
+              <label className="label block mb-1 font-semibold text-xs text-[var(--text-secondary)]">Due Date & Time</label>
+              <input
+                type="datetime-local"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="input w-full font-medium text-sm"
+              />
             </div>
           </div>
         )}

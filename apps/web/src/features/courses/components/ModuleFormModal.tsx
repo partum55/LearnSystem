@@ -19,10 +19,9 @@ export function ModuleFormModal({
   initialData,
   loading,
 }: ModuleFormModalProps) {
-  const [formData, setFormData] = useState<Required<ModuleRequest>>({
+  const [formData, setFormData] = useState<Omit<Required<ModuleRequest>, 'order'>>({
     title: '',
     description: '',
-    order: 1,
     visible: true,
   });
   const [error, setError] = useState<string | null>(null);
@@ -32,14 +31,12 @@ export function ModuleFormModal({
       setFormData({
         title: initialData.title || '',
         description: initialData.description || '',
-        order: initialData.order || 1,
         visible: initialData.availabilityStatus !== 'HIDDEN',
       });
     } else {
       setFormData({
         title: '',
         description: '',
-        order: 1,
         visible: true,
       });
     }
@@ -69,7 +66,6 @@ export function ModuleFormModal({
       await onSubmit({
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
-        order: Number(formData.order),
         visible: formData.visible,
       });
       onClose();
@@ -122,18 +118,6 @@ export function ModuleFormModal({
             disabled={loading}
           />
         </div>
-
-        <Input
-          label="Order Position"
-          id="order"
-          type="number"
-          name="order"
-          value={formData.order}
-          onChange={handleChange}
-          min={1}
-          placeholder="1"
-          disabled={loading}
-        />
 
         <div className="flex items-center">
           <input

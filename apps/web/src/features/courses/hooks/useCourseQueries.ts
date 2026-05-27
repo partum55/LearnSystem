@@ -30,10 +30,37 @@ export const useCourseOverview = (courseId: string | undefined) =>
     enabled: Boolean(courseId),
   });
 
-export const useCourseSettings = (courseId: string | undefined, enabled = true) =>
+export const useCourseSettings = (
+  courseId: string | undefined,
+  enabled = true,
+  options?: { adminFallback?: boolean }
+) =>
   useQuery({
     queryKey: queryKeys.courses.settings(courseId || ''),
-    queryFn: () => canonicalCoursesApi.getCourseSettings(courseId!),
+    queryFn: async () => {
+      try {
+        return await canonicalCoursesApi.getCourseSettings(courseId!);
+      } catch (error) {
+        const status = (error as { status?: number })?.status;
+        if (options?.adminFallback && (status === 404 || status === 405)) {
+          const adminCourse = await canonicalCoursesApi.getAdminCourse(courseId!);
+          return {
+            id: adminCourse.id,
+            code: adminCourse.code,
+            titleUk: adminCourse.titleUk,
+            titleEn: adminCourse.titleEn,
+            descriptionUk: adminCourse.descriptionUk,
+            descriptionEn: adminCourse.descriptionEn,
+            syllabus: null,
+            visibility: 'DRAFT',
+            status: adminCourse.status,
+            ownerId: adminCourse.ownerId,
+            updatedAt: adminCourse.updatedAt,
+          };
+        }
+        throw error;
+      }
+    },
     enabled: Boolean(courseId) && enabled,
   });
 
@@ -91,10 +118,7 @@ export const useUpdateCourseSettings = (courseId: string) => {
     mutationFn: (request: UpdateCourseSettingsRequest) =>
       canonicalCoursesApi.updateCourseSettings(courseId, request),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.myActive() });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.myTeaching() });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.adminList() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
     },
   });
 };
@@ -104,10 +128,7 @@ export const useArchiveCourse = (courseId: string) => {
   return useMutation({
     mutationFn: () => canonicalCoursesApi.archiveCourse(courseId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.myActive() });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.myTeaching() });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.adminList() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
     },
   });
 };
@@ -117,10 +138,7 @@ export const useRestoreCourse = (courseId: string) => {
   return useMutation({
     mutationFn: () => canonicalCoursesApi.restoreCourse(courseId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.myActive() });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.myTeaching() });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.adminList() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
     },
   });
 };

@@ -32,7 +32,11 @@ const statusOptions: CourseStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
 const visibilityOptions: CourseVisibility[] = ['DRAFT', 'PRIVATE', 'PUBLIC'];
 
 export function CourseSettingsPanel({ courseId, permissions, onToast }: CourseSettingsPanelProps) {
-  const { data: settings, isLoading, error } = useCourseSettings(courseId, permissions.canManageCourseSettings);
+  const { data: settings, isLoading, error } = useCourseSettings(
+    courseId,
+    permissions.canManageCourseSettings,
+    { adminFallback: permissions.isAdmin }
+  );
   const updateSettings = useUpdateCourseSettings(courseId);
   const archiveCourse = useArchiveCourse(courseId);
   const restoreCourse = useRestoreCourse(courseId);
@@ -139,11 +143,12 @@ export function CourseSettingsPanel({ courseId, permissions, onToast }: CourseSe
   }
 
   if (error || !settings) {
+    const details = apiError(error, 'No response body was returned.');
     return (
       <section className="rounded-lg border p-5" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-surface)' }}>
         <h2 className="text-lg font-semibold">Course settings unavailable</h2>
         <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-          The settings endpoint did not return a usable response for this account.
+          The settings endpoint did not return a usable response for this account: {details}
         </p>
       </section>
     );
