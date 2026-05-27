@@ -281,7 +281,20 @@ public class CourseDraftService {
         if (value == null || value.isNull() || value.isEmpty()) {
             return null;
         }
-        requireRichContentDocument(value, path, false);
-        return value.toString();
+        if (isRichContentDocument(value)) {
+            return value.toString();
+        }
+        return null;
+    }
+
+    private boolean isRichContentDocument(JsonNode value) {
+        return value != null
+                && value.isObject()
+                && value.has("version")
+                && value.get("version").asInt() == 1
+                && value.has("type")
+                && "RICH_CONTENT".equals(value.get("type").asText())
+                && value.has("blocks")
+                && value.get("blocks").isArray();
     }
 }
