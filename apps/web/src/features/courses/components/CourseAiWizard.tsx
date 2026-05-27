@@ -23,7 +23,7 @@ export function CourseAiWizard() {
       type: 'GENERATE_COURSE',
       input: { topic, targetAudience: audience }
     });
-    setEditableDraft(response.output);
+    setEditableDraft(normalizeCourseDraft(response.output));
   };
 
   const handleStartOver = () => {
@@ -36,7 +36,7 @@ export function CourseAiWizard() {
     if (!editableDraft) return;
     
     try {
-      const created = await createCourse.createCourse(editableDraft);
+      const created = await createCourse.createCourse(normalizeCourseDraft(editableDraft));
       // @ts-expect-error type
       if (created?.id) {
         // @ts-expect-error type
@@ -153,4 +153,70 @@ export function CourseAiWizard() {
       </div>
     </AiFeatureGate>
   );
+}
+
+function normalizeCourseDraft(draft: CourseDraft): CourseDraft {
+  return {
+    ...draft,
+    course: {
+      ...draft.course,
+      code: (draft.course.code || 'AI-DRAFT').toUpperCase(),
+    },
+    modules: (draft.modules ?? []).map((module, moduleIndex) => ({
+      ...module,
+      orderIndex: module.orderIndex ?? moduleIndex + 1,
+      learningItems: (module.learningItems ?? []).map((item, itemIndex) => ({
+        ...item,
+        type: item.type === 'LESSON' ? 'LESSON' : 'RTE',
+        title: item.title || `Learning material ${itemIndex + 1}`,
+        contentJson: ensureRichContentDocument(
+          item.contentJson,
+          item.title || `Learning material ${itemIndex + 1}`,
+          module.description || module.title
+        ),
+      })),
+      assignments: (module.assignments ?? []).map((assignment, assignmentIndex) => ({
+        ...assignment,
+        type: normalizeAssignmentType(assignment.type),
+        title: assignment.title || `Assignment ${assignmentIndex + 1}`,
+        points: typeof assignment.points === 'number' && assignment.points >= 0 ? assignment.points : 100,
+        instructionsJson: ensureRichContentDocument(
+          assignment.instructionsJson,
+          assignment.title || `Assignment ${assignmentIndex + 1}`,
+          'Complete this draft assignment and submit your work for review.'
+        ),
+        settings: assignment.settings && typeof assignment.settings === 'object' ? assignment.settings : {},
+      })),
+    })),
+  };
+}
+
+function normalizeAssignmentType(type?: string) {
+  const allowed = new Set(['TEXT_SUBMISSION', 'FILE_SUBMISSION', 'QUIZ', 'FORM', 'VPL', 'SEMINAR']);
+  return type && allowed.has(type) ? type : 'TEXT_SUBMISSION';
+}
+
+function ensureRichContentDocument(value: unknown, title: string, fallback?: string) {
+  if (
+    value &&
+    typeof value === 'object' &&
+    (value as { version?: unknown }).version === 1 &&
+    (value as { type?: unknown }).type === 'RICH_CONTENT' &&
+    Array.isArray((value as { blocks?: unknown }).blocks)
+  ) {
+    return value;
+  }
+
+  return {
+    version: 1,
+    type: 'RICH_CONTENT',
+    blocks: [
+      {
+        type: 'paragraph',
+        data: {
+          text: fallback || title,
+        },
+      },
+    ],
+  };
 }

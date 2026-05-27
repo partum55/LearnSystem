@@ -73,7 +73,7 @@ public class AiSchemaRegistry {
                                 "items": {
                                     "type": "OBJECT",
                                     "properties": {
-                                        "type": { "type": "STRING" },
+                                        "type": { "type": "STRING", "enum": ["RTE", "LESSON"] },
                                         "title": { "type": "STRING" },
                                         "contentJson": { "$ref": "#/definitions/RichContent" }
                                     }
@@ -84,7 +84,7 @@ public class AiSchemaRegistry {
                                 "items": {
                                     "type": "OBJECT",
                                     "properties": {
-                                        "type": { "type": "STRING" },
+                                        "type": { "type": "STRING", "enum": ["TEXT_SUBMISSION", "FILE_SUBMISSION", "QUIZ", "FORM", "VPL", "SEMINAR"] },
                                         "title": { "type": "STRING" },
                                         "points": { "type": "INTEGER" },
                                         "instructionsJson": { "$ref": "#/definitions/RichContent" },
@@ -129,7 +129,7 @@ public class AiSchemaRegistry {
                                 "items": {
                                     "type": "OBJECT",
                                     "properties": {
-                                        "type": { "type": "STRING" },
+                                        "type": { "type": "STRING", "enum": ["RTE", "LESSON"] },
                                         "title": { "type": "STRING" },
                                         "contentJson": { "type": "OBJECT" }
                                     }
@@ -140,7 +140,7 @@ public class AiSchemaRegistry {
                                 "items": {
                                     "type": "OBJECT",
                                     "properties": {
-                                        "type": { "type": "STRING" },
+                                        "type": { "type": "STRING", "enum": ["TEXT_SUBMISSION", "FILE_SUBMISSION", "QUIZ", "FORM", "VPL", "SEMINAR"] },
                                         "title": { "type": "STRING" },
                                         "points": { "type": "INTEGER" },
                                         "instructionsJson": { "type": "OBJECT" },

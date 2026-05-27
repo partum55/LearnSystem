@@ -12,7 +12,13 @@ public class RichContentValidator {
         if (contentJson == null || contentJson.isNull() || contentJson.isEmpty()) {
             return; // Empty is fine in some contexts, or we could require it
         }
+        validateRequired(contentJson);
+    }
 
+    public void validateRequired(JsonNode contentJson) {
+        if (contentJson == null || contentJson.isNull() || contentJson.isEmpty()) {
+            throw new AiException(AiErrorCode.AI_OUTPUT_INVALID, "RichContentDocument is required");
+        }
         if (!contentJson.has("version") || contentJson.get("version").asInt() != 1) {
             throw new AiException(AiErrorCode.AI_OUTPUT_INVALID, "RichContentDocument must have version: 1");
         }

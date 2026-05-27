@@ -35,7 +35,12 @@ public class GenerateCourseHandler implements AiTaskHandler {
     public JsonNode execute(Map<String, Object> context, Map<String, Object> input, String apiKey) {
         String systemPrompt = "You are an expert curriculum designer. Generate a structured course draft matching the schema perfectly. " +
                 "Do NOT use markdown outside of RichContentDocument blocks. RichContentDocument blocks must follow strict JSON structure. " +
-                "All enum values must be UPPERCASE.";
+                "All enum values must be UPPERCASE. " +
+                "Learning item type must be only RTE or LESSON. Prefer RTE for normal generated materials. " +
+                "Assignment type must be only TEXT_SUBMISSION, FILE_SUBMISSION, QUIZ, FORM, VPL, or SEMINAR. Prefer TEXT_SUBMISSION for ordinary written tasks. " +
+                "Every learningItems[].contentJson and assignments[].instructionsJson must be a full RichContentDocument: " +
+                "{\"version\":1,\"type\":\"RICH_CONTENT\",\"blocks\":[{\"type\":\"paragraph\",\"data\":{\"text\":\"...\"}}]}. " +
+                "Do not return empty objects for contentJson or instructionsJson.";
         
         String prompt;
         try {

@@ -1,13 +1,19 @@
 package com.university.lms.ai.validation;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.university.lms.ai.domain.model.AiErrorCode;
 import com.university.lms.ai.exception.AiException;
 import org.springframework.stereotype.Component;
 
+import java.util.Set;
+
 @Component
 public class AiOutputValidator {
+
+    private static final Set<String> COURSE_LEARNING_ITEM_TYPES = Set.of("RTE", "LESSON");
+    private static final Set<String> ASSIGNMENT_TYPES = Set.of(
+            "TEXT_SUBMISSION", "FILE_SUBMISSION", "QUIZ", "FORM", "VPL", "SEMINAR"
+    );
 
     private final RichContentValidator richContentValidator;
 
@@ -40,6 +46,10 @@ public class AiOutputValidator {
             if (module.has("learningItems")) {
                 for (JsonNode item : module.get("learningItems")) {
                     validateRteMaterial(item);
+                    String type = item.has("type") ? item.get("type").asText() : "";
+                    if (!COURSE_LEARNING_ITEM_TYPES.contains(type)) {
+                        throw new AiException(AiErrorCode.AI_OUTPUT_INVALID, "Course learning item type must be RTE or LESSON");
+                    }
                 }
             }
             if (module.has("assignments")) {
@@ -54,7 +64,7 @@ public class AiOutputValidator {
         if (!output.has("title") || !output.has("contentJson")) {
             throw new AiException(AiErrorCode.AI_OUTPUT_INVALID, "Material must have 'title' and 'contentJson'");
         }
-        richContentValidator.validate(output.get("contentJson"));
+        richContentValidator.validateRequired(output.get("contentJson"));
     }
 
     public void validateAssignmentDraft(JsonNode output) {
@@ -63,17 +73,17 @@ public class AiOutputValidator {
         }
         
         String type = output.get("type").asText();
-        if (!type.equals(type.toUpperCase())) {
-            throw new AiException(AiErrorCode.AI_OUTPUT_INVALID, "Enums like 'type' must be uppercase");
+        if (!ASSIGNMENT_TYPES.contains(type)) {
+            throw new AiException(AiErrorCode.AI_OUTPUT_INVALID, "Assignment type must be canonical");
         }
 
-        richContentValidator.validate(output.get("instructionsJson"));
+        richContentValidator.validateRequired(output.get("instructionsJson"));
     }
 
     public void validateGradeSuggestion(JsonNode output) {
         if (!output.has("suggestedScore") || !output.has("feedbackJson")) {
             throw new AiException(AiErrorCode.AI_OUTPUT_INVALID, "Grade suggestion must have 'suggestedScore' and 'feedbackJson'");
         }
-        richContentValidator.validate(output.get("feedbackJson"));
+        richContentValidator.validateRequired(output.get("feedbackJson"));
     }
 }
