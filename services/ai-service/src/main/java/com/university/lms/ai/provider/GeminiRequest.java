@@ -13,7 +13,7 @@ public record GeminiRequest(
     public record SystemInstruction(List<Part> parts) {}
     public record GenerationConfig(
             String responseMimeType,
-            Map<String, Object> responseSchema,
+            Map<String, Object> responseJsonSchema,
             Double temperature
     ) {}
 

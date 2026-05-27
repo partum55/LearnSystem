@@ -17,7 +17,7 @@ public class AiProviderConfigService {
             @Value("${ai.features.enabled:false}") boolean aiFeaturesEnabled,
             @Value("${ai.default-provider:GEMINI}") String defaultProvider,
             @Value("${ai.system-gemini-api-key:}") String systemGeminiApiKey,
-            @Value("${ai.gemini-model:gemini-2.5-flash}") String geminiModel
+            @Value("${ai.gemini-model:gemini-3.5-flash}") String geminiModel
     ) {
         this.aiFeaturesEnabled = aiFeaturesEnabled;
         this.defaultProvider = AiProvider.valueOf(defaultProvider.trim().toUpperCase(Locale.ROOT));
