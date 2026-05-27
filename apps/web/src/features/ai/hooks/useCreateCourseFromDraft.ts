@@ -51,8 +51,14 @@ export function useCreateCourseFromDraft() {
     }
   };
 
+  const reset = () => {
+    setError(null);
+    setIsLoading(false);
+  };
+
   return {
     createCourse,
+    reset,
     isLoading,
     error,
   };

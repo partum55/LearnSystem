@@ -4,9 +4,9 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAiTask } from '@/features/ai/hooks/useAiTask';
 import { useCreateCourseFromDraft, CourseDraft } from '@/features/ai/hooks/useCreateCourseFromDraft';
-import { AiGenerationPreview } from '@/features/ai/components/AiGenerationPreview';
 import { AiErrorDisplay } from '@/features/ai/components/AiErrorDisplay';
 import { AiFeatureGate } from '@/features/ai/components/AiFeatureGate';
+import { GeneratedCoursePreview } from './GeneratedCoursePreview';
 
 export function CourseAiWizard() {
   const router = useRouter();
@@ -24,6 +24,12 @@ export function CourseAiWizard() {
       input: { topic, targetAudience: audience }
     });
     setEditableDraft(response.output);
+  };
+
+  const handleStartOver = () => {
+    aiTask.reset();
+    createCourse.reset();
+    setEditableDraft(null);
   };
 
   const handleSave = async () => {
@@ -45,7 +51,7 @@ export function CourseAiWizard() {
 
   return (
     <AiFeatureGate>
-      <div className="mx-auto max-w-3xl space-y-6 pb-10 mt-8">
+      <div className="mx-auto max-w-5xl space-y-6 pb-10 mt-8">
         <div className="card">
           <div className="card-header">
             <h2 className="text-xl font-semibold">Generate Course with AI</h2>
@@ -133,11 +139,11 @@ export function CourseAiWizard() {
                     </label>
                   </div>
                 )}
-                <AiGenerationPreview
-                  data={editableDraft ?? aiTask.data.output}
+                <GeneratedCoursePreview
+                  draft={editableDraft ?? aiTask.data.output}
                   isAccepting={createCourse.isLoading}
                   onAccept={handleSave}
-                  onReject={() => router.push('/courses')}
+                  onReject={handleStartOver}
                 />
               </>
             )}
