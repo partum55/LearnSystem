@@ -10,7 +10,6 @@ import java.util.Set;
 @Component
 public class AiOutputValidator {
 
-    private static final Set<String> COURSE_LEARNING_ITEM_TYPES = Set.of("RTE", "LESSON");
     private static final Set<String> ASSIGNMENT_TYPES = Set.of(
             "TEXT_SUBMISSION", "FILE_SUBMISSION", "QUIZ", "FORM", "VPL", "SEMINAR"
     );
@@ -45,18 +44,32 @@ public class AiOutputValidator {
             }
             if (module.has("learningItems")) {
                 for (JsonNode item : module.get("learningItems")) {
-                    validateRteMaterial(item);
-                    String type = item.has("type") ? item.get("type").asText() : "";
-                    if (!COURSE_LEARNING_ITEM_TYPES.contains(type)) {
-                        throw new AiException(AiErrorCode.AI_OUTPUT_INVALID, "Course learning item type must be RTE or LESSON");
-                    }
+                    validateCourseLearningItem(item);
                 }
             }
             if (module.has("assignments")) {
                 for (JsonNode assign : module.get("assignments")) {
-                    validateAssignmentDraft(assign);
+                    validateCourseAssignmentDraft(assign);
                 }
             }
+        }
+    }
+
+    private void validateCourseLearningItem(JsonNode output) {
+        if (!output.has("title")) {
+            throw new AiException(AiErrorCode.AI_OUTPUT_INVALID, "Course material must have 'title'");
+        }
+        if (output.has("contentJson")) {
+            richContentValidator.validate(output.get("contentJson"));
+        }
+    }
+
+    private void validateCourseAssignmentDraft(JsonNode output) {
+        if (!output.has("title")) {
+            throw new AiException(AiErrorCode.AI_OUTPUT_INVALID, "Course assignment must have 'title'");
+        }
+        if (output.has("instructionsJson")) {
+            richContentValidator.validate(output.get("instructionsJson"));
         }
     }
 
