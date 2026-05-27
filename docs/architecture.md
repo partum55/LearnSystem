@@ -1,43 +1,57 @@
-# LearnSystem Architecture
+# Architecture
 
-LearnSystem is structured as a monorepo containing a Next.js frontend and a set of Java Spring Boot microservices.
+## Implemented Now
 
-## High-Level Diagram
+LearnSystem is a service-oriented LMS with a Next.js frontend, Spring Boot backend services, Supabase Auth/Postgres, and a Docker/Caddy production deployment.
 
-```mermaid
-graph TD
-    User([User]) -->|HTTPS| Web[Next.js App - app.learnsystem.app]
-    Web -->|Auth/Data| Supabase[Supabase Platform]
-    Web -->|Domain Actions| Gateway[Java API Gateway - api.learnsystem.app]
-    Gateway -->|Internal| UserService[User Service]
-    Gateway -->|Internal| LearningService[Learning Service]
-    Gateway -->|Internal| AIService[AI Service]
-    LearningService -->|Internal| ExecService[Execution Service]
-    UserService -.->|Postgres| Supabase
-    LearningService -.->|Postgres| Supabase
-    AIService -.->|Postgres| Supabase
+Request flow:
+
+```text
+Browser -> apps/web -> Gateway /api/v1 -> backend service /v1 -> Supabase/Postgres
 ```
 
-## Core Layers
+The gateway owns the public `/api/v1` API prefix. Services expose internal `/v1` routes and should not be called directly by the browser in production.
 
-### Interface Layer (`apps/web`)
-- **Technology:** Next.js (App Router), TanStack Query, Tailwind CSS.
-- **Responsibilities:** UI, Routing, Client-side Auth, direct Supabase reads (where RLS allows).
-- **Communication:** Sends authorized requests to the Gateway using Supabase JWT.
+## Frontend
 
-### Application Layer (`services/`)
-- **Technology:** Java 25, Spring Boot 3.2.
-- **Gateway:** Unified entry point for all domain logic. Validates Supabase JWTs.
-- **Microservices:**
-    - `user-service`: User profile and role management.
-    - `learning-service`: Core domain (courses, modules, lessons, assignments).
-    - `ai-service`: AI generation and grading assistance.
-    - `execution-service`: Internal Python-based code runner for VPL.
+- Main app: `apps/web`.
+- Framework: Next.js 16, React 19, TypeScript.
+- Auth: Supabase browser/server helpers.
+- Data fetching: TanStack Query and feature-local API clients.
+- Rich content: Tiptap-based editor and renderer.
+- AI UX: feature-gated UI that calls LearnSystem APIs; no frontend direct calls to Gemini or other AI providers.
 
-### Infrastructure Layer (`supabase/`)
-- **Identity:** Supabase Auth (OIDC Provider).
-- **Persistence:** Supabase PostgreSQL.
-- **Storage:** Supabase Object Storage (avatars, submissions).
+## Backend Services
 
-## Domain-Driven Design
-The system follows DDD principles. Logic related to code execution (VPL) is encapsulated within the `learning-service` but delegates heavy-lifting to the isolated `execution-service`.
+- `gateway`: API edge, route mapping, health/service status, CORS/rate limits.
+- `user-service`: canonical `public.users`, profile endpoints, admin user endpoints, internal user lookup.
+- `learning-service`: canonical courses, course members, modules, learning items, lesson pages, assignments, submissions, grades, enrollment groups, seminar attendance, dashboards.
+- `ai-service`: AI readiness, encrypted user AI keys, Gemini-backed task execution, generation history.
+- `analytics-service`: still present in the repo; validate current production usage before expanding docs around analytics features.
+- `execution-service`: present for code execution support; not central to the current canonical docs.
+
+## Data and Auth
+
+Supabase provides authentication and Postgres. App data lives primarily in:
+
+- `public` for canonical users.
+- `learning` for course and assessment data.
+- `ai` for AI provider keys and generation history.
+
+Backend services validate Supabase JWTs and map them to canonical users.
+
+## Production
+
+Production backend services run with Docker Compose under `/opt/learnsystem`, behind Caddy. The frontend deploys separately after push. Caddy exposes the API host and routes requests to the gateway.
+
+## Design Goals
+
+- Canonical APIs and schema only.
+- No compatibility layer as a design goal.
+- No documentation of the legacy course content model as current behavior.
+- One clean fix per root cause when debugging production.
+
+## Partially Implemented / Needs Verification
+
+- `analytics-service` exists and has endpoints, but current product docs should treat analytics dashboards as future-facing until verified in production.
+- Some older AI controllers remain in `ai-service`; the canonical AI path is `/api/v1/ai/tasks`.
