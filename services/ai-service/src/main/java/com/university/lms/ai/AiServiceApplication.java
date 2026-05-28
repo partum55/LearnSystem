@@ -22,6 +22,7 @@ import com.university.lms.ai.service.LearningServiceClient;
 import com.university.lms.ai.service.UserAiProviderKeyService;
 import com.university.lms.ai.service.UserAiSettingsService;
 import com.university.lms.ai.service.UserServiceClient;
+import com.university.lms.ai.validation.AiOutputNormalizer;
 import com.university.lms.ai.validation.AiOutputValidator;
 import com.university.lms.ai.validation.RichContentValidator;
 import com.university.lms.ai.web.AIHealthController;
@@ -64,6 +65,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
               LearningServiceClient.class,
               GeminiProviderClient.class,
               AiSchemaRegistry.class,
+              AiOutputNormalizer.class,
               AiOutputValidator.class,
               RichContentValidator.class,
               GenerateCourseHandler.class,
