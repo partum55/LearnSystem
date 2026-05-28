@@ -7,6 +7,7 @@ import com.university.lms.ai.domain.model.AiErrorCode;
 import com.university.lms.ai.domain.model.AiGenerationStatus;
 import com.university.lms.ai.domain.model.AiTaskType;
 import com.university.lms.ai.exception.AiException;
+import com.university.lms.ai.exception.AiOutputInvalidException;
 import com.university.lms.ai.provider.GeminiProviderClient;
 import com.university.lms.ai.repository.AiGenerationRepository;
 import com.university.lms.ai.web.dto.AiTaskRequest;
@@ -105,6 +106,15 @@ public class AiTaskService {
                     null
             );
 
+        } catch (AiOutputInvalidException e) {
+            generation.setStatus(AiGenerationStatus.FAILED);
+            generation.setErrorMessage("taskType=%s; %s".formatted(request.type(), e.getDiagnostics()));
+            if (e.getSanitizedOutputJson() != null) {
+                generation.setOutputJson(e.getSanitizedOutputJson());
+            }
+            generation.setCompletedAt(Instant.now());
+            generationRepository.save(generation);
+            throw e;
         } catch (AiException e) {
             generation.setStatus(AiGenerationStatus.FAILED);
             generation.setErrorMessage(e.getMessage());

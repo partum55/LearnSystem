@@ -1,10 +1,13 @@
 package com.university.lms.ai.provider;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.university.lms.ai.domain.model.AiErrorCode;
 import com.university.lms.ai.exception.AiException;
+import com.university.lms.ai.exception.AiOutputInvalidException;
 import com.university.lms.ai.service.AiProviderConfigService;
+import com.university.lms.ai.service.AiOutputSanitizer;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -33,20 +36,28 @@ public class GeminiProviderClient {
     public JsonNode generateContent(String apiKey, String prompt, String systemPrompt, Map<String, Object> jsonSchema) {
         GeminiRequest requestBody = GeminiRequest.of(prompt, systemPrompt, jsonSchema);
 
+        String generatedText = null;
         try {
             GeminiResponse response = executeRequest(apiKey, requestBody);
 
-            String generatedText = response.extractText();
+            generatedText = response.extractText();
             if (generatedText == null || generatedText.isBlank()) {
                 throw new AiException(AiErrorCode.AI_PROVIDER_UNAVAILABLE, "No generated text found in Gemini response");
             }
 
             return objectMapper.readTree(generatedText);
 
+        } catch (JsonProcessingException e) {
+            throw new AiOutputInvalidException(
+                    "provider.output expected JSON object actual unparsable JSON",
+                    AiOutputSanitizer.rawOutputJson(generatedText, objectMapper),
+                    e);
         } catch (Exception e) {
             if (e instanceof AiException) throw (AiException) e;
-            // JSON parsing error falls here
-            throw new AiException(AiErrorCode.AI_OUTPUT_INVALID, "Failed to parse Gemini generated JSON", e);
+            throw new AiOutputInvalidException(
+                    "provider.output expected JSON object actual unparsable JSON",
+                    AiOutputSanitizer.rawOutputJson(generatedText, objectMapper),
+                    e);
         }
     }
 
@@ -57,8 +68,9 @@ public class GeminiProviderClient {
                         "Return exactly this JSON object: {\"ok\":true}",
                         "You are a health check. Return only valid JSON matching the schema.",
                         Map.of(
-                                "type", "OBJECT",
-                                "properties", Map.of("ok", Map.of("type", "BOOLEAN"))
+                                "type", "object",
+                                "required", java.util.List.of("ok"),
+                                "properties", Map.of("ok", Map.of("type", "boolean"))
                         )
                 )
         );

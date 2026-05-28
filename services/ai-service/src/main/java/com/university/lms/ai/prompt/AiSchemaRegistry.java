@@ -25,190 +25,181 @@ public class AiSchemaRegistry {
     }
 
     public Map<String, Object> getRichContentSchema() {
-        return parseSchema("""
-        {
-            "type": "OBJECT",
-            "properties": {
-                "version": { "type": "INTEGER" },
-                "type": { "type": "STRING" },
-                "blocks": {
-                    "type": "ARRAY",
-                    "items": {
-                        "type": "OBJECT",
-                        "properties": {
-                            "type": { "type": "STRING" },
-                            "data": { "type": "OBJECT" }
-                        }
-                    }
-                }
-            }
-        }
-        """);
+        return richContentSchema();
     }
 
     public Map<String, Object> getGenerateCourseSchema() {
-        return parseSchema("""
-        {
-            "type": "OBJECT",
-            "properties": {
-                "course": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "title": { "type": "STRING" },
-                        "code": { "type": "STRING" },
-                        "description": { "type": "STRING" },
-                        "syllabusJson": { "$ref": "#/definitions/RichContent" }
-                    }
-                },
-                "modules": {
-                    "type": "ARRAY",
-                    "items": {
-                        "type": "OBJECT",
-                        "properties": {
-                            "title": { "type": "STRING" },
-                            "description": { "type": "STRING" },
-                            "orderIndex": { "type": "INTEGER" },
-                            "learningItems": {
-                                "type": "ARRAY",
-                                "items": {
-                                    "type": "OBJECT",
-                                    "properties": {
-                                        "type": { "type": "STRING", "enum": ["RTE", "LESSON"] },
-                                        "title": { "type": "STRING" },
-                                        "contentJson": { "$ref": "#/definitions/RichContent" }
-                                    }
-                                }
-                            },
-                            "assignments": {
-                                "type": "ARRAY",
-                                "items": {
-                                    "type": "OBJECT",
-                                    "properties": {
-                                        "type": { "type": "STRING", "enum": ["TEXT_SUBMISSION", "FILE_SUBMISSION", "QUIZ", "FORM", "VPL", "SEMINAR"] },
-                                        "title": { "type": "STRING" },
-                                        "points": { "type": "INTEGER" },
-                                        "instructionsJson": { "$ref": "#/definitions/RichContent" },
-                                        "settings": { "type": "OBJECT" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        """);
-        // Note: Gemini schema might not fully support $ref natively in all versions without careful definitions blocks.
-        // If it fails, we will inline the schema. For safety, let's inline RichContent.
+        return getGenerateCourseSchemaInlined();
     }
 
     public Map<String, Object> getGenerateCourseSchemaInlined() {
         return parseSchema("""
         {
-            "type": "OBJECT",
-            "properties": {
-                "course": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "title": { "type": "STRING" },
-                        "code": { "type": "STRING" },
-                        "description": { "type": "STRING" },
-                        "syllabusJson": { "type": "OBJECT" }
-                    }
-                },
-                "modules": {
-                    "type": "ARRAY",
+          "type": "object",
+          "required": ["course", "modules"],
+          "additionalProperties": false,
+          "propertyOrdering": ["course", "modules"],
+          "properties": {
+            "course": {
+              "type": "object",
+              "required": ["title", "code", "description", "syllabusJson"],
+              "additionalProperties": false,
+              "propertyOrdering": ["title", "code", "description", "syllabusJson"],
+              "properties": {
+                "title": { "type": "string" },
+                "code": { "type": "string" },
+                "description": { "type": "string" },
+                "syllabusJson": %s
+              }
+            },
+            "modules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["title", "description", "orderIndex", "learningItems", "assignments"],
+                "additionalProperties": false,
+                "propertyOrdering": ["title", "description", "orderIndex", "learningItems", "assignments"],
+                "properties": {
+                  "title": { "type": "string" },
+                  "description": { "type": "string" },
+                  "orderIndex": { "type": "integer", "minimum": 0 },
+                  "learningItems": {
+                    "type": "array",
                     "items": {
-                        "type": "OBJECT",
-                        "properties": {
-                            "title": { "type": "STRING" },
-                            "description": { "type": "STRING" },
-                            "orderIndex": { "type": "INTEGER" },
-                            "learningItems": {
-                                "type": "ARRAY",
-                                "items": {
-                                    "type": "OBJECT",
-                                    "properties": {
-                                        "type": { "type": "STRING", "enum": ["RTE", "LESSON"] },
-                                        "title": { "type": "STRING" },
-                                        "contentJson": { "type": "OBJECT" }
-                                    }
-                                }
-                            },
-                            "assignments": {
-                                "type": "ARRAY",
-                                "items": {
-                                    "type": "OBJECT",
-                                    "properties": {
-                                        "type": { "type": "STRING", "enum": ["TEXT_SUBMISSION", "FILE_SUBMISSION", "QUIZ", "FORM", "VPL", "SEMINAR"] },
-                                        "title": { "type": "STRING" },
-                                        "points": { "type": "INTEGER" },
-                                        "instructionsJson": { "type": "OBJECT" },
-                                        "settings": { "type": "OBJECT" }
-                                    }
-                                }
-                            }
-                        }
+                      "type": "object",
+                      "required": ["type", "title", "contentJson"],
+                      "additionalProperties": false,
+                      "propertyOrdering": ["type", "title", "contentJson"],
+                      "properties": {
+                        "type": { "type": "string", "enum": ["RTE", "LESSON"] },
+                        "title": { "type": "string" },
+                        "contentJson": %s
+                      }
                     }
+                  },
+                  "assignments": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["type", "title", "points", "instructionsJson", "settings"],
+                      "additionalProperties": false,
+                      "propertyOrdering": ["type", "title", "points", "instructionsJson", "settings"],
+                      "properties": {
+                        "type": { "type": "string", "enum": ["TEXT_SUBMISSION"] },
+                        "title": { "type": "string" },
+                        "points": { "type": "integer", "minimum": 1 },
+                        "instructionsJson": %s,
+                        "settings": { "type": "object", "additionalProperties": true }
+                      }
+                    }
+                  }
                 }
+              }
             }
+          }
         }
-        """);
+        """.formatted(richContentJson(), richContentJson(), richContentJson()));
     }
 
     public Map<String, Object> getGenerateRteMaterialSchema() {
         return parseSchema("""
         {
-            "type": "OBJECT",
-            "properties": {
-                "title": { "type": "STRING" },
-                "contentJson": { "type": "OBJECT" }
-            }
+          "type": "object",
+          "required": ["title", "contentJson"],
+          "additionalProperties": false,
+          "propertyOrdering": ["title", "contentJson"],
+          "properties": {
+            "title": { "type": "string" },
+            "contentJson": %s
+          }
         }
-        """);
+        """.formatted(richContentJson()));
     }
 
     public Map<String, Object> getGenerateAssignmentSchema() {
         return parseSchema("""
         {
-            "type": "OBJECT",
-            "properties": {
-                "type": { "type": "STRING" },
-                "title": { "type": "STRING" },
-                "points": { "type": "INTEGER" },
-                "instructionsJson": { "type": "OBJECT" },
-                "settings": { "type": "OBJECT" }
-            }
+          "type": "object",
+          "required": ["type", "title", "points", "instructionsJson", "settings"],
+          "additionalProperties": false,
+          "propertyOrdering": ["type", "title", "points", "instructionsJson", "settings"],
+          "properties": {
+            "type": { "type": "string", "enum": ["TEXT_SUBMISSION"] },
+            "title": { "type": "string" },
+            "points": { "type": "integer", "minimum": 1 },
+            "instructionsJson": %s,
+            "settings": { "type": "object", "additionalProperties": true }
+          }
         }
-        """);
+        """.formatted(richContentJson()));
     }
 
     public Map<String, Object> getSuggestGradeSchema() {
         return parseSchema("""
         {
-            "type": "OBJECT",
-            "properties": {
-                "suggestedScore": { "type": "INTEGER" },
-                "maxScore": { "type": "INTEGER" },
-                "feedbackJson": { "type": "OBJECT" },
-                "reasoningSummary": {
-                    "type": "ARRAY",
-                    "items": { "type": "STRING" }
-                },
-                "rubricBreakdown": {
-                    "type": "ARRAY",
-                    "items": {
-                        "type": "OBJECT",
-                        "properties": {
-                            "criterion": { "type": "STRING" },
-                            "suggestedPoints": { "type": "INTEGER" },
-                            "maxPoints": { "type": "INTEGER" },
-                            "comment": { "type": "STRING" }
-                        }
-                    }
+          "type": "object",
+          "required": ["suggestedScore", "maxScore", "feedbackJson", "reasoningSummary", "rubricBreakdown"],
+          "additionalProperties": false,
+          "propertyOrdering": ["suggestedScore", "maxScore", "feedbackJson", "reasoningSummary", "rubricBreakdown"],
+          "properties": {
+            "suggestedScore": { "type": "integer", "minimum": 0 },
+            "maxScore": { "type": "integer", "minimum": 1 },
+            "feedbackJson": %s,
+            "reasoningSummary": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "rubricBreakdown": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["criterion", "suggestedPoints", "maxPoints", "comment"],
+                "additionalProperties": false,
+                "properties": {
+                  "criterion": { "type": "string" },
+                  "suggestedPoints": { "type": "integer", "minimum": 0 },
+                  "maxPoints": { "type": "integer", "minimum": 1 },
+                  "comment": { "type": "string" }
                 }
+              }
             }
+          }
         }
-        """);
+        """.formatted(richContentJson()));
+    }
+
+    private Map<String, Object> richContentSchema() {
+        return parseSchema(richContentJson());
+    }
+
+    private String richContentJson() {
+        return """
+        {
+          "type": "object",
+          "required": ["version", "type", "blocks"],
+          "additionalProperties": false,
+          "propertyOrdering": ["version", "type", "blocks"],
+          "properties": {
+            "version": { "type": "integer", "enum": [1] },
+            "type": { "type": "string", "enum": ["RICH_CONTENT"] },
+            "blocks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["type", "data"],
+                "additionalProperties": false,
+                "propertyOrdering": ["type", "data"],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["heading", "paragraph", "list", "quote", "code", "mermaid", "math"]
+                  },
+                  "data": { "type": "object", "additionalProperties": true }
+                }
+              }
+            }
+          }
+        }
+        """;
     }
 }

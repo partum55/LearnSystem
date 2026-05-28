@@ -6,6 +6,9 @@ import com.university.lms.ai.domain.model.AiTaskType;
 import com.university.lms.ai.prompt.AiSchemaRegistry;
 import com.university.lms.ai.provider.GeminiProviderClient;
 import com.university.lms.ai.service.AiTaskHandler;
+import com.university.lms.ai.service.AiOutputSanitizer;
+import com.university.lms.ai.exception.AiOutputInvalidException;
+import com.university.lms.ai.validation.AiOutputNormalizer;
 import com.university.lms.ai.validation.AiOutputValidator;
 import org.springframework.stereotype.Component;
 
@@ -18,12 +21,14 @@ public class GenerateCourseHandler implements AiTaskHandler {
     private final GeminiProviderClient geminiClient;
     private final AiSchemaRegistry schemaRegistry;
     private final AiOutputValidator validator;
+    private final AiOutputNormalizer normalizer;
     private final ObjectMapper mapper;
 
-    public GenerateCourseHandler(GeminiProviderClient geminiClient, AiSchemaRegistry schemaRegistry, AiOutputValidator validator, ObjectMapper mapper) {
+    public GenerateCourseHandler(GeminiProviderClient geminiClient, AiSchemaRegistry schemaRegistry, AiOutputValidator validator, AiOutputNormalizer normalizer, ObjectMapper mapper) {
         this.geminiClient = geminiClient;
         this.schemaRegistry = schemaRegistry;
         this.validator = validator;
+        this.normalizer = normalizer;
         this.mapper = mapper;
     }
 
@@ -34,30 +39,48 @@ public class GenerateCourseHandler implements AiTaskHandler {
 
     @Override
     public JsonNode execute(Map<String, Object> context, Map<String, Object> input, UUID userId, String apiKey) {
-        String systemPrompt = "You are an expert curriculum designer. Generate a structured course draft matching the schema perfectly. " +
-                "Do NOT use markdown outside of RichContentDocument blocks. RichContentDocument blocks must follow strict JSON structure. " +
-                "All enum values must be UPPERCASE. " +
-                "Learning item type must be only RTE or LESSON. Prefer RTE for normal generated materials. " +
-                "Assignment type must be only TEXT_SUBMISSION, FILE_SUBMISSION, QUIZ, FORM, VPL, or SEMINAR. Prefer TEXT_SUBMISSION for ordinary written tasks. " +
-                "Every learningItems[].contentJson and assignments[].instructionsJson must be a full RichContentDocument: " +
-                "{\"version\":1,\"type\":\"RICH_CONTENT\",\"blocks\":[{\"type\":\"paragraph\",\"data\":{\"text\":\"...\"}}]}. " +
-                "Do not return empty objects for contentJson or instructionsJson.";
+        String systemPrompt = """
+                You are an expert curriculum designer generating canonical LearnSystem course draft JSON.
+                Return JSON only. Do not include markdown fences, prose, or explanations.
+                Use exactly these field names:
+                course.title, course.code, course.description, course.syllabusJson, modules.
+                Each RichContentDocument must have version: 1, type: "RICH_CONTENT", and blocks.
+                Each block must have type and data.
+                Allowed block types: heading, paragraph, list, quote, code, mermaid, math.
+                Learning item type must be exactly RTE or LESSON. Prefer RTE for normal generated materials.
+                Assignment type must be exactly TEXT_SUBMISSION.
+                Assignment settings must be an object; use {} if no special settings are needed.
+                Do not return markdown, HTML, video/file/table resources, legacy topics, or lesson_blocks.
+                """;
         
         String prompt;
         try {
-            prompt = "Generate a course with these requirements: " + mapper.writeValueAsString(input);
+            prompt = """
+                    Generate a course draft from this JSON input: %s
+                    The response must match this shape:
+                    {"course":{"title":"...","code":"...","description":"...","syllabusJson":{"version":1,"type":"RICH_CONTENT","blocks":[]}},"modules":[{"title":"...","description":"...","orderIndex":0,"learningItems":[{"type":"RTE","title":"...","contentJson":{"version":1,"type":"RICH_CONTENT","blocks":[{"type":"paragraph","data":{"text":"..."}}]}}],"assignments":[{"type":"TEXT_SUBMISSION","title":"...","points":10,"instructionsJson":{"version":1,"type":"RICH_CONTENT","blocks":[{"type":"paragraph","data":{"text":"..."}}]},"settings":{}}]}]}
+                    Return JSON only.
+                    """.formatted(mapper.writeValueAsString(input));
         } catch (Exception e) {
-            prompt = "Generate a course based on input: " + input.toString();
+            prompt = "Generate a course based on input: " + String.valueOf(input);
         }
 
-        JsonNode result = geminiClient.generateContent(
+        JsonNode rawResult = geminiClient.generateContent(
                 apiKey,
                 prompt,
                 systemPrompt,
                 schemaRegistry.getGenerateCourseSchemaInlined()
         );
 
-        validator.validateCourseDraft(result);
+        JsonNode result = normalizer.normalizeCourseDraft(rawResult);
+        try {
+            validator.validateCourseDraft(result);
+        } catch (AiOutputInvalidException exception) {
+            throw new AiOutputInvalidException(
+                    exception.getDiagnostics(),
+                    AiOutputSanitizer.sanitizedJson(rawResult, mapper),
+                    exception);
+        }
         return result;
     }
 }
