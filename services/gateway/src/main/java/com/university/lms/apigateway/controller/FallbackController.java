@@ -2,7 +2,6 @@ package com.university.lms.apigateway.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
@@ -18,17 +17,17 @@ import java.util.Map;
 @RequestMapping("/fallback")
 public class FallbackController {
 
-    @GetMapping("/ai")
+    @RequestMapping("/ai")
     public Mono<ResponseEntity<Map<String, Object>>> aiFallback() {
         return serviceUnavailable(
-                "AI Service Unavailable",
-                "The AI service is temporarily unavailable. Please try again later.",
-                "AI_SERVICE_UNAVAILABLE",
+                "AI_PROVIDER_UNAVAILABLE",
+                "Gemini is temporarily unavailable.",
+                "AI_PROVIDER_UNAVAILABLE",
                 30
         );
     }
 
-    @GetMapping("/generic")
+    @RequestMapping("/generic")
     public Mono<ResponseEntity<Map<String, Object>>> genericFallback() {
         return serviceUnavailable(
                 "Service Unavailable",
