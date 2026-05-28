@@ -8,6 +8,7 @@ import { AiFeatureGate } from '@/features/ai/components/AiFeatureGate';
 import { useAiTask } from '@/features/ai/hooks/useAiTask';
 import { AiGenerationPreview } from '@/features/ai/components/AiGenerationPreview';
 import { AiErrorDisplay } from '@/features/ai/components/AiErrorDisplay';
+import { normalizeRichContentDocument } from '@/features/rich-content/normalizeRichContent';
 
 interface LearningItemFormModalProps {
   isOpen: boolean;
@@ -92,7 +93,9 @@ export function LearningItemFormModal({
     visible,
     url: needsUrl ? url.trim() : undefined,
     downloadable: ['PDF', 'FILE'].includes(type) ? downloadable : undefined,
-    textContent: (aiTask.data?.output && type === 'RTE') ? JSON.stringify((aiTask.data.output as any).contentJson) : undefined,
+    textContent: (aiTask.data?.output && type === 'RTE')
+      ? JSON.stringify(normalizeRichContentDocument((aiTask.data.output as any).contentJson))
+      : undefined,
   });
 
   const buildAiDraftPayload = (): LearningItemRequest | null => {
@@ -103,7 +106,7 @@ export function LearningItemFormModal({
       title: output.title?.trim() || 'AI Generated Document',
       type: 'RTE',
       visible: false,
-      textContent: JSON.stringify(output.contentJson),
+      textContent: JSON.stringify(normalizeRichContentDocument(output.contentJson)),
     };
   };
 

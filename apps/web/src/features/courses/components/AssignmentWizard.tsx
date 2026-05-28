@@ -6,6 +6,7 @@ import type { AssignmentDetailDto, AssignmentRequest } from '@/features/assignme
 import type { AssignmentType } from '@/features/courses/api/canonical.types';
 import { RichContentEditor } from '@/features/rich-content/components/RichContentEditor';
 import { RichContentRenderer } from '@/features/rich-content/components/RichContentRenderer';
+import { normalizeRichContentDocument } from '@/features/rich-content/normalizeRichContent';
 import { 
   useCanonicalAssignment, 
   useCreateCanonicalAssignment, 
@@ -78,6 +79,7 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
   // Instructions RichContentDocument state
   const [instructionsJson, setInstructionsJson] = useState<any>({
     version: 1,
+    type: 'RICH_CONTENT',
     blocks: [{ id: 'init', type: 'paragraph', data: { text: '' } }],
   });
 
@@ -111,10 +113,11 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
       setDueDate(initialDueDate);
 
       if (initialData.instructionsJson) {
-        setInstructionsJson(initialData.instructionsJson);
+        setInstructionsJson(normalizeRichContentDocument(initialData.instructionsJson));
       } else {
         setInstructionsJson({
           version: 1,
+          type: 'RICH_CONTENT',
           blocks: [{ id: 'init', type: 'paragraph', data: { text: '' } }],
         });
       }
@@ -370,7 +373,7 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
                       if (out.title) setTitle(out.title);
                       if (out.points !== undefined) setMaxPoints(out.points);
                       if (out.type) setType(out.type as AssignmentType);
-                      if (out.instructionsJson) setInstructionsJson(out.instructionsJson);
+                      if (out.instructionsJson) setInstructionsJson(normalizeRichContentDocument(out.instructionsJson));
                       setVisible(false);
                       setAiMode(null);
                       generateTask.reset();
@@ -427,7 +430,7 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
                     data={improveTask.data.output}
                     onAccept={() => {
                       const out = improveTask.data!.output;
-                      if (out.instructionsJson) setInstructionsJson(out.instructionsJson);
+                      if (out.instructionsJson) setInstructionsJson(normalizeRichContentDocument(out.instructionsJson));
                       setAiMode(null);
                       improveTask.reset();
                       setAiPrompt('');

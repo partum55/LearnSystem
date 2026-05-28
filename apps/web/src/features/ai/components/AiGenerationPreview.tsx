@@ -104,6 +104,7 @@ export const AiGenerationPreview: React.FC<AiGenerationPreviewProps> = ({
       </div>
       <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
         <button
+          type="button"
           onClick={onReject}
           disabled={isAccepting}
           className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
@@ -111,6 +112,7 @@ export const AiGenerationPreview: React.FC<AiGenerationPreviewProps> = ({
           Discard
         </button>
         <button
+          type="button"
           onClick={onAccept}
           disabled={isAccepting}
           className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 flex items-center"

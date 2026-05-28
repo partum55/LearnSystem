@@ -28,5 +28,6 @@ export interface RichBlock {
 
 export interface RichContentDocument {
   version: number;
+  type?: 'RICH_CONTENT';
   blocks: RichBlock[];
 }

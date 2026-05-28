@@ -18,6 +18,7 @@ import { Loading } from '@/components/Loading';
 import { RichContentEditor } from '@/features/rich-content/components/RichContentEditor';
 import { RichContentRenderer } from '@/features/rich-content/components/RichContentRenderer';
 import { markdownToRichContent } from '@/features/rich-content/markdown-parser';
+import { normalizeRichContentDocument } from '@/features/rich-content/normalizeRichContent';
 import type { RichContentDocument } from '@/features/rich-content/rich-content.types';
 
 interface LearningItemDetailPageProps {
@@ -50,11 +51,11 @@ const getSettingString = (settings: Record<string, unknown> | undefined, keys: s
 };
 
 const parseDocument = (content: string | null | undefined): RichContentDocument => {
-  if (!content) return { version: 1, blocks: [{ id: 'init', type: 'paragraph', data: { text: 'Start typing here...' } }] };
+  if (!content) return normalizeRichContentDocument(undefined, 'Start typing here...');
   try {
-    return JSON.parse(content) as RichContentDocument;
+    return normalizeRichContentDocument(JSON.parse(content));
   } catch {
-    return markdownToRichContent(content);
+    return normalizeRichContentDocument(markdownToRichContent(content));
   }
 };
 
