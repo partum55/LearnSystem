@@ -1,9 +1,10 @@
 'use client';
 
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
-import { KeyIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { extractErrorMessage } from '@/api/client';
-import { useAiSettings, useDeleteAiApiKey, useSaveAiApiKey } from '@/features/ai/hooks/useAiSettings';
+import { BoltIcon, KeyIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ApiError, extractErrorMessage, normalizeApiError } from '@/api/client';
+import { aiErrorMessage } from '@/features/ai/components/AiErrorDisplay';
+import { useAiSettings, useDeleteAiApiKey, useSaveAiApiKey, useTestAiConnection } from '@/features/ai/hooks/useAiSettings';
 
 type Message = { type: 'success' | 'error'; text: string } | null;
 
@@ -11,6 +12,7 @@ export function AiSettingsPanel() {
   const { data: settings, isLoading } = useAiSettings();
   const saveKey = useSaveAiApiKey();
   const deleteKey = useDeleteAiApiKey();
+  const testConnection = useTestAiConnection();
   const [apiKey, setApiKey] = useState('');
   const [message, setMessage] = useState<Message>(null);
 
@@ -50,6 +52,20 @@ export function AiSettingsPanel() {
       setMessage({ type: 'success', text: 'Gemini API key deleted.' });
     } catch (error) {
       setMessage({ type: 'error', text: extractErrorMessage(error) });
+    }
+  };
+
+  const handleTestConnection = async () => {
+    setMessage(null);
+    try {
+      const result = await testConnection.mutateAsync();
+      setMessage({ type: 'success', text: result.status === 'OK' ? 'Gemini connection OK.' : result.message });
+    } catch (error) {
+      const normalized = normalizeApiError(error);
+      setMessage({
+        type: 'error',
+        text: aiErrorMessage(new ApiError(normalized)),
+      });
     }
   };
 
@@ -132,6 +148,15 @@ export function AiSettingsPanel() {
           </a>
 
           <div className="flex flex-wrap justify-end gap-3 pt-2">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleTestConnection}
+              disabled={testConnection.isPending || isLoading}
+            >
+              <BoltIcon className="h-4 w-4" />
+              {testConnection.isPending ? 'Testing...' : 'Test connection'}
+            </button>
             {settings?.hasUserApiKey && (
               <button
                 type="button"

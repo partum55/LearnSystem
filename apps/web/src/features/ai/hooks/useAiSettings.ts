@@ -27,3 +27,8 @@ export const useDeleteAiApiKey = () => {
     },
   });
 };
+
+export const useTestAiConnection = () =>
+  useMutation({
+    mutationFn: aiSettingsApi.testConnection,
+  });

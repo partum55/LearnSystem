@@ -3,8 +3,12 @@ package com.university.lms.ai.service;
 import com.university.lms.ai.domain.AiKeySource;
 import com.university.lms.ai.domain.AiProvider;
 import com.university.lms.ai.domain.key.UserApiKey;
+import com.university.lms.ai.domain.model.AiErrorCode;
+import com.university.lms.ai.dto.AiConnectionTestResponse;
 import com.university.lms.ai.dto.AiSettingsResponse;
 import com.university.lms.ai.dto.SaveAiApiKeyRequest;
+import com.university.lms.ai.exception.AiException;
+import com.university.lms.ai.provider.GeminiProviderClient;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,6 +19,7 @@ public class UserAiSettingsService {
 
     private final UserAiProviderKeyService keyService;
     private final AiProviderConfigService configService;
+    private final GeminiProviderClient geminiProviderClient;
 
     public AiSettingsResponse getSettings(UUID userId, String userRole) {
         AiProvider provider = configService.getDefaultProvider();
@@ -56,6 +61,19 @@ public class UserAiSettingsService {
     public AiSettingsResponse deleteApiKey(UUID userId, String userRole) {
         keyService.revokeUserKey(userId, configService.getDefaultProvider());
         return getSettings(userId, userRole);
+    }
+
+    public AiConnectionTestResponse testConnection(UUID userId, String userRole) {
+        AiKeyResolution resolution = resolveKey(userId, userRole);
+        if (!resolution.aiEnabled()) {
+            throw new AiException(AiErrorCode.AI_KEY_REQUIRED, "AI features are disabled or no key is available");
+        }
+        if (resolution.keySource() == AiKeySource.NONE || resolution.apiKey() == null) {
+            throw new AiException(AiErrorCode.AI_KEY_REQUIRED, "An active AI API key is required");
+        }
+
+        geminiProviderClient.testConnection(resolution.apiKey());
+        return new AiConnectionTestResponse("OK", "Gemini connection OK.");
     }
 
     private AiSettingsResponse toResponse(

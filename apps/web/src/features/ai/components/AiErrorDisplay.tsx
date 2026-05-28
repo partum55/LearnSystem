@@ -5,8 +5,25 @@ interface AiErrorDisplayProps {
   error: ApiError | null;
 }
 
+const AI_ERROR_MESSAGES: Record<string, string> = {
+  AI_PROVIDER_RATE_LIMITED: 'Gemini rate limit reached. Wait and try again later, or use another Gemini API key.',
+  AI_PROVIDER_AUTH_FAILED: 'Gemini API key is invalid or revoked.',
+  AI_PROVIDER_UNAVAILABLE: 'Gemini is temporarily unavailable.',
+  AI_OUTPUT_INVALID: 'AI returned an invalid draft. Try regenerating.',
+  AI_KEY_REQUIRED: 'Add your Gemini API key in Profile → AI Settings.',
+};
+
+export const aiErrorMessage = (error: ApiError | null | undefined) => {
+  if (!error) return '';
+  if (error.code && AI_ERROR_MESSAGES[error.code]) {
+    return AI_ERROR_MESSAGES[error.code];
+  }
+  return error.message || 'AI request failed.';
+};
+
 export const AiErrorDisplay: React.FC<AiErrorDisplayProps> = ({ error }) => {
   if (!error) return null;
+  const message = aiErrorMessage(error);
 
   return (
     <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-lg my-4">
@@ -21,10 +38,10 @@ export const AiErrorDisplay: React.FC<AiErrorDisplayProps> = ({ error }) => {
             AI Generation Failed
           </h3>
           <div className="mt-2 text-sm text-red-700 dark:text-red-300">
-            <p>{error.message}</p>
-            {error.code === 'AI_KEY_REQUIRED' && (
-              <p className="mt-2">
-                Please check your AI Settings and ensure a valid Gemini API key is configured.
+            <p>{message}</p>
+            {error.code && (
+              <p className="mt-2 text-xs font-semibold opacity-80">
+                Code: {error.code}
               </p>
             )}
           </div>

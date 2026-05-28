@@ -107,6 +107,13 @@ public class CanonicalAssignmentController {
     return assignmentService.reviewSubmission(submissionId, userContext.requireUserId());
   }
 
+  @GetMapping("/internal/submissions/{submissionId}/ai-review-context")
+  public SubmissionReviewDto aiReviewContext(
+      @PathVariable UUID submissionId,
+      @RequestParam UUID teacherId) {
+    return assignmentService.reviewSubmission(submissionId, teacherId);
+  }
+
   @PatchMapping("/submissions/{submissionId}")
   public SubmissionDto editSubmission(
       @PathVariable UUID submissionId,

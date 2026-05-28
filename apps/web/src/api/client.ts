@@ -38,6 +38,14 @@ if (!API_BASE_URL) API_BASE_URL = '/api';
 
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
+const structuredAiErrorCodes = new Set([
+  'AI_PROVIDER_RATE_LIMITED',
+  'AI_PROVIDER_AUTH_FAILED',
+  'AI_PROVIDER_UNAVAILABLE',
+  'AI_OUTPUT_INVALID',
+  'AI_KEY_REQUIRED',
+]);
+
 export const normalizeApiError = (error: unknown): ApiErrorShape => {
   if (error instanceof ApiError) {
     return error;
@@ -51,6 +59,7 @@ export const normalizeApiError = (error: unknown): ApiErrorShape => {
     detail?: string;
     non_field_errors?: string[];
     code?: string;
+    status?: string | number;
     retry_after?: number;
     fieldErrors?: Record<string, string>;
   }>;
@@ -72,9 +81,15 @@ export const normalizeApiError = (error: unknown): ApiErrorShape => {
                 ? 'Too many requests, please try again shortly.'
                 : 'Request failed';
 
+    const code =
+      typeof data.code === 'string' ? data.code :
+        typeof data.errorCode === 'string' ? data.errorCode :
+          typeof data.status === 'string' && data.status.startsWith('AI_') ? data.status :
+            undefined;
+
     return {
       message,
-      code: typeof data.code === 'string' ? data.code : typeof data.errorCode === 'string' ? data.errorCode : undefined,
+      code,
       fieldErrors: data.fieldErrors && typeof data.fieldErrors === 'object' ? data.fieldErrors : {},
       status: axiosError.response?.status,
     };
@@ -163,7 +178,13 @@ class ApiClient {
         const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean; _retry429?: boolean }) | undefined;
         const status = error.response?.status;
 
-        if (status === 429 && originalRequest && !originalRequest._retry429) {
+        const responseData = error.response?.data as Record<string, unknown> | undefined;
+        const responseCode =
+          responseData && typeof responseData === 'object'
+            ? String(responseData.errorCode ?? responseData.code ?? responseData.error ?? '')
+            : '';
+
+        if (status === 429 && originalRequest && !originalRequest._retry429 && !structuredAiErrorCodes.has(responseCode)) {
           originalRequest._retry429 = true;
           const retryAfterHeader = error.response?.headers?.['retry-after'] as string | undefined;
           const retryAfterJson = (error.response?.data as Record<string, unknown>)?.retry_after as number | undefined;

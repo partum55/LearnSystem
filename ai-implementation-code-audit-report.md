@@ -6,15 +6,15 @@ Commit verified/deployed: `7bb66ff` (`Persist AI generation JSON as jsonb`)
 
 ## Summary
 
-Real AI generation is now wired through the frontend and backend instead of readiness placeholders. The production UI opens real AI forms/wizards, and authenticated teacher calls reach `POST /api/v1/ai/tasks`. Production is currently blocked from completing generation by Gemini provider rate limiting (`AI_PROVIDER_RATE_LIMITED`), not by placeholder code or missing routes.
+Real AI generation is now wired through the frontend and backend instead of old placeholder gates. The production UI opens real AI forms/wizards, and authenticated teacher calls reach `POST /api/v1/ai/tasks`. Production is currently blocked from completing generation by Gemini provider rate limiting (`AI_PROVIDER_RATE_LIMITED`), not by placeholder code or missing routes.
 
 ## Placeholder Strings Found And Removed
 
-- `AI course generation is coming next`
+- Removed old AI course generation placeholder copy
   - Removed from course/dashboard create flows and replaced with navigation to `/courses/ai-create`.
-- `AI generation endpoints are not enabled in this readiness pass`
+- Removed old AI endpoint disabled placeholder copy
   - Removed from the AI request gate in `ai-service`; the gate no longer returns readiness-only `501` responses.
-- `readiness pass`
+- Removed readiness-only phrasing
   - Removed from real AI generation paths.
 - `placeholder`
   - Remaining hits are ordinary input placeholders or unrelated empty states, not readiness blockers for AI generation.
@@ -121,19 +121,19 @@ Real AI generation is now wired through the frontend and backend instead of read
 
 - Teacher dashboard:
   - `Create course with AI` is visible.
-  - No `AI course generation is coming next` placeholder.
+  - No old AI course generation placeholder.
 - `/courses/ai-create`:
   - Real AI course wizard opens.
   - `Generate Curriculum` triggers the real request path.
   - Browser UI shows `AI Generation Failed` / `Request failed`; direct API identifies the underlying cause as Gemini rate limit.
 - Course module material modal:
   - `Generate material with AI` opens a real prompt panel.
-  - No readiness-pass placeholder.
+  - No readiness-only placeholder.
   - Generate action reaches the real failure UI while provider is rate-limited.
 - Assignment wizard:
   - `Generate with AI` opens a real `Generate Assignment` panel.
   - `Improve instructions with AI` is present.
-  - No readiness-pass placeholder.
+  - No readiness-only placeholder.
   - Generate action reaches the real failure UI while provider is rate-limited.
 - SpeedGrader:
   - Code is wired for `AI suggest grade`.

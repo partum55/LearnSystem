@@ -19,7 +19,7 @@ import java.util.Map;
 public class GeminiProviderClient {
 
     private static final String GEMINI_API_URL_TEMPLATE = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s";
-    
+
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final AiProviderConfigService configService;
@@ -31,10 +31,46 @@ public class GeminiProviderClient {
     }
 
     public JsonNode generateContent(String apiKey, String prompt, String systemPrompt, Map<String, Object> jsonSchema) {
+        GeminiRequest requestBody = GeminiRequest.of(prompt, systemPrompt, jsonSchema);
+
+        try {
+            GeminiResponse response = executeRequest(apiKey, requestBody);
+
+            String generatedText = response.extractText();
+            if (generatedText == null || generatedText.isBlank()) {
+                throw new AiException(AiErrorCode.AI_PROVIDER_UNAVAILABLE, "No generated text found in Gemini response");
+            }
+
+            return objectMapper.readTree(generatedText);
+
+        } catch (Exception e) {
+            if (e instanceof AiException) throw (AiException) e;
+            // JSON parsing error falls here
+            throw new AiException(AiErrorCode.AI_OUTPUT_INVALID, "Failed to parse Gemini generated JSON", e);
+        }
+    }
+
+    public void testConnection(String apiKey) {
+        GeminiResponse response = executeRequest(
+                apiKey,
+                GeminiRequest.of(
+                        "Return exactly this JSON object: {\"ok\":true}",
+                        "You are a health check. Return only valid JSON matching the schema.",
+                        Map.of(
+                                "type", "OBJECT",
+                                "properties", Map.of("ok", Map.of("type", "BOOLEAN"))
+                        )
+                )
+        );
+        String generatedText = response.extractText();
+        if (generatedText == null || generatedText.isBlank()) {
+            throw new AiException(AiErrorCode.AI_PROVIDER_UNAVAILABLE, "No generated text found in Gemini response");
+        }
+    }
+
+    private GeminiResponse executeRequest(String apiKey, GeminiRequest requestBody) {
         String model = configService.getGeminiModel();
         String url = String.format(GEMINI_API_URL_TEMPLATE, model, apiKey);
-
-        GeminiRequest requestBody = GeminiRequest.of(prompt, systemPrompt, jsonSchema);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -45,24 +81,19 @@ public class GeminiProviderClient {
             if (response == null) {
                 throw new AiException(AiErrorCode.AI_PROVIDER_UNAVAILABLE, "Empty response from Gemini API");
             }
-            
-            String generatedText = response.extractText();
-            if (generatedText == null || generatedText.isBlank()) {
-                throw new AiException(AiErrorCode.AI_PROVIDER_UNAVAILABLE, "No generated text found in Gemini response");
-            }
-            
-            return objectMapper.readTree(generatedText);
-
+            return response;
         } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden e) {
             throw new AiException(AiErrorCode.AI_PROVIDER_AUTH_FAILED, "Gemini API key is invalid or unauthorized", e);
+        } catch (HttpClientErrorException.BadRequest e) {
+            String body = e.getResponseBodyAsString();
+            if (body != null && body.toLowerCase().contains("api_key_invalid")) {
+                throw new AiException(AiErrorCode.AI_PROVIDER_AUTH_FAILED, "Gemini API key is invalid or unauthorized", e);
+            }
+            throw new AiException(AiErrorCode.AI_PROVIDER_UNAVAILABLE, "Gemini API error: " + e.getStatusCode(), e);
         } catch (HttpClientErrorException.TooManyRequests e) {
             throw new AiException(AiErrorCode.AI_PROVIDER_RATE_LIMITED, "Gemini API rate limit exceeded", e);
         } catch (HttpClientErrorException | HttpServerErrorException e) {
             throw new AiException(AiErrorCode.AI_PROVIDER_UNAVAILABLE, "Gemini API error: " + e.getStatusCode(), e);
-        } catch (Exception e) {
-            if (e instanceof AiException) throw (AiException) e;
-            // JSON parsing error falls here
-            throw new AiException(AiErrorCode.AI_OUTPUT_INVALID, "Failed to parse Gemini generated JSON", e);
         }
     }
 }

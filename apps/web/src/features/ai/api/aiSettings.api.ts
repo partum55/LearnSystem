@@ -21,6 +21,11 @@ export interface SaveAiApiKeyRequest {
   apiKey: string;
 }
 
+export interface AiConnectionTestResponse {
+  status: 'OK' | 'AI_PROVIDER_RATE_LIMITED' | 'AI_PROVIDER_AUTH_FAILED' | 'AI_PROVIDER_UNAVAILABLE' | 'AI_OUTPUT_INVALID' | 'AI_KEY_REQUIRED' | string;
+  message: string;
+}
+
 export const aiSettingsApi = {
   getSettings: () =>
     apiClient.request<AiSettingsResponse>({ url: '/v1/users/me/ai-settings' }),
@@ -43,5 +48,11 @@ export const aiSettingsApi = {
       method: 'POST',
       url: '/v1/users/me/ai-settings/api-key/validate',
       data: request,
+    }),
+
+  testConnection: () =>
+    apiClient.request<AiConnectionTestResponse>({
+      method: 'POST',
+      url: '/v1/users/me/ai-settings/test-connection',
     }),
 };

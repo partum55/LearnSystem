@@ -79,7 +79,7 @@ Result: PASS
 - Admin with no personal key showed system Gemini key availability.
 - No raw system key was shown.
 - `Create course with AI` was visible.
-- With system key, gate unlocked and showed placeholder: `AI course generation is coming next.`
+- With system key, gate unlocked and showed the old AI course placeholder.
 - No fake course generation occurred.
 - Admin Users/Courses/Groups dashboard tabs did not crash.
 

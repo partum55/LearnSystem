@@ -10,6 +10,7 @@ import com.university.lms.ai.validation.RichContentValidator;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 public class ImproveInstructionsHandler implements AiTaskHandler {
@@ -32,7 +33,7 @@ public class ImproveInstructionsHandler implements AiTaskHandler {
     }
 
     @Override
-    public JsonNode execute(Map<String, Object> context, Map<String, Object> input, String apiKey) {
+    public JsonNode execute(Map<String, Object> context, Map<String, Object> input, UUID userId, String apiKey) {
         String systemPrompt = "You are an expert educator. Improve the given assignment instructions according to the desired operation. Output MUST be a valid RichContentDocument perfectly matching the schema.";
         String prompt;
         try {

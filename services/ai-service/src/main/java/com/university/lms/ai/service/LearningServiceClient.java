@@ -1,6 +1,8 @@
 package com.university.lms.ai.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.university.lms.ai.domain.model.AiErrorCode;
+import com.university.lms.ai.exception.AiException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -51,5 +53,33 @@ public class LearningServiceClient {
             log.warn("Unable to resolve course role for user {} in course {}: {}", userId, courseId, e.getMessage());
         }
         return null;
+    }
+
+    public JsonNode getSubmissionReviewContext(UUID submissionId, UUID teacherId) {
+        String url = String.format(
+                "%s/api/v1/internal/submissions/%s/ai-review-context?teacherId=%s",
+                learningServiceUrl,
+                submissionId,
+                teacherId
+        );
+
+        HttpHeaders headers = new HttpHeaders();
+        if (internalToken != null && !internalToken.isBlank()) {
+            headers.set("X-Internal-Token", internalToken);
+        }
+
+        try {
+            ResponseEntity<JsonNode> response = restTemplate.exchange(
+                    url, HttpMethod.GET, new HttpEntity<>(headers), JsonNode.class);
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return response.getBody();
+            }
+        } catch (Exception e) {
+            log.warn("Unable to fetch submission review context for submission {}: {}", submissionId, e.getMessage());
+            throw new AiException(AiErrorCode.AI_TASK_FAILED, "Unable to fetch submission review context", e);
+        }
+
+        throw new AiException(AiErrorCode.AI_TASK_FAILED, "Learning service returned empty submission review context");
     }
 }

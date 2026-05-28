@@ -10,6 +10,7 @@ import com.university.lms.ai.validation.AiOutputValidator;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 public class GenerateAssignmentHandler implements AiTaskHandler {
@@ -32,7 +33,7 @@ public class GenerateAssignmentHandler implements AiTaskHandler {
     }
 
     @Override
-    public JsonNode execute(Map<String, Object> context, Map<String, Object> input, String apiKey) {
+    public JsonNode execute(Map<String, Object> context, Map<String, Object> input, UUID userId, String apiKey) {
         String systemPrompt = "You are an expert educator. Generate an assignment in JSON format matching the schema perfectly. The type must be one of: TEXT_SUBMISSION, FILE_SUBMISSION, QUIZ, VPL, SEMINAR.";
         String prompt;
         try {

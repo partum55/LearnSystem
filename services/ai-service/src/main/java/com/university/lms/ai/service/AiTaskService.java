@@ -89,7 +89,7 @@ public class AiTaskService {
         generation = generationRepository.save(generation);
 
         try {
-            JsonNode output = handler.execute(request.context(), request.input(), keyResolution.apiKey());
+            JsonNode output = handler.execute(request.context(), request.input(), userId, keyResolution.apiKey());
             
             generation.setStatus(AiGenerationStatus.COMPLETED);
             generation.setOutputJson(objectMapper.writeValueAsString(output));

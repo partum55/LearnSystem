@@ -10,6 +10,7 @@ import com.university.lms.ai.validation.AiOutputValidator;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 public class GenerateCourseHandler implements AiTaskHandler {
@@ -32,7 +33,7 @@ public class GenerateCourseHandler implements AiTaskHandler {
     }
 
     @Override
-    public JsonNode execute(Map<String, Object> context, Map<String, Object> input, String apiKey) {
+    public JsonNode execute(Map<String, Object> context, Map<String, Object> input, UUID userId, String apiKey) {
         String systemPrompt = "You are an expert curriculum designer. Generate a structured course draft matching the schema perfectly. " +
                 "Do NOT use markdown outside of RichContentDocument blocks. RichContentDocument blocks must follow strict JSON structure. " +
                 "All enum values must be UPPERCASE. " +
