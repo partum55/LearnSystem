@@ -353,7 +353,6 @@ public class AiGeneratedContentValidator {
       payload.getCourse().setDescriptionUk(sanitizeText(payload.getCourse().getDescriptionUk()));
       payload.getCourse().setDescriptionEn(sanitizeText(payload.getCourse().getDescriptionEn()));
       payload.getCourse().setSyllabus(sanitizeText(payload.getCourse().getSyllabus()));
-      payload.getCourse().setVisibility(sanitizeText(payload.getCourse().getVisibility()));
     }
     payload.setModules(sanitizeList(payload.getModules()));
     if (payload.getModules() != null) {

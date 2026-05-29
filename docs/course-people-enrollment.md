@@ -71,4 +71,4 @@ Course staff:
 
 ## Planned
 
-- Group-based assignment/module visibility rules using `course_groups`.
+- Group-based assignment/module access rules using `course_groups`.

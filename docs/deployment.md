@@ -64,3 +64,8 @@ curl -i https://api.learnsystem.app/api/v1/actuator/health
 ```
 
 Then verify a browser flow through `apps/web` production, using the UI rather than guessed routes.
+
+## Reporting Rules
+
+- Do not include raw secrets, passwords, API keys, bearer tokens, cookies, or full env files in deployment notes.
+- Mask sensitive headers and environment values in logs/screenshots.

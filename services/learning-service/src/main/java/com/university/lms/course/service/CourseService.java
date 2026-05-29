@@ -2,6 +2,7 @@ package com.university.lms.course.service;
 
 import com.university.lms.common.domain.CourseStatus;
 import com.university.lms.common.dto.PageResponse;
+import com.university.lms.course.common.error.ApiException;
 import com.university.lms.common.exception.ResourceNotFoundException;
 import com.university.lms.common.exception.ValidationException;
 import com.university.lms.course.domain.Course;
@@ -385,12 +386,12 @@ public class CourseService {
             .orElse(null);
 
     if (member == null) {
-      throw new ValidationException("Course is not available");
+      throw ApiException.forbidden("You are not enrolled in this course");
     }
 
     if (member.getRoleInCourse() == com.university.lms.course.domain.CourseRole.STUDENT
         && course.getStatus() == CourseStatus.DRAFT) {
-      throw new ValidationException("Course is not available");
+      throw ApiException.forbidden("This course is not available");
     }
   }
 

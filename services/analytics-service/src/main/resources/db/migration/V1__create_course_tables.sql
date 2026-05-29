@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS courses (
     description_en TEXT,
     syllabus TEXT,
     owner_id UUID NOT NULL,
-    visibility VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
     thumbnail_url VARCHAR(500),
     start_date DATE,
     end_date DATE,
@@ -19,7 +18,6 @@ CREATE TABLE IF NOT EXISTS courses (
     department_id UUID,
     max_students INTEGER,
     status VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
-    is_published BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -27,7 +25,6 @@ CREATE TABLE IF NOT EXISTS courses (
 -- Create indexes for courses
 CREATE INDEX idx_course_code ON courses(code);
 CREATE INDEX idx_course_owner ON courses(owner_id);
-CREATE INDEX idx_course_published ON courses(is_published);
 CREATE INDEX idx_course_status ON courses(status);
 CREATE INDEX idx_course_academic_year ON courses(academic_year);
 CREATE INDEX idx_course_department ON courses(department_id);
@@ -101,7 +98,6 @@ COMMENT ON TABLE course_members IS 'Course membership and enrollment tracking';
 COMMENT ON TABLE modules IS 'Course modules for content organization';
 COMMENT ON TABLE resources IS 'Course resources (files, links, content)';
 
-COMMENT ON COLUMN courses.visibility IS 'PUBLIC, PRIVATE, or DRAFT';
 COMMENT ON COLUMN courses.status IS 'DRAFT, PUBLISHED, or ARCHIVED';
 COMMENT ON COLUMN course_members.role_in_course IS 'TEACHER, TA, or STUDENT';
 COMMENT ON COLUMN course_members.enrollment_status IS 'active, dropped, or completed';

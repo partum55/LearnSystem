@@ -1,49 +1,41 @@
 # AI Service
 
-## A. Implemented AI Readiness
+## Implemented Now
 
-The canonical AI service is Gemini-first and supports BYOK user keys.
-
-Implemented now:
+The canonical AI service is Gemini-first and supports user-owned provider keys.
 
 - Provider: `GEMINI`.
-- User API keys stored in `ai.user_api_keys`.
-- Keys are encrypted at rest.
+- User API keys are stored in `ai.user_api_keys`.
+- User keys are encrypted at rest.
 - Raw keys are never returned by APIs.
-- Profile -> AI Settings UI.
-- `TEACHER` and `STUDENT` users must use their own key.
-- `ADMIN` can use their own key or the system Gemini key.
-- System Gemini key comes only from environment: `AI_SYSTEM_GEMINI_API_KEY`.
-- Encryption secret comes from environment: `AI_KEY_ENCRYPTION_SECRET`.
-- AI features are feature-gated.
-- Raw keys must not be logged.
+- Admins may use the system Gemini key from environment when they do not have a user key.
+- Teachers and students must use their own key.
+- Test connection is implemented.
+- Canonical generation endpoint is `POST /api/v1/ai/tasks`.
+- Generation history is stored in `ai.ai_generations`.
+- Frontend does not call Gemini directly.
 
 Settings endpoints:
 
-- `GET /v1/users/me/ai-settings`
-- `PUT /v1/users/me/ai-settings/api-key`
-- `DELETE /v1/users/me/ai-settings/api-key`
-- `POST /v1/users/me/ai-settings/api-key/validate`
+- `GET /api/v1/users/me/ai-settings`
+- `PUT /api/v1/users/me/ai-settings/api-key`
+- `DELETE /api/v1/users/me/ai-settings/api-key`
+- `POST /api/v1/users/me/ai-settings/api-key/validate`
+- `POST /api/v1/users/me/ai-settings/test-connection`
 
-Gateway public paths use `/api/v1/...`.
+Required environment:
 
-## B. Real AI Generation
+- `AI_FEATURES_ENABLED`
+- `AI_DEFAULT_PROVIDER`
+- `AI_GEMINI_MODEL`
+- `AI_SYSTEM_GEMINI_API_KEY`
+- `AI_KEY_ENCRYPTION_SECRET`
 
-Implemented now:
+Do not log raw keys, bearer tokens, cookies, or full env files.
 
-- Canonical endpoint: `POST /v1/ai/tasks`.
-- Public gateway path: `POST /api/v1/ai/tasks`.
-- Gemini REST API provider client.
-- Model configured by `AI_GEMINI_MODEL`.
-- Generation history in `ai.ai_generations`.
-- Structured JSON output validation.
-- No auto-publish.
-- Teacher review/confirm is required.
-- Transactional course creation from AI draft:
-  - `POST /v1/courses/from-draft`
-  - Public gateway path: `POST /api/v1/courses/from-draft`
+## Canonical Tasks
 
-Implemented task types:
+`POST /api/v1/ai/tasks` supports:
 
 - `GENERATE_COURSE`
 - `GENERATE_RTE_MATERIAL`
@@ -51,21 +43,27 @@ Implemented task types:
 - `IMPROVE_ASSIGNMENT_INSTRUCTIONS`
 - `SUGGEST_GRADE`
 
-Permission model:
+The service uses Gemini structured JSON response schemas and validates output with `AiOutputValidator`. Rich content outputs must be structured `RichContentDocument` JSON, not markdown or legacy text blobs.
 
-- Course generation: teacher/admin-oriented.
-- RTE material and assignment generation: course owner/teacher.
-- Grade suggestion: owner/teacher/TA.
+## Review And Publish Rules
 
-Required review rules:
+- AI-generated courses are draft until reviewed and explicitly created through `POST /api/v1/courses/from-draft`.
+- Generated course modules/materials/assignments are saved as draft/hidden content until reviewed.
+- Generated materials and assignments must be reviewed before saving or publishing.
+- AI suggested grades only fill local UI fields. They do not save, publish, or release a grade.
+- Teachers must manually save draft grades and publish grades.
 
-- Generated courses are drafts until the teacher confirms creation.
-- Generated materials and assignments must be reviewed before saving/publishing.
-- AI grade suggestions never save or publish automatically.
+## Permissions
 
-## Error Codes
+- `GENERATE_COURSE`: global `TEACHER` or `ADMIN`.
+- `GENERATE_RTE_MATERIAL`: course `OWNER` or `TEACHER`.
+- `GENERATE_ASSIGNMENT`: course `OWNER` or `TEACHER`.
+- `IMPROVE_ASSIGNMENT_INSTRUCTIONS`: course `OWNER` or `TEACHER`.
+- `SUGGEST_GRADE`: course `OWNER`, `TEACHER`, or `TA`.
 
-Implemented now:
+## Error UX
+
+Implemented provider/task error codes include:
 
 - `AI_KEY_REQUIRED`
 - `AI_FEATURES_DISABLED`
@@ -74,18 +72,16 @@ Implemented now:
 - `AI_PROVIDER_UNAVAILABLE`
 - `AI_OUTPUT_INVALID`
 - `AI_TASK_FAILED`
-
-Additional implemented permission code:
-
 - `AI_PERMISSION_DENIED`
 
-## Partially Implemented / Needs Verification
+The UI should show provider errors as actionable states, especially missing key, invalid key, quota/rate limit, provider unavailable, and invalid output.
 
-Older AI controllers still exist for templates, widgets, plugins, syllabus generation, and streaming generation. They are not the canonical product path and should be reviewed before being exposed in user-facing documentation.
+## Technical Debt
 
-## Planned
+- The frontend editor requires stable rich-content block ids.
+- Current handling uses the `normalizeRichContentDocument` adapter in `apps/web/src/features/rich-content/normalizeRichContent.ts`.
+- This adapter should remain the compatibility boundary until backend and AI schemas consistently emit block ids.
 
-- Gemini connection test button in Profile -> AI Settings.
-- Expanded AI feedback suggestions.
-- AI student tutor only after permission and retrieval design.
-- AI chat over selected course context.
+## Not Canonical
+
+Older AI controllers still exist for templates, widgets, plugins, syllabus generation, and streaming generation. They are not the primary product workflow until separately audited.

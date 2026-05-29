@@ -13,12 +13,30 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { Loading } from '@/components/Loading';
-import { useCoursesList, useCreateCourse } from '@/features/courses/hooks/useCourseQueries';
-import type { CourseSummaryDto, CreateCourseRequest } from '@/features/courses/api/canonical.types';
+import {
+  useActiveCourses,
+  useAdminCourses,
+  useCreateCourse,
+  useCoursesList,
+  useTeachingCourses,
+} from '@/features/courses/hooks/useCourseQueries';
+import type { AdminCourseDto, CourseSummaryDto, CreateCourseRequest } from '@/features/courses/api/canonical.types';
 import { useCurrentUser } from '@/features/users/hooks/useUserQueries';
 
 type CourseListTab = 'ACTIVE' | 'ARCHIVED';
 type ActiveStatusFilter = 'ALL' | 'PUBLISHED' | 'DRAFT';
+
+function adminToSummary(c: AdminCourseDto): CourseSummaryDto {
+  return {
+    id: c.id,
+    title: c.titleEn ?? c.titleUk,
+    description: c.descriptionEn ?? c.descriptionUk ?? null,
+    status: c.status,
+    teacherName: null,
+    progress: 0,
+    grade: null,
+  };
+}
 
 function matchesCourseSearch(course: CourseSummaryDto, searchTerm: string) {
   const query = searchTerm.trim().toLowerCase();
@@ -49,15 +67,24 @@ export function CoursesPage() {
   const { data: currentUser, isLoading: isUserLoading, error: userError } = useCurrentUser();
   const role = String(currentUser?.globalRole ?? currentUser?.role ?? '').toUpperCase();
   const canCreateCourses = role === 'ADMIN' || role === 'TEACHER';
+  const isStudent = role === 'USER' || (!canCreateCourses && role !== '');
+  const isTeacherRole = role === 'TEACHER';
+  const isAdminRole = role === 'ADMIN';
 
-  const { data: activeCourses, isLoading: isActiveLoading, error: activeError } = useCoursesList(
-    undefined,
-    Boolean(currentUser)
-  );
-  const { data: archivedCourses, isLoading: isArchivedLoading, error: archivedError } = useCoursesList(
-    { status: 'ARCHIVED' },
-    Boolean(currentUser)
-  );
+  // Role-specific course lists
+  const { data: studentActive, isLoading: isStudentLoading, error: studentError } =
+    useActiveCourses();
+
+  const { data: teacherCourses, isLoading: isTeacherLoading, error: teacherError } =
+    useTeachingCourses(isTeacherRole);
+
+  const { data: adminPage, isLoading: isAdminLoading, error: adminError } =
+    useAdminCourses(undefined, isAdminRole);
+
+  // Archived courses (enrollment-filtered for students/teachers; all archived for admins)
+  const { data: archivedCourses, isLoading: isArchivedLoading, error: archivedError } =
+    useCoursesList({ status: 'ARCHIVED' }, Boolean(currentUser));
+
   const createCourse = useCreateCourse();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -73,8 +100,14 @@ export function CoursesPage() {
     descriptionEn: '',
   });
 
+  const activeCourses: CourseSummaryDto[] = useMemo(() => {
+    if (isAdminRole) return (adminPage?.content ?? []).map(adminToSummary);
+    if (isTeacherRole) return teacherCourses ?? [];
+    return studentActive ?? [];
+  }, [isAdminRole, isTeacherRole, adminPage, teacherCourses, studentActive]);
+
   const filteredActiveCourses = useMemo(() => {
-    return (activeCourses ?? []).filter((course) => {
+    return activeCourses.filter((course) => {
       const status = courseStatus(course);
       const matchesFilter = statusFilter === 'ALL' || status === statusFilter;
       return matchesFilter && matchesCourseSearch(course, searchTerm);
@@ -87,10 +120,14 @@ export function CoursesPage() {
 
   const selectedCourses = activeTab === 'ARCHIVED' ? filteredArchivedCourses : filteredActiveCourses;
   const visibleCount = selectedCourses.length;
-  const totalCount = (activeCourses?.length ?? 0) + (archivedCourses?.length ?? 0);
+  const totalCount = activeCourses.length + (archivedCourses?.length ?? 0);
 
-  const isLoading = isUserLoading || Boolean(currentUser && (isActiveLoading || isArchivedLoading));
-  const hasError = userError || activeError || archivedError;
+  const isLoading = isUserLoading || Boolean(currentUser && (
+    (isAdminRole && (isAdminLoading || isArchivedLoading)) ||
+    (isTeacherRole && (isTeacherLoading || isArchivedLoading)) ||
+    (isStudent && (isStudentLoading || isArchivedLoading))
+  ));
+  const hasError = userError || studentError || teacherError || adminError || archivedError;
 
   if (isLoading) {
     return <Loading label="Loading courses..." />;
@@ -242,7 +279,7 @@ export function CoursesPage() {
             </div>
           </div>
 
-          {activeTab === 'ACTIVE' && (
+          {activeTab === 'ACTIVE' && canCreateCourses && (
             <div className="flex flex-wrap gap-2">
               <FilterButton active={statusFilter === 'ALL'} onClick={() => setStatusFilter('ALL')}>All</FilterButton>
               <FilterButton active={statusFilter === 'PUBLISHED'} onClick={() => setStatusFilter('PUBLISHED')}>Published</FilterButton>

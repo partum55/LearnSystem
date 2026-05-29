@@ -1,51 +1,39 @@
 # Roadmap
 
-## Near-Term
+## Near Term
 
-- Finish and verify real AI generation where still incomplete:
-  - Course generation.
-  - RTE material generation.
-  - Assignment generation.
-  - AI suggest grade.
-- Gemini connection test button.
-- Safe cleanup/archive for E2E artifacts.
-- Gradebook Excel export backend `.xlsx`.
+- Production E2E for the CourseStatus archived model if not already completed.
+- Full SpeedGrader AI E2E with a real submission.
+- Gradebook Excel export.
 - Syllabus page using `RichContentEditor`.
-- Course Preview / Student View for teachers.
+- Safe cleanup/admin cleanup for E2E artifacts.
+- Gemini quota/rate-limit handling improvements.
 
-## Medium-Term
+## Medium Term
 
-- Conditional access / action locks:
-  - Unlock after previous item.
-  - Assignment visibility by group.
-  - Module/assignment release conditions.
-- Group-based visibility/access rules using `course_groups`.
-- Manual attendance:
-  - `PRESENT`
-  - `LATE`
-  - `ABSENT`
-  - `EXCUSED`
-  - Manual teacher marking.
-- Rotating QR every 30-60 seconds.
+- Conditional access and action locks.
+- Group-based assignment access.
+- Manual attendance statuses.
+- Rotating QR attendance sessions.
 - Rubrics.
 - Grade history.
-- `user_dashboard_layouts` server-side persistence.
+- Server-side dashboard layout persistence.
 - Notification preferences.
 
 ## Later
 
-- AI student tutor only after permission/retrieval design.
-- AI summarization of course material.
-- Expanded AI feedback suggestions.
+- AI student tutor after permissions/retrieval design.
 - AI chat over selected course context.
+- Course package import/export.
 - Analytics dashboards.
 - Audit log.
-- Export/import course packages.
-- Mobile polish.
 
 ## Explicit Product Decisions
 
+- Courses are private by design; access is membership/rules based.
+- Course lifecycle uses `DRAFT`, `PUBLISHED`, and `ARCHIVED`.
+- Archive is reversible; delete is hard delete.
 - AI grading must remain teacher-reviewed; no auto-publish.
-- Public course landing page is not planned now.
-- Enrollment invitations are not planned now.
-- Form assignments remain in development.
+- Public course landing pages are not planned.
+- Enrollment invitations are not planned.
+- Form assignments remain development/verification-needed unless a production flow proves otherwise.

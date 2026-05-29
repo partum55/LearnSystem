@@ -25,10 +25,6 @@ public class AiCoursePersistenceMapper {
         .descriptionEn(courseData.getDescriptionEn())
         .syllabus(courseData.getSyllabus())
         .ownerId(ownerId.toString())
-        .visibility(
-            courseData.getVisibility() != null ? courseData.getVisibility() : "PRIVATE")
-        .status("DRAFT")
-        .isPublished(Boolean.TRUE.equals(courseData.getIsPublished()) ? true : false)
         .maxStudents(courseData.getMaxStudents())
         .build();
   }

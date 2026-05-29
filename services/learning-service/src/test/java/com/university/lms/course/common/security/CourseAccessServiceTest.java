@@ -224,6 +224,87 @@ class CourseAccessServiceTest {
     courseAccessService.requireCanEnroll(courseId, UUID.randomUUID(), CourseRole.STUDENT);
   }
 
+  @Test
+  void enrolledStudentCanAccessPublishedCourse() {
+    UUID courseId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+
+    when(courseMemberRepository.findByCourseIdAndUserId(courseId, userId))
+        .thenReturn(Optional.of(member(userId, CourseRole.STUDENT)));
+    when(courseRepository.findById(courseId))
+        .thenReturn(Optional.of(course(courseId, CourseStatus.PUBLISHED)));
+    when(requestUserContext.requireUserRole()).thenReturn("USER");
+
+    CourseAccessContext context = courseAccessService.requireCourseAccess(courseId, userId);
+
+    assertThat(context.courseRole()).isEqualTo(CourseRole.STUDENT);
+    assertThat(context.adminOverride()).isFalse();
+  }
+
+  @Test
+  void nonEnrolledStudentIsRejectedFromCourseAccess() {
+    UUID courseId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+
+    when(courseMemberRepository.findByCourseIdAndUserId(courseId, userId))
+        .thenReturn(Optional.empty());
+    when(courseRepository.findById(courseId))
+        .thenReturn(Optional.of(course(courseId, CourseStatus.PUBLISHED)));
+    when(requestUserContext.requireUserRole()).thenReturn("USER");
+
+    assertThatThrownBy(() -> courseAccessService.requireCourseAccess(courseId, userId))
+        .isInstanceOf(ApiException.class)
+        .hasMessageContaining("not enrolled");
+  }
+
+  @Test
+  void globalTeacherWithoutEnrollmentIsRejectedFromCourseAccess() {
+    UUID courseId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+
+    when(courseMemberRepository.findByCourseIdAndUserId(courseId, userId))
+        .thenReturn(Optional.empty());
+    when(courseRepository.findById(courseId))
+        .thenReturn(Optional.of(course(courseId, CourseStatus.PUBLISHED)));
+    when(requestUserContext.requireUserRole()).thenReturn("TEACHER");
+
+    assertThatThrownBy(() -> courseAccessService.requireCourseAccess(courseId, userId))
+        .isInstanceOf(ApiException.class)
+        .hasMessageContaining("not enrolled");
+  }
+
+  @Test
+  void adminAccessesPublishedCourseWithoutMembership() {
+    UUID courseId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+
+    when(requestUserContext.requireUserRole()).thenReturn("ADMIN");
+    when(courseMemberRepository.findByCourseIdAndUserId(courseId, userId))
+        .thenReturn(Optional.empty());
+    when(courseRepository.findById(courseId))
+        .thenReturn(Optional.of(course(courseId, CourseStatus.PUBLISHED)));
+
+    CourseAccessContext context = courseAccessService.requireCourseAccess(courseId, userId);
+
+    assertThat(context.adminOverride()).isTrue();
+  }
+
+  @Test
+  void unauthenticatedUserWithNoRoleIsRejectedFromCourseAccess() {
+    UUID courseId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+
+    when(requestUserContext.requireUserRole())
+        .thenThrow(new RuntimeException("No role in context"));
+    when(courseMemberRepository.findByCourseIdAndUserId(courseId, userId))
+        .thenReturn(Optional.empty());
+    when(courseRepository.findById(courseId))
+        .thenReturn(Optional.of(course(courseId, CourseStatus.PUBLISHED)));
+
+    assertThatThrownBy(() -> courseAccessService.requireCourseAccess(courseId, userId))
+        .isInstanceOf(ApiException.class);
+  }
+
   private static CourseMember member(UUID userId, CourseRole role) {
     return CourseMember.builder()
         .userId(userId)

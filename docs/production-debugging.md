@@ -27,6 +27,18 @@ Health:
 curl -i https://api.learnsystem.app/api/v1/actuator/health
 ```
 
+Redeploy:
+
+```powershell
+git pull
+docker compose --env-file infra/docker/.env -f infra/docker/docker-compose.prod.yml build --progress=plain
+docker compose --env-file infra/docker/.env -f infra/docker/docker-compose.prod.yml up -d --force-recreate
+docker compose -f infra/docker/docker-compose.prod.yml ps -a
+curl -i https://api.learnsystem.app/api/v1/actuator/health
+```
+
+Do not run `docker compose down -v` unless the explicit task is to destroy volumes/data.
+
 Logs:
 
 ```powershell
@@ -44,7 +56,7 @@ Check:
 - Console errors.
 - Failed network requests.
 - Route mismatches.
-- Accidental `/api/v1/v1` duplication.
+- Stale route bug pattern: accidental `/api/v1/v1` duplication.
 - Stale frontend bundle.
 - Auth token missing/expired.
 - Backend 401 caused by missing canonical user sync.

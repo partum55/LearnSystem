@@ -73,11 +73,6 @@ public class GeneratedCourseResponse {
     @Size(max = 8000)
     private String syllabus;
 
-    @Size(max = 20)
-    private String visibility;
-
-    private Boolean isPublished;
-
     @Min(1)
     @Max(1000)
     private Integer maxStudents;

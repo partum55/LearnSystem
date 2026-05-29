@@ -173,6 +173,14 @@ public class CanonicalCourseService {
   }
 
   @Transactional(readOnly = true)
+  public CourseDto getCourse(UUID courseId, UUID userId) {
+    accessService.requireCourseAccess(courseId, userId);
+    Course course = courseRepository.findById(courseId)
+        .orElseThrow(() -> ApiException.notFound("Course"));
+    return courseMapper.toDto(course);
+  }
+
+  @Transactional(readOnly = true)
   public CourseModulesResponse modules(UUID courseId, UUID userId) {
     accessService.requireCourseAccess(courseId, userId);
     boolean canTeach = accessService.canTeach(courseId, userId);

@@ -77,3 +77,4 @@ Not run. No deployment was requested or performed, and destructive production te
 
 - Ownership transfer is not exposed by the current course settings model; leave as TODO until a canonical owner-transfer service and audit flow exist.
 - If hard delete is ever required, implement it as a separate explicit admin-only operation with audit logging and dependency checks.
+-

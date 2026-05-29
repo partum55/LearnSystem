@@ -1,6 +1,6 @@
 # Course Model
 
-## Implemented Now
+## Structure
 
 The canonical course model is:
 
@@ -10,47 +10,84 @@ Course -> Modules -> ordered contents
                   -> assignments
 ```
 
-Module contents are presented as one vertical list. Learning materials and assignments live together in module order.
+Module contents are one ordered vertical list. Learning materials and assignments live together in module order.
+
+## CourseStatus
+
+`CourseStatus` has exactly three values:
+
+- `DRAFT`
+- `PUBLISHED`
+- `ARCHIVED`
+
+There is no `CourseVisibility` model. Courses do not have `PUBLIC` or `PRIVATE` visibility; all courses are private by product design.
+
+## Access Model
+
+- `ADMIN` sees all courses.
+- Non-admin users see only courses where they have an active `learning.course_members` row.
+- `STUDENT` sees `PUBLISHED` and `ARCHIVED` courses where enrolled/member.
+- `STUDENT` does not see `DRAFT` courses.
+- `OWNER`, `TEACHER`, and `TA` see `DRAFT`, `PUBLISHED`, and `ARCHIVED` courses where they are members.
+- Canonical ownership is `role_in_course = OWNER`.
+- Global `TEACHER` role can create courses, but it is not an owner fallback for lifecycle/settings permissions.
+
+## Archived Permissions
+
+Archiving does not physically change `role_in_course`. Stored roles remain `OWNER`, `TEACHER`, `TA`, and `STUDENT`; effective permissions depend on `course.status`.
+
+- `ADMIN` keeps full admin permissions.
+- `OWNER` keeps full owner permissions.
+- `TEACHER` becomes a read-only viewer.
+- `TA` becomes a read-only viewer.
+- `STUDENT` remains a read-only viewer.
+
+## Lifecycle
+
+- Publish: `DRAFT -> PUBLISHED`
+- Unpublish: `PUBLISHED -> DRAFT`
+- Archive: `DRAFT/PUBLISHED -> ARCHIVED`
+- Restore: `ARCHIVED -> DRAFT`
+- Delete: hard delete
+
+Archive is a lifecycle action. Delete is destructive.
+
+## Courses Page
+
+The Courses page has Active Courses and Archived Courses.
+
+Active Courses:
+
+- Admin: all `DRAFT` and `PUBLISHED` courses.
+- Owner/Teacher/TA: member `DRAFT` and `PUBLISHED` courses.
+- Student: member `PUBLISHED` courses.
+
+Archived Courses:
+
+- Admin: all `ARCHIVED` courses.
+- Non-admin: member `ARCHIVED` courses.
+
+Archived course banner:
+
+- Owner/admin: can edit, restore, and delete.
+- Teacher/TA/student: read-only.
 
 ## Course Roles
 
-- `OWNER`: full course control, including ownership-level administration and deletion/archive flows where available.
-- `TEACHER`: learning management, module/material/assignment/grading operations; no ownership transfer or destructive owner-only administration.
-- `TA`: operational and grading assistance; no staff/course administration.
-- `STUDENT`: learner-only access.
-- `ADMIN`: platform override for administrative flows.
+- `OWNER`: full course control, including lifecycle, settings, archive/restore, and hard delete.
+- `TEACHER`: learning management and grading while active; read-only when archived.
+- `TA`: operational/grading assistance while active; read-only when archived.
+- `STUDENT`: learner-only access; no draft access; read-only when archived.
+- `ADMIN`: platform override.
 
-## Course Page
+## Active Content Model
 
-Implemented now / active UX target:
+The active model uses modules, learning items, lesson pages, assignments, submissions, and grades.
 
-- Clean course header.
-- Minimal progress signal.
-- No global staff tools bar.
-- Tabs:
-  - Overview
-  - Modules
-  - Grades
-  - Members
+Removed from the active course model:
 
-## Modules
-
-Implemented now:
-
-- Create modules inside the Modules tab.
-- Add learning material inside a specific module.
-- Add assignments inside a specific module.
-- Show module contents as one ordered vertical list.
-
-The current active model uses modules, learning items, lesson pages, assignments, submissions, and grades.
-
-## Course Preview
-
-Planned / needs verification:
-
-- Teacher/admin student-like preview for checking learner experience.
-- Public course landing page is not planned now.
-
-## Partially Implemented / Needs Verification
-
-- Form assignments and quiz-like flows exist in parts of the UI/code, but remain in development.
+- Course visibility / `PUBLIC` / `PRIVATE`.
+- Course `is_published`.
+- Legacy topics/resources.
+- Legacy `lesson_blocks`.
+- Any use of visibility as draft state.

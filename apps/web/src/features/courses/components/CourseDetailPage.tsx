@@ -199,12 +199,15 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
   const { data: gradebook } = useStudentGradebook(courseId, !canAccessTeacherTools);
 
   const isForbidden = useMemo(() => {
-    const err = overviewError as { status?: number; response?: { status?: number } } | null;
-    return (err?.status || err?.response?.status) === 403;
-  }, [overviewError]);
+    const is403 = (err: unknown) => {
+      const e = err as { status?: number; response?: { status?: number } } | null;
+      return (e?.status || e?.response?.status) === 403;
+    };
+    return is403(overviewError) || is403(modulesError);
+  }, [overviewError, modulesError]);
 
   const isLoading = isUserLoading || isOverviewLoading || isModulesLoading || isMembersLoading;
-  const hasError = (overviewError && !isForbidden) || modulesError;
+  const hasError = (overviewError && !isForbidden) || (modulesError && !isForbidden);
 
   const showToast = (message: string) => {
     setTodoToast(message);

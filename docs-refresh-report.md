@@ -1,37 +1,12 @@
 # Docs Refresh Report
 
-Date: 2026-05-27
+Date: 2026-05-29
 
-## Docs Archived
+## Docs Updated
 
-Stale documentation was moved to:
-
-- `docs/archive/2026-05-27-old-docs/`
-
-Archived items include:
-
-- Previous root-adjacent production AI smoke report.
-- Previous top-level `docs/*.md` files.
-- Previous `docs/superpowers` planning/spec files.
-- Previous app/service/infra READMEs that described older or partial architecture.
-- Previous nested archive notes.
-
-## Docs Created
-
-Fresh documentation set:
-
-- `README.md`
-- `docs/README.md`
-- `docs/architecture.md`
 - `docs/database-schema.md`
-- `docs/backend-services.md`
-- `docs/frontend-architecture.md`
 - `docs/course-model.md`
-- `docs/rich-content-editor.md`
-- `docs/gradebook.md`
-- `docs/course-people-enrollment.md`
-- `docs/qr-seminar-attendance.md`
-- `docs/dashboard.md`
+- `docs/backend-services.md`
 - `docs/ai-service.md`
 - `docs/deployment.md`
 - `docs/production-debugging.md`
@@ -39,36 +14,70 @@ Fresh documentation set:
 - `docs/roadmap.md`
 - `docs-refresh-report.md`
 
-## Key Decisions Documented
+## Table Names Verified
 
-- Canonical architecture is frontend -> gateway -> services -> Supabase/Postgres.
-- Frontend must not call AI providers directly.
-- Active learning model is courses, course members, modules, learning items, lesson pages, assignments, submissions, grades.
-- Course module contents are one vertical list of materials and assignments.
-- AI generation is teacher-reviewed and must not auto-publish.
-- QR attendance is tied to seminar assignments only.
-- Enrollment uses existing users only; no invitations, pending users, or CSV-created users.
-- Dashboard layout persistence is localStorage now and backend-ready later.
+Verified against Supabase migrations and current JPA entities:
 
-## Future Roadmap Documented
+- `learning.courses`
+- `learning.course_members`
+- `learning.modules`
+- `learning.learning_items`
+- `learning.lesson_pages`
+- `learning.assignments`
+- `learning.assignment_submissions`
+- `learning.submission_versions`
+- `learning.grades`
+- `learning.enrollment_groups`
+- `learning.enrollment_group_members`
+- `learning.course_groups`
+- `learning.seminar_attendance_sessions`
+- `learning.seminar_attendance_records`
+- `ai.user_api_keys`
+- `ai.ai_generations`
 
-The roadmap separates near-term, medium-term, and later work, including AI generation verification, Gemini connection testing, gradebook export, syllabus, course preview, conditional access, group visibility, manual attendance, rotating QR, rubrics, grade history, server-side dashboard layouts, analytics, audit log, course package export/import, and mobile polish.
+No active canonical `question_bank` table remains after the canonical cleanup migration.
 
-## Intentionally Left Out
+## Schema Corrections Made
 
-- Raw secrets, passwords, API keys, bearer tokens, cookies, and full environment files.
-- Historical architecture details as active docs.
-- Public course landing page plans.
-- Enrollment invitations.
-- Auto-published AI grading.
-- Unverified older AI controllers as primary product workflows.
+- Replaced stale submission references with canonical `learning.assignment_submissions`.
+- Replaced stale gradebook table references with canonical `learning.grades`.
+- Documented `assessment.submissions`, `grading.gradebook_entries`, `learning.submissions`, and `learning.gradebook_entries` as historical migration names only.
+- Documented `learning.lesson_pages` as the replacement for old `learning.lesson_blocks`.
+- Documented legacy topics/resources/question bank as removed from the active model.
 
-## Needs Screenshots Later
+## CourseStatus Model Documented
 
-- Course detail tabs.
-- Rich content editor.
-- Course people CSV preview/confirm.
-- QR seminar attendance session.
-- Dashboard customization panel.
-- Full gradebook and SpeedGrader.
-- Profile -> AI Settings.
+- Final lifecycle values: `DRAFT`, `PUBLISHED`, `ARCHIVED`.
+- No `CourseVisibility`.
+- No `PUBLIC` or `PRIVATE` course concept.
+- No canonical course `is_published` boolean.
+- Ownership is `course_members.role_in_course = OWNER`.
+- Archived courses preserve stored roles and apply read-only effective permissions for teacher, TA, and student.
+
+## AI Generation Documented
+
+- Gemini BYOK and admin system key behavior.
+- Encrypted user keys in `ai.user_api_keys`.
+- Test connection endpoint.
+- Canonical `POST /api/v1/ai/tasks`.
+- Implemented task types.
+- Structured output schemas and `AiOutputValidator`.
+- `ai.ai_generations` history.
+- Draft/review/no-auto-publish rules.
+- Grade suggestion local-only behavior.
+- Current rich-content block id adapter debt.
+
+## Stale Docs Removed Or Relabeled
+
+- Removed active-doc references to course visibility, public/private courses, `is_published` courses, and legacy content tables as current behavior.
+- Corrected AI endpoints away from old `/api/ai` language for canonical workflows.
+- Kept bulk enrollment endpoints using the implemented `/members/bulk/preview` and `/members/bulk/confirm` route shape.
+- Replaced generic attendance wording with seminar attendance endpoint documentation.
+- No additional files were archived this run; stale active docs were corrected in place.
+
+## Remaining Verification TODOs
+
+- Run production E2E for the archived CourseStatus model if not already completed.
+- Run full SpeedGrader AI E2E against a real submission.
+- Verify any older AI controllers before documenting them as product workflows.
+- Verify form assignment production behavior before marking it complete.

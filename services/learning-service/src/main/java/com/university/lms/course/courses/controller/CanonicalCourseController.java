@@ -72,10 +72,7 @@ public class CanonicalCourseController {
 
   @GetMapping("/{courseId}")
   public CourseDto getCourse(@PathVariable UUID courseId) {
-    return courseSettingsService.getCourseById(
-        courseId,
-        userContext.requireUserId(),
-        userContext.requireUserRole());
+    return courseService.getCourse(courseId, userContext.requireUserId());
   }
 
   @GetMapping("/{courseId}/modules")

@@ -137,8 +137,6 @@ public class CourseGenerationService {
     sb.append("    \"descriptionUk\": \"Опис українською\",\n");
     sb.append("    \"descriptionEn\": \"Description in English\",\n");
     sb.append("    \"syllabus\": \"Детальний силабус курсу\",\n");
-    sb.append("    \"visibility\": \"PRIVATE\",\n");
-    sb.append("    \"isPublished\": false,\n");
     sb.append("    \"maxStudents\": 30\n");
     sb.append("  },\n");
 

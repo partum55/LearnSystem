@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.university.lms.common.domain.CourseStatus;
 import com.university.lms.common.exception.ValidationException;
+import com.university.lms.course.common.error.ApiException;
 import com.university.lms.course.domain.Course;
 import com.university.lms.course.domain.CourseMember;
 import com.university.lms.course.domain.CourseMemberStatus;
@@ -177,6 +178,42 @@ class CourseServiceTest {
         "TEACHER"))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("already exists");
+  }
+
+  @Test
+  void nonEnrolledStudentGetsForbiddenFromGetCourseById() {
+    Course published = Course.builder().id(courseId).code("CS101").titleUk("T")
+        .ownerId(ownerId).status(CourseStatus.PUBLISHED).build();
+    when(courseRepository.findById(courseId)).thenReturn(Optional.of(published));
+    when(courseMemberRepository.findByCourseIdAndUserId(courseId, otherUserId))
+        .thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> courseService.getCourseById(courseId, otherUserId, "USER"))
+        .isInstanceOf(ApiException.class);
+  }
+
+  @Test
+  void enrolledStudentCanGetPublishedCourseById() {
+    Course published = Course.builder().id(courseId).code("CS101").titleUk("T")
+        .ownerId(ownerId).status(CourseStatus.PUBLISHED).build();
+    when(courseRepository.findById(courseId)).thenReturn(Optional.of(published));
+    when(courseMemberRepository.findByCourseIdAndUserId(courseId, otherUserId))
+        .thenReturn(Optional.of(member(otherUserId, CourseRole.STUDENT)));
+
+    var dto = courseService.getCourseById(courseId, otherUserId, "USER");
+
+    assertThat(dto).isNotNull();
+  }
+
+  @Test
+  void enrolledStudentCannotGetDraftCourseById() {
+    // course in @BeforeEach is DRAFT
+    when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
+    when(courseMemberRepository.findByCourseIdAndUserId(courseId, otherUserId))
+        .thenReturn(Optional.of(member(otherUserId, CourseRole.STUDENT)));
+
+    assertThatThrownBy(() -> courseService.getCourseById(courseId, otherUserId, "USER"))
+        .isInstanceOf(ApiException.class);
   }
 
   private void assertForbiddenForRole(CourseRole role) {
