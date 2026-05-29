@@ -94,7 +94,6 @@ CREATE POLICY "courses_select_member_or_admin"
       WHERE u.id = auth.uid()
         AND u.role = 'ADMIN'::public.user_role
         AND u.is_active = TRUE
-        AND u.is_deleted = FALSE
     )
     OR EXISTS (
       SELECT 1
