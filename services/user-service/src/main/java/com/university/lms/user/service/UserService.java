@@ -249,19 +249,20 @@ public class UserService {
     @Transactional
     @CacheEvict(value = USERS_CACHE, key = "#userId")
     public void deleteUser(UUID userId) {
-        getRequiredUserById(userId);
-        courseClient.deleteUserData(userId);
+        User user = getRequiredUserById(userId);
+
+        // Soft-delete: preserve the row so owned courses keep a valid owner_id FK reference.
+        // Revoke Supabase Auth access so the user cannot log in.
+        user.setActive(false);
+        user.setDeleted(true);
+        userRepository.save(user);
 
         if (hasSupabaseAdminCredentials()) {
             deleteSupabaseAuthUser(userId);
-            if (userRepository.existsById(userId)) {
-                userRepository.deleteById(userId);
-            }
         } else {
-            log.warn("SUPABASE_SECRET_KEY is not configured; deleting only local profile {}", userId);
-            userRepository.deleteById(userId);
+            log.warn("SUPABASE_SECRET_KEY is not configured; soft-deleted only local profile {}", userId);
         }
-        log.info("User deleted: {}", userId);
+        log.info("User soft-deleted (deactivated): {}", userId);
     }
 
     private boolean hasSupabaseAdminCredentials() {

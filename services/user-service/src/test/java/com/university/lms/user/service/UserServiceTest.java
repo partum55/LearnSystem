@@ -2,6 +2,9 @@ package com.university.lms.user.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.university.lms.common.domain.UserLocale;
@@ -121,6 +124,65 @@ class UserServiceTest {
 
     assertThat(result.getRole()).isEqualTo(UserRole.TEACHER);
     assertThat(target.getRole()).isEqualTo(UserRole.TEACHER);
+  }
+
+  @Test
+  void deleteUser_softDeletesUser_doesNotDeleteCourses() {
+    UUID userId = UUID.randomUUID();
+    User user = User.builder()
+        .id(userId)
+        .email("teacher@example.com")
+        .role(UserRole.TEACHER)
+        .locale(UserLocale.EN)
+        .isActive(true)
+        .build();
+
+    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+    when(userRepository.save(user)).thenReturn(user);
+
+    service.deleteUser(userId);
+
+    assertThat(user.isActive()).isFalse();
+    assertThat(user.isDeleted()).isTrue();
+    verify(userRepository).save(user);
+    verify(userRepository, never()).deleteById(any());
+    verify(courseClient, never()).deleteUserData(any());
+  }
+
+  @Test
+  void deleteUser_notFound_throws() {
+    UUID userId = UUID.randomUUID();
+    when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.deleteUser(userId))
+        .isInstanceOf(ResourceNotFoundException.class);
+
+    verify(userRepository, never()).save(any());
+    verify(userRepository, never()).deleteById(any());
+    verify(courseClient, never()).deleteUserData(any());
+  }
+
+  @Test
+  void deleteUser_preservesOwnerIdIntactOnOwnedCourses() {
+    UUID userId = UUID.randomUUID();
+    User user = User.builder()
+        .id(userId)
+        .email("teacher@example.com")
+        .role(UserRole.TEACHER)
+        .locale(UserLocale.EN)
+        .isActive(true)
+        .build();
+
+    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+    when(userRepository.save(user)).thenReturn(user);
+
+    service.deleteUser(userId);
+
+    // User row must be soft-deleted (saved), not physically removed.
+    // Courses are untouched — no call to courseClient.deleteUserData.
+    verify(userRepository).save(user);
+    verify(userRepository, never()).deleteById(userId);
+    verify(courseClient, never()).deleteUserData(userId);
   }
 
   @Test

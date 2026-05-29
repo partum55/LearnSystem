@@ -69,6 +69,10 @@ public class User {
     @Builder.Default
     private boolean isActive = true;
 
+    @Column(name = "is_deleted")
+    @Builder.Default
+    private boolean isDeleted = false;
+
     @Column(name = "email_verified")
     @Builder.Default
     private boolean emailVerified = false;
