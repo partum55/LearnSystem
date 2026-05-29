@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
@@ -58,6 +59,15 @@ public class GlobalExceptionHandler {
 
     return buildErrorResponse(
         "VALIDATION_ERROR", "Invalid input parameters", HttpStatus.BAD_REQUEST, request, errors);
+  }
+
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(
+      HttpMessageNotReadableException ex, WebRequest request) {
+
+    log.warn("Malformed request body: {}", ex.getMostSpecificCause().getMessage());
+    return buildErrorResponse(
+        "BAD_REQUEST", "Malformed or unsupported request body", HttpStatus.BAD_REQUEST, request);
   }
 
   @ExceptionHandler(AuthenticationCredentialsNotFoundException.class)
