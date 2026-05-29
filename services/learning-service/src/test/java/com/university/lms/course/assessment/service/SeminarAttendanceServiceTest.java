@@ -59,7 +59,7 @@ class SeminarAttendanceServiceTest {
 
     SeminarAttendanceSessionDto dto = service.createSession(assignmentId, userId);
 
-    verify(courseAccessService).requireTeacher(courseId, userId);
+    verify(courseAccessService).requireTeacherMutation(courseId, userId);
     assertThat(dto).isNotNull();
     assertThat(dto.assignmentId()).isEqualTo(assignmentId);
     assertThat(dto.createdBy()).isEqualTo(userId);
