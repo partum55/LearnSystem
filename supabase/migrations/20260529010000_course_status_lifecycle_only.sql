@@ -55,6 +55,9 @@ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+DROP POLICY IF EXISTS courses_select_published_or_owned ON learning.courses;
+DROP POLICY IF EXISTS courses_select_member_or_admin ON learning.courses;
+
 ALTER TABLE learning.courses
   ALTER COLUMN status DROP DEFAULT,
   ALTER COLUMN status TYPE learning.course_status USING status::text::learning.course_status,
@@ -81,9 +84,6 @@ BEGIN
     DROP TYPE learning.course_visibility;
   END IF;
 END $$;
-
-DROP POLICY IF EXISTS courses_select_published_or_owned ON learning.courses;
-DROP POLICY IF EXISTS courses_select_member_or_admin ON learning.courses;
 
 CREATE POLICY "courses_select_member_or_admin"
   ON learning.courses FOR SELECT
