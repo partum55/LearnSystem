@@ -47,7 +47,6 @@ export type CourseRow = {
   description_en: string | null;
   syllabus: string | null;
   owner_id: string;
-  visibility: 'PUBLIC' | 'PRIVATE' | 'DRAFT';
   thumbnail_url: string | null;
   start_date: string | null;
   end_date: string | null;

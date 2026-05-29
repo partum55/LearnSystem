@@ -22,6 +22,7 @@ export const queryKeys = {
   },
   courses: {
     all: ['courses'] as const,
+    list: (params?: unknown) => [...queryKeys.courses.all, 'list', params ?? {}] as const,
     myActive: () => [...queryKeys.courses.all, 'my-active'] as const,
     myTeaching: () => [...queryKeys.courses.all, 'my-teaching'] as const,
     adminList: (params?: unknown) => [...queryKeys.courses.all, 'admin', params ?? {}] as const,

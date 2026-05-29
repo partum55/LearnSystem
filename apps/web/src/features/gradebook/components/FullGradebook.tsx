@@ -24,6 +24,7 @@ interface FullGradebookProps {
   initialAssignmentId?: string | null;
   onBackToOverview: () => void;
   onReleaseGrades: () => void;
+  readOnly?: boolean;
 }
 
 interface UnsavedCellEdit {
@@ -38,6 +39,7 @@ export function FullGradebook({
   initialAssignmentId = null,
   onBackToOverview,
   onReleaseGrades,
+  readOnly = false,
 }: FullGradebookProps) {
   const { students, assignments, grades } = gradebook;
 
@@ -102,6 +104,7 @@ export function FullGradebook({
 
   // Apply cell edit to memory
   const handleApplyEdit = () => {
+    if (readOnly) return;
     if (!selectedCell) return;
     const currentSelectedAssignment = assignments.find((a) => a.id === selectedCell.assignmentId);
     if (!currentSelectedAssignment) return;
@@ -140,6 +143,7 @@ export function FullGradebook({
 
   // Submit bulk edits
   const handleSaveChanges = async () => {
+    if (readOnly) return;
     const unsavedCount = Object.keys(unsavedEdits).length;
     if (unsavedCount === 0) return;
     try {
@@ -204,6 +208,12 @@ export function FullGradebook({
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
+      {readOnly && (
+        <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] p-3 text-xs font-semibold text-[var(--text-secondary)]">
+          This archived course gradebook is read-only.
+        </div>
+      )}
+
       {/* Navigation header controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--border-default)] pb-4">
         <div className="flex items-center gap-3">
@@ -219,7 +229,7 @@ export function FullGradebook({
 
         {/* Action triggers */}
         <div className="flex flex-wrap items-center gap-2">
-          {unsavedCount > 0 && (
+          {!readOnly && unsavedCount > 0 && (
             <button
               onClick={handleSaveChanges}
               disabled={updateCellsMutation.isPending}
@@ -238,13 +248,15 @@ export function FullGradebook({
             <span>{exporting ? 'Exporting...' : 'Export Excel'}</span>
           </button>
 
-          <button
-            onClick={onReleaseGrades}
-            className="btn btn-secondary text-xs flex items-center gap-1.5 cursor-pointer"
-          >
-            <CheckBadgeIcon className="h-4.5 w-4.5" />
-            <span>Release Grades</span>
-          </button>
+          {!readOnly && (
+            <button
+              onClick={onReleaseGrades}
+              className="btn btn-secondary text-xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <CheckBadgeIcon className="h-4.5 w-4.5" />
+              <span>Release Grades</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -305,7 +317,7 @@ export function FullGradebook({
       </section>
 
       {/* Warning Alert about Unsaved local state */}
-      {unsavedCount > 0 && (
+      {!readOnly && unsavedCount > 0 && (
         <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] p-3 text-xs text-[var(--text-secondary)]">
           ⚠️ You have <strong>{unsavedCount}</strong> unsaved grade edits currently active. Click <strong>Save Local Changes</strong> to commit.
         </div>
@@ -389,7 +401,10 @@ export function FullGradebook({
                       }
 
                       // Visual styling matches Obsidian/LearnSystem dark themes
-                      let cellStyle = 'border-r border-[var(--border-subtle)] cursor-pointer hover:bg-[var(--bg-elevated)]/50 transition relative ';
+                      let cellStyle = 'border-r border-[var(--border-subtle)] transition relative ';
+                      if (!readOnly) {
+                        cellStyle += 'cursor-pointer hover:bg-[var(--bg-elevated)]/50 ';
+                      }
                       if (isSelected) {
                         cellStyle += 'ring-2 ring-[var(--border-strong)] bg-[var(--bg-active)] ';
                       } else if (isUnsaved) {
@@ -405,7 +420,9 @@ export function FullGradebook({
                       return (
                         <td
                           key={asg.id}
-                          onClick={() => setSelectedCell({ studentId: student.id, assignmentId: asg.id })}
+                          onClick={() => {
+                            if (!readOnly) setSelectedCell({ studentId: student.id, assignmentId: asg.id });
+                          }}
                           className={cellStyle}
                         >
                           <div className="px-4 py-3 flex items-center justify-between gap-1 min-h-[46px]">
@@ -450,7 +467,7 @@ export function FullGradebook({
       </section>
 
       {/* Editor Drawer Drawer Panel */}
-      {selectedCell && currentSelectedStudent && currentSelectedAssignment && (
+      {!readOnly && selectedCell && currentSelectedStudent && currentSelectedAssignment && (
         <section className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-base)] p-5 shadow-lg max-w-2xl animate-fade-in space-y-4">
           <div className="flex items-start justify-between border-b border-[var(--border-default)] pb-3">
             <div>

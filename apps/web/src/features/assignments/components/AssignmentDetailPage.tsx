@@ -10,7 +10,7 @@ import {
 } from '../hooks/useAssignmentQueries';
 import { useStartQuizAttempt } from '@/features/quiz-attempts/hooks/useQuizAttemptQueries';
 import { useCurrentUser } from '@/features/users/hooks/useUserQueries';
-import { useTeachingCourses } from '@/features/courses/hooks/useCourseQueries';
+import { useCourseMembers, useCourseOverview, useTeachingCourses } from '@/features/courses/hooks/useCourseQueries';
 import { Loading } from '@/components/Loading';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 import { RichContentEditor } from '@/features/rich-content/components/RichContentEditor';
@@ -50,6 +50,8 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
   const { data: currentUser } = useCurrentUser();
   const { data: teachingCourses } = useTeachingCourses();
   const { data: assignment, isLoading, error, refetch } = useCanonicalAssignment(assignmentId);
+  const { data: courseOverview } = useCourseOverview(assignment?.courseId);
+  const { data: membersPage } = useCourseMembers(assignment?.courseId, { size: 100 });
 
   const startQuizAttempt = useStartQuizAttempt();
   const submitAssignment = useSubmitAssignment();
@@ -82,6 +84,19 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
   const [attendanceOverview, setAttendanceOverview] = useState<SeminarAttendanceOverviewDto | null>(null);
   const [sessionTimer, setSessionTimer] = useState<number | null>(null); // remaining seconds
   const [rawToken, setRawToken] = useState<string | null>(null);
+
+  const currentMember = membersPage?.content?.find((member) => String(member.userId) === String(currentUser?.id));
+  const courseRole = String(currentMember?.roleInCourse || '').toUpperCase();
+  const globalRole = String(currentUser?.globalRole ?? currentUser?.role ?? '').toUpperCase();
+  const isAdmin = globalRole === 'ADMIN';
+  const isOwner = courseRole === 'OWNER';
+  const isArchivedCourse = String(courseOverview?.status || '').toUpperCase() === 'ARCHIVED';
+  const hasTeachingCourseAccess = Boolean(assignment?.courseId && teachingCourses?.some((course) => course.id === assignment.courseId));
+  const hasStaffAccess = isAdmin || hasTeachingCourseAccess || ['OWNER', 'TEACHER', 'TA'].includes(courseRole);
+  const isStaff = hasStaffAccess;
+  const canMutateArchivedCourse = !isArchivedCourse || isAdmin || isOwner;
+  const canSubmitAssignment = !hasStaffAccess && !isArchivedCourse;
+  const canMutateAttendance = hasStaffAccess && canMutateArchivedCourse;
 
   const fetchAttendance = async () => {
     if (assignmentType !== 'SEMINAR') return;
@@ -127,6 +142,10 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
   };
 
   const handleCreateSession = async () => {
+    if (!canMutateAttendance) {
+      setStatusMessage({ type: 'error', text: 'This archived course is read-only.' });
+      return;
+    }
     try {
       setStatusMessage(null);
       const res = await seminarAttendanceApi.createSession(assignmentId);
@@ -140,6 +159,10 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
   };
 
   const handleCloseSession = async () => {
+    if (!canMutateAttendance) {
+      setStatusMessage({ type: 'error', text: 'This archived course is read-only.' });
+      return;
+    }
     if (!attendanceOverview?.activeSession) return;
     try {
       setStatusMessage(null);
@@ -214,11 +237,11 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
 
   const typeStr = (assignmentType || 'FILE_SUBMISSION') as string;
 
-  const isStaff =
-    currentUser?.role === 'ADMIN' ||
-    teachingCourses?.some((c) => c.id === assignment.courseId);
-
   const handleStartQuiz = async () => {
+    if (isArchivedCourse) {
+      setStatusMessage({ type: 'error', text: 'This archived course is read-only.' });
+      return;
+    }
     try {
       setStatusMessage(null);
       const res = await startQuizAttempt.mutateAsync(assignmentId);
@@ -234,6 +257,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
   };
 
   const handleAddFile = () => {
+    if (isArchivedCourse) return;
     if (!newFileName.trim()) return;
     const item: SubmissionFileItem = {
       fileName: newFileName.trim(),
@@ -245,6 +269,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
   };
 
   const handleRemoveFile = (index: number) => {
+    if (isArchivedCourse) return;
     setFileList((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -263,6 +288,10 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isArchivedCourse) {
+      setStatusMessage({ type: 'error', text: 'This archived course is read-only.' });
+      return;
+    }
     try {
       setStatusMessage(null);
       const request = buildSubmissionRequest();
@@ -294,6 +323,10 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
   };
 
   const handleWithdraw = async () => {
+    if (isArchivedCourse) {
+      setStatusMessage({ type: 'error', text: 'This archived course is read-only.' });
+      return;
+    }
     if (!studentState?.submissionId) return;
     if (!confirm('Are you sure you want to withdraw your submission? This will delete your current draft/submission.')) {
       return;
@@ -346,12 +379,20 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
         </div>
       )}
 
+      {isArchivedCourse && (
+        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 text-xs font-semibold text-[var(--text-secondary)]">
+          This course is archived. This assignment is read-only.
+        </div>
+      )}
+
       {/* Staff Administration Banner */}
       {isStaff && (
         <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 text-[var(--text-primary)] shadow-3xs">
           <p className="text-xs font-extrabold uppercase tracking-wide">Course Staff Access</p>
           <p className="mt-1 text-3xs text-[var(--text-muted)] leading-relaxed">
-            Grading triggers and full student submission histories are managed within the Dedicated Course Gradebook page.
+            {isArchivedCourse && !canMutateArchivedCourse
+              ? 'This archived course is available for review only.'
+              : 'Grading triggers and full student submission histories are managed within the Dedicated Course Gradebook page.'}
           </p>
         </div>
       )}
@@ -430,7 +471,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
           </p>
           
           <div className="flex flex-wrap items-center gap-3 pt-2">
-            {studentState?.canStartNewAttempt ? (
+            {studentState?.canStartNewAttempt && canSubmitAssignment ? (
               <button
                 type="button"
                 onClick={handleStartQuiz}
@@ -441,7 +482,9 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
               </button>
             ) : (
               <p className="text-xs font-bold text-[var(--text-muted)]">
-                You have reached your quiz attempt limit or starting new attempts is restricted.
+                {isArchivedCourse
+                  ? 'This archived course is read-only.'
+                  : 'You have reached your quiz attempt limit or starting new attempts is restricted.'}
               </p>
             )}
 
@@ -498,12 +541,12 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
                   </div>
                   
                   <div className="flex gap-3">
-                    {studentState.canEdit && (
+                    {studentState.canEdit && canSubmitAssignment && (
                       <button onClick={() => setIsEditing(true)} className="btn btn-primary text-2xs px-4 py-2 font-bold cursor-pointer">
                         Edit Submission Draft
                       </button>
                     )}
-                    {studentState.canDelete && (
+                    {studentState.canDelete && canSubmitAssignment && (
                       <button 
                         onClick={handleWithdraw} 
                         disabled={withdrawSubmission.isPending} 
@@ -514,6 +557,8 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
                     )}
                   </div>
                 </div>
+              ) : isArchivedCourse ? (
+                <ArchivedAssignmentNotice />
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
@@ -598,12 +643,12 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
               </ul>
               
               <div className="flex gap-3">
-                {studentState.canEdit && (
+                {studentState.canEdit && canSubmitAssignment && (
                   <button onClick={() => setIsEditing(true)} className="btn btn-primary btn-sm font-bold cursor-pointer">
                     Edit Submission
                   </button>
                 )}
-                {studentState.canDelete && (
+                {studentState.canDelete && canSubmitAssignment && (
                   <button 
                     onClick={handleWithdraw} 
                     disabled={withdrawSubmission.isPending} 
@@ -614,6 +659,8 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
                 )}
               </div>
             </div>
+          ) : isArchivedCourse ? (
+            <ArchivedAssignmentNotice />
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-base)] p-4">
@@ -700,12 +747,12 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
               </div>
               
               <div className="flex gap-3">
-                {studentState.canEdit && (
+                {studentState.canEdit && canSubmitAssignment && (
                   <button onClick={() => setIsEditing(true)} className="btn btn-primary btn-sm font-bold cursor-pointer">
                     Edit Code Submission
                   </button>
                 )}
-                {studentState.canDelete && (
+                {studentState.canDelete && canSubmitAssignment && (
                   <button 
                     onClick={handleWithdraw} 
                     disabled={withdrawSubmission.isPending} 
@@ -716,6 +763,8 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
                 )}
               </div>
             </div>
+          ) : isArchivedCourse ? (
+            <ArchivedAssignmentNotice />
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
@@ -764,14 +813,18 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
               {!attendanceOverview?.activeSession ? (
                 <div className="text-center py-8 space-y-4">
                   <div className="text-xs text-[var(--text-muted)] max-w-sm mx-auto leading-relaxed">
-                    Start a new QR check-in session for this seminar. Students will scan the code to register their attendance instantly.
+                    {canMutateAttendance
+                      ? 'Start a new QR check-in session for this seminar. Students will scan the code to register their attendance instantly.'
+                      : 'Seminar attendance is read-only for this archived course.'}
                   </div>
-                  <button
-                    onClick={handleCreateSession}
-                    className="btn btn-primary text-xs px-6 py-2.5 font-bold cursor-pointer transition-all duration-200"
-                  >
-                    Create QR Check-in
-                  </button>
+                  {canMutateAttendance && (
+                    <button
+                      onClick={handleCreateSession}
+                      className="btn btn-primary text-xs px-6 py-2.5 font-bold cursor-pointer transition-all duration-200"
+                    >
+                      Create QR Check-in
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -817,14 +870,16 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
                     </div>
                   </div>
 
-                  <div className="text-center pt-2">
-                    <button
-                      onClick={handleCloseSession}
-                      className="btn btn-danger btn-sm text-xs font-bold cursor-pointer transition-all duration-200"
-                    >
-                      Close Session
-                    </button>
-                  </div>
+                  {canMutateAttendance && (
+                    <div className="text-center pt-2">
+                      <button
+                        onClick={handleCloseSession}
+                        className="btn btn-danger btn-sm text-xs font-bold cursor-pointer transition-all duration-200"
+                      >
+                        Close Session
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -893,6 +948,14 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
           )}
         </section>
       )}
+    </div>
+  );
+}
+
+function ArchivedAssignmentNotice() {
+  return (
+    <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-base)] p-5 text-center text-xs font-semibold text-[var(--text-secondary)]">
+      Submission controls are disabled because this course is archived.
     </div>
   );
 }

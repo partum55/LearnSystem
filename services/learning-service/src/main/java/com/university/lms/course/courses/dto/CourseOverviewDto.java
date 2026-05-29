@@ -7,6 +7,7 @@ public record CourseOverviewDto(
     UUID id,
     String title,
     String description,
+    String status,
     String teacherName,
     double progress,
     Double grade,

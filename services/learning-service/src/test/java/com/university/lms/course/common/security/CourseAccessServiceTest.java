@@ -2,13 +2,18 @@ package com.university.lms.course.common.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import com.university.lms.common.domain.CourseStatus;
 import com.university.lms.course.common.error.ApiException;
+import com.university.lms.course.domain.Course;
 import com.university.lms.course.domain.CourseMember;
 import com.university.lms.course.domain.CourseMemberStatus;
 import com.university.lms.course.domain.CourseRole;
 import com.university.lms.course.repository.CourseMemberRepository;
+import com.university.lms.course.repository.CourseRepository;
 import com.university.lms.course.web.RequestUserContext;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class CourseAccessServiceTest {
 
   @Mock private CourseMemberRepository courseMemberRepository;
+  @Mock private CourseRepository courseRepository;
   @Mock private RequestUserContext requestUserContext;
 
   @InjectMocks private CourseAccessService courseAccessService;
@@ -33,6 +39,7 @@ class CourseAccessServiceTest {
 
     when(requestUserContext.requireUserRole()).thenReturn("ADMIN");
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, userId)).thenReturn(Optional.empty());
+    when(courseRepository.findById(courseId)).thenReturn(Optional.of(course(courseId, CourseStatus.DRAFT)));
 
     CourseAccessContext context = courseAccessService.requireCourseAccess(courseId, userId);
 
@@ -49,11 +56,7 @@ class CourseAccessServiceTest {
   void normalUserRequiresActiveMemberSuccess() {
     UUID courseId = UUID.randomUUID();
     UUID userId = UUID.randomUUID();
-    CourseMember mockMember = CourseMember.builder()
-        .userId(userId)
-        .roleInCourse(CourseRole.STUDENT)
-        .status(CourseMemberStatus.ACTIVE)
-        .build();
+    CourseMember mockMember = member(userId, CourseRole.STUDENT);
 
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, userId))
         .thenReturn(Optional.of(mockMember));
@@ -79,17 +82,45 @@ class CourseAccessServiceTest {
   }
 
   @Test
+  void studentCannotAccessDraftCourse() {
+    UUID courseId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+
+    when(courseMemberRepository.findByCourseIdAndUserId(courseId, userId))
+        .thenReturn(Optional.of(member(userId, CourseRole.STUDENT)));
+    when(courseRepository.findById(courseId)).thenReturn(Optional.of(course(courseId, CourseStatus.DRAFT)));
+    when(requestUserContext.requireUserRole()).thenReturn("USER");
+
+    assertThatThrownBy(() -> courseAccessService.requireCourseAccess(courseId, userId))
+        .isInstanceOf(ApiException.class)
+        .hasMessageContaining("not available");
+  }
+
+  @Test
+  void studentCanAccessArchivedCourseButCannotMutate() {
+    UUID courseId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+
+    when(courseMemberRepository.findByCourseIdAndUserId(courseId, userId))
+        .thenReturn(Optional.of(member(userId, CourseRole.STUDENT)));
+    when(courseRepository.findById(courseId)).thenReturn(Optional.of(course(courseId, CourseStatus.ARCHIVED)));
+    when(requestUserContext.requireUserRole()).thenReturn("USER");
+
+    CourseAccessContext context = courseAccessService.requireCourseAccess(courseId, userId);
+    assertThat(context.courseRole()).isEqualTo(CourseRole.STUDENT);
+
+    assertThatThrownBy(() -> courseAccessService.requireStudentMutation(courseId, userId))
+        .isInstanceOf(ApiException.class)
+        .hasMessageContaining("read-only");
+  }
+
+  @Test
   void adminWithoutStudentEnrollmentThrowsRequireStudent() {
     UUID courseId = UUID.randomUUID();
     UUID userId = UUID.randomUUID();
-    CourseMember mockMember = CourseMember.builder()
-        .userId(userId)
-        .roleInCourse(CourseRole.TEACHER)
-        .status(CourseMemberStatus.ACTIVE)
-        .build();
 
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, userId))
-        .thenReturn(Optional.of(mockMember));
+        .thenReturn(Optional.of(member(userId, CourseRole.TEACHER)));
 
     assertThatThrownBy(() -> courseAccessService.requireStudent(courseId, userId))
         .isInstanceOf(ApiException.class)
@@ -103,10 +134,9 @@ class CourseAccessServiceTest {
 
     when(requestUserContext.requireUserRole()).thenReturn("ADMIN");
 
-    // Should not throw any exception
     courseAccessService.requireTeacher(courseId, userId);
 
-    verify(courseMemberRepository, never()).findByCourseIdAndUserId(any(), any());
+    verify(courseMemberRepository, never()).findByCourseIdAndUserId(courseId, userId);
   }
 
   @Test
@@ -119,7 +149,7 @@ class CourseAccessServiceTest {
     boolean canTeach = courseAccessService.canTeach(courseId, userId);
 
     assertThat(canTeach).isTrue();
-    verify(courseMemberRepository, never()).findByCourseIdAndUserId(any(), any());
+    verify(courseMemberRepository, never()).findByCourseIdAndUserId(courseId, userId);
   }
 
   @Test
@@ -135,20 +165,77 @@ class CourseAccessServiceTest {
   }
 
   @Test
+  void teacherAndTaCannotMutateArchivedCourse() {
+    UUID courseId = UUID.randomUUID();
+    UUID teacherId = UUID.randomUUID();
+    UUID taId = UUID.randomUUID();
+
+    when(requestUserContext.requireUserRole()).thenReturn("TEACHER");
+    when(courseRepository.findById(courseId)).thenReturn(Optional.of(course(courseId, CourseStatus.ARCHIVED)));
+    when(courseMemberRepository.findByCourseIdAndUserId(courseId, teacherId))
+        .thenReturn(Optional.of(member(teacherId, CourseRole.TEACHER)));
+    when(courseMemberRepository.findByCourseIdAndUserId(courseId, taId))
+        .thenReturn(Optional.of(member(taId, CourseRole.TA)));
+
+    assertThatThrownBy(() -> courseAccessService.requireTeacherMutation(courseId, teacherId))
+        .isInstanceOf(ApiException.class)
+        .hasMessageContaining("read-only");
+    assertThatThrownBy(() -> courseAccessService.requireTeacherMutation(courseId, taId))
+        .isInstanceOf(ApiException.class)
+        .hasMessageContaining("read-only");
+  }
+
+  @Test
+  void ownerCanMutateArchivedCourse() {
+    UUID courseId = UUID.randomUUID();
+    UUID ownerId = UUID.randomUUID();
+
+    when(requestUserContext.requireUserRole()).thenReturn("TEACHER");
+    when(courseMemberRepository.findByCourseIdAndUserId(courseId, ownerId))
+        .thenReturn(Optional.of(member(ownerId, CourseRole.OWNER)));
+    when(courseRepository.findById(courseId)).thenReturn(Optional.of(course(courseId, CourseStatus.ARCHIVED)));
+
+    courseAccessService.requireTeacherMutation(courseId, ownerId);
+  }
+
+  @Test
+  void adminCanMutateArchivedCourseWithoutMembership() {
+    UUID courseId = UUID.randomUUID();
+    UUID adminId = UUID.randomUUID();
+
+    when(requestUserContext.requireUserRole()).thenReturn("ADMIN");
+
+    courseAccessService.requireTeacherMutation(courseId, adminId);
+
+    verify(courseMemberRepository, never()).findByCourseIdAndUserId(courseId, adminId);
+  }
+
+  @Test
   void ownerCanManageMembers() {
     UUID courseId = UUID.randomUUID();
     UUID userId = UUID.randomUUID();
-    CourseMember owner = CourseMember.builder()
-        .userId(userId)
-        .roleInCourse(CourseRole.OWNER)
-        .status(CourseMemberStatus.ACTIVE)
-        .build();
 
     when(requestUserContext.requireUserId()).thenReturn(userId);
     when(requestUserContext.requireUserRole()).thenReturn("TEACHER");
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, userId))
-        .thenReturn(Optional.of(owner));
+        .thenReturn(Optional.of(member(userId, CourseRole.OWNER)));
+    when(courseRepository.findById(courseId)).thenReturn(Optional.of(course(courseId, CourseStatus.PUBLISHED)));
 
     courseAccessService.requireCanEnroll(courseId, UUID.randomUUID(), CourseRole.STUDENT);
+  }
+
+  private static CourseMember member(UUID userId, CourseRole role) {
+    return CourseMember.builder()
+        .userId(userId)
+        .roleInCourse(role)
+        .status(CourseMemberStatus.ACTIVE)
+        .build();
+  }
+
+  private static Course course(UUID courseId, CourseStatus status) {
+    return Course.builder()
+        .id(courseId)
+        .status(status)
+        .build();
   }
 }

@@ -15,7 +15,8 @@ public record CourseDraftDto(
             JsonNode resources,
             JsonNode topics,
             JsonNode lessonBlocks,
-            JsonNode lesson_blocks
+            JsonNode lesson_blocks,
+            JsonNode visibility
     ) {}
 
     public record ModuleDraft(

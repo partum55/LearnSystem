@@ -27,6 +27,9 @@ export const canonicalCoursesApi = {
   getMyTeaching: () =>
     apiClient.request<CourseSummaryDto[]>({ url: '/v1/courses/my-teaching' }),
 
+  getCourses: (params?: { status?: string }) =>
+    apiClient.request<CourseSummaryDto[]>({ url: '/v1/courses', params }),
+
   createCourse: (request: CreateCourseRequest) =>
     apiClient.request<AdminCourseDto>({ method: 'POST', url: '/v1/courses', data: request }),
 
@@ -51,6 +54,12 @@ export const canonicalCoursesApi = {
 
   archiveCourse: (courseId: string) =>
     apiClient.request<AdminCourseDto>({ method: 'POST', url: `/v1/courses/${courseId}/archive` }),
+
+  publishCourse: (courseId: string) =>
+    apiClient.request<AdminCourseDto>({ method: 'POST', url: `/v1/courses/${courseId}/publish` }),
+
+  unpublishCourse: (courseId: string) =>
+    apiClient.request<AdminCourseDto>({ method: 'POST', url: `/v1/courses/${courseId}/unpublish` }),
 
   restoreCourse: (courseId: string) =>
     apiClient.request<AdminCourseDto>({ method: 'POST', url: `/v1/courses/${courseId}/restore` }),

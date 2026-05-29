@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
 import {
   AcademicCapIcon,
+  ArchiveBoxIcon,
   BookOpenIcon,
   MagnifyingGlassIcon,
   PlusIcon,
@@ -12,15 +13,12 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { Loading } from '@/components/Loading';
-import { useActiveCourses, useAdminCourses, useCreateCourse, useTeachingCourses } from '@/features/courses/hooks/useCourseQueries';
-import type { AdminCourseDto, CourseSummaryDto, CreateCourseRequest } from '@/features/courses/api/canonical.types';
+import { useCoursesList, useCreateCourse } from '@/features/courses/hooks/useCourseQueries';
+import type { CourseSummaryDto, CreateCourseRequest } from '@/features/courses/api/canonical.types';
 import { useCurrentUser } from '@/features/users/hooks/useUserQueries';
 
-type CourseTab = 'ENROLLED' | 'TEACHING';
-type StudentFilter = 'ALL' | 'ACTIVE' | 'COMPLETED';
-type TeacherFilter = 'ALL' | 'PUBLISHED' | 'DRAFT' | 'ARCHIVED';
-
-const isPublishedStatus = (status?: string | null) => (status || '').toUpperCase() === 'PUBLISHED';
+type CourseListTab = 'ACTIVE' | 'ARCHIVED';
+type ActiveStatusFilter = 'ALL' | 'PUBLISHED' | 'DRAFT';
 
 function matchesCourseSearch(course: CourseSummaryDto, searchTerm: string) {
   const query = searchTerm.trim().toLowerCase();
@@ -41,35 +39,30 @@ function clampProgress(value?: number | null) {
   return Math.max(0, Math.min(value ?? 0, 100));
 }
 
-function adminCourseToSummary(course: AdminCourseDto): CourseSummaryDto {
-  return {
-    id: course.id,
-    title: course.titleEn || course.titleUk,
-    description: course.descriptionEn || course.descriptionUk,
-    status: course.status,
-    teacherName: 'Admin managed',
-    progress: 0,
-    grade: null,
-  };
+function courseStatus(course: CourseSummaryDto) {
+  const status = String(course.status || 'DRAFT').toUpperCase();
+  return status === 'ARCHIVED' || status === 'PUBLISHED' ? status : 'DRAFT';
 }
 
 export function CoursesPage() {
   const router = useRouter();
   const { data: currentUser, isLoading: isUserLoading, error: userError } = useCurrentUser();
   const role = String(currentUser?.globalRole ?? currentUser?.role ?? '').toUpperCase();
-  const isAdmin = role === 'ADMIN';
-  const { data: activeCourses, isLoading: isActiveLoading, error: activeError } = useActiveCourses();
-  const { data: teachingCourses, isLoading: isTeachingLoading, error: teachingError } = useTeachingCourses();
-  const { data: adminCourses, isLoading: isAdminCoursesLoading, error: adminCoursesError } = useAdminCourses(
-    { page: 0, size: 100 },
-    isAdmin
+  const canCreateCourses = role === 'ADMIN' || role === 'TEACHER';
+
+  const { data: activeCourses, isLoading: isActiveLoading, error: activeError } = useCoursesList(
+    undefined,
+    Boolean(currentUser)
+  );
+  const { data: archivedCourses, isLoading: isArchivedLoading, error: archivedError } = useCoursesList(
+    { status: 'ARCHIVED' },
+    Boolean(currentUser)
   );
   const createCourse = useCreateCourse();
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [studentFilter, setStudentFilter] = useState<StudentFilter>('ALL');
-  const [teacherFilter, setTeacherFilter] = useState<TeacherFilter>('ALL');
-  const [activeTab, setActiveTab] = useState<CourseTab>('TEACHING');
+  const [activeTab, setActiveTab] = useState<CourseListTab>('ACTIVE');
+  const [statusFilter, setStatusFilter] = useState<ActiveStatusFilter>('ALL');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [courseForm, setCourseForm] = useState<CreateCourseRequest>({
@@ -78,48 +71,26 @@ export function CoursesPage() {
     titleEn: '',
     descriptionUk: '',
     descriptionEn: '',
-    isPublished: false,
   });
-
-  const showStudentSection = role === 'USER' || isAdmin;
-  const showTeacherSection = role === 'TEACHER' || isAdmin;
-  const selectedTab = showTeacherSection ? activeTab : 'ENROLLED';
-  const visibleTeachingCourses = useMemo(
-    () => (isAdmin ? adminCourses?.content.map(adminCourseToSummary) : teachingCourses) ?? [],
-    [adminCourses, isAdmin, teachingCourses]
-  );
 
   const filteredActiveCourses = useMemo(() => {
     return (activeCourses ?? []).filter((course) => {
-      const progress = clampProgress(course.progress);
-      const matchesFilter =
-        studentFilter === 'ALL' ||
-        (studentFilter === 'COMPLETED' ? progress >= 100 : progress < 100);
-      return matchesCourseSearch(course, searchTerm) && matchesFilter;
+      const status = courseStatus(course);
+      const matchesFilter = statusFilter === 'ALL' || status === statusFilter;
+      return matchesFilter && matchesCourseSearch(course, searchTerm);
     });
-  }, [activeCourses, searchTerm, studentFilter]);
+  }, [activeCourses, searchTerm, statusFilter]);
 
-  const filteredTeachingCourses = useMemo(() => {
-    return visibleTeachingCourses.filter((course) => {
-      const status = (course.status || '').toUpperCase();
-      const matchesFilter = teacherFilter === 'ALL' || teacherFilter === status;
-      return matchesCourseSearch(course, searchTerm) && matchesFilter;
-    });
-  }, [visibleTeachingCourses, searchTerm, teacherFilter]);
+  const filteredArchivedCourses = useMemo(() => {
+    return (archivedCourses ?? []).filter((course) => matchesCourseSearch(course, searchTerm));
+  }, [archivedCourses, searchTerm]);
 
-  const visibleCount =
-    selectedTab === 'TEACHING' ? filteredTeachingCourses.length : filteredActiveCourses.length;
-  const totalCount =
-    (showStudentSection ? activeCourses?.length ?? 0 : 0) +
-    (showTeacherSection ? visibleTeachingCourses.length : 0);
-  const isLoading =
-    isUserLoading ||
-    (showStudentSection && isActiveLoading) ||
-    (showTeacherSection && (isAdmin ? isAdminCoursesLoading : isTeachingLoading));
-  const hasError =
-    userError ||
-    (showStudentSection && activeError) ||
-    (showTeacherSection && (isAdmin ? adminCoursesError : teachingError));
+  const selectedCourses = activeTab === 'ARCHIVED' ? filteredArchivedCourses : filteredActiveCourses;
+  const visibleCount = selectedCourses.length;
+  const totalCount = (activeCourses?.length ?? 0) + (archivedCourses?.length ?? 0);
+
+  const isLoading = isUserLoading || Boolean(currentUser && (isActiveLoading || isArchivedLoading));
+  const hasError = userError || activeError || archivedError;
 
   if (isLoading) {
     return <Loading label="Loading courses..." />;
@@ -146,17 +117,15 @@ export function CoursesPage() {
     setCreateError(null);
 
     const request: CreateCourseRequest = {
-      ...courseForm,
       code: courseForm.code.trim().toUpperCase(),
       titleUk: courseForm.titleUk.trim(),
       titleEn: courseForm.titleEn?.trim() || undefined,
       descriptionUk: courseForm.descriptionUk?.trim() || undefined,
       descriptionEn: courseForm.descriptionEn?.trim() || undefined,
-      isPublished: courseForm.isPublished ?? false,
     };
 
     if (!request.code || !request.titleUk) {
-      setCreateError('Course code and Ukrainian title are required.');
+      setCreateError('Course code and title are required.');
       return;
     }
 
@@ -169,7 +138,6 @@ export function CoursesPage() {
         titleEn: '',
         descriptionUk: '',
         descriptionEn: '',
-        isPublished: false,
       });
       router.push(`/courses/${createdCourse.id}`);
     } catch (error) {
@@ -190,7 +158,7 @@ export function CoursesPage() {
             </p>
             <h1 className="mt-3 text-3xl font-semibold md:text-4xl">Courses</h1>
             <p className="mt-3 text-sm leading-6" style={{ color: 'var(--text-muted)' }}>
-              Browse enrolled programs, manage teaching courses, and continue working through canonical course data.
+              Review active courses, open archived courses, and manage course drafts through the canonical course model.
             </p>
           </div>
 
@@ -205,7 +173,7 @@ export function CoursesPage() {
               <span style={{ color: 'var(--text-muted)' }}>{totalCount}</span>
             </div>
 
-            {showTeacherSection && (
+            {canCreateCourses && (
               <>
                 <button type="button" className="btn btn-secondary" onClick={() => router.push('/courses/ai-create')}>
                   Create course with AI
@@ -217,7 +185,7 @@ export function CoursesPage() {
               </>
             )}
 
-            {showTeacherSection && (
+            {canCreateCourses && (
               <Link href="/teacher/todo" className="btn btn-secondary">
                 <BookOpenIcon className="h-4 w-4" />
                 Teaching workspace
@@ -255,66 +223,45 @@ export function CoursesPage() {
               )}
             </div>
 
-            {showStudentSection && showTeacherSection && (
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('ENROLLED')}
-                  className={selectedTab === 'ENROLLED' ? 'btn btn-primary' : 'btn btn-secondary'}
-                >
-                  Enrolled
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('TEACHING')}
-                  className={selectedTab === 'TEACHING' ? 'btn btn-primary' : 'btn btn-secondary'}
-                >
-                  Teaching
-                </button>
-              </div>
-            )}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab('ACTIVE')}
+                className={activeTab === 'ACTIVE' ? 'btn btn-primary' : 'btn btn-secondary'}
+              >
+                Active Courses
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('ARCHIVED')}
+                className={activeTab === 'ARCHIVED' ? 'btn btn-primary' : 'btn btn-secondary'}
+              >
+                <ArchiveBoxIcon className="h-4 w-4" />
+                Archived Courses
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {selectedTab === 'ENROLLED' ? (
-              <>
-                <FilterButton active={studentFilter === 'ALL'} onClick={() => setStudentFilter('ALL')}>All</FilterButton>
-                <FilterButton active={studentFilter === 'ACTIVE'} onClick={() => setStudentFilter('ACTIVE')}>In progress</FilterButton>
-                <FilterButton active={studentFilter === 'COMPLETED'} onClick={() => setStudentFilter('COMPLETED')}>Completed</FilterButton>
-              </>
-            ) : (
-              <>
-                <FilterButton active={teacherFilter === 'ALL'} onClick={() => setTeacherFilter('ALL')}>All</FilterButton>
-                <FilterButton active={teacherFilter === 'PUBLISHED'} onClick={() => setTeacherFilter('PUBLISHED')}>Published</FilterButton>
-                <FilterButton active={teacherFilter === 'DRAFT'} onClick={() => setTeacherFilter('DRAFT')}>Draft</FilterButton>
-                <FilterButton active={teacherFilter === 'ARCHIVED'} onClick={() => setTeacherFilter('ARCHIVED')}>Archived</FilterButton>
-              </>
-            )}
-          </div>
+          {activeTab === 'ACTIVE' && (
+            <div className="flex flex-wrap gap-2">
+              <FilterButton active={statusFilter === 'ALL'} onClick={() => setStatusFilter('ALL')}>All</FilterButton>
+              <FilterButton active={statusFilter === 'PUBLISHED'} onClick={() => setStatusFilter('PUBLISHED')}>Published</FilterButton>
+              <FilterButton active={statusFilter === 'DRAFT'} onClick={() => setStatusFilter('DRAFT')}>Draft</FilterButton>
+            </div>
+          )}
         </div>
       </section>
 
-      {selectedTab === 'ENROLLED' ? (
-        <CourseSection
-          title="My Courses"
-          count={filteredActiveCourses.length}
-          courses={filteredActiveCourses}
-          emptyTitle="No courses"
-          emptyDescription="Courses will appear after enrollment."
-          variant="student"
-        />
-      ) : (
-        <CourseSection
-          title="Teaching Courses"
-          count={filteredTeachingCourses.length}
-          courses={filteredTeachingCourses}
-          emptyTitle="No teaching courses"
-          emptyDescription="Courses where you teach will appear here."
-          variant="teacher"
-        />
-      )}
+      <CourseSection
+        title={activeTab === 'ARCHIVED' ? 'Archived Courses' : 'Active Courses'}
+        count={selectedCourses.length}
+        courses={selectedCourses}
+        emptyTitle={activeTab === 'ARCHIVED' ? 'No archived courses.' : 'No active courses'}
+        emptyDescription={activeTab === 'ARCHIVED' ? 'Archived courses will appear here.' : 'Courses will appear after you are added as a member.'}
+        archived={activeTab === 'ARCHIVED'}
+      />
 
-      {showTeacherSection && isCreateOpen && (
+      {canCreateCourses && isCreateOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
           style={{ background: 'color-mix(in srgb, var(--bg-base) 78%, transparent)' }}
@@ -324,7 +271,7 @@ export function CoursesPage() {
               <div>
                 <h2 className="text-lg font-semibold">Create course</h2>
                 <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  This uses the canonical course API.
+                  New courses are created as drafts.
                 </p>
               </div>
               <button
@@ -363,12 +310,12 @@ export function CoursesPage() {
                   />
                 </label>
                 <label className="input-group">
-                  <span className="label">Ukrainian title</span>
+                  <span className="label">Course title</span>
                   <input
                     className="input"
                     value={courseForm.titleUk}
                     onChange={(event) => setCourseForm((form) => ({ ...form, titleUk: event.target.value }))}
-                    placeholder="Основи програмування"
+                    placeholder="Programming Basics"
                     maxLength={255}
                     required
                   />
@@ -388,7 +335,7 @@ export function CoursesPage() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="input-group">
-                  <span className="label">Ukrainian description</span>
+                  <span className="label">Description</span>
                   <textarea
                     className="input min-h-28 resize-y"
                     value={courseForm.descriptionUk}
@@ -406,15 +353,6 @@ export function CoursesPage() {
                   />
                 </label>
               </div>
-
-              <label className="flex items-center gap-3 rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border-default)' }}>
-                <input
-                  type="checkbox"
-                  checked={Boolean(courseForm.isPublished)}
-                  onChange={(event) => setCourseForm((form) => ({ ...form, isPublished: event.target.checked }))}
-                />
-                <span>Publish immediately</span>
-              </label>
             </div>
 
             <div className="card-footer flex justify-end gap-3">
@@ -436,7 +374,6 @@ export function CoursesPage() {
           </form>
         </div>
       )}
-
     </div>
   );
 }
@@ -463,21 +400,21 @@ function CourseSection({
   courses,
   emptyTitle,
   emptyDescription,
-  variant,
+  archived,
 }: {
   title: string;
   count: number;
   courses: CourseSummaryDto[];
   emptyTitle: string;
   emptyDescription: string;
-  variant: 'student' | 'teacher';
+  archived: boolean;
 }) {
   return (
     <section className="space-y-4">
       <div className="flex items-center gap-2">
         <span
           className="h-2 w-2 rounded-full"
-          style={{ background: variant === 'teacher' ? 'var(--fn-success)' : 'var(--text-secondary)' }}
+          style={{ background: archived ? 'var(--text-faint)' : 'var(--fn-success)' }}
         />
         <h2 className="text-lg font-semibold">
           {title} ({count})
@@ -489,7 +426,7 @@ function CourseSection({
       ) : (
         <div className="anim-stagger grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
           {courses.map((course) => (
-            <CourseCard key={course.id} course={course} variant={variant} />
+            <CourseCard key={course.id} course={course} />
           ))}
         </div>
       )}
@@ -497,10 +434,10 @@ function CourseSection({
   );
 }
 
-function CourseCard({ course, variant }: { course: CourseSummaryDto; variant: 'student' | 'teacher' }) {
+function CourseCard({ course }: { course: CourseSummaryDto }) {
   const progress = clampProgress(course.progress);
   const completed = progress >= 100;
-  const published = isPublishedStatus(course.status);
+  const status = courseStatus(course);
 
   return (
     <Link href={`/courses/${course.id}`} className="anim-stagger-item card block h-full">
@@ -508,13 +445,11 @@ function CourseCard({ course, variant }: { course: CourseSummaryDto; variant: 's
         className="h-1"
         style={{
           background:
-            variant === 'teacher'
-              ? published
+            status === 'ARCHIVED'
+              ? 'var(--text-faint)'
+              : status === 'PUBLISHED'
                 ? 'var(--fn-success)'
-                : 'var(--fn-warning)'
-              : completed
-                ? 'var(--fn-success)'
-                : 'var(--text-secondary)',
+                : 'var(--fn-warning)',
         }}
       />
       <div className="card-header">
@@ -525,9 +460,7 @@ function CourseCard({ course, variant }: { course: CourseSummaryDto; variant: 's
             </p>
             <h3 className="mt-2 line-clamp-2 text-lg font-semibold">{course.title}</h3>
           </div>
-          <span className={statusBadgeClass(variant, completed, published)}>
-            {variant === 'teacher' ? course.status || 'draft' : completed ? 'completed' : 'active'}
-          </span>
+          <span className={statusBadgeClass(status)}>{status}</span>
         </div>
       </div>
       <div className="card-body space-y-4">
@@ -537,8 +470,8 @@ function CourseCard({ course, variant }: { course: CourseSummaryDto; variant: 's
 
         <div className="flex items-center justify-between gap-3 text-sm">
           <span className="flex min-w-0 items-center gap-2" style={{ color: 'var(--text-muted)' }}>
-            {variant === 'teacher' ? <BookOpenIcon className="h-4 w-4 shrink-0" /> : <UserCircleIcon className="h-4 w-4 shrink-0" />}
-            <span className="truncate">{variant === 'teacher' ? 'Course staff access' : course.teacherName || 'Instructor'}</span>
+            <UserCircleIcon className="h-4 w-4 shrink-0" />
+            <span className="truncate">{course.teacherName || 'Course member'}</span>
           </span>
           {course.grade !== null && course.grade !== undefined && (
             <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>
@@ -547,7 +480,7 @@ function CourseCard({ course, variant }: { course: CourseSummaryDto; variant: 's
           )}
         </div>
 
-        {variant === 'student' && (
+        {status === 'PUBLISHED' && (
           <div>
             <div className="mb-1 flex justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
               <span>Progress</span>
@@ -566,11 +499,15 @@ function CourseCard({ course, variant }: { course: CourseSummaryDto; variant: 's
   );
 }
 
-function statusBadgeClass(variant: 'student' | 'teacher', completed: boolean, published: boolean) {
-  if (variant === 'teacher') {
-    return published ? 'badge badge-success' : 'badge badge-warning';
+function statusBadgeClass(status: string) {
+  switch (status) {
+    case 'PUBLISHED':
+      return 'badge badge-success';
+    case 'ARCHIVED':
+      return 'badge';
+    default:
+      return 'badge badge-warning';
   }
-  return completed ? 'badge badge-success' : 'badge';
 }
 
 function EmptyCourses({ title, description }: { title: string; description: string }) {

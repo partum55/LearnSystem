@@ -1,5 +1,6 @@
 package com.university.lms.course.courses.controller;
 
+import com.university.lms.common.domain.CourseStatus;
 import com.university.lms.course.courses.dto.CourseOverviewDto;
 import com.university.lms.course.courses.dto.CourseSummaryDto;
 import com.university.lms.course.courses.service.CanonicalCourseService;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -46,6 +48,14 @@ public class CanonicalCourseController {
     return courseService.myTeachingCourses(userContext.requireUserId());
   }
 
+  @GetMapping
+  public List<CourseSummaryDto> courses(@RequestParam(required = false) CourseStatus status) {
+    return courseService.courses(
+        userContext.requireUserId(),
+        userContext.requireUserRole(),
+        status);
+  }
+
   @PostMapping
   public ResponseEntity<CourseDto> createCourse(@Valid @RequestBody CreateCourseRequest request) {
     CourseDto course = courseService.createCourse(
@@ -58,6 +68,14 @@ public class CanonicalCourseController {
   @GetMapping("/{courseId}/overview")
   public CourseOverviewDto overview(@PathVariable UUID courseId) {
     return courseService.overview(courseId, userContext.requireUserId());
+  }
+
+  @GetMapping("/{courseId}")
+  public CourseDto getCourse(@PathVariable UUID courseId) {
+    return courseSettingsService.getCourseById(
+        courseId,
+        userContext.requireUserId(),
+        userContext.requireUserRole());
   }
 
   @GetMapping("/{courseId}/modules")
@@ -85,6 +103,22 @@ public class CanonicalCourseController {
     return courseSettingsService.updateCourseSettings(
         courseId,
         request,
+        userContext.requireUserId(),
+        userContext.requireUserRole());
+  }
+
+  @PostMapping("/{courseId}/publish")
+  public CourseDto publish(@PathVariable UUID courseId) {
+    return courseSettingsService.publishCourse(
+        courseId,
+        userContext.requireUserId(),
+        userContext.requireUserRole());
+  }
+
+  @PostMapping("/{courseId}/unpublish")
+  public CourseDto unpublish(@PathVariable UUID courseId) {
+    return courseSettingsService.unpublishCourse(
+        courseId,
         userContext.requireUserId(),
         userContext.requireUserRole());
   }

@@ -45,12 +45,17 @@ class LearningEndpointContractTest {
 
   @Test
   void canonicalControllersMustExposeCoreRoutes() {
+    assertMethodPath(CanonicalCourseController.class, "courses", "");
+    assertMethodPath(CanonicalCourseController.class, "createCourse", "");
     assertMethodPath(CanonicalCourseController.class, "myActiveCourses", "/my-active");
     assertMethodPath(CanonicalCourseController.class, "overview", "/{courseId}/overview");
+    assertMethodPath(CanonicalCourseController.class, "getCourse", "/{courseId}");
     assertMethodPath(CanonicalCourseController.class, "modules", "/{courseId}/modules");
     assertMethodPath(CanonicalCourseController.class, "myGradebook", "/{courseId}/gradebook/me");
     assertMethodPath(CanonicalCourseController.class, "settings", "/{courseId}/settings");
     assertMethodPath(CanonicalCourseController.class, "updateSettings", "/{courseId}/settings");
+    assertMethodPath(CanonicalCourseController.class, "publish", "/{courseId}/publish");
+    assertMethodPath(CanonicalCourseController.class, "unpublish", "/{courseId}/unpublish");
     assertMethodPath(CanonicalCourseController.class, "archive", "/{courseId}/archive");
     assertMethodPath(CanonicalCourseController.class, "restore", "/{courseId}/restore");
     assertMethodPath(CanonicalCourseController.class, "delete", "/{courseId}");

@@ -13,6 +13,7 @@ import { EmptyState } from './EmptyState';
 interface GradesPanelProps {
   courseId: string;
   isCourseStaff: boolean;
+  readOnly?: boolean;
   courseRole?: string | null;
   modules: CourseModuleDto[];
   gradebook?: StudentGradebookDto;
@@ -21,12 +22,13 @@ interface GradesPanelProps {
 export function GradesPanel({
   courseId,
   isCourseStaff,
+  readOnly = false,
   courseRole,
   modules,
   gradebook,
 }: GradesPanelProps) {
   if (isCourseStaff) {
-    return <GradebookSummaryPanel courseId={courseId} courseRole={courseRole} modules={modules} />;
+    return <GradebookSummaryPanel courseId={courseId} courseRole={courseRole} modules={modules} readOnly={readOnly} />;
   }
 
   if (!gradebook || !gradebook.modules || gradebook.modules.length === 0) {
@@ -40,12 +42,14 @@ interface GradebookSummaryPanelProps {
   courseId: string;
   courseRole?: string | null;
   modules: CourseModuleDto[];
+  readOnly: boolean;
 }
 
 function GradebookSummaryPanel({
   courseId,
   courseRole,
   modules,
+  readOnly,
 }: GradebookSummaryPanelProps) {
   const router = useRouter();
   const { data: teacherGradebook, isLoading, error } = useTeacherGradebook(courseId);
@@ -76,6 +80,7 @@ function GradebookSummaryPanel({
       modules={modules}
       onOpenFullGradebook={openFullGradebook}
       onOpenSpeedGrader={openSpeedGrader}
+      readOnly={readOnly}
     />
   );
 }
@@ -86,12 +91,14 @@ function StaffGradebookSummary({
   modules,
   onOpenFullGradebook,
   onOpenSpeedGrader,
+  readOnly,
 }: {
   courseRole?: string | null;
   gradebook: TeacherGradebookDto;
   modules: CourseModuleDto[];
   onOpenFullGradebook: (assignmentId?: string) => void;
   onOpenSpeedGrader: (assignmentId: string) => void;
+  readOnly: boolean;
 }) {
   const needsGrading = gradebook.grades.filter(
     (grade) =>
@@ -106,9 +113,12 @@ function StaffGradebookSummary({
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
             <span className="badge">{courseRole ?? 'STAFF'} grade summary</span>
+            {readOnly && <span className="badge ml-2">READ ONLY</span>}
             <h2 className="mt-3 text-xl font-semibold">Gradebook Summary</h2>
             <p className="mt-1 max-w-2xl text-sm" style={{ color: 'var(--text-muted)' }}>
-              A quick course grading overview. Open the full gradebook or SpeedGrader from assignment actions when deeper work is needed.
+              {readOnly
+                ? 'A quick course grading overview. This archived course is available for review only.'
+                : 'A quick course grading overview. Open the full gradebook or SpeedGrader from assignment actions when deeper work is needed.'}
             </p>
           </div>
           <button
@@ -151,6 +161,7 @@ function StaffGradebookSummary({
               gradebook={gradebook}
               onOpenFullGradebook={(assignmentId) => onOpenFullGradebook(assignmentId)}
               onOpenSpeedGrader={onOpenSpeedGrader}
+              readOnly={readOnly}
             />
           ))
         )}

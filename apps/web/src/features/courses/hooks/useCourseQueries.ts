@@ -16,6 +16,13 @@ export const useTeachingCourses = (enabled = true) =>
     enabled,
   });
 
+export const useCoursesList = (params?: { status?: string }, enabled = true) =>
+  useQuery({
+    queryKey: queryKeys.courses.list(params),
+    queryFn: () => canonicalCoursesApi.getCourses(params),
+    enabled,
+  });
+
 export const useAdminCourses = (params?: { page?: number; size?: number }, enabled = true) =>
   useQuery({
     queryKey: queryKeys.courses.adminList(params),
@@ -52,7 +59,6 @@ export const useCourseSettings = (
             descriptionUk: adminCourse.descriptionUk,
             descriptionEn: adminCourse.descriptionEn,
             syllabus: null,
-            visibility: 'DRAFT',
             status: adminCourse.status,
             ownerId: adminCourse.ownerId,
             updatedAt: adminCourse.updatedAt,
@@ -127,6 +133,26 @@ export const useArchiveCourse = (courseId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => canonicalCoursesApi.archiveCourse(courseId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
+    },
+  });
+};
+
+export const usePublishCourse = (courseId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => canonicalCoursesApi.publishCourse(courseId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
+    },
+  });
+};
+
+export const useUnpublishCourse = (courseId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => canonicalCoursesApi.unpublishCourse(courseId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
     },

@@ -66,7 +66,7 @@ public class CanonicalGradebookService {
 
   @Transactional(readOnly = true)
   public TeacherGradebookDto teacherGradebook(UUID courseId, UUID userId) {
-    accessService.requireTeacher(courseId, userId);
+    accessService.requireTeacherMutation(courseId, userId);
     List<CourseMember> students = courseMemberRepository.findByCourseIdAndRoleInCourse(courseId, com.university.lms.course.domain.CourseRole.STUDENT)
         .stream()
         .filter(CourseMember::isActive)
@@ -116,7 +116,7 @@ public class CanonicalGradebookService {
 
   @Transactional
   public void updateCells(UUID courseId, UUID userId, GradebookCellUpdateRequest request) {
-    accessService.requireTeacher(courseId, userId);
+    accessService.requireTeacherMutation(courseId, userId);
     for (GradebookCellUpdateRequest.CellUpdate cell : request.cells()) {
       Assignment assignment = assignmentRepository.findById(cell.assignmentId())
           .orElseThrow(() -> ApiException.notFound("Assignment"));
@@ -139,7 +139,7 @@ public class CanonicalGradebookService {
 
   @Transactional
   public void publish(UUID courseId, UUID userId, GradebookPublishRequest request) {
-    accessService.requireTeacher(courseId, userId);
+    accessService.requireTeacherMutation(courseId, userId);
     List<GradebookEntry> entries = gradebookEntryRepository
         .findByCourseIdAndAssignmentIdIn(courseId, request.assignmentIds())
         .stream()

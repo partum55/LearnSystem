@@ -42,7 +42,7 @@ export function AdminDashboard({ currentUser }: { currentUser: UserProfileDto })
 
   const userCount = users?.totalElements ?? users?.content?.length ?? 0;
   const courseCount = courses?.totalElements ?? courses?.content?.length ?? 0;
-  const publishedCourses = courses?.content?.filter((course) => course.isPublished).length ?? 0;
+  const publishedCourses = courses?.content?.filter((course) => course.status === 'PUBLISHED').length ?? 0;
   const healthyServices = health?.healthyServices ?? 0;
   const unhealthyServices = health?.unhealthyServices ?? 0;
 
@@ -283,7 +283,6 @@ function AdminCourseRow({ course }: { course: AdminCourseDto }) {
             <span className={course.status === 'PUBLISHED' ? 'badge badge-success' : course.status === 'ARCHIVED' ? 'badge badge-error' : 'badge badge-warning'}>
               {course.status}
             </span>
-            <span className={course.isPublished ? 'badge badge-success' : 'badge badge-warning'}>{course.isPublished ? 'published' : 'unpublished'}</span>
           </div>
         </td>
         <td className="border-b px-3 py-3" style={{ borderColor: 'var(--border-subtle)' }}>
@@ -349,7 +348,7 @@ function CourseAdminActionModal({
   const requiredText = action === 'archive' ? 'ARCHIVE' : action === 'delete' ? 'DELETE' : 'RESTORE';
   const title = action === 'archive' ? 'Archive Course' : action === 'delete' ? 'Delete Course' : 'Restore Course';
   const body = action === 'delete'
-    ? 'Delete is currently a protected soft-delete: the course is archived, while modules, assignments, submissions, and grades stay stored.'
+    ? 'This permanently deletes the course and its associated course data. This action cannot be undone.'
     : action === 'archive'
       ? 'The course will be hidden from active course flows while modules, assignments, submissions, and grades stay stored.'
       : 'The archived course will be restored as a draft so admins can review it before publishing.';

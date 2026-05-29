@@ -1,7 +1,6 @@
 package com.university.lms.course.dto;
 
 import com.university.lms.common.domain.CourseStatus;
-import com.university.lms.common.domain.CourseVisibility;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -21,7 +20,6 @@ public class CourseSettingsDto {
   private String descriptionUk;
   private String descriptionEn;
   private String syllabus;
-  private CourseVisibility visibility;
   private CourseStatus status;
   private UUID ownerId;
   private LocalDateTime updatedAt;

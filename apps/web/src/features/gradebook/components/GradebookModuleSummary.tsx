@@ -15,6 +15,7 @@ interface GradebookModuleSummaryProps {
   gradebook: TeacherGradebookDto;
   onOpenFullGradebook: (assignmentId: string) => void;
   onOpenSpeedGrader: (assignmentId: string) => void;
+  readOnly?: boolean;
 }
 
 export function GradebookModuleSummary({
@@ -22,6 +23,7 @@ export function GradebookModuleSummary({
   gradebook,
   onOpenFullGradebook,
   onOpenSpeedGrader,
+  readOnly = false,
 }: GradebookModuleSummaryProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const { assignments, grades, students } = gradebook;
@@ -125,6 +127,7 @@ export function GradebookModuleSummary({
                     assignmentId={asg.id}
                     onOpenFullGradebook={() => onOpenFullGradebook(asg.id)}
                     onOpenSpeedGrader={() => onOpenSpeedGrader(asg.id)}
+                    readOnly={readOnly}
                   />
                 </div>
 

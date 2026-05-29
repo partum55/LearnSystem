@@ -13,12 +13,14 @@ interface GradebookAssignmentActionsProps {
   assignmentId: string;
   onOpenFullGradebook: () => void;
   onOpenSpeedGrader: () => void;
+  readOnly?: boolean;
 }
 
 export function GradebookAssignmentActions({
   assignmentId,
   onOpenFullGradebook,
   onOpenSpeedGrader,
+  readOnly = false,
 }: GradebookAssignmentActionsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -77,17 +79,19 @@ export function GradebookAssignmentActions({
               <TableCellsIcon className="h-4 w-4 shrink-0 text-[var(--text-faint)]" />
               <span>Open full gradebook filtered</span>
             </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsOpen(false);
-                onOpenSpeedGrader();
-              }}
-              className="w-full flex items-center gap-2.5 px-4 py-2 text-left text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-base)] transition cursor-pointer"
-            >
-              <SparklesIcon className="h-4 w-4 shrink-0 text-[var(--text-faint)]" />
-              <span>Open SpeedGrader</span>
-            </button>
+            {!readOnly && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsOpen(false);
+                  onOpenSpeedGrader();
+                }}
+                className="w-full flex items-center gap-2.5 px-4 py-2 text-left text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-base)] transition cursor-pointer"
+              >
+                <SparklesIcon className="h-4 w-4 shrink-0 text-[var(--text-faint)]" />
+                <span>Open SpeedGrader</span>
+              </button>
+            )}
           </div>
         </div>
       )}

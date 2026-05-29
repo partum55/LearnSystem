@@ -1,7 +1,6 @@
 package com.university.lms.course.domain;
 
 import com.university.lms.common.domain.CourseStatus;
-import com.university.lms.common.domain.CourseVisibility;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -58,12 +57,6 @@ public class Course {
   // Owner relationship - stored as UUID to avoid tight coupling
   @Column(name = "owner_id", nullable = false)
   private UUID ownerId;
-
-  @Enumerated(EnumType.STRING)
-  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-  @Column(nullable = false, columnDefinition = "learning.course_visibility")
-  @Builder.Default
-  private CourseVisibility visibility = CourseVisibility.DRAFT;
 
   @Column(length = 500)
   private String thumbnailUrl;

@@ -1,7 +1,6 @@
 package com.university.lms.course.repository;
 
 import com.university.lms.common.domain.CourseStatus;
-import com.university.lms.common.domain.CourseVisibility;
 import com.university.lms.course.domain.Course;
 import com.university.lms.course.domain.CourseRole;
 import com.university.lms.course.domain.CourseMemberStatus;
@@ -36,11 +35,11 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
   @Query("SELECT c.id FROM Course c WHERE c.ownerId = :ownerId")
   List<UUID> findIdsByOwnerId(@Param("ownerId") UUID ownerId);
 
-  /** Find published courses. */
-  Page<Course> findByStatusAndVisibility(CourseStatus status, CourseVisibility visibility, Pageable pageable);
-
   /** Find courses by status. */
   Page<Course> findByStatus(CourseStatus status, Pageable pageable);
+
+  /** Find courses by lifecycle statuses. */
+  Page<Course> findByStatusIn(Collection<CourseStatus> statuses, Pageable pageable);
 
   /** Find courses by academic year. */
   Page<Course> findByAcademicYear(String academicYear, Pageable pageable);

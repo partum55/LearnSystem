@@ -92,12 +92,19 @@ function TeacherGradebookContent({ courseId }: TeacherGradebookPageProps) {
   }, [membersPage, currentUser]);
 
   const courseRole = currentMember?.roleInCourse;
+  const normalizedCourseRole = String(courseRole || '').toUpperCase();
+  const globalRole = String(currentUser?.globalRole ?? currentUser?.role ?? '').toUpperCase();
+  const isArchived = String(overview?.status || '').toUpperCase() === 'ARCHIVED';
 
   // Staff gate check (ADMIN or Course OWNER, TEACHER, or TA)
   const isStaff = useMemo(() => {
-    if (currentUser?.role === 'ADMIN') return true;
-    return courseRole === 'OWNER' || courseRole === 'TEACHER' || courseRole === 'TA';
-  }, [currentUser, courseRole]);
+    if (globalRole === 'ADMIN') return true;
+    return normalizedCourseRole === 'OWNER' || normalizedCourseRole === 'TEACHER' || normalizedCourseRole === 'TA';
+  }, [globalRole, normalizedCourseRole]);
+  const canMutateGradebook = isArchived
+    ? globalRole === 'ADMIN' || normalizedCourseRole === 'OWNER'
+    : isStaff;
+  const readOnly = !canMutateGradebook;
 
   // Handle toggle selection inside publishing array
   const handleTogglePublishAsg = (asgId: string) => {
@@ -108,6 +115,10 @@ function TeacherGradebookContent({ courseId }: TeacherGradebookPageProps) {
 
   // Trigger POST publication to student view
   const handlePublishGrades = async () => {
+    if (readOnly) {
+      showToast('This archived course gradebook is read-only.');
+      return;
+    }
     if (selectedPublishIds.length === 0) {
       showToast('Select at least one assignment to release.');
       return;
@@ -221,6 +232,7 @@ function TeacherGradebookContent({ courseId }: TeacherGradebookPageProps) {
             setActiveView('speedgrader');
           }}
           onReleaseGrades={() => setPublishModalOpen(true)}
+          readOnly={readOnly}
         />
       )}
 
@@ -235,6 +247,7 @@ function TeacherGradebookContent({ courseId }: TeacherGradebookPageProps) {
             setActiveView('overview');
           }}
           onReleaseGrades={() => setPublishModalOpen(true)}
+          readOnly={readOnly}
         />
       )}
 
@@ -247,11 +260,12 @@ function TeacherGradebookContent({ courseId }: TeacherGradebookPageProps) {
             setFocusedAssignmentId(null);
             setActiveView('overview');
           }}
+          readOnly={readOnly}
         />
       )}
 
       {/* Shared Release Grades / Publication Modal */}
-      {publishModalOpen && (
+      {!readOnly && publishModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--bg-base)]/80 animate-fade-in">
           <div className="w-full max-w-md rounded-2xl bg-[var(--bg-surface)] p-6 shadow-2xl space-y-4 border border-[var(--border-default)]">
             <div className="flex items-center gap-2.5 border-b border-[var(--border-subtle)] pb-3">

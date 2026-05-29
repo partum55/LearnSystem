@@ -212,6 +212,7 @@ public class CourseDraftService {
         rejectLegacyFields(draft.course().topics(), "course.topics");
         rejectLegacyFields(draft.course().lessonBlocks(), "course.lessonBlocks");
         rejectLegacyFields(draft.course().lesson_blocks(), "course.lesson_blocks");
+        rejectLegacyFields(draft.course().visibility(), "course.visibility");
 
         if (draft.modules() == null) {
             return;

@@ -1,16 +1,19 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ArchiveBoxIcon, ArrowUturnLeftIcon, ExclamationTriangleIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { Button, Input, Loading, Modal } from '@/components';
 import {
   useArchiveCourse,
   useCourseSettings,
   useDeleteCourse,
+  usePublishCourse,
   useRestoreCourse,
+  useUnpublishCourse,
   useUpdateCourseSettings,
 } from '@/features/courses/hooks/useCourseQueries';
-import type { CourseStatus, CourseVisibility, UpdateCourseSettingsRequest } from '@/features/courses/api/canonical.types';
+import type { UpdateCourseSettingsRequest } from '@/features/courses/api/canonical.types';
 
 interface CourseAdminPermissions {
   isAdmin: boolean;
@@ -28,9 +31,6 @@ interface CourseSettingsPanelProps {
 
 type ConfirmAction = 'archive' | 'delete' | null;
 
-const statusOptions: CourseStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
-const visibilityOptions: CourseVisibility[] = ['DRAFT', 'PRIVATE', 'PUBLIC'];
-
 export function CourseSettingsPanel({ courseId, permissions, onToast }: CourseSettingsPanelProps) {
   const { data: settings, isLoading, error } = useCourseSettings(
     courseId,
@@ -39,8 +39,11 @@ export function CourseSettingsPanel({ courseId, permissions, onToast }: CourseSe
   );
   const updateSettings = useUpdateCourseSettings(courseId);
   const archiveCourse = useArchiveCourse(courseId);
+  const publishCourse = usePublishCourse(courseId);
+  const unpublishCourse = useUnpublishCourse(courseId);
   const restoreCourse = useRestoreCourse(courseId);
   const deleteCourse = useDeleteCourse(courseId);
+  const router = useRouter();
 
   const [form, setForm] = useState<UpdateCourseSettingsRequest>({
     code: '',
@@ -49,8 +52,6 @@ export function CourseSettingsPanel({ courseId, permissions, onToast }: CourseSe
     descriptionUk: '',
     descriptionEn: '',
     syllabus: '',
-    visibility: 'DRAFT',
-    status: 'DRAFT',
   });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
@@ -64,15 +65,22 @@ export function CourseSettingsPanel({ courseId, permissions, onToast }: CourseSe
       descriptionUk: settings.descriptionUk ?? '',
       descriptionEn: settings.descriptionEn ?? '',
       syllabus: settings.syllabus ?? '',
-      visibility: settings.visibility ?? 'DRAFT',
-      status: settings.status ?? 'DRAFT',
     });
   }, [settings]);
 
   const title = form.titleUk.trim() || settings?.titleUk || 'this course';
   const code = form.code.trim() || settings?.code || courseId.slice(0, 8).toUpperCase();
-  const isArchived = (settings?.status ?? form.status) === 'ARCHIVED';
-  const isBusy = updateSettings.isPending || archiveCourse.isPending || restoreCourse.isPending || deleteCourse.isPending;
+  const currentStatus = settings?.status ?? 'DRAFT';
+  const isArchived = currentStatus === 'ARCHIVED';
+  const isDraft = currentStatus === 'DRAFT';
+  const isPublished = currentStatus === 'PUBLISHED';
+  const isBusy =
+    updateSettings.isPending ||
+    archiveCourse.isPending ||
+    publishCourse.isPending ||
+    unpublishCourse.isPending ||
+    restoreCourse.isPending ||
+    deleteCourse.isPending;
 
   const canSave = useMemo(() => {
     return form.code.trim().length > 0 && form.titleUk.trim().length > 0 && !isBusy;
@@ -102,6 +110,26 @@ export function CourseSettingsPanel({ courseId, permissions, onToast }: CourseSe
     }
   };
 
+  const handlePublish = async () => {
+    setErrorMessage(null);
+    try {
+      await publishCourse.mutateAsync();
+      onToast('Course published.');
+    } catch (err) {
+      setErrorMessage(apiError(err, 'Failed to publish course.'));
+    }
+  };
+
+  const handleUnpublish = async () => {
+    setErrorMessage(null);
+    try {
+      await unpublishCourse.mutateAsync();
+      onToast('Course unpublished to draft.');
+    } catch (err) {
+      setErrorMessage(apiError(err, 'Failed to unpublish course.'));
+    }
+  };
+
   const handleRestore = async () => {
     setErrorMessage(null);
     try {
@@ -128,7 +156,8 @@ export function CourseSettingsPanel({ courseId, permissions, onToast }: CourseSe
     try {
       await deleteCourse.mutateAsync();
       setConfirmAction(null);
-      onToast('Course soft-deleted by archiving.');
+      onToast('Course permanently deleted.');
+      router.push('/courses');
     } catch (err) {
       setErrorMessage(apiError(err, 'Failed to delete course.'));
     }
@@ -168,6 +197,7 @@ export function CourseSettingsPanel({ courseId, permissions, onToast }: CourseSe
               Base course details are restricted to the owner and platform admins.
             </p>
           </div>
+          <span className={statusBadgeClass(currentStatus)}>{currentStatus}</span>
           <Button type="submit" disabled={!canSave} isLoading={updateSettings.isPending}>
             Save changes
           </Button>
@@ -200,30 +230,6 @@ export function CourseSettingsPanel({ courseId, permissions, onToast }: CourseSe
             onChange={(event) => setForm((current) => ({ ...current, titleEn: event.target.value }))}
             maxLength={255}
           />
-          <label className="input-group w-full">
-            <span className="label mb-1 block text-sm font-semibold">Status</span>
-            <select
-              className="input"
-              value={form.status}
-              onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as CourseStatus }))}
-            >
-              {statusOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </label>
-          <label className="input-group w-full">
-            <span className="label mb-1 block text-sm font-semibold">Visibility</span>
-            <select
-              className="input"
-              value={form.visibility}
-              onChange={(event) => setForm((current) => ({ ...current, visibility: event.target.value as CourseVisibility }))}
-            >
-              {visibilityOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </label>
         </div>
 
         <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -263,7 +269,7 @@ export function CourseSettingsPanel({ courseId, permissions, onToast }: CourseSe
         <section className="rounded-lg border p-5" style={{ borderColor: 'rgba(239, 68, 68, 0.22)', background: 'var(--bg-surface)' }}>
           <div className="flex items-center gap-2">
             <ExclamationTriangleIcon className="h-5 w-5" style={{ color: 'var(--fn-error)' }} />
-            <h3 className="text-sm font-semibold">Destructive Controls</h3>
+            <h3 className="text-sm font-semibold">Lifecycle Controls</h3>
           </div>
           <div className="mt-4 flex flex-col gap-2">
             {isArchived ? (
@@ -272,15 +278,27 @@ export function CourseSettingsPanel({ courseId, permissions, onToast }: CourseSe
                 Restore as draft
               </Button>
             ) : (
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={!permissions.canArchiveCourse}
-                onClick={() => setConfirmAction('archive')}
-              >
-                <ArchiveBoxIcon className="mr-2 inline-block h-4 w-4" />
-                Archive course
-              </Button>
+              <>
+                {isDraft && (
+                  <Button type="button" variant="secondary" onClick={handlePublish} isLoading={publishCourse.isPending}>
+                    Publish
+                  </Button>
+                )}
+                {isPublished && (
+                  <Button type="button" variant="secondary" onClick={handleUnpublish} isLoading={unpublishCourse.isPending}>
+                    Unpublish to draft
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={!permissions.canArchiveCourse}
+                  onClick={() => setConfirmAction('archive')}
+                >
+                  <ArchiveBoxIcon className="mr-2 inline-block h-4 w-4" />
+                  Archive course
+                </Button>
+              </>
             )}
             <Button
               type="button"
@@ -306,6 +324,17 @@ export function CourseSettingsPanel({ courseId, permissions, onToast }: CourseSe
       />
     </div>
   );
+}
+
+function statusBadgeClass(status: string) {
+  switch (status) {
+    case 'PUBLISHED':
+      return 'badge badge-success';
+    case 'ARCHIVED':
+      return 'badge';
+    default:
+      return 'badge badge-warning';
+  }
 }
 
 function TextAreaField({
@@ -386,7 +415,7 @@ function CourseActionModal({
               <p className="font-semibold">{courseTitle} ({courseCode})</p>
               {isDelete ? (
                 <p style={{ color: 'var(--text-muted)' }}>
-                  Delete is implemented as a protected soft-delete: the course is archived and hidden from active course flows. Modules, assignments, submissions, and grades remain stored for audit and recovery.
+                  Permanently delete this course and all associated data, including modules, learning items, assignments, submissions, grades, seminar attendance, and course memberships. Global users and enrollment groups are not deleted. This action cannot be undone.
                 </p>
               ) : (
                 <p style={{ color: 'var(--text-muted)' }}>

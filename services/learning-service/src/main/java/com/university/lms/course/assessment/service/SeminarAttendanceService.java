@@ -39,7 +39,7 @@ public class SeminarAttendanceService {
             throw ApiException.badRequest("INVALID_ASSIGNMENT_TYPE", "Attendance can only be managed for SEMINAR assignments");
         }
 
-        courseAccessService.requireTeacher(assignment.getCourseId(), userId);
+        courseAccessService.requireTeacherMutation(assignment.getCourseId(), userId);
 
         // Close any existing active sessions
         sessionRepository.findByAssignmentIdAndStatus(assignmentId, SeminarAttendanceSessionStatus.ACTIVE)
@@ -184,7 +184,7 @@ public class SeminarAttendanceService {
 
         // Validate course enrollment
         try {
-            courseAccessService.requireActiveMember(assignment.getCourseId(), studentUserId);
+            courseAccessService.requireStudentMutation(assignment.getCourseId(), studentUserId);
         } catch (Exception e) {
             throw ApiException.badRequest("NOT_ENROLLED", "You are not enrolled in this course");
         }
@@ -216,7 +216,7 @@ public class SeminarAttendanceService {
         Assignment assignment = assignmentRepository.findById(session.getAssignmentId())
             .orElseThrow(() -> ApiException.badRequest("ASSIGNMENT_NOT_FOUND", "Assignment not found"));
 
-        courseAccessService.requireTeacher(assignment.getCourseId(), userId);
+        courseAccessService.requireTeacherMutation(assignment.getCourseId(), userId);
 
         if (session.getStatus() == SeminarAttendanceSessionStatus.ACTIVE) {
             session.setStatus(SeminarAttendanceSessionStatus.CLOSED);

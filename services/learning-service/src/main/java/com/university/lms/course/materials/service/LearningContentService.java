@@ -76,7 +76,7 @@ public class LearningContentService {
       UUID moduleId,
       UUID userId,
       LearningItemRequest request) {
-    accessService.requireTeacher(courseId, userId);
+    accessService.requireTeacherMutation(courseId, userId);
     Module module = requireModuleInCourse(courseId, moduleId);
     LearningItemType type = request.type();
     if (type == null) {
@@ -107,7 +107,7 @@ public class LearningContentService {
       throw ApiException.notFound("Learning item");
     }
     UUID courseId = item.getModule().getCourse().getId();
-    accessService.requireTeacher(courseId, userId);
+    accessService.requireTeacherMutation(courseId, userId);
 
     if (request.type() != null) {
       if (request.type() != item.getType()) {
@@ -141,7 +141,7 @@ public class LearningContentService {
   public void archiveLearningItem(UUID learningItemId, UUID userId) {
     LearningItem item = learningItemRepository.findById(learningItemId)
         .orElseThrow(() -> ApiException.notFound("Learning item"));
-    accessService.requireTeacher(item.getModule().getCourse().getId(), userId);
+    accessService.requireTeacherMutation(item.getModule().getCourse().getId(), userId);
     if (item.getStatus() != LearningItemStatus.ARCHIVED) {
       item.setStatus(LearningItemStatus.ARCHIVED);
       learningItemRepository.save(item);
@@ -280,7 +280,7 @@ public class LearningContentService {
     if (!item.isLesson()) {
       throw ApiException.badRequest("NOT_A_LESSON", "Learning item is not a lesson");
     }
-    accessService.requireTeacher(item.getModule().getCourse().getId(), userId);
+    accessService.requireTeacherMutation(item.getModule().getCourse().getId(), userId);
     return item;
   }
 

@@ -31,7 +31,7 @@ public class CanonicalCourseMemberService {
 
   @Transactional(readOnly = true)
   public PageResponse<CourseMemberDto> list(UUID courseId, CourseRole role, Pageable pageable, UUID userId) {
-    accessService.requireTeacher(courseId, userId);
+    accessService.requireCanViewMembers(courseId);
     Page<CourseMember> page = role == null
         ? courseMemberRepository.findByCourseId(courseId, pageable)
         : courseMemberRepository.findByCourseIdAndRoleInCourse(courseId, role, pageable);
@@ -40,6 +40,7 @@ public class CanonicalCourseMemberService {
 
   @Transactional
   public CourseMemberDto upsert(UUID courseId, EnrollUserRequest request, UUID requestedBy) {
+    accessService.requireTeacherMutation(courseId, requestedBy);
     // 1. Enforce strict role validation rules
     boolean isAdmin = accessService.canOwn(courseId, requestedBy) || isGlobalAdmin(requestedBy);
     CourseRole requesterRole = null;
@@ -110,6 +111,7 @@ public class CanonicalCourseMemberService {
 
   @Transactional
   public void delete(UUID courseId, UUID userId, UUID requestedBy) {
+    accessService.requireTeacherMutation(courseId, requestedBy);
     // 1. Enforce role validation rules
     boolean isAdmin = accessService.canOwn(courseId, requestedBy) || isGlobalAdmin(requestedBy);
     CourseRole requesterRole = null;
@@ -141,6 +143,7 @@ public class CanonicalCourseMemberService {
 
   @Transactional(readOnly = true)
   public BulkPreviewResponse bulkPreview(UUID courseId, BulkPreviewRequest request, UUID requestedBy) {
+    accessService.requireTeacherMutation(courseId, requestedBy);
     // 1. Authenticate and enforce permission check
     boolean isAdmin = accessService.canOwn(courseId, requestedBy) || isGlobalAdmin(requestedBy);
     CourseRole requesterRole = null;
@@ -260,6 +263,7 @@ public class CanonicalCourseMemberService {
 
   @Transactional
   public List<CourseMemberDto> bulkConfirm(UUID courseId, BulkConfirmRequest request, UUID requestedBy) {
+    accessService.requireTeacherMutation(courseId, requestedBy);
     boolean isAdmin = accessService.canOwn(courseId, requestedBy) || isGlobalAdmin(requestedBy);
     CourseRole requesterRole = null;
 

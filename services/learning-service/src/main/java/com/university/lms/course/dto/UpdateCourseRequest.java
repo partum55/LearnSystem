@@ -1,7 +1,5 @@
 package com.university.lms.course.dto;
 
-import com.university.lms.common.domain.CourseStatus;
-import com.university.lms.common.domain.CourseVisibility;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
@@ -29,7 +27,6 @@ public class UpdateCourseRequest {
   private String descriptionEn;
   private String syllabus;
 
-  private CourseVisibility visibility;
   private String thumbnailUrl;
   @Size(max = 20, message = "Theme color must not exceed 20 characters")
   private String themeColor;
@@ -46,6 +43,4 @@ public class UpdateCourseRequest {
   @Max(value = 1000, message = "Max students must not exceed 1000")
   private Integer maxStudents;
 
-  private CourseStatus status;
-  private Boolean isPublished;
 }

@@ -2,7 +2,6 @@ package com.university.lms.course.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.university.lms.common.domain.CourseStatus;
-import com.university.lms.common.domain.CourseVisibility;
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -34,7 +33,6 @@ public class CourseDto implements Serializable {
   private UUID ownerId;
   private String ownerName; // Enriched from user service
 
-  private CourseVisibility visibility;
   private String thumbnailUrl;
   private String themeColor;
 
@@ -50,7 +48,6 @@ public class CourseDto implements Serializable {
   private Integer currentEnrollment;
 
   private CourseStatus status;
-  private Boolean isPublished;
 
   @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
   private LocalDateTime createdAt;

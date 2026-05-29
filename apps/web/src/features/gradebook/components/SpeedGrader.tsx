@@ -23,6 +23,7 @@ interface SpeedGraderProps {
   gradebook: TeacherGradebookDto;
   assignmentId: string;
   onBackToOverview: () => void;
+  readOnly?: boolean;
 }
 
 interface UnsavedCellEdit {
@@ -35,6 +36,7 @@ export function SpeedGrader({
   gradebook,
   assignmentId,
   onBackToOverview,
+  readOnly = false,
 }: SpeedGraderProps) {
   const { students, assignments, grades } = gradebook;
 
@@ -133,6 +135,7 @@ export function SpeedGrader({
 
   // Apply inputs and save cell
   const handleSaveStudentGrade = async () => {
+    if (readOnly) return;
     if (!activeStudentId || !assignment) return;
 
     const points = Number(editPoints);
@@ -176,6 +179,7 @@ export function SpeedGrader({
 
   // Keep local draft edits as backup
   const handleLocalChange = (pts: string, cmt: string) => {
+    if (readOnly) return;
     setEditPoints(pts);
     setEditComment(cmt);
 
@@ -223,6 +227,12 @@ export function SpeedGrader({
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
+      {readOnly && (
+        <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] p-3 text-xs font-semibold text-[var(--text-secondary)]">
+          This archived course is read-only. Grade edits and AI grading actions are disabled.
+        </div>
+      )}
+
       {/* Top Header Deck */}
       <header className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
@@ -235,6 +245,7 @@ export function SpeedGrader({
               <span>Back to Overview</span>
             </button>
             <span className="badge">Focused Grading Deck</span>
+            {readOnly && <span className="badge">READ ONLY</span>}
           </div>
           <h1 className="text-lg font-extrabold text-[var(--text-primary)] pt-1 truncate max-w-xl">
             SpeedGrader: <span className="text-[var(--text-secondary)] font-semibold">{assignment.title}</span>
@@ -368,6 +379,7 @@ export function SpeedGrader({
                         max={assignment.maxPoints}
                         value={editPoints}
                         onChange={(e) => handleLocalChange(e.target.value, editComment)}
+                        readOnly={readOnly}
                         placeholder="0.0"
                         className="input pr-20 font-bold text-sm bg-[var(--bg-surface)] focus:ring-1 focus:ring-[var(--border-strong)]"
                       />
@@ -389,6 +401,7 @@ export function SpeedGrader({
                       rows={4}
                       value={editComment}
                       onChange={(e) => handleLocalChange(editPoints, e.target.value)}
+                      readOnly={readOnly}
                       placeholder="Type written notes or feedback details..."
                       className="input min-h-24 resize-none text-xs bg-[var(--bg-surface)] focus:ring-1 focus:ring-[var(--border-strong)]"
                     />
@@ -402,7 +415,7 @@ export function SpeedGrader({
                   </p>
                 )}
 
-                {showAiPanel && (
+                {!readOnly && showAiPanel && (
                   <AiFeatureGate compact>
                     <div className="rounded-lg border p-4 bg-[var(--bg-base)]">
                       <AiErrorDisplay error={suggestGradeTask.error} />
@@ -488,23 +501,25 @@ export function SpeedGrader({
                   </button>
                 </div>
 
-                <div className="flex flex-wrap justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowAiPanel((current) => !current)}
-                    className="btn btn-secondary text-xs"
-                  >
-                    AI suggest grade
-                  </button>
-                  <button
-                    onClick={handleSaveStudentGrade}
-                    disabled={updateCellsMutation.isPending}
-                    className="btn btn-primary text-xs flex items-center gap-1.5 self-end sm:self-center cursor-pointer"
-                  >
-                    <CheckIcon className="h-4 w-4" />
-                    <span>{updateCellsMutation.isPending ? 'Saving...' : 'Submit Grade Draft'}</span>
-                  </button>
-                </div>
+                {!readOnly && (
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAiPanel((current) => !current)}
+                      className="btn btn-secondary text-xs"
+                    >
+                      AI suggest grade
+                    </button>
+                    <button
+                      onClick={handleSaveStudentGrade}
+                      disabled={updateCellsMutation.isPending}
+                      className="btn btn-primary text-xs flex items-center gap-1.5 self-end sm:self-center cursor-pointer"
+                    >
+                      <CheckIcon className="h-4 w-4" />
+                      <span>{updateCellsMutation.isPending ? 'Saving...' : 'Submit Grade Draft'}</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ) : (

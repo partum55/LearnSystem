@@ -2,7 +2,6 @@ import type { ListResponse, Uuid } from '@/api/types';
 import type { CourseRole, PageResponse } from '@/features/users/api/users.types';
 
 export type CourseStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | string;
-export type CourseVisibility = 'PUBLIC' | 'PRIVATE' | 'DRAFT' | string;
 export type VisibilityStatus = 'VISIBLE' | 'HIDDEN' | 'ARCHIVED' | 'LOCKED' | string;
 
 export interface UpcomingDeadlineDto {
@@ -36,6 +35,7 @@ export interface CourseOverviewDto {
   id: Uuid;
   title: string;
   description?: string | null;
+  status: CourseStatus;
   teacherName?: string | null;
   progress: number;
   grade?: number | null;
@@ -52,7 +52,6 @@ export interface AdminCourseDto {
   descriptionEn?: string | null;
   ownerId: Uuid;
   status: CourseStatus;
-  isPublished: boolean;
   createdAt?: string | null;
   updatedAt?: string | null;
 }
@@ -65,7 +64,6 @@ export interface CourseSettingsDto {
   descriptionUk?: string | null;
   descriptionEn?: string | null;
   syllabus?: string | null;
-  visibility: CourseVisibility;
   status: CourseStatus;
   ownerId: Uuid;
   updatedAt?: string | null;
@@ -78,8 +76,6 @@ export interface UpdateCourseSettingsRequest {
   descriptionUk?: string | null;
   descriptionEn?: string | null;
   syllabus?: string | null;
-  visibility?: CourseVisibility;
-  status?: CourseStatus;
 }
 
 export type LearningItemType = 'PDF' | 'LINK' | 'VIDEO' | 'FILE' | 'RTE' | 'LESSON' | string;
@@ -207,7 +203,6 @@ export interface CreateCourseRequest {
   descriptionUk?: string;
   descriptionEn?: string;
   syllabus?: string;
-  isPublished?: boolean;
   maxStudents?: number;
 }
 

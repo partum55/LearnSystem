@@ -8,7 +8,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.university.lms.common.domain.CourseStatus;
-import com.university.lms.common.domain.CourseVisibility;
 import com.university.lms.common.exception.ValidationException;
 import com.university.lms.course.domain.Course;
 import com.university.lms.course.domain.CourseMember;
@@ -51,7 +50,6 @@ class CourseServiceTest {
         .titleUk("Old title")
         .ownerId(ownerId)
         .status(CourseStatus.DRAFT)
-        .visibility(CourseVisibility.PRIVATE)
         .build();
   }
 
@@ -69,7 +67,7 @@ class CourseServiceTest {
 
     assertThat(settings.getCode()).isEqualTo("CS102");
     assertThat(settings.getTitleUk()).isEqualTo("New title");
-    assertThat(settings.getStatus()).isEqualTo(CourseStatus.PUBLISHED);
+    assertThat(settings.getStatus()).isEqualTo(CourseStatus.DRAFT);
   }
 
   @Test
@@ -127,16 +125,36 @@ class CourseServiceTest {
   }
 
   @Test
-  void deleteSoftArchivesForOwner() {
+  void deleteHardDeletesForOwner() {
     when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, ownerId))
         .thenReturn(Optional.of(member(ownerId, CourseRole.OWNER)));
-    when(courseRepository.save(any(Course.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     courseService.deleteCourse(courseId, ownerId, "TEACHER");
 
-    assertThat(course.getStatus()).isEqualTo(CourseStatus.ARCHIVED);
-    verify(courseRepository, never()).delete(any(Course.class));
+    verify(courseRepository).delete(course);
+    verify(courseRepository, never()).save(any(Course.class));
+  }
+
+  @Test
+  void createCourseDefaultsToDraft() {
+    when(courseRepository.existsByCode("CS102")).thenReturn(false);
+    when(courseRepository.save(any(Course.class))).thenAnswer(invocation -> {
+      Course saved = invocation.getArgument(0);
+      saved.setId(courseId);
+      return saved;
+    });
+
+    var created = courseService.createCourse(
+        com.university.lms.course.dto.CreateCourseRequest.builder()
+            .code("CS102")
+            .titleUk("Draft course")
+            .build(),
+        ownerId,
+        "TEACHER");
+
+    assertThat(created.getStatus()).isEqualTo(CourseStatus.DRAFT);
+    verify(courseMemberRepository).save(any(CourseMember.class));
   }
 
   @Test
@@ -180,8 +198,6 @@ class CourseServiceTest {
         .titleUk(title)
         .descriptionUk("Description")
         .syllabus("Syllabus")
-        .visibility(CourseVisibility.PUBLIC)
-        .status(CourseStatus.PUBLISHED)
         .build();
   }
 

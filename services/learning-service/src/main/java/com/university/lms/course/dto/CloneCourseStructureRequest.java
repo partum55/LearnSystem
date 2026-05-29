@@ -1,6 +1,5 @@
 package com.university.lms.course.dto;
 
-import com.university.lms.common.domain.CourseVisibility;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -35,7 +34,6 @@ public class CloneCourseStructureRequest {
   private String descriptionEn;
   private String syllabus;
 
-  private CourseVisibility visibility;
   private String thumbnailUrl;
 
   @Size(max = 20, message = "Theme color must not exceed 20 characters")
@@ -48,7 +46,6 @@ public class CloneCourseStructureRequest {
   private String academicYear;
 
   private Integer maxStudents;
-  private Boolean isPublished;
 
   /** Copy assignment/module due and publish dates. Disabled by default for new semesters. */
   @Builder.Default private Boolean copyScheduleDates = false;

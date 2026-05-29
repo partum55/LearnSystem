@@ -26,6 +26,7 @@ interface GradebookOverviewProps {
   onOpenFullGradebook: (assignmentId?: string) => void;
   onOpenSpeedGrader: (assignmentId: string) => void;
   onReleaseGrades: () => void;
+  readOnly?: boolean;
 }
 
 export function GradebookOverview({
@@ -36,6 +37,7 @@ export function GradebookOverview({
   onOpenFullGradebook,
   onOpenSpeedGrader,
   onReleaseGrades,
+  readOnly = false,
 }: GradebookOverviewProps) {
   const { students, assignments, grades } = gradebook;
   const [exporting, setExporting] = useState(false);
@@ -78,12 +80,15 @@ export function GradebookOverview({
             <span className="badge">
               {courseRole ?? 'STAFF'} AREA
             </span>
+            {readOnly && <span className="badge">READ ONLY</span>}
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
             Gradebook Overview
           </h1>
           <p className="text-sm text-[var(--text-muted)] max-w-xl">
-            Evaluate and grade students. Review general progress, release drafts to students, or jump into the Excel-like spreadsheet.
+            {readOnly
+              ? 'Review archived course grades and student progress without changing records.'
+              : 'Evaluate and grade students. Review general progress, release drafts to students, or jump into the Excel-like spreadsheet.'}
           </p>
         </div>
 
@@ -98,13 +103,15 @@ export function GradebookOverview({
             {exporting ? 'Exporting...' : 'Export Excel'}
           </button>
           
-          <button
-            onClick={onReleaseGrades}
-            className="btn btn-secondary text-xs flex items-center gap-1.5 cursor-pointer"
-          >
-            <CheckBadgeIcon className="h-4.5 w-4.5 text-[var(--text-secondary)]" />
-            <span>Release Grades</span>
-          </button>
+          {!readOnly && (
+            <button
+              onClick={onReleaseGrades}
+              className="btn btn-secondary text-xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <CheckBadgeIcon className="h-4.5 w-4.5 text-[var(--text-secondary)]" />
+              <span>Release Grades</span>
+            </button>
+          )}
 
           <button
             onClick={() => onOpenFullGradebook()}
@@ -136,7 +143,9 @@ export function GradebookOverview({
             {needsGradingList.map((item) => (
               <div
                 key={`${item.studentId}_${item.assignmentId}`}
-                onClick={() => onOpenSpeedGrader(item.assignmentId)}
+                onClick={() => {
+                  if (!readOnly) onOpenSpeedGrader(item.assignmentId);
+                }}
                 className="px-5 py-3 hover:bg-[var(--bg-base)]/50 transition cursor-pointer flex items-center justify-between text-xs"
               >
                 <div className="space-y-1 min-w-0 pr-4">
@@ -152,9 +161,11 @@ export function GradebookOverview({
                       {item.assignmentTitle}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-[var(--border-subtle)] p-1 bg-[var(--bg-surface)] hover:bg-[var(--bg-active)] hover:text-[var(--text-primary)] transition text-[var(--text-secondary)]">
-                    <ArrowRightIcon className="h-4 w-4" />
-                  </div>
+                  {!readOnly && (
+                    <div className="rounded-lg border border-[var(--border-subtle)] p-1 bg-[var(--bg-surface)] hover:bg-[var(--bg-active)] hover:text-[var(--text-primary)] transition text-[var(--text-secondary)]">
+                      <ArrowRightIcon className="h-4 w-4" />
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -179,6 +190,7 @@ export function GradebookOverview({
                 gradebook={gradebook}
                 onOpenFullGradebook={onOpenFullGradebook}
                 onOpenSpeedGrader={onOpenSpeedGrader}
+                readOnly={readOnly}
               />
             ))}
           </div>

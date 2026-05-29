@@ -136,17 +136,21 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
   }, [members, currentUser]);
 
   const courseRole = currentCourseMember?.roleInCourse;
+  const courseStatus = String(overview?.status || 'DRAFT').toUpperCase();
+  const isArchived = courseStatus === 'ARCHIVED';
 
   // Fine-grained permission flags
   const isAdmin = globalRole === 'ADMIN';
   const isOwner = String(courseRole).toUpperCase() === 'OWNER';
   const isTeacher = String(courseRole).toUpperCase() === 'TEACHER';
   const isTA = String(courseRole).toUpperCase() === 'TA';
+  const hasArchivedMutationAccess = isAdmin || isOwner;
 
-  const canManageStudents = isAdmin || isOwner || isTeacher;
-  const canManageStaff = isAdmin || isOwner;
-  const canManageCourseContent = isAdmin || isOwner || isTeacher;
+  const canManageStudents = isArchived ? hasArchivedMutationAccess : isAdmin || isOwner || isTeacher;
+  const canManageStaff = isArchived ? hasArchivedMutationAccess : isAdmin || isOwner;
+  const canManageCourseContent = isArchived ? hasArchivedMutationAccess : isAdmin || isOwner || isTeacher;
   const canAccessTeacherTools = isAdmin || isOwner || isTeacher || isTA;
+  const canMutateGrades = isArchived ? hasArchivedMutationAccess : canAccessTeacherTools;
   const canManageCourseSettings = isAdmin || isOwner;
   const canArchiveCourse = isAdmin || isOwner;
   const canDeleteCourse = isAdmin || isOwner;
@@ -348,9 +352,24 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
         courseId={courseId}
         title={overview.title}
         description={overview.description}
+        status={courseStatus}
         progress={overview.progress}
         courseRole={courseRole}
       />
+
+      {isArchived && (
+        <section
+          className="rounded-lg border p-4"
+          style={{ borderColor: 'var(--border-default)', background: 'var(--bg-surface)' }}
+        >
+          <h2 className="text-sm font-semibold">This course is archived.</h2>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+            {hasArchivedMutationAccess
+              ? 'You can restore, edit, or delete this archived course.'
+              : 'This course is read-only.'}
+          </p>
+        </section>
+      )}
 
       {/* Tab bar Navigation */}
       <nav className="flex flex-wrap gap-2 border-b pb-0" style={{ borderColor: 'var(--border-default)' }}>
@@ -415,6 +434,7 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
         <GradesPanel
           courseId={courseId}
           isCourseStaff={canAccessTeacherTools}
+          readOnly={!canMutateGrades}
           courseRole={courseRole || null}
           modules={modules}
           gradebook={gradebook}

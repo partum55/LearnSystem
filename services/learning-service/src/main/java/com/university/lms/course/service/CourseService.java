@@ -1,7 +1,6 @@
 package com.university.lms.course.service;
 
 import com.university.lms.common.domain.CourseStatus;
-import com.university.lms.common.domain.CourseVisibility;
 import com.university.lms.common.dto.PageResponse;
 import com.university.lms.common.exception.ResourceNotFoundException;
 import com.university.lms.common.exception.ValidationException;
@@ -44,14 +43,14 @@ public class CourseService {
   public CourseDto getCourseById(UUID id, UUID userId, String userRole) {
     log.debug("Fetching course by ID: {}", id);
     Course course = findCourseById(id);
-    enforceCourseVisibility(course, userId, userRole);
+    enforceCourseAccess(course, userId, userRole);
     return courseMapper.toDto(course);
   }
 
   /** Get syllabus for a course. */
   public CourseSyllabusDto getCourseSyllabus(UUID id, UUID userId, String userRole) {
     Course course = findCourseById(id);
-    enforceCourseVisibility(course, userId, userRole);
+    enforceCourseAccess(course, userId, userRole);
     return CourseSyllabusDto.builder()
         .courseId(course.getId())
         .syllabus(course.getSyllabus())
@@ -78,15 +77,6 @@ public class CourseService {
   public PageResponse<CourseDto> getAllCourses(Pageable pageable) {
     log.debug("Fetching all courses with pagination");
     Page<Course> coursePage = courseRepository.findAll(pageable);
-    return mapToPageResponse(coursePage);
-  }
-
-  /** Get published courses. */
-  public PageResponse<CourseDto> getPublishedCourses(
-      CourseVisibility visibility, Pageable pageable) {
-    log.debug("Fetching published courses with visibility: {}", visibility);
-    Page<Course> coursePage =
-        courseRepository.findByStatusAndVisibility(CourseStatus.PUBLISHED, visibility, pageable);
     return mapToPageResponse(coursePage);
   }
 
@@ -218,15 +208,11 @@ public class CourseService {
       throw new AccessDeniedException("Course owner or ADMIN access is required");
     }
 
-    course.setStatus(CourseStatus.ARCHIVED);
-    courseRepository.save(course);
-    log.info("Course soft-deleted by archiving: {}", id);
+    courseRepository.delete(course);
+    log.info("Course hard-deleted: {}", id);
   }
 
-  /**
-   * Delete all course-related data for the given user. This includes courses owned by the user and
-   * all user enrollments.
-   */
+  /** Delete all course-related data for the given user. */
   @Transactional
   @CacheEvict(value = "courses", allEntries = true)
   public void deleteUserData(UUID userId) {
@@ -254,7 +240,10 @@ public class CourseService {
       throw new AccessDeniedException("Course owner or ADMIN access is required");
     }
 
-    
+    if (course.getStatus() != CourseStatus.DRAFT) {
+      throw new ValidationException("Only draft courses can be published");
+    }
+
     course.setStatus(CourseStatus.PUBLISHED);
     Course updatedCourse = courseRepository.save(course);
 
@@ -274,7 +263,10 @@ public class CourseService {
       throw new AccessDeniedException("Course owner or ADMIN access is required");
     }
 
-    
+    if (course.getStatus() != CourseStatus.PUBLISHED) {
+      throw new ValidationException("Only published courses can be unpublished");
+    }
+
     course.setStatus(CourseStatus.DRAFT);
     Course updatedCourse = courseRepository.save(course);
 
@@ -293,11 +285,12 @@ public class CourseService {
       throw new AccessDeniedException("Course owner or ADMIN access is required");
     }
 
-    if (course.getStatus() != CourseStatus.ARCHIVED) {
-      course.setStatus(CourseStatus.ARCHIVED);
-      
-      course = courseRepository.save(course);
+    if (course.getStatus() == CourseStatus.ARCHIVED) {
+      return courseMapper.toDto(course);
     }
+
+    course.setStatus(CourseStatus.ARCHIVED);
+    course = courseRepository.save(course);
     log.info("Course archived successfully: {}", id);
     return courseMapper.toDto(course);
   }
@@ -333,12 +326,6 @@ public class CourseService {
     course.setDescriptionUk(blankToNull(request.getDescriptionUk()));
     course.setDescriptionEn(blankToNull(request.getDescriptionEn()));
     course.setSyllabus(blankToNull(request.getSyllabus()));
-    if (request.getVisibility() != null) {
-      course.setVisibility(request.getVisibility());
-    }
-    if (request.getStatus() != null) {
-      course.setStatus(request.getStatus());
-    }
 
     return toSettingsDto(courseRepository.save(course));
   }
@@ -386,15 +373,23 @@ public class CourseService {
     return isAdmin(userRole) || isCourseOwner(courseId, userId);
   }
 
-  private void enforceCourseVisibility(Course course, UUID userId, String userRole) {
-    boolean isAdmin = isAdmin(userRole);
-    boolean canManage = canUserManageCourse(course, userId, userRole);
-
-    if (course.getStatus() == CourseStatus.PUBLISHED) {
+  private void enforceCourseAccess(Course course, UUID userId, String userRole) {
+    if (isAdmin(userRole)) {
       return;
     }
 
-    if (!isAdmin && !canManage) {
+    CourseMember member =
+        courseMemberRepository
+            .findByCourseIdAndUserId(course.getId(), userId)
+            .filter(CourseMember::isActive)
+            .orElse(null);
+
+    if (member == null) {
+      throw new ValidationException("Course is not available");
+    }
+
+    if (member.getRoleInCourse() == com.university.lms.course.domain.CourseRole.STUDENT
+        && course.getStatus() == CourseStatus.DRAFT) {
       throw new ValidationException("Course is not available");
     }
   }
@@ -451,7 +446,6 @@ public class CourseService {
         .descriptionUk(course.getDescriptionUk())
         .descriptionEn(course.getDescriptionEn())
         .syllabus(course.getSyllabus())
-        .visibility(course.getVisibility())
         .status(course.getStatus())
         .ownerId(course.getOwnerId())
         .updatedAt(course.getUpdatedAt())

@@ -1,6 +1,5 @@
 package com.university.lms.course.service;
 
-import com.university.lms.common.domain.CourseStatus;
 import com.university.lms.course.domain.*;
 import com.university.lms.course.domain.ModuleStatus;
 import com.university.lms.course.dto.*;
@@ -26,7 +25,6 @@ public class CourseMapper {
         .descriptionEn(course.getDescriptionEn())
         .syllabus(course.getSyllabus())
         .ownerId(course.getOwnerId())
-        .visibility(course.getVisibility())
         .thumbnailUrl(course.getThumbnailUrl())
         .themeColor(course.getThemeColor())
         .startDate(course.getStartDate())
@@ -36,7 +34,6 @@ public class CourseMapper {
         .maxStudents(course.getMaxStudents())
         .currentEnrollment(course.getCurrentEnrollment())
         .status(course.getStatus())
-        .isPublished(course.getStatus() == CourseStatus.PUBLISHED)
         .createdAt(course.getCreatedAt())
         .updatedAt(course.getUpdatedAt())
         .hasCapacity(course.hasCapacity())
@@ -59,10 +56,6 @@ public class CourseMapper {
         .descriptionEn(request.getDescriptionEn())
         .syllabus(request.getSyllabus())
         .ownerId(ownerId)
-        .visibility(
-            request.getVisibility() != null
-                ? request.getVisibility()
-                : com.university.lms.common.domain.CourseVisibility.DRAFT)
         .thumbnailUrl(request.getThumbnailUrl())
         .themeColor(request.getThemeColor())
         .startDate(request.getStartDate())
@@ -70,10 +63,7 @@ public class CourseMapper {
         .academicYear(request.getAcademicYear())
         .departmentId(request.getDepartmentId())
         .maxStudents(request.getMaxStudents())
-        .status(
-            request.getStatus() != null
-                ? request.getStatus()
-                : com.university.lms.common.domain.CourseStatus.DRAFT)
+        .status(com.university.lms.common.domain.CourseStatus.DRAFT)
         .build();
   }
 
@@ -87,7 +77,6 @@ public class CourseMapper {
     if (request.getDescriptionUk() != null) course.setDescriptionUk(request.getDescriptionUk());
     if (request.getDescriptionEn() != null) course.setDescriptionEn(request.getDescriptionEn());
     if (request.getSyllabus() != null) course.setSyllabus(request.getSyllabus());
-    if (request.getVisibility() != null) course.setVisibility(request.getVisibility());
     if (request.getThumbnailUrl() != null) course.setThumbnailUrl(request.getThumbnailUrl());
     if (request.getThemeColor() != null) course.setThemeColor(request.getThemeColor());
     if (request.getStartDate() != null) course.setStartDate(request.getStartDate());
@@ -95,7 +84,6 @@ public class CourseMapper {
     if (request.getAcademicYear() != null) course.setAcademicYear(request.getAcademicYear());
     if (request.getDepartmentId() != null) course.setDepartmentId(request.getDepartmentId());
     if (request.getMaxStudents() != null) course.setMaxStudents(request.getMaxStudents());
-    if (request.getStatus() != null) course.setStatus(request.getStatus());
   }
 
   public CourseMemberDto toDto(CourseMember member) {

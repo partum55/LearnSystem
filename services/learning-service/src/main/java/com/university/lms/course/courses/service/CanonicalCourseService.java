@@ -38,6 +38,7 @@ import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -67,6 +68,7 @@ public class CanonicalCourseService {
         .toList();
     List<CourseSummaryDto> courses = memberships.stream()
         .map(CourseMember::getCourse)
+        .filter(course -> course.getStatus() == CourseStatus.PUBLISHED)
         .map(course -> courseSummary(course, userId))
         .toList();
     List<UUID> courseIds = memberships.stream().map(m -> m.getCourse().getId()).toList();
@@ -90,6 +92,7 @@ public class CanonicalCourseService {
         .stream()
         .filter(CourseMember::isStudent)
         .map(CourseMember::getCourse)
+        .filter(course -> course.getStatus() == CourseStatus.PUBLISHED)
         .map(course -> courseSummary(course, userId))
         .toList();
   }
@@ -99,6 +102,27 @@ public class CanonicalCourseService {
     return courseMemberRepository.findActiveEnrollmentsForUser(userId, PageRequest.of(0, 200))
         .stream()
         .filter(member -> member.isOwner() || member.isTeacher() || member.isTA())
+        .map(CourseMember::getCourse)
+        .filter(course -> course.getStatus() == CourseStatus.DRAFT || course.getStatus() == CourseStatus.PUBLISHED)
+        .map(course -> courseSummary(course, userId))
+        .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public List<CourseSummaryDto> courses(UUID userId, String globalRole, CourseStatus status) {
+    if ("ADMIN".equalsIgnoreCase(globalRole)) {
+      List<Course> courses = status == null
+          ? courseRepository.findByStatusIn(List.of(CourseStatus.DRAFT, CourseStatus.PUBLISHED), PageRequest.of(0, 500)).getContent()
+          : courseRepository.findByStatus(status, PageRequest.of(0, 500)).getContent();
+      return courses.stream()
+          .map(course -> courseSummary(course, userId))
+          .toList();
+    }
+
+    Set<CourseStatus> activeStatuses = Set.of(CourseStatus.DRAFT, CourseStatus.PUBLISHED);
+    return courseMemberRepository.findActiveEnrollmentsForUser(userId, PageRequest.of(0, 500))
+        .stream()
+        .filter(member -> isVisibleInList(member, status, activeStatuses))
         .map(CourseMember::getCourse)
         .map(course -> courseSummary(course, userId))
         .toList();
@@ -140,6 +164,7 @@ public class CanonicalCourseService {
         course.getId(),
         title(course),
         description(course),
+        course.getStatus().name(),
         teacherName(course),
         progress(courseId, userId),
         courseGrade(courseId, userId),
@@ -166,7 +191,7 @@ public class CanonicalCourseService {
 
   @Transactional
   public CourseModuleDto createModule(UUID courseId, UUID userId, ModuleRequest request) {
-    accessService.requireTeacher(courseId, userId);
+    accessService.requireTeacherMutation(courseId, userId);
     Course course = courseRepository.findById(courseId)
         .orElseThrow(() -> ApiException.notFound("Course"));
     Module module = Module.builder()
@@ -183,7 +208,7 @@ public class CanonicalCourseService {
   public CourseModuleDto updateModule(UUID moduleId, UUID userId, ModuleRequest request) {
     Module module = moduleRepository.findById(moduleId)
         .orElseThrow(() -> ApiException.notFound("Module"));
-    accessService.requireTeacher(module.getCourse().getId(), userId);
+    accessService.requireTeacherMutation(module.getCourse().getId(), userId);
     module.setTitle(request.title());
     module.setDescription(request.description());
     if (request.order() != null) {
@@ -199,7 +224,7 @@ public class CanonicalCourseService {
   public void deleteModule(UUID moduleId, UUID userId) {
     Module module = moduleRepository.findById(moduleId)
         .orElseThrow(() -> ApiException.notFound("Module"));
-    accessService.requireTeacher(module.getCourse().getId(), userId);
+    accessService.requireTeacherMutation(module.getCourse().getId(), userId);
     moduleRepository.delete(module);
   }
 
@@ -235,6 +260,28 @@ public class CanonicalCourseService {
         teacherName(course),
         progress(course.getId(), userId),
         courseGrade(course.getId(), userId));
+  }
+
+  private boolean isVisibleInList(
+      CourseMember member,
+      CourseStatus requestedStatus,
+      Set<CourseStatus> activeStatuses) {
+    Course course = member.getCourse();
+    CourseStatus status = course.getStatus() == null ? CourseStatus.DRAFT : course.getStatus();
+    CourseRole role = member.getRoleInCourse();
+
+    if (requestedStatus != null && status != requestedStatus) {
+      return false;
+    }
+    if (requestedStatus == null && !activeStatuses.contains(status)) {
+      return false;
+    }
+
+    if (role == CourseRole.STUDENT) {
+      return status == CourseStatus.PUBLISHED || status == CourseStatus.ARCHIVED;
+    }
+
+    return role == CourseRole.OWNER || role == CourseRole.TEACHER || role == CourseRole.TA;
   }
 
   private UpcomingDeadlineDto upcomingDeadline(Assignment assignment, Course course) {

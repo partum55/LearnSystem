@@ -1,7 +1,5 @@
 package com.university.lms.course.dto;
 
-import com.university.lms.common.domain.CourseStatus;
-import com.university.lms.common.domain.CourseVisibility;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -29,6 +27,4 @@ public class UpdateCourseSettingsRequest {
   private String descriptionUk;
   private String descriptionEn;
   private String syllabus;
-  private CourseVisibility visibility;
-  private CourseStatus status;
 }

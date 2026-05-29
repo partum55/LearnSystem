@@ -6,6 +6,7 @@ interface CourseHeaderProps {
   courseId: string;
   title: string;
   description?: string | null;
+  status?: string | null;
   progress?: number | null;
   courseRole?: string | null;
 }
@@ -18,16 +19,19 @@ export function CourseHeader({
   courseId,
   title,
   description,
+  status,
   progress,
   courseRole,
 }: CourseHeaderProps) {
   const progressValue = Math.max(0, Math.min(100, progress ?? 0));
+  const normalizedStatus = String(status || 'DRAFT').toUpperCase();
 
   return (
     <header className="rounded-lg border px-5 py-5 md:px-6" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-surface)' }}>
       <div className="max-w-4xl">
         <div className="flex flex-wrap gap-2">
           <span className="badge">Course code: {courseCode(courseId)}</span>
+          <span className={statusBadgeClass(normalizedStatus)}>{normalizedStatus}</span>
           {courseRole && <span className="badge">{courseRole}</span>}
         </div>
         <h1 className="mt-4 text-3xl font-semibold md:text-4xl">{title}</h1>
@@ -49,4 +53,15 @@ export function CourseHeader({
       </div>
     </header>
   );
+}
+
+function statusBadgeClass(status: string) {
+  switch (status) {
+    case 'PUBLISHED':
+      return 'badge badge-success';
+    case 'ARCHIVED':
+      return 'badge';
+    default:
+      return 'badge badge-warning';
+  }
 }

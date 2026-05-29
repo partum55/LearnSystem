@@ -25,6 +25,7 @@ public class CourseGroupService {
 
   @Transactional(readOnly = true)
   public List<EnrollmentGroupDto> listCourseGroups(UUID courseId) {
+    accessService.requireCourseAccess(courseId, requestUserContext.requireUserId());
     return courseGroupRepository.findByCourseId(courseId).stream()
         .map(cg -> {
           EnrollmentGroup group = cg.getGroup();
@@ -43,7 +44,7 @@ public class CourseGroupService {
   @Transactional
   public void enrollGroupToCourse(UUID courseId, UUID groupId) {
     UUID requesterId = requestUserContext.requireUserId();
-    accessService.requireTeacher(courseId, requesterId);
+    accessService.requireTeacherMutation(courseId, requesterId);
 
     Course course = courseRepository.findById(courseId)
         .orElseThrow(() -> com.university.lms.course.common.error.ApiException.notFound("Course not found"));
@@ -85,7 +86,7 @@ public class CourseGroupService {
   @Transactional
   public void unenrollGroupFromCourse(UUID courseId, UUID groupId) {
     UUID requesterId = requestUserContext.requireUserId();
-    accessService.requireTeacher(courseId, requesterId);
+    accessService.requireTeacherMutation(courseId, requesterId);
 
     if (!courseGroupRepository.existsByCourseIdAndGroupId(courseId, groupId)) {
       throw com.university.lms.course.common.error.ApiException.notFound("Group enrollment not found in this course");

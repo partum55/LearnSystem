@@ -71,7 +71,7 @@ public class CanonicalAssignmentService {
       UUID moduleId,
       UUID userId,
       AssignmentRequest request) {
-    accessService.requireTeacher(courseId, userId);
+    accessService.requireTeacherMutation(courseId, userId);
     requireModuleInCourse(courseId, moduleId);
     Map<String, Object> settings = settingsFor(request);
     validateAssignmentRequest(request.type(), settings);
@@ -96,7 +96,7 @@ public class CanonicalAssignmentService {
   @Transactional
   public AssignmentDetailDto updateAssignment(UUID assignmentId, UUID userId, AssignmentRequest request) {
     Assignment assignment = requireAssignment(assignmentId);
-    accessService.requireTeacher(assignment.getCourseId(), userId);
+    accessService.requireTeacherMutation(assignment.getCourseId(), userId);
     AssignmentType currentType = assignment.getAssignmentType();
     if (request.type() != null && request.type() != currentType) {
       throw ApiException.conflict(
@@ -125,7 +125,7 @@ public class CanonicalAssignmentService {
   public SubmissionDto editSubmission(UUID submissionId, UUID userId, SubmissionRequest request) {
     Submission submission = requireOwnedSubmission(submissionId, userId);
     Assignment assignment = requireAssignment(submission.getAssignmentId());
-    accessService.requireStudent(assignment.getCourseId(), userId);
+    accessService.requireStudentMutation(assignment.getCourseId(), userId);
     requireAvailableForStudent(assignment);
     requireMutableSubmission(submission);
     if (!assignment.acceptsLateSubmission()) {
@@ -155,7 +155,7 @@ public class CanonicalAssignmentService {
   public void withdrawSubmission(UUID submissionId, UUID userId) {
     Submission submission = requireOwnedSubmission(submissionId, userId);
     Assignment assignment = requireAssignment(submission.getAssignmentId());
-    accessService.requireStudent(assignment.getCourseId(), userId);
+    accessService.requireStudentMutation(assignment.getCourseId(), userId);
     requireAvailableForStudent(assignment);
     requireMutableSubmission(submission);
     Map<String, Object> settings = assignmentSettingsOf(assignment);
@@ -177,7 +177,7 @@ public class CanonicalAssignmentService {
   @Transactional
   public void deleteAssignment(UUID assignmentId, UUID userId) {
     Assignment assignment = requireAssignment(assignmentId);
-    accessService.requireTeacher(assignment.getCourseId(), userId);
+    accessService.requireTeacherMutation(assignment.getCourseId(), userId);
     assignment.setStatus(AssignmentStatus.ARCHIVED);
     assignmentRepository.save(assignment);
   }
@@ -189,7 +189,7 @@ public class CanonicalAssignmentService {
       String expectedType,
       SubmissionRequest request) {
     Assignment assignment = requireAssignment(assignmentId);
-    accessService.requireStudent(assignment.getCourseId(), userId);
+    accessService.requireStudentMutation(assignment.getCourseId(), userId);
     requireAvailableForStudent(assignment);
     AssignmentType type = assignment.getAssignmentType();
     if (!expectedType.equals(type.name())) {
@@ -232,7 +232,7 @@ public class CanonicalAssignmentService {
   @Transactional(readOnly = true)
   public Page<SubmissionDto> listSubmissions(UUID assignmentId, UUID userId, Pageable pageable) {
     Assignment assignment = requireAssignment(assignmentId);
-    accessService.requireTeacher(assignment.getCourseId(), userId);
+    accessService.requireTeacherMutation(assignment.getCourseId(), userId);
     return submissionRepository.findReviewQueue(assignmentId, null, null, pageable)
         .map(this::toSubmissionDto);
   }
@@ -242,7 +242,7 @@ public class CanonicalAssignmentService {
     Submission submission = submissionRepository.findById(submissionId)
         .orElseThrow(() -> ApiException.notFound("Submission"));
     Assignment assignment = requireAssignment(submission.getAssignmentId());
-    accessService.requireTeacher(assignment.getCourseId(), userId);
+    accessService.requireTeacherMutation(assignment.getCourseId(), userId);
     GradebookEntry entry = gradebookEntryRepository
         .findByAssignmentIdAndStudentId(assignment.getId(), submission.getUserId())
         .orElse(null);
@@ -264,7 +264,7 @@ public class CanonicalAssignmentService {
     Submission submission = submissionRepository.findById(submissionId)
         .orElseThrow(() -> ApiException.notFound("Submission"));
     Assignment assignment = requireAssignment(submission.getAssignmentId());
-    accessService.requireTeacher(assignment.getCourseId(), userId);
+    accessService.requireTeacherMutation(assignment.getCourseId(), userId);
     if (request.points().compareTo(assignment.getMaxPoints()) > 0) {
       throw ApiException.badRequest("GRADE_EXCEEDS_MAX_POINTS", "Grade cannot exceed maxPoints");
     }
@@ -283,7 +283,7 @@ public class CanonicalAssignmentService {
     Submission submission = submissionRepository.findById(submissionId)
         .orElseThrow(() -> ApiException.notFound("Submission"));
     Assignment assignment = requireAssignment(submission.getAssignmentId());
-    accessService.requireTeacher(assignment.getCourseId(), userId);
+    accessService.requireTeacherMutation(assignment.getCourseId(), userId);
     GradebookEntry entry = gradebookEntryRepository
         .findByAssignmentIdAndStudentId(assignment.getId(), submission.getUserId())
         .orElse(null);
