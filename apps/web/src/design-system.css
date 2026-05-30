@@ -12,6 +12,21 @@
   --bg-hover: rgba(255, 255, 255, 0.04);
   --bg-active: rgba(255, 255, 255, 0.08);
 
+  /* ── Accent (teal) — interactive & published state ── */
+  --accent: #57c9a6;
+  --accent-hi: #74d8b8;
+  --accent-dim: #3f9d80;
+  --accent-soft: rgba(87, 201, 166, 0.13);
+  --accent-line: rgba(87, 201, 166, 0.32);
+
+  /* ── Status colors ── */
+  --status-draft: #d2a857;
+  --status-draft-soft: rgba(210, 168, 87, 0.13);
+  --status-draft-line: rgba(210, 168, 87, 0.28);
+  --status-arch: #8b8b94;
+  --status-arch-soft: rgba(139, 139, 148, 0.13);
+  --status-arch-line: rgba(139, 139, 148, 0.22);
+
   /* ── Borders ── */
   --border-default: rgba(255, 255, 255, 0.08);
   --border-subtle: rgba(255, 255, 255, 0.05);
@@ -112,6 +127,20 @@
   --shadow-md: 0 2px 8px rgba(120, 100, 70, 0.12);
   --shadow-lg: 0 8px 24px rgba(120, 100, 70, 0.15);
   --shadow-glow: 0 0 0 1px rgba(120, 100, 70, 0.08);
+}
+
+[data-theme="parchment"] {
+  --accent: #4A7C59;
+  --accent-hi: #5a9070;
+  --accent-dim: #3a6347;
+  --accent-soft: rgba(74, 124, 89, 0.1);
+  --accent-line: rgba(74, 124, 89, 0.28);
+  --status-draft: #B8860B;
+  --status-draft-soft: rgba(184, 134, 11, 0.1);
+  --status-draft-line: rgba(184, 134, 11, 0.25);
+  --status-arch: #8C8070;
+  --status-arch-soft: rgba(140, 128, 112, 0.1);
+  --status-arch-line: rgba(140, 128, 112, 0.22);
 }
 
 [data-theme="parchment"] ::selection {
@@ -486,6 +515,174 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--fn-warning);
   border-color: rgba(234, 179, 8, 0.2);
   background: rgba(234, 179, 8, 0.08);
+}
+
+/* ── Status badges (LMS lifecycle) ── */
+.badge-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 19px;
+  padding: 0 7px;
+  border-radius: 5px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.badge-status .status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.badge-draft {
+  color: var(--status-draft);
+  background: var(--status-draft-soft);
+  border-color: var(--status-draft-line);
+}
+.badge-draft .status-dot { background: var(--status-draft); }
+.badge-published {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+}
+.badge-published .status-dot { background: var(--accent); }
+.badge-archived {
+  color: var(--status-arch);
+  background: var(--status-arch-soft);
+  border-color: var(--status-arch-line);
+}
+.badge-archived .status-dot { background: var(--status-arch); }
+
+/* ── Role pills ── */
+.role-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 4px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  white-space: nowrap;
+}
+.role-pill-owner {
+  color: #d9b48a;
+  border-color: rgba(217, 180, 138, 0.28);
+  background: rgba(217, 180, 138, 0.08);
+}
+.role-pill-teacher {
+  color: var(--accent);
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+.role-pill-ta {
+  color: #6fa8d6;
+  border-color: rgba(111, 168, 214, 0.28);
+  background: rgba(111, 168, 214, 0.13);
+}
+.role-pill-student {
+  color: var(--text-secondary);
+  border-color: var(--border-default);
+  background: var(--bg-elevated);
+}
+
+/* ── Points badge ── */
+.points-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 19px;
+  padding: 0 7px;
+  border-radius: 5px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  white-space: nowrap;
+}
+
+/* ── Banner (archive / warning / info) ── */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 14px;
+  border-radius: var(--radius-lg);
+  font-size: 0.8rem;
+  border: 1px solid var(--border-default);
+}
+.banner b { color: var(--text-primary); font-weight: 600; }
+.banner-arch {
+  background: var(--status-arch-soft);
+  border-color: var(--status-arch-line);
+  color: var(--text-secondary);
+}
+.banner-warn {
+  background: var(--status-draft-soft);
+  border-color: var(--status-draft-line);
+  color: var(--status-draft);
+}
+.banner-danger {
+  background: rgba(217, 112, 112, 0.1);
+  border-color: rgba(217, 112, 112, 0.3);
+  color: #d97070;
+}
+
+/* ── Empty state ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-muted);
+}
+.empty-state-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+  flex-shrink: 0;
+}
+.empty-state h4 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 5px;
+  font-family: var(--font-body);
+  letter-spacing: normal;
+}
+.empty-state p {
+  font-size: 0.8125rem;
+  max-width: 320px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+/* ── Sidebar active accent bar ── */
+.sb-active-bar {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 17px;
+  background: var(--accent);
+  border-radius: 0 3px 3px 0;
 }
 
 

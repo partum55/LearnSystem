@@ -1,20 +1,25 @@
 'use client';
 
-import React from 'react';
+import type { ReactNode } from 'react';
 import { BookOpenIcon } from '@heroicons/react/24/outline';
 
 interface EmptyStateProps {
   title: string;
   description: string;
+  icon?: ReactNode;
+  action?: ReactNode;
   framed?: boolean;
 }
 
-export function EmptyState({ title, description, framed = false }: EmptyStateProps) {
+export function EmptyState({ title, description, icon, action, framed = false }: EmptyStateProps) {
   const content = (
-    <div className="py-8 text-center">
-      <BookOpenIcon className="mx-auto h-8 w-8" style={{ color: 'var(--text-faint)' }} />
-      <h3 className="mt-3 text-sm font-semibold">{title}</h3>
-      <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>{description}</p>
+    <div className="empty-state">
+      <div className="empty-state-icon">
+        {icon ?? <BookOpenIcon className="h-5 w-5" />}
+      </div>
+      <h4>{title}</h4>
+      <p>{description}</p>
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 

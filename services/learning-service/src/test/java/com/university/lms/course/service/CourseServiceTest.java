@@ -126,15 +126,60 @@ class CourseServiceTest {
   }
 
   @Test
-  void deleteHardDeletesForOwner() {
+  void deleteRemovesEmptyDraftForOwner() {
+    // course in @BeforeEach is DRAFT
     when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, ownerId))
         .thenReturn(Optional.of(member(ownerId, CourseRole.OWNER)));
+    when(courseMemberRepository.countActiveStudents(courseId)).thenReturn(0L);
 
     courseService.deleteCourse(courseId, ownerId, "TEACHER");
 
     verify(courseRepository).delete(course);
     verify(courseRepository, never()).save(any(Course.class));
+  }
+
+  @Test
+  void deleteRejectsPublishedCourse() {
+    Course published = Course.builder().id(courseId).code("CS101").titleUk("T")
+        .ownerId(ownerId).status(CourseStatus.PUBLISHED).build();
+    when(courseRepository.findById(courseId)).thenReturn(Optional.of(published));
+    when(courseMemberRepository.findByCourseIdAndUserId(courseId, ownerId))
+        .thenReturn(Optional.of(member(ownerId, CourseRole.OWNER)));
+
+    assertThatThrownBy(() -> courseService.deleteCourse(courseId, ownerId, "TEACHER"))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Archive");
+
+    verify(courseRepository, never()).delete(any(Course.class));
+  }
+
+  @Test
+  void deleteRejectsDraftWithEnrolledStudents() {
+    when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
+    when(courseMemberRepository.findByCourseIdAndUserId(courseId, ownerId))
+        .thenReturn(Optional.of(member(ownerId, CourseRole.OWNER)));
+    when(courseMemberRepository.countActiveStudents(courseId)).thenReturn(3L);
+
+    assertThatThrownBy(() -> courseService.deleteCourse(courseId, ownerId, "TEACHER"))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("enrolled students");
+
+    verify(courseRepository, never()).delete(any(Course.class));
+  }
+
+  @Test
+  void deleteUserDataArchivesOwnedCoursesInsteadOfDeleting() {
+    Course owned = Course.builder().id(courseId).code("CS101").titleUk("T")
+        .ownerId(ownerId).status(CourseStatus.PUBLISHED).build();
+    when(courseRepository.findByOwnerId(ownerId)).thenReturn(java.util.List.of(owned));
+
+    courseService.deleteUserData(ownerId);
+
+    assertThat(owned.getStatus()).isEqualTo(CourseStatus.ARCHIVED);
+    verify(courseRepository).saveAll(java.util.List.of(owned));
+    verify(courseRepository, never()).delete(any(Course.class));
+    verify(courseMemberRepository).deleteByUserId(ownerId);
   }
 
   @Test

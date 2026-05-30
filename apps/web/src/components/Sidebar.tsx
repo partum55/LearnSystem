@@ -91,15 +91,16 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                 key={item.href}
                 href={item.href}
                 onClick={onClose}
-                className="group flex items-center px-2.5 py-1.5 text-[13px] font-medium rounded-md transition-colors duration-100"
+                className="group relative flex items-center px-2.5 py-1.5 text-[13px] font-medium rounded-md transition-colors duration-100"
                 style={{
                   background: isActive ? 'var(--bg-active)' : 'transparent',
                   color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
                 }}
               >
+                {isActive && <span className="sb-active-bar" />}
                 <item.icon
-                  className="mr-2.5 h-4 w-4 flex-shrink-0"
-                  style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-faint)' }}
+                  className="mr-2.5 h-4 w-4 flex-shrink-0 transition-colors duration-100"
+                  style={{ color: isActive ? 'var(--accent)' : 'var(--text-faint)' }}
                 />
                 {item.name}
               </Link>

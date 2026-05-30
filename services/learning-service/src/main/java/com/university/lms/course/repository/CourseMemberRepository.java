@@ -72,18 +72,6 @@ public interface CourseMemberRepository extends JpaRepository<CourseMember, UUID
     );
   }
 
-  /** Check if user can manage course. */
-  boolean existsByCourseIdAndUserIdAndRoleInCourseInAndStatus(UUID courseId, UUID userId, Collection<CourseRole> roles, CourseMemberStatus status);
-
-  default boolean canUserManageCourse(UUID courseId, UUID userId) {
-    return existsByCourseIdAndUserIdAndRoleInCourseInAndStatus(
-        courseId,
-        userId,
-        List.of(CourseRole.TEACHER, CourseRole.TA, CourseRole.OWNER),
-        CourseMemberStatus.ACTIVE
-    );
-  }
-
   /** Find all enrollments by status. */
   Page<CourseMember> findByCourseIdAndStatus(
       UUID courseId, CourseMemberStatus status, Pageable pageable);

@@ -12,6 +12,7 @@ import com.university.lms.course.dto.*;
 import com.university.lms.course.repository.CourseMemberRepository;
 import com.university.lms.course.repository.CourseRepository;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,74 +49,10 @@ public class CourseService {
     return courseMapper.toDto(course);
   }
 
-  /** Get syllabus for a course. */
-  public CourseSyllabusDto getCourseSyllabus(UUID id, UUID userId, String userRole) {
-    Course course = findCourseById(id);
-    enforceCourseAccess(course, userId, userRole);
-    return CourseSyllabusDto.builder()
-        .courseId(course.getId())
-        .syllabus(course.getSyllabus())
-        .updatedAt(course.getUpdatedAt())
-        .build();
-  }
-
-  /** Get course by code. */
-  @Cacheable(value = "courses", key = "#code")
-  public CourseDto getCourseByCode(String code) {
-    log.debug("Fetching course by code: {}", code);
-    Course course =
-        courseRepository
-            .findByCode(code)
-            .orElseThrow(() -> new ResourceNotFoundException("Course", "code", code));
-
-    if (!course.isActive()) {
-      throw new ValidationException("Course is not available");
-    }
-    return courseMapper.toDto(course);
-  }
-
   /** Get all courses with pagination. */
   public PageResponse<CourseDto> getAllCourses(Pageable pageable) {
     log.debug("Fetching all courses with pagination");
     Page<Course> coursePage = courseRepository.findAll(pageable);
-    return mapToPageResponse(coursePage);
-  }
-
-  /** Get active courses. */
-  public PageResponse<CourseDto> getActiveCourses(Pageable pageable) {
-    log.debug("Fetching active courses");
-    Page<Course> coursePage = courseRepository.findActiveCourses(CourseStatus.PUBLISHED, pageable);
-    return mapToPageResponse(coursePage);
-  }
-
-  /** Search courses by term. */
-  public PageResponse<CourseDto> searchCourses(String searchTerm, Pageable pageable) {
-    log.debug("Searching courses with term: {}", searchTerm);
-    Page<Course> coursePage = courseRepository.searchCourses(searchTerm, pageable);
-    return mapToPageResponse(coursePage);
-  }
-
-  /** Get courses by owner. */
-  public PageResponse<CourseDto> getCoursesByOwner(UUID ownerId, Pageable pageable) {
-    log.debug("Fetching courses for owner: {}", ownerId);
-    Page<Course> coursePage = courseRepository.findByOwnerId(ownerId, pageable);
-    return mapToPageResponse(coursePage);
-  }
-
-  /** Get courses for user (enrolled courses). */
-  public PageResponse<CourseDto> getCoursesForUser(UUID userId, Pageable pageable) {
-    log.debug("Fetching courses for user: {}", userId);
-    Page<Course> coursePage = courseRepository.findCoursesForUser(userId, pageable);
-    return mapToPageResponse(coursePage);
-  }
-
-  /** Get courses for user by role. */
-  public PageResponse<CourseDto> getCoursesForUserByRole(
-      UUID userId, String role, Pageable pageable) {
-    String normalizedRole = normalizeRole(role);
-    log.debug("Fetching courses for user: {} with role: {}", userId, normalizedRole);
-    Page<Course> coursePage =
-        courseRepository.findCoursesForUserByRole(userId, normalizedRole, pageable);
     return mapToPageResponse(coursePage);
   }
 
@@ -176,28 +113,11 @@ public class CourseService {
     return courseMapper.toDto(updatedCourse);
   }
 
-  /** Update syllabus for a course. */
-  @Transactional
-  @CacheEvict(value = "courses", allEntries = true)
-  public CourseSyllabusDto updateCourseSyllabus(
-      UUID id, UpdateCourseSyllabusRequest request, UUID userId, String userRole) {
-    log.info("Updating syllabus for course: {} by user: {}", id, userId);
-
-    Course course = findCourseById(id);
-    if (!canUserAdministerCourse(course.getId(), userId, userRole)) {
-      throw new AccessDeniedException("Course owner or ADMIN access is required");
-    }
-
-    course.setSyllabus(request.getSyllabus());
-    Course updatedCourse = courseRepository.save(course);
-    return CourseSyllabusDto.builder()
-        .courseId(updatedCourse.getId())
-        .syllabus(updatedCourse.getSyllabus())
-        .updatedAt(updatedCourse.getUpdatedAt())
-        .build();
-  }
-
-  /** Delete a course. */
+  /**
+   * Delete a course. Safe-delete only: a course may be hard-deleted exclusively while it is still a
+   * DRAFT with no enrolled students. Published or archived courses (which may carry student
+   * submissions, grades and progress) must be archived instead of destroyed.
+   */
   @Transactional
   @CacheEvict(value = "courses", allEntries = true)
   public void deleteCourse(UUID id, UUID userId, String userRole) {
@@ -209,24 +129,51 @@ public class CourseService {
       throw new AccessDeniedException("Course owner or ADMIN access is required");
     }
 
+    if (course.getStatus() != CourseStatus.DRAFT) {
+      throw new ValidationException(
+          "Only draft courses can be deleted. Archive published or archived courses instead.");
+    }
+
+    long activeStudents = courseMemberRepository.countActiveStudents(course.getId());
+    if (activeStudents > 0) {
+      throw new ValidationException(
+          "Cannot delete a course with enrolled students. Archive the course instead.");
+    }
+
     courseRepository.delete(course);
-    log.info("Course hard-deleted: {}", id);
+    log.info("Empty draft course deleted: {}", id);
   }
 
-  /** Delete all course-related data for the given user. */
+  /**
+   * Remove a user's footprint from courses on account deletion without destroying other users'
+   * data. Courses owned by the user are archived (not cascade-deleted) so that enrolled students
+   * keep their submissions, grades and progress; only the departing user's own memberships are
+   * removed.
+   */
   @Transactional
   @CacheEvict(value = "courses", allEntries = true)
   public void deleteUserData(UUID userId) {
-    log.info("Deleting course data for user: {}", userId);
+    log.info("Removing course data for user: {}", userId);
 
-    long deletedCourses = courseRepository.deleteByOwnerId(userId);
-    long deletedMemberships = courseMemberRepository.deleteByUserId(userId);
+    List<Course> ownedCourses = courseRepository.findByOwnerId(userId);
+    int archived = 0;
+    for (Course course : ownedCourses) {
+      if (course.getStatus() != CourseStatus.ARCHIVED) {
+        course.setStatus(CourseStatus.ARCHIVED);
+        archived++;
+      }
+    }
+    if (!ownedCourses.isEmpty()) {
+      courseRepository.saveAll(ownedCourses);
+    }
+
+    long removedMemberships = courseMemberRepository.deleteByUserId(userId);
 
     log.info(
-        "Deleted course data for user {}: courses={}, memberships={}",
+        "Cleaned course data for user {}: ownedCoursesArchived={}, membershipsRemoved={}",
         userId,
-        deletedCourses,
-        deletedMemberships);
+        archived,
+        removedMemberships);
   }
 
   /** Publish a course. */
@@ -354,15 +301,6 @@ public class CourseService {
         .orElseThrow(() -> new ResourceNotFoundException("Course", "id", id));
   }
 
-  private boolean canUserManageCourse(Course course, UUID userId, String userRole) {
-    if (isAdmin(userRole)) {
-      return true;
-    }
-
-    // Check actual course membership. Global TEACHER does not grant access.
-    return courseMemberRepository.canUserManageCourse(course.getId(), userId);
-  }
-
   private boolean isCourseOwner(UUID courseId, UUID userId) {
     return courseMemberRepository.findByCourseIdAndUserId(courseId, userId)
         .filter(CourseMember::isActive)
@@ -415,13 +353,6 @@ public class CourseService {
     if (startDate != null && endDate != null && endDate.isBefore(startDate)) {
       throw new ValidationException("End date must be after start date");
     }
-  }
-
-  private String normalizeRole(String role) {
-    if (role == null || role.isBlank()) {
-      throw new ValidationException("Role is required");
-    }
-    return role.trim().toUpperCase();
   }
 
   private String normalizeRequired(String value, String label) {

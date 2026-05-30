@@ -311,34 +311,44 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
 
   if (isForbidden) {
     return (
-      <section className="card mx-auto max-w-2xl">
-        <div className="card-body text-center">
-          <AcademicCapIcon className="mx-auto h-10 w-10" style={{ color: 'var(--fn-warning)' }} />
-          <h1 className="mt-4 text-lg font-semibold">Access restricted</h1>
-          <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-            This course is available only to enrolled students and authorized teaching staff.
-          </p>
-          <Link href="/courses" className="btn btn-secondary mt-5 inline-flex">
-            Return to courses
-          </Link>
+      <div className="mx-auto max-w-2xl">
+        <div className="card">
+          <div className="card-body flex flex-col items-center gap-4 py-14 text-center">
+            <div
+              className="flex h-12 w-12 items-center justify-center rounded-xl border"
+              style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-default)' }}
+            >
+              <AcademicCapIcon className="h-6 w-6" style={{ color: 'var(--status-arch)' }} />
+            </div>
+            <div>
+              <h1 className="text-base font-semibold">Access restricted</h1>
+              <p className="mt-1.5 text-sm" style={{ color: 'var(--text-muted)', maxWidth: 320 }}>
+                This course is available only to enrolled students and authorized teaching staff.
+                If you believe this is an error, contact your instructor.
+              </p>
+            </div>
+            <Link href="/courses" className="btn btn-secondary">
+              Return to courses
+            </Link>
+          </div>
         </div>
-      </section>
+      </div>
     );
   }
 
   if (hasError || !overview) {
     return (
-      <section className="card mx-auto max-w-3xl">
+      <div className="card mx-auto max-w-3xl">
         <div className="card-body">
-          <h1 className="text-lg font-semibold">Failed to load course</h1>
+          <h1 className="text-base font-semibold">Failed to load course</h1>
           <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-            The canonical course endpoints did not return a usable response.
+            The course endpoint did not return a usable response.
           </p>
           <button type="button" onClick={() => window.location.reload()} className="btn btn-secondary mt-4">
             Retry
           </button>
         </div>
-      </section>
+      </div>
     );
   }
 
@@ -361,30 +371,39 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
       />
 
       {isArchived && (
-        <section
-          className="rounded-lg border p-4"
-          style={{ borderColor: 'var(--border-default)', background: 'var(--bg-surface)' }}
-        >
-          <h2 className="text-sm font-semibold">This course is archived.</h2>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+        <div className="banner banner-arch">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: 'var(--status-arch)' }}>
+            <polyline points="21 8 21 21 3 21 3 8"></polyline>
+            <rect x="1" y="3" width="22" height="5"></rect>
+            <line x1="10" y1="12" x2="14" y2="12"></line>
+          </svg>
+          <div style={{ flex: 1, fontSize: '0.8125rem' }}>
+            <b>This course is archived.</b>{' '}
             {hasArchivedMutationAccess
-              ? 'You can restore, edit, or delete this archived course.'
-              : 'This course is read-only.'}
-          </p>
-        </section>
+              ? 'As owner or admin you can still edit or restore it.'
+              : 'Content is read-only for teachers, TAs and students.'}
+          </div>
+          {hasArchivedMutationAccess && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setActiveTab('settings')}
+            >
+              Restore
+            </button>
+          )}
+        </div>
       )}
 
-      {/* Tab bar Navigation */}
-      <nav className="flex flex-wrap gap-2 border-b pb-0" style={{ borderColor: 'var(--border-default)' }}>
+      {/* Tab bar */}
+      <nav className="flex flex-wrap gap-0 border-b" style={{ borderColor: 'var(--border-default)' }}>
         {visibleTabs.map((tab) => (
           <TabButton
             key={tab.id}
             tab={tab}
             active={activeTab === tab.id}
             count={tab.id === 'modules' ? modules.length : tab.id === 'members' ? members.length : undefined}
-            onClick={() => {
-              setActiveTab(tab.id);
-            }}
+            onClick={() => setActiveTab(tab.id)}
           />
         ))}
       </nav>
@@ -515,15 +534,20 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors"
+      className="flex items-center gap-2 px-3 py-2.5 text-[13px] font-medium transition-colors"
       style={{
-        borderColor: active ? 'var(--text-primary)' : 'transparent',
         color: active ? 'var(--text-primary)' : 'var(--text-muted)',
+        borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
+        marginBottom: -1,
       }}
     >
-      <Icon className="h-4 w-4" />
+      <Icon className="h-3.5 w-3.5" />
       {tab.label}
-      {count !== undefined && <span style={{ color: 'var(--text-faint)' }}>({count})</span>}
+      {count !== undefined && (
+        <span className="tabular-nums text-[11px]" style={{ color: 'var(--text-faint)' }}>
+          {count}
+        </span>
+      )}
     </button>
   );
 }

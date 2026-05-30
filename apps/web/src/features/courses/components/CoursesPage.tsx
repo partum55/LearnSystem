@@ -57,9 +57,9 @@ function clampProgress(value?: number | null) {
   return Math.max(0, Math.min(value ?? 0, 100));
 }
 
-function courseStatus(course: CourseSummaryDto) {
-  const status = String(course.status || 'DRAFT').toUpperCase();
-  return status === 'ARCHIVED' || status === 'PUBLISHED' ? status : 'DRAFT';
+function normalizeStatus(course: CourseSummaryDto) {
+  const s = String(course.status || 'DRAFT').toUpperCase();
+  return s === 'ARCHIVED' || s === 'PUBLISHED' ? s : 'DRAFT';
 }
 
 export function CoursesPage() {
@@ -71,17 +71,9 @@ export function CoursesPage() {
   const isTeacherRole = role === 'TEACHER';
   const isAdminRole = role === 'ADMIN';
 
-  // Role-specific course lists
-  const { data: studentActive, isLoading: isStudentLoading, error: studentError } =
-    useActiveCourses();
-
-  const { data: teacherCourses, isLoading: isTeacherLoading, error: teacherError } =
-    useTeachingCourses(isTeacherRole);
-
-  const { data: adminPage, isLoading: isAdminLoading, error: adminError } =
-    useAdminCourses(undefined, isAdminRole);
-
-  // Archived courses (enrollment-filtered for students/teachers; all archived for admins)
+  const { data: studentActive, isLoading: isStudentLoading, error: studentError } = useActiveCourses();
+  const { data: teacherCourses, isLoading: isTeacherLoading, error: teacherError } = useTeachingCourses(isTeacherRole);
+  const { data: adminPage, isLoading: isAdminLoading, error: adminError } = useAdminCourses(undefined, isAdminRole);
   const { data: archivedCourses, isLoading: isArchivedLoading, error: archivedError } =
     useCoursesList({ status: 'ARCHIVED' }, Boolean(currentUser));
 
@@ -108,7 +100,7 @@ export function CoursesPage() {
 
   const filteredActiveCourses = useMemo(() => {
     return activeCourses.filter((course) => {
-      const status = courseStatus(course);
+      const status = normalizeStatus(course);
       const matchesFilter = statusFilter === 'ALL' || status === statusFilter;
       return matchesFilter && matchesCourseSearch(course, searchTerm);
     });
@@ -139,7 +131,7 @@ export function CoursesPage() {
         <div className="card-body">
           <h1 className="text-lg font-semibold">Courses unavailable</h1>
           <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-            The canonical course endpoints did not return a usable response.
+            The course endpoint did not return a usable response.
           </p>
           <button type="button" onClick={() => window.location.reload()} className="btn btn-secondary mt-4">
             Retry
@@ -167,16 +159,10 @@ export function CoursesPage() {
     }
 
     try {
-      const createdCourse = await createCourse.mutateAsync(request);
+      const created = await createCourse.mutateAsync(request);
       setIsCreateOpen(false);
-      setCourseForm({
-        code: '',
-        titleUk: '',
-        titleEn: '',
-        descriptionUk: '',
-        descriptionEn: '',
-      });
-      router.push(`/courses/${createdCourse.id}`);
+      setCourseForm({ code: '', titleUk: '', titleEn: '', descriptionUk: '', descriptionEn: '' });
+      router.push(`/courses/${created.id}`);
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : 'Failed to create course.');
     }
@@ -184,152 +170,146 @@ export function CoursesPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 pb-10">
-      <section
-        className="rounded-lg border p-5 md:p-6"
-        style={{ borderColor: 'var(--border-default)', background: 'var(--bg-surface)' }}
-      >
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>
-              My workspace
-            </p>
-            <h1 className="mt-3 text-3xl font-semibold md:text-4xl">Courses</h1>
-            <p className="mt-3 text-sm leading-6" style={{ color: 'var(--text-muted)' }}>
-              Review active courses, open archived courses, and manage course drafts through the canonical course model.
-            </p>
+      {/* Page header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--text-faint)' }}>
+            {isStudent ? 'My learning' : 'My workspace'}
+          </p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight">Courses</h1>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            {isStudent
+              ? 'Courses you are enrolled in.'
+              : 'Courses you teach or administer.'}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div
+            className="rounded-md border px-3 py-1.5 text-sm"
+            style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-elevated)' }}
+          >
+            <span style={{ color: 'var(--text-muted)' }}>Showing</span>
+            <span className="mx-1.5 font-semibold tabular-nums">{visibleCount}</span>
+            <span style={{ color: 'var(--text-faint)' }}>/</span>
+            <span className="mx-1.5 tabular-nums" style={{ color: 'var(--text-muted)' }}>{totalCount}</span>
           </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div
-              className="rounded-md border px-3 py-2 text-sm"
-              style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-base)' }}
-            >
-              <span style={{ color: 'var(--text-muted)' }}>Visible</span>
-              <span className="ml-2 font-semibold">{visibleCount}</span>
-              <span className="mx-1" style={{ color: 'var(--text-faint)' }}>/</span>
-              <span style={{ color: 'var(--text-muted)' }}>{totalCount}</span>
-            </div>
-
-            {canCreateCourses && (
-              <>
-                <button type="button" className="btn btn-secondary" onClick={() => router.push('/courses/ai-create')}>
-                  Create course with AI
-                </button>
-                <button type="button" className="btn btn-primary" onClick={() => setIsCreateOpen(true)}>
-                  <PlusIcon className="h-4 w-4" />
-                  Create course
-                </button>
-              </>
-            )}
-
-            {canCreateCourses && (
-              <Link href="/teacher/todo" className="btn btn-secondary">
-                <BookOpenIcon className="h-4 w-4" />
+          {canCreateCourses && (
+            <>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => router.push('/courses/ai-create')}>
+                Create with AI
+              </button>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => setIsCreateOpen(true)}>
+                <PlusIcon className="h-3.5 w-3.5" />
+                New course
+              </button>
+              <Link href="/teacher/todo" className="btn btn-secondary btn-sm">
+                <BookOpenIcon className="h-3.5 w-3.5" />
                 Teaching workspace
               </Link>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="card">
-        <div className="card-body space-y-4">
-          <div className="flex flex-col gap-4 md:flex-row">
-            <div className="relative flex-1">
-              <MagnifyingGlassIcon
-                className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2"
-                style={{ color: 'var(--text-faint)' }}
-              />
-              <input
-                className="input"
-                style={{ paddingLeft: '2.5rem', paddingRight: searchTerm ? '2.5rem' : '0.75rem' }}
-                placeholder="Search courses"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-              />
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md"
-                  style={{ color: 'var(--text-muted)' }}
-                  aria-label="Clear search"
-                >
-                  <XMarkIcon className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setActiveTab('ACTIVE')}
-                className={activeTab === 'ACTIVE' ? 'btn btn-primary' : 'btn btn-secondary'}
-              >
-                Active Courses
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('ARCHIVED')}
-                className={activeTab === 'ARCHIVED' ? 'btn btn-primary' : 'btn btn-secondary'}
-              >
-                <ArchiveBoxIcon className="h-4 w-4" />
-                Archived Courses
-              </button>
-            </div>
-          </div>
-
-          {activeTab === 'ACTIVE' && canCreateCourses && (
-            <div className="flex flex-wrap gap-2">
-              <FilterButton active={statusFilter === 'ALL'} onClick={() => setStatusFilter('ALL')}>All</FilterButton>
-              <FilterButton active={statusFilter === 'PUBLISHED'} onClick={() => setStatusFilter('PUBLISHED')}>Published</FilterButton>
-              <FilterButton active={statusFilter === 'DRAFT'} onClick={() => setStatusFilter('DRAFT')}>Draft</FilterButton>
-            </div>
+            </>
           )}
         </div>
-      </section>
+      </div>
 
+      {/* Tab bar + search */}
+      <div className="flex items-center gap-3 border-b" style={{ borderColor: 'var(--border-default)' }}>
+        <div className="flex flex-1 gap-0.5">
+          <TabButton active={activeTab === 'ACTIVE'} onClick={() => setActiveTab('ACTIVE')}>
+            Active courses <TabCount count={activeCourses.length} />
+          </TabButton>
+          <TabButton active={activeTab === 'ARCHIVED'} onClick={() => setActiveTab('ARCHIVED')}>
+            <ArchiveBoxIcon className="h-3.5 w-3.5" />
+            Archived <TabCount count={archivedCourses?.length ?? 0} />
+          </TabButton>
+        </div>
+        <div className="relative mb-2 flex items-center" style={{ minWidth: 200 }}>
+          <MagnifyingGlassIcon
+            className="pointer-events-none absolute left-2.5 h-3.5 w-3.5"
+            style={{ color: 'var(--text-faint)' }}
+          />
+          <input
+            className="input text-sm"
+            style={{ paddingLeft: '2rem', paddingRight: searchTerm ? '2rem' : '0.75rem', height: 30 }}
+            placeholder="Filter courses…"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              className="absolute right-2"
+              style={{ color: 'var(--text-muted)' }}
+              aria-label="Clear search"
+            >
+              <XMarkIcon className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Status filter — staff only */}
+      {activeTab === 'ACTIVE' && canCreateCourses && (
+        <div className="flex flex-wrap gap-1.5">
+          {(['ALL', 'PUBLISHED', 'DRAFT'] as const).map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setStatusFilter(f)}
+              className="btn btn-sm"
+              style={{
+                background: statusFilter === f ? 'var(--bg-overlay)' : 'transparent',
+                color: statusFilter === f ? 'var(--text-primary)' : 'var(--text-muted)',
+                border: `1px solid ${statusFilter === f ? 'var(--border-strong)' : 'var(--border-subtle)'}`,
+                fontWeight: statusFilter === f ? 600 : 400,
+              }}
+            >
+              {f === 'ALL' ? 'All' : f.charAt(0) + f.slice(1).toLowerCase()}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Course grid */}
       <CourseSection
-        title={activeTab === 'ARCHIVED' ? 'Archived Courses' : 'Active Courses'}
-        count={selectedCourses.length}
         courses={selectedCourses}
-        emptyTitle={activeTab === 'ARCHIVED' ? 'No archived courses.' : 'No active courses'}
-        emptyDescription={activeTab === 'ARCHIVED' ? 'Archived courses will appear here.' : 'Courses will appear after you are added as a member.'}
-        archived={activeTab === 'ARCHIVED'}
+        emptyTitle={activeTab === 'ARCHIVED' ? 'No archived courses' : 'No courses yet'}
+        emptyDescription={
+          activeTab === 'ARCHIVED'
+            ? 'Archived courses appear here and remain read-only.'
+            : isStudent
+              ? 'You will see courses once you are enrolled.'
+              : 'Create your first course to get started.'
+        }
       />
 
+      {/* Create course modal */}
       {canCreateCourses && isCreateOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
-          style={{ background: 'color-mix(in srgb, var(--bg-base) 78%, transparent)' }}
+          style={{ background: 'rgba(6,6,8,0.62)', backdropFilter: 'blur(3px)' }}
         >
-          <form onSubmit={handleCreateCourse} className="card w-full max-w-2xl shadow-2xl">
+          <form onSubmit={handleCreateCourse} className="card w-full max-w-2xl">
             <div className="card-header flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold">Create course</h2>
-                <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  New courses are created as drafts.
+                <h2 className="text-base font-semibold">New course</h2>
+                <p className="mt-0.5 text-sm" style={{ color: 'var(--text-muted)' }}>
+                  Created as a draft. Only staff can see it until published.
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setIsCreateOpen(false);
-                  setCreateError(null);
-                }}
-                className="btn btn-ghost"
-                aria-label="Close create course dialog"
+                onClick={() => { setIsCreateOpen(false); setCreateError(null); }}
+                className="btn btn-ghost btn-sm"
+                aria-label="Close"
               >
-                <XMarkIcon className="h-5 w-5" />
+                <XMarkIcon className="h-4 w-4" />
               </button>
             </div>
 
             <div className="card-body space-y-4">
               {createError && (
-                <div
-                  className="rounded-md border px-3 py-2 text-sm"
-                  style={{ borderColor: 'var(--border-default)', background: 'var(--bg-elevated)', color: 'var(--fn-error)' }}
-                >
+                <div className="rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-elevated)', color: 'var(--fn-error)' }}>
                   {createError}
                 </div>
               )}
@@ -340,10 +320,11 @@ export function CoursesPage() {
                   <input
                     className="input"
                     value={courseForm.code}
-                    onChange={(event) => setCourseForm((form) => ({ ...form, code: event.target.value }))}
+                    onChange={(e) => setCourseForm((f) => ({ ...f, code: e.target.value }))}
                     placeholder="CS101"
                     maxLength={30}
                     required
+                    style={{ fontFamily: 'var(--font-mono)', fontSize: '0.875rem' }}
                   />
                 </label>
                 <label className="input-group">
@@ -351,7 +332,7 @@ export function CoursesPage() {
                   <input
                     className="input"
                     value={courseForm.titleUk}
-                    onChange={(event) => setCourseForm((form) => ({ ...form, titleUk: event.target.value }))}
+                    onChange={(e) => setCourseForm((f) => ({ ...f, titleUk: e.target.value }))}
                     placeholder="Programming Basics"
                     maxLength={255}
                     required
@@ -364,7 +345,7 @@ export function CoursesPage() {
                 <input
                   className="input"
                   value={courseForm.titleEn}
-                  onChange={(event) => setCourseForm((form) => ({ ...form, titleEn: event.target.value }))}
+                  onChange={(e) => setCourseForm((f) => ({ ...f, titleEn: e.target.value }))}
                   placeholder="Programming Basics"
                   maxLength={255}
                 />
@@ -376,7 +357,7 @@ export function CoursesPage() {
                   <textarea
                     className="input min-h-28 resize-y"
                     value={courseForm.descriptionUk}
-                    onChange={(event) => setCourseForm((form) => ({ ...form, descriptionUk: event.target.value }))}
+                    onChange={(e) => setCourseForm((f) => ({ ...f, descriptionUk: e.target.value }))}
                     placeholder="Short course description"
                   />
                 </label>
@@ -385,27 +366,24 @@ export function CoursesPage() {
                   <textarea
                     className="input min-h-28 resize-y"
                     value={courseForm.descriptionEn}
-                    onChange={(event) => setCourseForm((form) => ({ ...form, descriptionEn: event.target.value }))}
+                    onChange={(e) => setCourseForm((f) => ({ ...f, descriptionEn: e.target.value }))}
                     placeholder="Short course description"
                   />
                 </label>
               </div>
             </div>
 
-            <div className="card-footer flex justify-end gap-3">
+            <div className="card-footer flex justify-end gap-2">
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => {
-                  setIsCreateOpen(false);
-                  setCreateError(null);
-                }}
+                onClick={() => { setIsCreateOpen(false); setCreateError(null); }}
               >
                 Cancel
               </button>
               <button type="submit" className="btn btn-primary" disabled={createCourse.isPending}>
-                <PlusIcon className="h-4 w-4" />
-                {createCourse.isPending ? 'Creating...' : 'Create course'}
+                <PlusIcon className="h-3.5 w-3.5" />
+                {createCourse.isPending ? 'Creating…' : 'Create course'}
               </button>
             </div>
           </form>
@@ -415,155 +393,184 @@ export function CoursesPage() {
   );
 }
 
-function FilterButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
+/* ── Tab navigation ── */
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <button type="button" onClick={onClick} className={active ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'}>
+    <button
+      type="button"
+      onClick={onClick}
+      className="relative flex items-center gap-1.5 px-3 py-2.5 text-[13px] font-medium transition-colors"
+      style={{
+        color: active ? 'var(--text-primary)' : 'var(--text-muted)',
+        borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
+        marginBottom: -1,
+      }}
+    >
       {children}
     </button>
   );
 }
 
-function CourseSection({
-  title,
-  count,
-  courses,
-  emptyTitle,
-  emptyDescription,
-  archived,
-}: {
-  title: string;
-  count: number;
-  courses: CourseSummaryDto[];
-  emptyTitle: string;
-  emptyDescription: string;
-  archived: boolean;
-}) {
+function TabCount({ count }: { count: number }) {
   return (
-    <section className="space-y-4">
-      <div className="flex items-center gap-2">
-        <span
-          className="h-2 w-2 rounded-full"
-          style={{ background: archived ? 'var(--text-faint)' : 'var(--fn-success)' }}
-        />
-        <h2 className="text-lg font-semibold">
-          {title} ({count})
-        </h2>
-      </div>
-
-      {courses.length === 0 ? (
-        <EmptyCourses title={emptyTitle} description={emptyDescription} />
-      ) : (
-        <div className="anim-stagger grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {courses.map((course) => (
-            <CourseCard key={course.id} course={course} />
-          ))}
-        </div>
-      )}
-    </section>
+    <span className="tabular-nums text-[11px]" style={{ color: 'var(--text-faint)' }}>
+      {count}
+    </span>
   );
 }
 
+/* ── Course section ── */
+function CourseSection({
+  courses,
+  emptyTitle,
+  emptyDescription,
+}: {
+  courses: CourseSummaryDto[];
+  emptyTitle: string;
+  emptyDescription: string;
+}) {
+  if (courses.length === 0) {
+    return (
+      <div className="card">
+        <div className="empty-state">
+          <div className="empty-state-icon">
+            <AcademicCapIcon className="h-5 w-5" />
+          </div>
+          <h4>{emptyTitle}</h4>
+          <p>{emptyDescription}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+      {courses.map((course) => (
+        <CourseCard key={course.id} course={course} />
+      ))}
+    </div>
+  );
+}
+
+/* ── Course card ── */
 function CourseCard({ course }: { course: CourseSummaryDto }) {
   const progress = clampProgress(course.progress);
   const completed = progress >= 100;
-  const status = courseStatus(course);
+  const status = normalizeStatus(course);
+
+  const accentColor =
+    status === 'PUBLISHED'
+      ? 'var(--accent)'
+      : status === 'ARCHIVED'
+        ? 'var(--status-arch)'
+        : 'var(--status-draft)';
 
   return (
-    <Link href={`/courses/${course.id}`} className="anim-stagger-item card block h-full">
-      <div
-        className="h-1"
-        style={{
-          background:
-            status === 'ARCHIVED'
-              ? 'var(--text-faint)'
-              : status === 'PUBLISHED'
-                ? 'var(--fn-success)'
-                : 'var(--fn-warning)',
-        }}
-      />
-      <div className="card-header">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="font-mono text-xs uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>
-              {courseCode(course)}
-            </p>
-            <h3 className="mt-2 line-clamp-2 text-lg font-semibold">{course.title}</h3>
-          </div>
-          <span className={statusBadgeClass(status)}>{status}</span>
+    <Link href={`/courses/${course.id}`} className="card block" style={{ overflow: 'hidden', padding: 0 }}>
+      {/* Top accent bar */}
+      <div style={{ height: 3, background: accentColor }} />
+      <div style={{ padding: 15, display: 'flex', flexDirection: 'column', flex: 1 }}>
+        {/* Code + badges row */}
+        <div className="mb-2 flex items-center gap-2">
+          <span
+            className="text-[11px] font-medium"
+            style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-faint)' }}
+          >
+            {courseCode(course)}
+          </span>
+          <StatusBadge status={status} />
         </div>
-      </div>
-      <div className="card-body space-y-4">
-        <p className="line-clamp-3 text-sm" style={{ color: 'var(--text-muted)' }}>
+
+        {/* Title */}
+        <h3
+          className="line-clamp-2 font-semibold leading-snug"
+          style={{ fontSize: 15, letterSpacing: '-0.02em', marginBottom: 6 }}
+        >
+          {course.title}
+        </h3>
+
+        {/* Description */}
+        <p
+          className="line-clamp-2 flex-1 text-sm leading-relaxed"
+          style={{ color: 'var(--text-secondary)' }}
+        >
           {course.description || 'No course description yet.'}
         </p>
 
-        <div className="flex items-center justify-between gap-3 text-sm">
-          <span className="flex min-w-0 items-center gap-2" style={{ color: 'var(--text-muted)' }}>
-            <UserCircleIcon className="h-4 w-4 shrink-0" />
-            <span className="truncate">{course.teacherName || 'Course member'}</span>
-          </span>
-          {course.grade !== null && course.grade !== undefined && (
-            <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>
-              {course.grade}%
-            </span>
-          )}
-        </div>
-
-        {status === 'PUBLISHED' && (
-          <div>
-            <div className="mb-1 flex justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
-              <span>Progress</span>
-              <span>{progress}%</span>
-            </div>
-            <div className="h-2 rounded-full" style={{ background: 'var(--bg-overlay)' }}>
+        {/* Footer */}
+        <div className="mt-3">
+          {status === 'PUBLISHED' && (
+            <div className="mb-3">
               <div
-                className="h-2 rounded-full transition-all"
-                style={{ width: `${progress}%`, background: completed ? 'var(--fn-success)' : 'var(--text-primary)' }}
-              />
+                className="mb-1.5 h-[3px] overflow-hidden rounded-full"
+                style={{ background: 'var(--bg-overlay)' }}
+              >
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${progress}%`,
+                    background: completed ? 'var(--accent)' : 'var(--accent-dim)',
+                  }}
+                />
+              </div>
+              <div className="flex justify-between text-[11px]" style={{ color: 'var(--text-faint)' }}>
+                <span>Progress</span>
+                <span className="tabular-nums">{progress}%</span>
+              </div>
             </div>
+          )}
+
+          <div className="flex items-center justify-between gap-2 text-[11.5px]" style={{ color: 'var(--text-muted)' }}>
+            <span className="flex min-w-0 items-center gap-1.5">
+              <UserCircleIcon className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{course.teacherName || 'Course member'}</span>
+            </span>
+            {course.grade !== null && course.grade !== undefined && (
+              <span className="tabular-nums font-medium" style={{ color: 'var(--text-secondary)' }}>
+                {course.grade}%
+              </span>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </Link>
   );
 }
 
-function statusBadgeClass(status: string) {
-  switch (status) {
-    case 'PUBLISHED':
-      return 'badge badge-success';
-    case 'ARCHIVED':
-      return 'badge';
-    default:
-      return 'badge badge-warning';
-  }
+/* ── Status badge ── */
+export function StatusBadge({ status }: { status: string }) {
+  const s = String(status).toUpperCase();
+  const cls =
+    s === 'PUBLISHED'
+      ? 'badge-status badge-published'
+      : s === 'ARCHIVED'
+        ? 'badge-status badge-archived'
+        : 'badge-status badge-draft';
+  const label =
+    s === 'PUBLISHED' ? 'Published' : s === 'ARCHIVED' ? 'Archived' : 'Draft';
+
+  return (
+    <span className={cls}>
+      <span className="status-dot" />
+      {label}
+    </span>
+  );
 }
 
-function EmptyCourses({ title, description }: { title: string; description: string }) {
-  return (
-    <section className="card">
-      <div className="card-body py-14 text-center">
-        <div
-          className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border"
-          style={{ borderColor: 'var(--border-default)', background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}
-        >
-          <AcademicCapIcon className="h-6 w-6" />
-        </div>
-        <div className="mt-4 space-y-1">
-          <h3 className="text-base font-semibold">{title}</h3>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            {description}
-          </p>
-        </div>
-      </div>
-    </section>
-  );
+/* ── Role badge ── */
+export function RoleBadge({ role }: { role?: string | null }) {
+  if (!role) return null;
+  const r = String(role).toUpperCase();
+  const cls =
+    r === 'OWNER'
+      ? 'role-pill role-pill-owner'
+      : r === 'TEACHER'
+        ? 'role-pill role-pill-teacher'
+        : r === 'TA'
+          ? 'role-pill role-pill-ta'
+          : 'role-pill role-pill-student';
+  const label =
+    r === 'OWNER' ? 'Owner' : r === 'TEACHER' ? 'Teacher' : r === 'TA' ? 'TA' : 'Student';
+
+  return <span className={cls}>{label}</span>;
 }
