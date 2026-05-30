@@ -76,11 +76,10 @@ export function CourseOutlineSidebar({ courseId, modules }: CourseOutlineSidebar
   if (collapsed) {
     return (
       <aside
-        className="sticky top-0 -my-6 -mr-6 hidden w-12 shrink-0 flex-col items-center self-start border-l py-3 lg:flex"
+        className="hidden w-12 shrink-0 flex-col items-center self-stretch rounded-lg border py-3 lg:flex"
         style={{
           borderColor: 'var(--border-default)',
           background: 'var(--bg-surface)',
-          height: 'calc(100vh - 3rem)',
         }}
       >
         <button
@@ -99,11 +98,10 @@ export function CourseOutlineSidebar({ courseId, modules }: CourseOutlineSidebar
 
   return (
     <aside
-      className="sticky top-0 -my-6 -mr-6 hidden w-[272px] shrink-0 flex-col self-start overflow-hidden border-l lg:flex"
+      className="hidden w-[272px] shrink-0 flex-col self-stretch overflow-hidden rounded-lg border lg:flex"
       style={{
         borderColor: 'var(--border-default)',
         background: 'var(--bg-surface)',
-        height: 'calc(100vh - 3rem)',
       }}
     >
       <div
