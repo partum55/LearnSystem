@@ -294,6 +294,16 @@ public class CourseService {
   }
 
   // Helper methods
+  //
+  // TODO(P2, access-dedup): enforceCourseAccess / canUserAdministerCourse duplicate the rules in
+  // common.security.CourseAccessService (requireCourseAccess / requireOwnerOrAdmin). This is a
+  // maintainability duplication, NOT a security gap: both controllers feed userId/userRole from
+  // RequestUserContext (the JWT security context), never from request bodies, and the rule logic
+  // is identical (admin override OR active OWNER membership; students blocked from DRAFT). Full
+  // migration is deferred because it changes the thrown exception contract here
+  // (AccessDeniedException -> ApiException.forbidden), which cascades into CourseServiceTest, and
+  // the lifecycle/settings methods would need CourseAccessService injected. Do this as a focused
+  // follow-up with the test updates in the same change; do not weaken the rules above.
 
   private Course findCourseById(UUID id) {
     return courseRepository

@@ -3,8 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { Loading } from '@/components/Loading';
-import { AcademicCapIcon } from '@heroicons/react/24/outline';
-import Link from 'next/link';
+import { RestrictedAccessState } from '@/components/RestrictedAccessState';
 
 // Query & Mutation Hooks
 import {
@@ -311,28 +310,12 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
 
   if (isForbidden) {
     return (
-      <div className="mx-auto max-w-2xl">
-        <div className="card">
-          <div className="card-body flex flex-col items-center gap-4 py-14 text-center">
-            <div
-              className="flex h-12 w-12 items-center justify-center rounded-xl border"
-              style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-default)' }}
-            >
-              <AcademicCapIcon className="h-6 w-6" style={{ color: 'var(--status-arch)' }} />
-            </div>
-            <div>
-              <h1 className="text-base font-semibold">Access restricted</h1>
-              <p className="mt-1.5 text-sm" style={{ color: 'var(--text-muted)', maxWidth: 320 }}>
-                This course is available only to enrolled students and authorized teaching staff.
-                If you believe this is an error, contact your instructor.
-              </p>
-            </div>
-            <Link href="/courses" className="btn btn-secondary">
-              Return to courses
-            </Link>
-          </div>
-        </div>
-      </div>
+      <RestrictedAccessState
+        title="Access restricted"
+        message="This course is available only to enrolled students and authorized teaching staff. If you believe this is an error, contact your instructor."
+        backHref="/courses"
+        backLabel="Return to courses"
+      />
     );
   }
 
