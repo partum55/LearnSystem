@@ -1,0 +1,13 @@
+{
+  "name": "learnsystem-e2e",
+  "private": true,
+  "description": "Opt-in, env-driven Playwright role-access walkthrough. Requires real E2E credentials supplied via environment variables (never committed).",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "install:browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

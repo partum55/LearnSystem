@@ -1,7 +1,35 @@
 # Follow-up: Admin course owner reassignment
 
-Status: **OPEN** (P2) — documented, not yet implemented.
+Status: **DONE** — implemented 2026-05-30.
 Created: 2026-05-30. Source: LMS post-audit report, remaining-risks item.
+
+## Implementation
+
+Shipped as a thin, canonical feature (no new architecture):
+
+- **Endpoint:** `POST /v1/admin/courses/{courseId}/reassign-owner` with body
+  `{ "newOwnerId": "<uuid>" }`, guarded by `@PreAuthorize("hasRole('ADMIN')")` on
+  `CanonicalAdminCourseController`.
+- **Service:** `CourseOwnerService.reassignOwner(courseId, newOwnerId)`
+  (`com.university.lms.course.courses.service`):
+  - `CourseAccessService.requireAdmin()` — backend source of truth (new canonical helper);
+  - loads the course (404 if missing);
+  - validates the new owner exists and is eligible (global role `TEACHER` or `ADMIN`) via
+    `UserProfileClient`;
+  - demotes any other active `OWNER` membership to `TEACHER` (kept active — never deleted) so a
+    single active `OWNER` remains;
+  - upserts the new owner as the single active `OWNER` (promotes an existing member, else creates
+    one with `addedBy` = acting admin);
+  - sets `course.ownerId`; **status is left unchanged** (archived stays archived — no auto-publish);
+  - performs **no** deletes of content/enrollments/submissions/grades.
+- **Tests:** `CourseOwnerServiceTest` — admin promote+demote (single active owner, status preserved,
+  no deletes), admin creates membership for a brand-new owner, non-admin rejected (403), missing
+  course (404), non-existent new owner rejected, ineligible (STUDENT) new owner rejected.
+
+The remainder of this document is retained for historical context.
+
+---
+
 
 ## Problem
 

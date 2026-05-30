@@ -39,11 +39,14 @@ public class CourseService {
   /** Canonical, single source of truth for course access decisions. */
   private final CourseAccessService accessService;
 
-  /** Get course by ID. */
-  @Cacheable(
-      value = "courses",
-      key = "T(String).format('%s:%s:%s', #id, #userId, #userRole == null ? 'NONE' : #userRole)")
-  public CourseDto getCourseById(UUID id, UUID userId, String userRole) {
+  /**
+   * Get course by ID. The cache key is scoped by {@code userId} because access is user-specific
+   * (enforced per-user by {@link CourseAccessService#requireCourseAccess}); this prevents a course
+   * cached for an authorized user from being served to an unauthorized one. The global role is not
+   * part of the key — it does not affect the returned DTO and access is already keyed by user.
+   */
+  @Cacheable(value = "courses", key = "T(String).format('%s:%s', #id, #userId)")
+  public CourseDto getCourseById(UUID id, UUID userId) {
     log.debug("Fetching course by ID: {}", id);
     accessService.requireCourseAccess(id, userId);
     Course course = findCourseById(id);
@@ -89,8 +92,7 @@ public class CourseService {
   /** Update a course. */
   @Transactional
   @CacheEvict(value = "courses", allEntries = true)
-  public CourseDto updateCourse(
-      UUID id, UpdateCourseRequest request, UUID userId, String userRole) {
+  public CourseDto updateCourse(UUID id, UpdateCourseRequest request, UUID userId) {
     log.info("Updating course: {} by user: {}", id, userId);
 
     Course course = findCourseById(id);
@@ -119,7 +121,7 @@ public class CourseService {
    */
   @Transactional
   @CacheEvict(value = "courses", allEntries = true)
-  public void deleteCourse(UUID id, UUID userId, String userRole) {
+  public void deleteCourse(UUID id, UUID userId) {
     log.info("Deleting course: {} by user: {}", id, userId);
 
     Course course = findCourseById(id);
@@ -176,7 +178,7 @@ public class CourseService {
   /** Publish a course. */
   @Transactional
   @CacheEvict(value = "courses", allEntries = true)
-  public CourseDto publishCourse(UUID id, UUID userId, String userRole) {
+  public CourseDto publishCourse(UUID id, UUID userId) {
     log.info("Publishing course: {} by user: {}", id, userId);
 
     Course course = findCourseById(id);
@@ -197,7 +199,7 @@ public class CourseService {
   /** Unpublish a course. */
   @Transactional
   @CacheEvict(value = "courses", allEntries = true)
-  public CourseDto unpublishCourse(UUID id, UUID userId, String userRole) {
+  public CourseDto unpublishCourse(UUID id, UUID userId) {
     log.info("Unpublishing course: {} by user: {}", id, userId);
 
     Course course = findCourseById(id);
@@ -218,7 +220,7 @@ public class CourseService {
   /** Archive a course and capture immutable content snapshot. */
   @Transactional
   @CacheEvict(value = "courses", allEntries = true)
-  public CourseDto archiveCourse(UUID id, UUID userId, String userRole) {
+  public CourseDto archiveCourse(UUID id, UUID userId) {
     log.info("Archiving course: {} by user: {}", id, userId);
 
     Course course = findCourseById(id);
@@ -234,7 +236,7 @@ public class CourseService {
     return courseMapper.toDto(course);
   }
 
-  public CourseSettingsDto getCourseSettings(UUID id, UUID userId, String userRole) {
+  public CourseSettingsDto getCourseSettings(UUID id, UUID userId) {
     Course course = findCourseById(id);
     accessService.requireOwnerOrAdmin(course.getId(), userId);
     return toSettingsDto(course);
@@ -243,7 +245,7 @@ public class CourseService {
   @Transactional
   @CacheEvict(value = "courses", allEntries = true)
   public CourseSettingsDto updateCourseSettings(
-      UUID id, UpdateCourseSettingsRequest request, UUID userId, String userRole) {
+      UUID id, UpdateCourseSettingsRequest request, UUID userId) {
     Course course = findCourseById(id);
     accessService.requireOwnerOrAdmin(course.getId(), userId);
 
@@ -267,7 +269,7 @@ public class CourseService {
 
   @Transactional
   @CacheEvict(value = "courses", allEntries = true)
-  public CourseDto restoreCourse(UUID id, UUID userId, String userRole) {
+  public CourseDto restoreCourse(UUID id, UUID userId) {
     Course course = findCourseById(id);
     accessService.requireOwnerOrAdmin(course.getId(), userId);
 

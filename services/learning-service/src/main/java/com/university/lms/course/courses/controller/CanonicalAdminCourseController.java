@@ -1,8 +1,10 @@
 package com.university.lms.course.courses.controller;
 
 import com.university.lms.common.dto.PageResponse;
+import com.university.lms.course.courses.service.CourseOwnerService;
 import com.university.lms.course.dto.CourseDto;
 import com.university.lms.course.dto.CreateCourseRequest;
+import com.university.lms.course.dto.ReassignOwnerRequest;
 import com.university.lms.course.dto.UpdateCourseRequest;
 import com.university.lms.course.service.CourseService;
 import com.university.lms.course.web.RequestUserContext;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 public class CanonicalAdminCourseController {
 
   private final CourseService courseService;
+  private final CourseOwnerService courseOwnerService;
   private final RequestUserContext requestUserContext;
 
   @GetMapping
@@ -49,8 +52,7 @@ public class CanonicalAdminCourseController {
   @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<CourseDto> adminGetCourseById(@PathVariable UUID courseId) {
     UUID userId = requestUserContext.requireUserId();
-    String userRole = requestUserContext.requireUserRole();
-    CourseDto course = courseService.getCourseById(courseId, userId, userRole);
+    CourseDto course = courseService.getCourseById(courseId, userId);
     return ResponseEntity.ok(course);
   }
 
@@ -59,8 +61,7 @@ public class CanonicalAdminCourseController {
   public ResponseEntity<CourseDto> adminUpdateCourse(
       @PathVariable UUID courseId, @Valid @RequestBody UpdateCourseRequest request) {
     UUID userId = requestUserContext.requireUserId();
-    String userRole = requestUserContext.requireUserRole();
-    CourseDto course = courseService.updateCourse(courseId, request, userId, userRole);
+    CourseDto course = courseService.updateCourse(courseId, request, userId);
     return ResponseEntity.ok(course);
   }
 
@@ -68,8 +69,15 @@ public class CanonicalAdminCourseController {
   @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<CourseDto> adminArchiveCourse(@PathVariable UUID courseId) {
     UUID userId = requestUserContext.requireUserId();
-    String userRole = requestUserContext.requireUserRole();
-    CourseDto course = courseService.archiveCourse(courseId, userId, userRole);
+    CourseDto course = courseService.archiveCourse(courseId, userId);
+    return ResponseEntity.ok(course);
+  }
+
+  @PostMapping("/{courseId}/reassign-owner")
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<CourseDto> adminReassignOwner(
+      @PathVariable UUID courseId, @Valid @RequestBody ReassignOwnerRequest request) {
+    CourseDto course = courseOwnerService.reassignOwner(courseId, request.getNewOwnerId());
     return ResponseEntity.ok(course);
   }
 }

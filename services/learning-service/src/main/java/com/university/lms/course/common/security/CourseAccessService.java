@@ -169,6 +169,13 @@ public class CourseAccessService {
     throw ApiException.forbidden("You don't have permission to view this enrollment");
   }
 
+  /** Require the current request to come from a platform ADMIN; backend source of truth. */
+  public void requireAdmin() {
+    if (!isAdmin()) {
+      throw ApiException.forbidden("Administrator access is required");
+    }
+  }
+
   public void requireOwnerOrAdmin(UUID courseId, UUID userId) {
     if (isAdmin()) {
       return;

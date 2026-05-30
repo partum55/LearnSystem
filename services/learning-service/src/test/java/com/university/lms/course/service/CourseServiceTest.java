@@ -77,8 +77,7 @@ class CourseServiceTest {
     CourseSettingsDto settings = courseService.updateCourseSettings(
         courseId,
         settingsRequest("CS102", "New title"),
-        otherUserId,
-        "ADMIN");
+        otherUserId);
 
     assertThat(settings.getCode()).isEqualTo("CS102");
     assertThat(settings.getTitleUk()).isEqualTo("New title");
@@ -97,8 +96,7 @@ class CourseServiceTest {
     CourseSettingsDto settings = courseService.updateCourseSettings(
         courseId,
         settingsRequest("CS102", "Owner title"),
-        ownerId,
-        "TEACHER");
+        ownerId);
 
     assertThat(settings.getTitleUk()).isEqualTo("Owner title");
   }
@@ -125,7 +123,7 @@ class CourseServiceTest {
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, otherUserId))
         .thenReturn(Optional.of(member(otherUserId, CourseRole.OWNER, CourseMemberStatus.DROPPED)));
 
-    assertThatThrownBy(() -> courseService.getCourseSettings(courseId, otherUserId, "TEACHER"))
+    assertThatThrownBy(() -> courseService.getCourseSettings(courseId, otherUserId))
         .isInstanceOf(ApiException.class);
   }
 
@@ -136,7 +134,7 @@ class CourseServiceTest {
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, otherUserId))
         .thenReturn(Optional.of(member(otherUserId, CourseRole.TEACHER)));
 
-    assertThatThrownBy(() -> courseService.archiveCourse(courseId, otherUserId, "TEACHER"))
+    assertThatThrownBy(() -> courseService.archiveCourse(courseId, otherUserId))
         .isInstanceOf(ApiException.class);
 
     verify(courseRepository, never()).save(any(Course.class));
@@ -151,7 +149,7 @@ class CourseServiceTest {
         .thenReturn(Optional.of(member(ownerId, CourseRole.OWNER)));
     when(courseMemberRepository.countActiveStudents(courseId)).thenReturn(0L);
 
-    courseService.deleteCourse(courseId, ownerId, "TEACHER");
+    courseService.deleteCourse(courseId, ownerId);
 
     verify(courseRepository).delete(course);
     verify(courseRepository, never()).save(any(Course.class));
@@ -166,7 +164,7 @@ class CourseServiceTest {
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, ownerId))
         .thenReturn(Optional.of(member(ownerId, CourseRole.OWNER)));
 
-    assertThatThrownBy(() -> courseService.deleteCourse(courseId, ownerId, "TEACHER"))
+    assertThatThrownBy(() -> courseService.deleteCourse(courseId, ownerId))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Archive");
 
@@ -181,7 +179,7 @@ class CourseServiceTest {
         .thenReturn(Optional.of(member(ownerId, CourseRole.OWNER)));
     when(courseMemberRepository.countActiveStudents(courseId)).thenReturn(3L);
 
-    assertThatThrownBy(() -> courseService.deleteCourse(courseId, ownerId, "TEACHER"))
+    assertThatThrownBy(() -> courseService.deleteCourse(courseId, ownerId))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("enrolled students");
 
@@ -240,8 +238,7 @@ class CourseServiceTest {
     assertThatThrownBy(() -> courseService.updateCourseSettings(
         courseId,
         settingsRequest("CS102", "New title"),
-        ownerId,
-        "TEACHER"))
+        ownerId))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("already exists");
   }
@@ -255,7 +252,7 @@ class CourseServiceTest {
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, otherUserId))
         .thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> courseService.getCourseById(courseId, otherUserId, "USER"))
+    assertThatThrownBy(() -> courseService.getCourseById(courseId, otherUserId))
         .isInstanceOf(ApiException.class);
   }
 
@@ -268,7 +265,7 @@ class CourseServiceTest {
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, otherUserId))
         .thenReturn(Optional.of(member(otherUserId, CourseRole.STUDENT)));
 
-    var dto = courseService.getCourseById(courseId, otherUserId, "USER");
+    var dto = courseService.getCourseById(courseId, otherUserId);
 
     assertThat(dto).isNotNull();
   }
@@ -281,7 +278,7 @@ class CourseServiceTest {
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, otherUserId))
         .thenReturn(Optional.of(member(otherUserId, CourseRole.STUDENT)));
 
-    assertThatThrownBy(() -> courseService.getCourseById(courseId, otherUserId, "USER"))
+    assertThatThrownBy(() -> courseService.getCourseById(courseId, otherUserId))
         .isInstanceOf(ApiException.class);
   }
 
@@ -294,8 +291,7 @@ class CourseServiceTest {
     assertThatThrownBy(() -> courseService.updateCourseSettings(
         courseId,
         settingsRequest("CS102", "Blocked"),
-        otherUserId,
-        "TEACHER"))
+        otherUserId))
         .isInstanceOf(ApiException.class);
   }
 

@@ -89,8 +89,7 @@ public class CanonicalCourseController {
   public CourseSettingsDto settings(@PathVariable UUID courseId) {
     return courseSettingsService.getCourseSettings(
         courseId,
-        userContext.requireUserId(),
-        userContext.requireUserRole());
+        userContext.requireUserId());
   }
 
   @PatchMapping("/{courseId}/settings")
@@ -100,48 +99,42 @@ public class CanonicalCourseController {
     return courseSettingsService.updateCourseSettings(
         courseId,
         request,
-        userContext.requireUserId(),
-        userContext.requireUserRole());
+        userContext.requireUserId());
   }
 
   @PostMapping("/{courseId}/publish")
   public CourseDto publish(@PathVariable UUID courseId) {
     return courseSettingsService.publishCourse(
         courseId,
-        userContext.requireUserId(),
-        userContext.requireUserRole());
+        userContext.requireUserId());
   }
 
   @PostMapping("/{courseId}/unpublish")
   public CourseDto unpublish(@PathVariable UUID courseId) {
     return courseSettingsService.unpublishCourse(
         courseId,
-        userContext.requireUserId(),
-        userContext.requireUserRole());
+        userContext.requireUserId());
   }
 
   @PostMapping("/{courseId}/archive")
   public CourseDto archive(@PathVariable UUID courseId) {
     return courseSettingsService.archiveCourse(
         courseId,
-        userContext.requireUserId(),
-        userContext.requireUserRole());
+        userContext.requireUserId());
   }
 
   @PostMapping("/{courseId}/restore")
   public CourseDto restore(@PathVariable UUID courseId) {
     return courseSettingsService.restoreCourse(
         courseId,
-        userContext.requireUserId(),
-        userContext.requireUserRole());
+        userContext.requireUserId());
   }
 
   @DeleteMapping("/{courseId}")
   public ResponseEntity<Void> delete(@PathVariable UUID courseId) {
     courseSettingsService.deleteCourse(
         courseId,
-        userContext.requireUserId(),
-        userContext.requireUserRole());
+        userContext.requireUserId());
     return ResponseEntity.noContent().build();
   }
 }
