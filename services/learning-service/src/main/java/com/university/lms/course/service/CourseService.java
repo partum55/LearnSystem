@@ -2,9 +2,9 @@ package com.university.lms.course.service;
 
 import com.university.lms.common.domain.CourseStatus;
 import com.university.lms.common.dto.PageResponse;
-import com.university.lms.course.common.error.ApiException;
 import com.university.lms.common.exception.ResourceNotFoundException;
 import com.university.lms.common.exception.ValidationException;
+import com.university.lms.course.common.security.CourseAccessService;
 import com.university.lms.course.domain.Course;
 import com.university.lms.course.domain.CourseMember;
 import com.university.lms.course.domain.CourseMemberStatus;
@@ -18,7 +18,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -37,6 +36,8 @@ public class CourseService {
   private final CourseRepository courseRepository;
   private final CourseMemberRepository courseMemberRepository;
   private final CourseMapper courseMapper;
+  /** Canonical, single source of truth for course access decisions. */
+  private final CourseAccessService accessService;
 
   /** Get course by ID. */
   @Cacheable(
@@ -44,8 +45,8 @@ public class CourseService {
       key = "T(String).format('%s:%s:%s', #id, #userId, #userRole == null ? 'NONE' : #userRole)")
   public CourseDto getCourseById(UUID id, UUID userId, String userRole) {
     log.debug("Fetching course by ID: {}", id);
+    accessService.requireCourseAccess(id, userId);
     Course course = findCourseById(id);
-    enforceCourseAccess(course, userId, userRole);
     return courseMapper.toDto(course);
   }
 
@@ -95,9 +96,7 @@ public class CourseService {
     Course course = findCourseById(id);
 
     // Check permissions
-    if (!canUserAdministerCourse(course.getId(), userId, userRole)) {
-      throw new AccessDeniedException("Course owner or ADMIN access is required");
-    }
+    accessService.requireOwnerOrAdmin(course.getId(), userId);
 
     // Validate dates if both are provided
     LocalDate effectiveStartDate =
@@ -125,9 +124,7 @@ public class CourseService {
 
     Course course = findCourseById(id);
 
-    if (!canUserAdministerCourse(course.getId(), userId, userRole)) {
-      throw new AccessDeniedException("Course owner or ADMIN access is required");
-    }
+    accessService.requireOwnerOrAdmin(course.getId(), userId);
 
     if (course.getStatus() != CourseStatus.DRAFT) {
       throw new ValidationException(
@@ -184,9 +181,7 @@ public class CourseService {
 
     Course course = findCourseById(id);
 
-    if (!canUserAdministerCourse(course.getId(), userId, userRole)) {
-      throw new AccessDeniedException("Course owner or ADMIN access is required");
-    }
+    accessService.requireOwnerOrAdmin(course.getId(), userId);
 
     if (course.getStatus() != CourseStatus.DRAFT) {
       throw new ValidationException("Only draft courses can be published");
@@ -207,9 +202,7 @@ public class CourseService {
 
     Course course = findCourseById(id);
 
-    if (!canUserAdministerCourse(course.getId(), userId, userRole)) {
-      throw new AccessDeniedException("Course owner or ADMIN access is required");
-    }
+    accessService.requireOwnerOrAdmin(course.getId(), userId);
 
     if (course.getStatus() != CourseStatus.PUBLISHED) {
       throw new ValidationException("Only published courses can be unpublished");
@@ -229,9 +222,7 @@ public class CourseService {
     log.info("Archiving course: {} by user: {}", id, userId);
 
     Course course = findCourseById(id);
-    if (!canUserAdministerCourse(course.getId(), userId, userRole)) {
-      throw new AccessDeniedException("Course owner or ADMIN access is required");
-    }
+    accessService.requireOwnerOrAdmin(course.getId(), userId);
 
     if (course.getStatus() == CourseStatus.ARCHIVED) {
       return courseMapper.toDto(course);
@@ -245,9 +236,7 @@ public class CourseService {
 
   public CourseSettingsDto getCourseSettings(UUID id, UUID userId, String userRole) {
     Course course = findCourseById(id);
-    if (!canUserAdministerCourse(course.getId(), userId, userRole)) {
-      throw new AccessDeniedException("Course owner or ADMIN access is required");
-    }
+    accessService.requireOwnerOrAdmin(course.getId(), userId);
     return toSettingsDto(course);
   }
 
@@ -256,9 +245,7 @@ public class CourseService {
   public CourseSettingsDto updateCourseSettings(
       UUID id, UpdateCourseSettingsRequest request, UUID userId, String userRole) {
     Course course = findCourseById(id);
-    if (!canUserAdministerCourse(course.getId(), userId, userRole)) {
-      throw new AccessDeniedException("Course owner or ADMIN access is required");
-    }
+    accessService.requireOwnerOrAdmin(course.getId(), userId);
 
     String normalizedCode = normalizeRequired(request.getCode(), "Course code");
     String normalizedTitle = normalizeRequired(request.getTitleUk(), "Course title");
@@ -282,9 +269,7 @@ public class CourseService {
   @CacheEvict(value = "courses", allEntries = true)
   public CourseDto restoreCourse(UUID id, UUID userId, String userRole) {
     Course course = findCourseById(id);
-    if (!canUserAdministerCourse(course.getId(), userId, userRole)) {
-      throw new AccessDeniedException("Course owner or ADMIN access is required");
-    }
+    accessService.requireOwnerOrAdmin(course.getId(), userId);
 
     if (course.getStatus() == CourseStatus.ARCHIVED) {
       course.setStatus(CourseStatus.DRAFT);
@@ -295,56 +280,16 @@ public class CourseService {
 
   // Helper methods
   //
-  // TODO(P2, access-dedup): enforceCourseAccess / canUserAdministerCourse duplicate the rules in
-  // common.security.CourseAccessService (requireCourseAccess / requireOwnerOrAdmin). This is a
-  // maintainability duplication, NOT a security gap: both controllers feed userId/userRole from
-  // RequestUserContext (the JWT security context), never from request bodies, and the rule logic
-  // is identical (admin override OR active OWNER membership; students blocked from DRAFT). Full
-  // migration is deferred because it changes the thrown exception contract here
-  // (AccessDeniedException -> ApiException.forbidden), which cascades into CourseServiceTest, and
-  // the lifecycle/settings methods would need CourseAccessService injected. Do this as a focused
-  // follow-up with the test updates in the same change; do not weaken the rules above.
+  // Access decisions for these lifecycle/settings methods are delegated to the canonical
+  // CourseAccessService (requireCourseAccess / requireOwnerOrAdmin) — the single source of truth.
+  // Identity (userId) is supplied by the controllers from RequestUserContext (the JWT security
+  // context), never from request bodies/query params, and the global role is read by
+  // CourseAccessService from that same context. This service no longer duplicates access rules.
 
   private Course findCourseById(UUID id) {
     return courseRepository
         .findById(id)
         .orElseThrow(() -> new ResourceNotFoundException("Course", "id", id));
-  }
-
-  private boolean isCourseOwner(UUID courseId, UUID userId) {
-    return courseMemberRepository.findByCourseIdAndUserId(courseId, userId)
-        .filter(CourseMember::isActive)
-        .map(CourseMember::isOwner)
-        .orElse(false);
-  }
-
-  private boolean canUserAdministerCourse(UUID courseId, UUID userId, String userRole) {
-    return isAdmin(userRole) || isCourseOwner(courseId, userId);
-  }
-
-  private void enforceCourseAccess(Course course, UUID userId, String userRole) {
-    if (isAdmin(userRole)) {
-      return;
-    }
-
-    CourseMember member =
-        courseMemberRepository
-            .findByCourseIdAndUserId(course.getId(), userId)
-            .filter(CourseMember::isActive)
-            .orElse(null);
-
-    if (member == null) {
-      throw ApiException.forbidden("You are not enrolled in this course");
-    }
-
-    if (member.getRoleInCourse() == com.university.lms.course.domain.CourseRole.STUDENT
-        && course.getStatus() == CourseStatus.DRAFT) {
-      throw ApiException.forbidden("This course is not available");
-    }
-  }
-
-  private boolean isAdmin(String userRole) {
-    return ROLE_ADMIN.equalsIgnoreCase(userRole);
   }
 
   private void addCourseMember(Course course, UUID userId, com.university.lms.course.domain.CourseRole role, UUID addedBy) {

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.university.lms.common.domain.CourseStatus;
 import com.university.lms.common.exception.ValidationException;
 import com.university.lms.course.common.error.ApiException;
+import com.university.lms.course.common.security.CourseAccessService;
 import com.university.lms.course.domain.Course;
 import com.university.lms.course.domain.CourseMember;
 import com.university.lms.course.domain.CourseMemberStatus;
@@ -18,6 +19,7 @@ import com.university.lms.course.dto.CourseSettingsDto;
 import com.university.lms.course.dto.UpdateCourseSettingsRequest;
 import com.university.lms.course.repository.CourseMemberRepository;
 import com.university.lms.course.repository.CourseRepository;
+import com.university.lms.course.web.RequestUserContext;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,13 +27,21 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.access.AccessDeniedException;
 
+/**
+ * Unit tests for {@link CourseService}. Access decisions are delegated to the canonical
+ * {@link CourseAccessService}; these tests therefore exercise that path through a real
+ * CourseAccessService backed by the same mocked repositories plus a mocked
+ * {@link RequestUserContext}. Forbidden outcomes now surface as {@link ApiException} (HTTP 403),
+ * the canonical exception contract — previously this service threw Spring's AccessDeniedException
+ * (also HTTP 403), so the external status code is unchanged.
+ */
 @ExtendWith(MockitoExtension.class)
 class CourseServiceTest {
 
   @Mock private CourseRepository courseRepository;
   @Mock private CourseMemberRepository courseMemberRepository;
+  @Mock private RequestUserContext requestUserContext;
 
   private CourseService courseService;
   private UUID courseId;
@@ -41,7 +51,10 @@ class CourseServiceTest {
 
   @BeforeEach
   void setUp() {
-    courseService = new CourseService(courseRepository, courseMemberRepository, new CourseMapper());
+    CourseAccessService accessService =
+        new CourseAccessService(courseMemberRepository, courseRepository, requestUserContext);
+    courseService =
+        new CourseService(courseRepository, courseMemberRepository, new CourseMapper(), accessService);
     courseId = UUID.randomUUID();
     ownerId = UUID.randomUUID();
     otherUserId = UUID.randomUUID();
@@ -56,6 +69,7 @@ class CourseServiceTest {
 
   @Test
   void adminCanUpdateAnyCourseSettings() {
+    when(requestUserContext.requireUserRole()).thenReturn("ADMIN");
     when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
     when(courseRepository.findByCode("CS102")).thenReturn(Optional.empty());
     when(courseRepository.save(any(Course.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -73,6 +87,7 @@ class CourseServiceTest {
 
   @Test
   void ownerCanUpdateOwnCourseSettings() {
+    when(requestUserContext.requireUserRole()).thenReturn("TEACHER");
     when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, ownerId))
         .thenReturn(Optional.of(member(ownerId, CourseRole.OWNER)));
@@ -105,22 +120,24 @@ class CourseServiceTest {
 
   @Test
   void ownerCannotManageOtherCourse() {
+    when(requestUserContext.requireUserRole()).thenReturn("TEACHER");
     when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, otherUserId))
         .thenReturn(Optional.of(member(otherUserId, CourseRole.OWNER, CourseMemberStatus.DROPPED)));
 
     assertThatThrownBy(() -> courseService.getCourseSettings(courseId, otherUserId, "TEACHER"))
-        .isInstanceOf(AccessDeniedException.class);
+        .isInstanceOf(ApiException.class);
   }
 
   @Test
   void archiveRequiresOwnerOrAdmin() {
+    when(requestUserContext.requireUserRole()).thenReturn("TEACHER");
     when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, otherUserId))
         .thenReturn(Optional.of(member(otherUserId, CourseRole.TEACHER)));
 
     assertThatThrownBy(() -> courseService.archiveCourse(courseId, otherUserId, "TEACHER"))
-        .isInstanceOf(AccessDeniedException.class);
+        .isInstanceOf(ApiException.class);
 
     verify(courseRepository, never()).save(any(Course.class));
   }
@@ -128,6 +145,7 @@ class CourseServiceTest {
   @Test
   void deleteRemovesEmptyDraftForOwner() {
     // course in @BeforeEach is DRAFT
+    when(requestUserContext.requireUserRole()).thenReturn("TEACHER");
     when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, ownerId))
         .thenReturn(Optional.of(member(ownerId, CourseRole.OWNER)));
@@ -143,6 +161,7 @@ class CourseServiceTest {
   void deleteRejectsPublishedCourse() {
     Course published = Course.builder().id(courseId).code("CS101").titleUk("T")
         .ownerId(ownerId).status(CourseStatus.PUBLISHED).build();
+    when(requestUserContext.requireUserRole()).thenReturn("TEACHER");
     when(courseRepository.findById(courseId)).thenReturn(Optional.of(published));
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, ownerId))
         .thenReturn(Optional.of(member(ownerId, CourseRole.OWNER)));
@@ -156,6 +175,7 @@ class CourseServiceTest {
 
   @Test
   void deleteRejectsDraftWithEnrolledStudents() {
+    when(requestUserContext.requireUserRole()).thenReturn("TEACHER");
     when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, ownerId))
         .thenReturn(Optional.of(member(ownerId, CourseRole.OWNER)));
@@ -211,6 +231,7 @@ class CourseServiceTest {
         .titleUk("Other")
         .ownerId(UUID.randomUUID())
         .build();
+    when(requestUserContext.requireUserRole()).thenReturn("TEACHER");
     when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, ownerId))
         .thenReturn(Optional.of(member(ownerId, CourseRole.OWNER)));
@@ -229,6 +250,7 @@ class CourseServiceTest {
   void nonEnrolledStudentGetsForbiddenFromGetCourseById() {
     Course published = Course.builder().id(courseId).code("CS101").titleUk("T")
         .ownerId(ownerId).status(CourseStatus.PUBLISHED).build();
+    when(requestUserContext.requireUserRole()).thenReturn("USER");
     when(courseRepository.findById(courseId)).thenReturn(Optional.of(published));
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, otherUserId))
         .thenReturn(Optional.empty());
@@ -241,6 +263,7 @@ class CourseServiceTest {
   void enrolledStudentCanGetPublishedCourseById() {
     Course published = Course.builder().id(courseId).code("CS101").titleUk("T")
         .ownerId(ownerId).status(CourseStatus.PUBLISHED).build();
+    when(requestUserContext.requireUserRole()).thenReturn("USER");
     when(courseRepository.findById(courseId)).thenReturn(Optional.of(published));
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, otherUserId))
         .thenReturn(Optional.of(member(otherUserId, CourseRole.STUDENT)));
@@ -253,6 +276,7 @@ class CourseServiceTest {
   @Test
   void enrolledStudentCannotGetDraftCourseById() {
     // course in @BeforeEach is DRAFT
+    when(requestUserContext.requireUserRole()).thenReturn("USER");
     when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, otherUserId))
         .thenReturn(Optional.of(member(otherUserId, CourseRole.STUDENT)));
@@ -262,6 +286,7 @@ class CourseServiceTest {
   }
 
   private void assertForbiddenForRole(CourseRole role) {
+    when(requestUserContext.requireUserRole()).thenReturn("TEACHER");
     when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
     when(courseMemberRepository.findByCourseIdAndUserId(courseId, otherUserId))
         .thenReturn(Optional.of(member(otherUserId, role)));
@@ -271,7 +296,7 @@ class CourseServiceTest {
         settingsRequest("CS102", "Blocked"),
         otherUserId,
         "TEACHER"))
-        .isInstanceOf(AccessDeniedException.class);
+        .isInstanceOf(ApiException.class);
   }
 
   private UpdateCourseSettingsRequest settingsRequest(String code, String title) {
