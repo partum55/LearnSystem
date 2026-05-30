@@ -198,11 +198,15 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
   const { data: gradebook } = useStudentGradebook(courseId, !canAccessTeacherTools);
 
   const isForbidden = useMemo(() => {
-    const is403 = (err: unknown) => {
+    // Treat both 403 (not enrolled / not authorized) and 404 (course not found, or
+    // hidden from non-members) as restricted access so the UI never distinguishes
+    // "exists but forbidden" from "does not exist" and cannot be used to enumerate courses.
+    const isRestricted = (err: unknown) => {
       const e = err as { status?: number; response?: { status?: number } } | null;
-      return (e?.status || e?.response?.status) === 403;
+      const status = e?.status || e?.response?.status;
+      return status === 403 || status === 404;
     };
-    return is403(overviewError) || is403(modulesError);
+    return isRestricted(overviewError) || isRestricted(modulesError);
   }, [overviewError, modulesError]);
 
   const isLoading = isUserLoading || isOverviewLoading || isModulesLoading || isMembersLoading;
