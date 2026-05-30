@@ -341,7 +341,7 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
   }
 
   return (
-    <div className="mx-auto max-w-7xl pb-10">
+    <div className="pb-10">
       {todoToast && (
         <div className="fixed bottom-5 right-5 z-50 rounded-lg bg-slate-900 px-4 py-2.5 text-xs text-white shadow-lg dark:bg-slate-50 dark:text-slate-900">
           ✓ {todoToast}
@@ -349,7 +349,7 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
       )}
 
       <div className="flex items-start gap-6">
-        <div className="min-w-0 flex-1 space-y-6">
+        <div className="mx-auto min-w-0 max-w-6xl flex-1 space-y-6">
       {/* Header Info Banner */}
       <CourseHeader
         courseId={courseId}

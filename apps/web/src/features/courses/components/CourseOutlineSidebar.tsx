@@ -75,28 +75,35 @@ export function CourseOutlineSidebar({ courseId, modules }: CourseOutlineSidebar
 
   if (collapsed) {
     return (
-      <aside className="sticky top-6 hidden self-start lg:block">
+      <aside
+        className="sticky top-0 -my-6 -mr-6 hidden w-12 shrink-0 flex-col items-center self-start border-l py-3 lg:flex"
+        style={{
+          borderColor: 'var(--border-default)',
+          background: 'var(--bg-surface)',
+          height: 'calc(100vh - 3rem)',
+        }}
+      >
         <button
           type="button"
           onClick={toggleCollapsed}
           title="Show course outline"
           aria-label="Show course outline"
-          className="flex h-10 w-10 items-center justify-center rounded-lg border text-[var(--text-muted)] transition hover:bg-[var(--bg-active)] hover:text-[var(--text-primary)]"
-          style={{ borderColor: 'var(--border-default)', background: 'var(--bg-surface)' }}
+          className="grid h-8 w-8 place-items-center rounded-md text-[var(--text-muted)] transition hover:bg-[var(--bg-active)] hover:text-[var(--text-primary)]"
         >
-          <ListBulletIcon className="h-4 w-4" />
+          <ChevronDoubleLeftIcon className="h-4 w-4" />
         </button>
+        <ListBulletIcon className="mt-3 h-4 w-4 text-[var(--text-faint)]" />
       </aside>
     );
   }
 
   return (
     <aside
-      className="sticky top-6 hidden w-[264px] shrink-0 flex-col self-start overflow-hidden rounded-lg border lg:flex"
+      className="sticky top-0 -my-6 -mr-6 hidden w-[272px] shrink-0 flex-col self-start overflow-hidden border-l lg:flex"
       style={{
         borderColor: 'var(--border-default)',
         background: 'var(--bg-surface)',
-        maxHeight: 'calc(100vh - 3rem)',
+        height: 'calc(100vh - 3rem)',
       }}
     >
       <div
@@ -195,7 +202,7 @@ export function CourseOutlineSidebar({ courseId, modules }: CourseOutlineSidebar
         className="flex items-center justify-center gap-1.5 border-t px-3 py-2 text-[11px] font-medium text-[var(--text-muted)] transition hover:bg-[var(--bg-active)] hover:text-[var(--text-primary)]"
         style={{ borderColor: 'var(--border-default)' }}
       >
-        <ChevronDoubleLeftIcon className="h-3.5 w-3.5" />
+        <ChevronDoubleRightIcon className="h-3.5 w-3.5" />
         Collapse outline
       </button>
     </aside>
