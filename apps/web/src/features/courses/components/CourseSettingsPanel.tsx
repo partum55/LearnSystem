@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArchiveBoxIcon, ArrowUturnLeftIcon, ExclamationTriangleIcon, TrashIcon } from '@heroicons/react/24/outline';
+import {
+  ArchiveBoxIcon,
+  ArrowUturnLeftIcon,
+  ExclamationTriangleIcon,
+  EyeSlashIcon,
+  PaperAirplaneIcon,
+  TrashIcon,
+} from '@heroicons/react/24/outline';
 import { Button, Input, Loading, Modal } from '@/components';
 import {
   useArchiveCourse,
@@ -31,6 +38,12 @@ interface CourseSettingsPanelProps {
 
 type ConfirmAction = 'archive' | 'delete' | null;
 
+const STATUS_COPY: Record<string, string> = {
+  DRAFT: 'Visible only to staff. Students cannot see this course yet.',
+  PUBLISHED: 'Live. Enrolled students can access content and submit work.',
+  ARCHIVED: 'Read-only for staff and students. Owner and admin can still edit or restore.',
+};
+
 export function CourseSettingsPanel({ courseId, permissions, onToast }: CourseSettingsPanelProps) {
   const { data: settings, isLoading, error } = useCourseSettings(
     courseId,
@@ -56,17 +69,28 @@ export function CourseSettingsPanel({ courseId, permissions, onToast }: CourseSe
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
 
+  const baseline = useMemo<UpdateCourseSettingsRequest>(
+    () => ({
+      code: settings?.code ?? '',
+      titleUk: settings?.titleUk ?? '',
+      titleEn: settings?.titleEn ?? '',
+      descriptionUk: settings?.descriptionUk ?? '',
+      descriptionEn: settings?.descriptionEn ?? '',
+      syllabus: settings?.syllabus ?? '',
+    }),
+    [settings]
+  );
+
   useEffect(() => {
-    if (!settings) return;
-    setForm({
-      code: settings.code ?? '',
-      titleUk: settings.titleUk ?? '',
-      titleEn: settings.titleEn ?? '',
-      descriptionUk: settings.descriptionUk ?? '',
-      descriptionEn: settings.descriptionEn ?? '',
-      syllabus: settings.syllabus ?? '',
-    });
-  }, [settings]);
+    setForm(baseline);
+  }, [baseline]);
+
+  const isDirty = useMemo(
+    () => (Object.keys(baseline) as Array<keyof UpdateCourseSettingsRequest>).some(
+      (key) => (form[key] ?? '') !== (baseline[key] ?? '')
+    ),
+    [form, baseline]
+  );
 
   const title = form.titleUk.trim() || settings?.titleUk || 'this course';
   const code = form.code.trim() || settings?.code || courseId.slice(0, 8).toUpperCase();
@@ -82,9 +106,7 @@ export function CourseSettingsPanel({ courseId, permissions, onToast }: CourseSe
     restoreCourse.isPending ||
     deleteCourse.isPending;
 
-  const canSave = useMemo(() => {
-    return form.code.trim().length > 0 && form.titleUk.trim().length > 0 && !isBusy;
-  }, [form.code, form.titleUk, isBusy]);
+  const canSave = form.code.trim().length > 0 && form.titleUk.trim().length > 0 && isDirty && !isBusy;
 
   const apiError = (err: unknown, fallback: string) => {
     const candidate = err as { response?: { data?: { message?: string } }; message?: string };
@@ -110,33 +132,17 @@ export function CourseSettingsPanel({ courseId, permissions, onToast }: CourseSe
     }
   };
 
-  const handlePublish = async () => {
+  const runLifecycle = async (
+    action: () => Promise<unknown>,
+    success: string,
+    fallback: string
+  ) => {
     setErrorMessage(null);
     try {
-      await publishCourse.mutateAsync();
-      onToast('Course published.');
+      await action();
+      onToast(success);
     } catch (err) {
-      setErrorMessage(apiError(err, 'Failed to publish course.'));
-    }
-  };
-
-  const handleUnpublish = async () => {
-    setErrorMessage(null);
-    try {
-      await unpublishCourse.mutateAsync();
-      onToast('Course unpublished to draft.');
-    } catch (err) {
-      setErrorMessage(apiError(err, 'Failed to unpublish course.'));
-    }
-  };
-
-  const handleRestore = async () => {
-    setErrorMessage(null);
-    try {
-      await restoreCourse.mutateAsync();
-      onToast('Course restored as draft.');
-    } catch (err) {
-      setErrorMessage(apiError(err, 'Failed to restore course.'));
+      setErrorMessage(apiError(err, fallback));
     }
   };
 
@@ -184,70 +190,61 @@ export function CourseSettingsPanel({ courseId, permissions, onToast }: CourseSe
   }
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <form
-        onSubmit={handleSubmit}
-        className="rounded-lg border p-5"
-        style={{ borderColor: 'var(--border-default)', background: 'var(--bg-surface)' }}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">Course Settings</h2>
-            <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-              Base course details are restricted to the owner and platform admins.
-            </p>
-          </div>
-          <span className={statusBadgeClass(currentStatus)}>{currentStatus}</span>
-          <Button type="submit" disabled={!canSave} isLoading={updateSettings.isPending}>
-            Save changes
-          </Button>
-        </div>
+    <div className="max-w-2xl animate-fade-in">
+      {/* Course details */}
+      <form onSubmit={handleSubmit}>
+        <h3 className="mb-3.5 text-sm font-semibold text-[var(--text-primary)]">Course details</h3>
 
         {errorMessage && (
-          <div className="mt-4 rounded-md border p-3 text-sm" style={{ borderColor: 'rgba(239, 68, 68, 0.25)', color: 'var(--fn-error)' }}>
+          <div
+            className="mb-4 rounded-md border p-3 text-sm"
+            style={{ borderColor: 'var(--border-default)', color: 'var(--fn-error)', background: 'var(--bg-elevated)' }}
+          >
             {errorMessage}
           </div>
         )}
 
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <div className="flex flex-col gap-4">
           <Input
-            label="Course title"
+            label="Title"
             value={form.titleUk}
             onChange={(event) => setForm((current) => ({ ...current, titleUk: event.target.value }))}
             required
             maxLength={255}
           />
-          <Input
-            label="Course code"
-            value={form.code}
-            onChange={(event) => setForm((current) => ({ ...current, code: event.target.value.toUpperCase() }))}
-            required
-            maxLength={50}
-          />
-          <Input
-            label="English title"
-            value={form.titleEn ?? ''}
-            onChange={(event) => setForm((current) => ({ ...current, titleEn: event.target.value }))}
-            maxLength={255}
-          />
-        </div>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <TextAreaField
-            label="Description"
-            value={form.descriptionUk ?? ''}
-            rows={5}
-            onChange={(value) => setForm((current) => ({ ...current, descriptionUk: value }))}
-          />
-          <TextAreaField
-            label="English description"
-            value={form.descriptionEn ?? ''}
-            rows={5}
-            onChange={(value) => setForm((current) => ({ ...current, descriptionEn: value }))}
-          />
-        </div>
+          <div className="grid gap-3.5 sm:grid-cols-[180px_1fr]">
+            <Input
+              label="Course code"
+              className="font-mono"
+              value={form.code}
+              onChange={(event) => setForm((current) => ({ ...current, code: event.target.value.toUpperCase() }))}
+              required
+              maxLength={50}
+            />
+            <Input
+              label="English title"
+              value={form.titleEn ?? ''}
+              onChange={(event) => setForm((current) => ({ ...current, titleEn: event.target.value }))}
+              maxLength={255}
+            />
+          </div>
 
-        <div className="mt-4">
+          <div className="grid gap-3.5 md:grid-cols-2">
+            <TextAreaField
+              label="Description"
+              value={form.descriptionUk ?? ''}
+              rows={5}
+              onChange={(value) => setForm((current) => ({ ...current, descriptionUk: value }))}
+            />
+            <TextAreaField
+              label="English description"
+              value={form.descriptionEn ?? ''}
+              rows={5}
+              onChange={(value) => setForm((current) => ({ ...current, descriptionEn: value }))}
+            />
+          </div>
+
           <TextAreaField
             label="Syllabus / overview"
             value={form.syllabus ?? ''}
@@ -255,63 +252,115 @@ export function CourseSettingsPanel({ courseId, permissions, onToast }: CourseSe
             onChange={(value) => setForm((current) => ({ ...current, syllabus: value }))}
           />
         </div>
+
+        {isDirty && (
+          <div className="mt-4 flex gap-2">
+            <Button type="submit" size="sm" disabled={!canSave} isLoading={updateSettings.isPending}>
+              Save changes
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setForm(baseline)} disabled={isBusy}>
+              Discard
+            </Button>
+          </div>
+        )}
       </form>
 
-      <aside className="space-y-4">
-        <section className="rounded-lg border p-5" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-surface)' }}>
-          <h3 className="text-sm font-semibold">Ownership</h3>
-          <div className="mt-3 space-y-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-            <p>{permissions.isAdmin ? 'Platform admin override is active.' : 'Owner-level course membership is active.'}</p>
-            <p>Ownership transfer is not exposed by the current course model.</p>
-          </div>
-        </section>
+      <div className="my-6 h-px" style={{ background: 'var(--border-default)' }} />
 
-        <section className="rounded-lg border p-5" style={{ borderColor: 'rgba(239, 68, 68, 0.22)', background: 'var(--bg-surface)' }}>
-          <div className="flex items-center gap-2">
-            <ExclamationTriangleIcon className="h-5 w-5" style={{ color: 'var(--fn-error)' }} />
-            <h3 className="text-sm font-semibold">Lifecycle Controls</h3>
+      {/* Lifecycle */}
+      <section>
+        <h3 className="text-sm font-semibold text-[var(--text-primary)]">Lifecycle</h3>
+        <p className="mb-3.5 mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+          Courses move between three states. There is no public/private visibility — all courses are private.
+        </p>
+
+        <div
+          className="flex flex-col gap-4 rounded-lg border p-4 sm:flex-row sm:items-center"
+          style={{ borderColor: 'var(--border-default)', background: 'var(--bg-surface)' }}
+        >
+          <div className="flex-1">
+            <div className="flex items-center gap-2.5">
+              <span className="text-sm font-semibold text-[var(--text-primary)]">Current status</span>
+              <span className={statusBadgeClass(currentStatus)}>{currentStatus}</span>
+            </div>
+            <p className="mt-1.5 text-sm" style={{ color: 'var(--text-muted)' }}>
+              {STATUS_COPY[currentStatus]}
+            </p>
           </div>
-          <div className="mt-4 flex flex-col gap-2">
+
+          <div className="flex flex-wrap gap-2">
             {isArchived ? (
-              <Button type="button" variant="secondary" onClick={handleRestore} isLoading={restoreCourse.isPending}>
-                <ArrowUturnLeftIcon className="mr-2 inline-block h-4 w-4" />
-                Restore as draft
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() =>
+                  runLifecycle(() => restoreCourse.mutateAsync(), 'Course restored as draft.', 'Failed to restore course.')
+                }
+                isLoading={restoreCourse.isPending}
+              >
+                <ArrowUturnLeftIcon className="mr-1.5 inline-block h-4 w-4" />
+                Restore to draft
               </Button>
             ) : (
               <>
                 {isDraft && (
-                  <Button type="button" variant="secondary" onClick={handlePublish} isLoading={publishCourse.isPending}>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    onClick={() =>
+                      runLifecycle(() => publishCourse.mutateAsync(), 'Course published.', 'Failed to publish course.')
+                    }
+                    isLoading={publishCourse.isPending}
+                  >
+                    <PaperAirplaneIcon className="mr-1.5 inline-block h-4 w-4" />
                     Publish
                   </Button>
                 )}
                 {isPublished && (
-                  <Button type="button" variant="secondary" onClick={handleUnpublish} isLoading={unpublishCourse.isPending}>
-                    Unpublish to draft
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      runLifecycle(
+                        () => unpublishCourse.mutateAsync(),
+                        'Course unpublished to draft.',
+                        'Failed to unpublish course.'
+                      )
+                    }
+                    isLoading={unpublishCourse.isPending}
+                  >
+                    <EyeSlashIcon className="mr-1.5 inline-block h-4 w-4" />
+                    Unpublish
                   </Button>
                 )}
                 <Button
                   type="button"
                   variant="secondary"
+                  size="sm"
                   disabled={!permissions.canArchiveCourse}
                   onClick={() => setConfirmAction('archive')}
                 >
-                  <ArchiveBoxIcon className="mr-2 inline-block h-4 w-4" />
-                  Archive course
+                  <ArchiveBoxIcon className="mr-1.5 inline-block h-4 w-4" />
+                  Archive
                 </Button>
               </>
             )}
             <Button
               type="button"
               variant="danger"
+              size="sm"
               disabled={!permissions.canDeleteCourse}
               onClick={() => setConfirmAction('delete')}
             >
-              <TrashIcon className="mr-2 inline-block h-4 w-4" />
-              Delete course
+              <TrashIcon className="mr-1.5 inline-block h-4 w-4" />
+              Delete
             </Button>
           </div>
-        </section>
-      </aside>
+        </div>
+      </section>
 
       <CourseActionModal
         action={confirmAction}
@@ -329,11 +378,11 @@ export function CourseSettingsPanel({ courseId, permissions, onToast }: CourseSe
 function statusBadgeClass(status: string) {
   switch (status) {
     case 'PUBLISHED':
-      return 'badge badge-success';
+      return 'badge badge-published';
     case 'ARCHIVED':
-      return 'badge';
+      return 'badge badge-archived';
     default:
-      return 'badge badge-warning';
+      return 'badge badge-draft';
   }
 }
 
@@ -406,42 +455,65 @@ function CourseActionModal({
   const isDelete = action === 'delete';
 
   return (
-    <Modal isOpen={Boolean(action)} onClose={onClose} title={isDelete ? 'Delete Course' : 'Archive Course'}>
+    <Modal isOpen={Boolean(action)} onClose={onClose} title={isDelete ? 'Delete course' : 'Archive course'}>
       <form onSubmit={submit} className="space-y-4">
-        <div className="rounded-lg border p-4" style={{ borderColor: 'rgba(239, 68, 68, 0.22)', background: 'rgba(239, 68, 68, 0.05)' }}>
-          <div className="flex gap-3">
-            <ExclamationTriangleIcon className="h-5 w-5 shrink-0" style={{ color: 'var(--fn-error)' }} />
-            <div className="space-y-2 text-sm">
-              <p className="font-semibold">{courseTitle} ({courseCode})</p>
-              {isDelete ? (
-                <p style={{ color: 'var(--text-muted)' }}>
-                  Permanently delete this course and all associated data, including modules, learning items, assignments, submissions, grades, seminar attendance, and course memberships. Global users and enrollment groups are not deleted. This action cannot be undone.
-                </p>
-              ) : (
-                <p style={{ color: 'var(--text-muted)' }}>
-                  Archiving hides the course from active course flows while preserving modules, assignments, submissions, and grades.
-                </p>
-              )}
-            </div>
+        <div
+          className="flex gap-3 rounded-lg border p-4"
+          style={{
+            borderColor: isDelete ? 'rgba(239, 68, 68, 0.22)' : 'var(--border-default)',
+            background: isDelete ? 'rgba(239, 68, 68, 0.05)' : 'var(--bg-elevated)',
+          }}
+        >
+          <ExclamationTriangleIcon
+            className="h-5 w-5 shrink-0"
+            style={{ color: isDelete ? 'var(--fn-error)' : 'var(--fn-warning)' }}
+          />
+          <div className="space-y-2 text-sm">
+            <p className="font-semibold">
+              {courseTitle} (<span className="font-mono">{courseCode}</span>)
+            </p>
+            {isDelete ? (
+              <p style={{ color: 'var(--text-muted)' }}>
+                This is a hard delete. All modules, learning items, assignments, submissions, grades, seminar attendance
+                and course memberships are permanently removed. Global users and enrollment groups are not deleted. This
+                cannot be undone.
+              </p>
+            ) : (
+              <p style={{ color: 'var(--text-muted)' }}>
+                Archiving makes the course read-only for teachers, TAs and students while preserving modules,
+                assignments, submissions and grades. Owners and admins can still edit or restore it later.
+              </p>
+            )}
           </div>
         </div>
 
-        {error && <p className="text-sm" style={{ color: 'var(--fn-error)' }}>{error}</p>}
+        {error && (
+          <p className="text-sm" style={{ color: 'var(--fn-error)' }}>
+            {error}
+          </p>
+        )}
 
         <Input
           label={`Type ${requiredText} to confirm`}
+          className="font-mono"
           value={confirmText}
           onChange={(event) => setConfirmText(event.target.value)}
           placeholder={requiredText}
           disabled={loading}
+          autoFocus
         />
 
         <div className="flex justify-end gap-3 border-t pt-4" style={{ borderColor: 'var(--border-subtle)' }}>
-          <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
+          <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button type="submit" variant={isDelete ? 'danger' : 'secondary'} disabled={confirmText !== requiredText || loading} isLoading={loading}>
-            {isDelete ? 'Delete course' : 'Archive course'}
+          <Button
+            type="submit"
+            variant={isDelete ? 'danger' : 'primary'}
+            disabled={confirmText !== requiredText || loading}
+            isLoading={loading}
+          >
+            {isDelete ? 'Delete permanently' : 'Archive course'}
           </Button>
         </div>
       </form>

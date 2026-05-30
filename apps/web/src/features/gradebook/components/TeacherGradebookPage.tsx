@@ -20,7 +20,6 @@ import {
   ArrowPathIcon,
   CheckBadgeIcon,
 } from '@heroicons/react/24/outline';
-import { GradebookOverview } from './GradebookOverview';
 import { FullGradebook } from './FullGradebook';
 import { SpeedGrader } from './SpeedGrader';
 
@@ -40,15 +39,20 @@ function TeacherGradebookContent({ courseId }: TeacherGradebookPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // URL Deep-linking parameters
-  const initialView = searchParams.get('view') || 'overview';
+  // URL Deep-linking parameters. The course-detail Grades tab is the summary;
+  // this page is the working surface, so it opens straight into the sheet grid.
+  const initialView = searchParams.get('view');
   const initialAssignmentId = searchParams.get('assignmentId') || null;
 
-  // View state orchestrator
-  const [activeView, setActiveView] = useState<'overview' | 'grid' | 'speedgrader'>(
-    initialView === 'grid' || initialView === 'speedgrader' ? initialView : 'overview'
-  );
-  const [focusedAssignmentId, setFocusedAssignmentId] = useState<string | null>(initialAssignmentId);
+  // View + focus are driven by the URL — the summary on the course Grades tab is
+  // the only entry point, so there is no in-page view switching to manage here.
+  const activeView: 'grid' | 'speedgrader' = initialView === 'speedgrader' ? 'speedgrader' : 'grid';
+  const focusedAssignmentId = initialAssignmentId;
+
+  // "Back" always returns to the course detail Grades tab (the summary).
+  const backToCourseGrades = useCallback(() => {
+    router.push(`/courses/${courseId}?tab=grades`);
+  }, [router, courseId]);
 
   // Queries
   const { data: currentUser, isLoading: isUserLoading } = useCurrentUser();
@@ -217,35 +221,13 @@ function TeacherGradebookContent({ courseId }: TeacherGradebookPageProps) {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       {/* Active View Dispatcher */}
-      {activeView === 'overview' && (
-        <GradebookOverview
-          courseId={courseId}
-          gradebook={gradebook}
-          modules={modulesData?.items || []}
-          courseRole={courseRole || null}
-          onOpenFullGradebook={(assignmentId) => {
-            setFocusedAssignmentId(assignmentId || null);
-            setActiveView('grid');
-          }}
-          onOpenSpeedGrader={(assignmentId) => {
-            setFocusedAssignmentId(assignmentId);
-            setActiveView('speedgrader');
-          }}
-          onReleaseGrades={() => setPublishModalOpen(true)}
-          readOnly={readOnly}
-        />
-      )}
-
       {activeView === 'grid' && (
         <FullGradebook
           courseId={courseId}
           gradebook={gradebook}
           modules={modulesData?.items || []}
           initialAssignmentId={focusedAssignmentId}
-          onBackToOverview={() => {
-            setFocusedAssignmentId(null);
-            setActiveView('overview');
-          }}
+          onBackToOverview={backToCourseGrades}
           onReleaseGrades={() => setPublishModalOpen(true)}
           readOnly={readOnly}
         />
@@ -256,10 +238,7 @@ function TeacherGradebookContent({ courseId }: TeacherGradebookPageProps) {
           courseId={courseId}
           gradebook={gradebook}
           assignmentId={focusedAssignmentId || ''}
-          onBackToOverview={() => {
-            setFocusedAssignmentId(null);
-            setActiveView('overview');
-          }}
+          onBackToOverview={backToCourseGrades}
           readOnly={readOnly}
         />
       )}

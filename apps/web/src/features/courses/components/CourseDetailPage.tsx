@@ -49,6 +49,7 @@ import { ModulesPanel } from './ModulesPanel';
 import { GradesPanel } from './GradesPanel';
 import { MembersPanel } from './MembersPanel';
 import { CourseSettingsPanel } from './CourseSettingsPanel';
+import { CourseOutlineSidebar } from './CourseOutlineSidebar';
 
 // Icons for Tab Nav
 import {
@@ -340,13 +341,15 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 pb-10">
+    <div className="mx-auto max-w-7xl pb-10">
       {todoToast && (
         <div className="fixed bottom-5 right-5 z-50 rounded-lg bg-slate-900 px-4 py-2.5 text-xs text-white shadow-lg dark:bg-slate-50 dark:text-slate-900">
           ✓ {todoToast}
         </div>
       )}
 
+      <div className="flex items-start gap-6">
+        <div className="min-w-0 flex-1 space-y-6">
       {/* Header Info Banner */}
       <CourseHeader
         courseId={courseId}
@@ -465,6 +468,11 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
           onToast={showToast}
         />
       )}
+
+        </div>
+
+        <CourseOutlineSidebar courseId={courseId} modules={modules} />
+      </div>
 
       {/* State Modal Sheets */}
       {isModuleModalOpen && (

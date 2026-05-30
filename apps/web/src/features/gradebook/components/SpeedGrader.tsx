@@ -5,17 +5,17 @@ import {
   ArrowLeftIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  CheckBadgeIcon,
-  MagnifyingGlassIcon,
-  ExclamationCircleIcon,
-  ChatBubbleBottomCenterTextIcon,
+  SparklesIcon,
+  XMarkIcon,
   CheckIcon,
+  PaperAirplaneIcon,
+  InformationCircleIcon,
 } from '@heroicons/react/24/outline';
 import type { TeacherGradebookDto } from '../api/gradebook.types';
 import { useUpdateGradebookCells } from '../hooks/useGradebookQueries';
+import { useSubmissionReview } from '@/features/assignments/hooks/useAssignmentQueries';
 import { AiFeatureGate } from '@/features/ai/components/AiFeatureGate';
 import { useAiTask } from '@/features/ai/hooks/useAiTask';
-import { AiGenerationPreview } from '@/features/ai/components/AiGenerationPreview';
 import { AiErrorDisplay } from '@/features/ai/components/AiErrorDisplay';
 
 interface SpeedGraderProps {
@@ -31,6 +31,88 @@ interface UnsavedCellEdit {
   comment: string;
 }
 
+type GradeRow = TeacherGradebookDto['grades'][number];
+
+type CellState = 'graded' | 'draft' | 'submitted' | 'ungraded' | 'missing';
+
+function cellState(grade: GradeRow | undefined): CellState {
+  if (!grade) return 'ungraded';
+  if (grade.draftPoints !== null && grade.draftPoints !== undefined && grade.draftPoints !== grade.publishedPoints) {
+    return 'draft';
+  }
+  if (grade.publishedPoints !== null && grade.publishedPoints !== undefined) return 'graded';
+  if (grade.status === 'MISSING') return 'missing';
+  if (grade.submissionId) return 'submitted';
+  return 'ungraded';
+}
+
+const STATE_DOT_COLOR: Record<CellState, string> = {
+  graded: 'var(--accent)',
+  draft: 'var(--fn-warning)',
+  submitted: 'var(--fn-info)',
+  ungraded: 'var(--text-faint)',
+  missing: 'var(--fn-error)',
+};
+
+function StatusDot({ state }: { state: CellState }) {
+  return (
+    <span
+      className="shrink-0 rounded-full"
+      style={{ width: 7, height: 7, background: STATE_DOT_COLOR[state] }}
+    />
+  );
+}
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
+
+function letterGrade(pct: number): string {
+  if (pct >= 93) return 'A';
+  if (pct >= 90) return 'A−';
+  if (pct >= 87) return 'B+';
+  if (pct >= 83) return 'B';
+  if (pct >= 80) return 'B−';
+  if (pct >= 77) return 'C+';
+  if (pct >= 73) return 'C';
+  if (pct >= 70) return 'C−';
+  if (pct >= 60) return 'D';
+  return 'F';
+}
+
+/** Best-effort extraction of readable text from a stored submission content object. */
+function submissionToText(content: unknown): string {
+  if (!content || typeof content !== 'object') {
+    return typeof content === 'string' ? content : '';
+  }
+  const record = content as Record<string, unknown>;
+
+  if (typeof record.text === 'string') return record.text;
+
+  if (Array.isArray(record.blocks)) {
+    return record.blocks
+      .map((block) => {
+        if (!block || typeof block !== 'object') return '';
+        const data = (block as { data?: Record<string, unknown> }).data;
+        if (!data) return '';
+        return [data.text, data.content, data.caption]
+          .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+          .join(' ');
+      })
+      .filter(Boolean)
+      .join('\n\n')
+      .trim();
+  }
+
+  return '';
+}
+
 export function SpeedGrader({
   courseId,
   gradebook,
@@ -40,37 +122,19 @@ export function SpeedGrader({
 }: SpeedGraderProps) {
   const { students, assignments, grades } = gradebook;
 
-  // Mutations
   const updateCellsMutation = useUpdateGradebookCells(courseId);
 
-  // Active Assignment
-  const assignment = useMemo(() => {
-    return assignments.find((a) => a.id === assignmentId);
-  }, [assignments, assignmentId]);
+  const assignment = useMemo(() => assignments.find((a) => a.id === assignmentId), [assignments, assignmentId]);
 
-  // Sidebar Student Search
-  const [studentSearch, setStudentSearch] = useState('');
+  const [filter, setFilter] = useState<'all' | 'ungraded' | 'graded'>('all');
   const [activeStudentId, setActiveStudentId] = useState<string>('');
 
-  // Form State
   const [editPoints, setEditPoints] = useState('');
   const [editComment, setEditComment] = useState('');
   const [unsavedEdits, setUnsavedEdits] = useState<Record<string, UnsavedCellEdit>>({});
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [todoToast, setTodoToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [showAiPanel, setShowAiPanel] = useState(false);
-
-  const suggestGradeTask = useAiTask<{
-    suggestedScore?: number;
-    feedbackJson?: unknown;
-    reasoningSummary?: string[];
-    rubricBreakdown?: Array<{
-      criterion?: string;
-      suggestedPoints?: number;
-      maxPoints?: number;
-      comment?: string;
-    }>;
-  }>();
 
   // Select first student by default
   useEffect(() => {
@@ -79,253 +143,255 @@ export function SpeedGrader({
     }
   }, [students, activeStudentId]);
 
-  // Sync inputs when active student changes
+  const gradeFor = useCallback(
+    (studentId: string) => grades.find((g) => g.studentId === studentId && g.assignmentId === assignmentId),
+    [grades, assignmentId]
+  );
+
+  const filteredStudents = useMemo(() => {
+    return students.filter((student) => {
+      if (filter === 'all') return true;
+      const state = cellState(gradeFor(student.id));
+      if (filter === 'graded') return state === 'graded' || state === 'draft';
+      return state !== 'graded' && state !== 'draft';
+    });
+  }, [students, filter, gradeFor]);
+
+  // Keep the active student valid as the filter changes
+  useEffect(() => {
+    if (filteredStudents.length === 0) return;
+    if (!filteredStudents.some((s) => s.id === activeStudentId)) {
+      setActiveStudentId(filteredStudents[0].id);
+    }
+  }, [filteredStudents, activeStudentId]);
+
+  const activeStudent = useMemo(() => students.find((s) => s.id === activeStudentId), [students, activeStudentId]);
+  const activeGrade = useMemo(() => gradeFor(activeStudentId), [gradeFor, activeStudentId]);
+  const activeState = cellState(activeGrade);
+
+  // Sync inputs when the active student changes
   useEffect(() => {
     if (!activeStudentId) {
       setEditPoints('');
       setEditComment('');
       setValidationError(null);
+      setShowAiPanel(false);
       return;
     }
-
     const key = `${activeStudentId}_${assignmentId}`;
     const unsaved = unsavedEdits[key];
-
     if (unsaved) {
       setEditPoints(String(unsaved.points));
       setEditComment(unsaved.comment);
     } else {
-      const savedCell = grades.find(
-        (g) => g.studentId === activeStudentId && g.assignmentId === assignmentId
-      );
-      const initialPoints = savedCell?.draftPoints ?? savedCell?.publishedPoints;
+      const saved = gradeFor(activeStudentId);
+      const initialPoints = saved?.draftPoints ?? saved?.publishedPoints;
       setEditPoints(initialPoints !== undefined && initialPoints !== null ? String(initialPoints) : '');
-      setEditComment(savedCell?.comment ?? '');
+      setEditComment(saved?.comment ?? '');
     }
     setValidationError(null);
-  }, [activeStudentId, assignmentId, grades, unsavedEdits]);
+    setShowAiPanel(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStudentId, assignmentId]);
 
-  // Toast Helper
+  // Submission content for the centre reading pane
+  const reviewQuery = useSubmissionReview(activeGrade?.submissionId ?? undefined);
+  const submissionText = useMemo(() => submissionToText(reviewQuery.data?.content), [reviewQuery.data]);
+  const wordCount = useMemo(
+    () => (submissionText ? submissionText.trim().split(/\s+/).filter(Boolean).length : 0),
+    [submissionText]
+  );
+
   const showToast = useCallback((message: string) => {
-    setTodoToast(message);
-    setTimeout(() => setTodoToast(null), 3000);
+    setToast(message);
+    setTimeout(() => setToast(null), 3000);
   }, []);
 
-  // Filter students based on sidebar search
-  const filteredStudents = useMemo(() => {
-    return students.filter((s) => {
-      const q = studentSearch.toLowerCase();
-      return s.displayName.toLowerCase().includes(q) || (s.email || '').toLowerCase().includes(q);
-    });
-  }, [students, studentSearch]);
+  const activeIndex = useMemo(
+    () => filteredStudents.findIndex((s) => s.id === activeStudentId),
+    [filteredStudents, activeStudentId]
+  );
 
-  // Locate active structures
-  const activeStudent = useMemo(() => {
-    return students.find((s) => s.id === activeStudentId);
-  }, [students, activeStudentId]);
-
-  const activeGrade = useMemo(() => {
-    return grades.find((g) => g.studentId === activeStudentId && g.assignmentId === assignmentId);
-  }, [grades, activeStudentId, assignmentId]);
-
-  // Student list traversal index
-  const activeIndex = useMemo(() => {
-    return filteredStudents.findIndex((s) => s.id === activeStudentId);
-  }, [filteredStudents, activeStudentId]);
-
-  // Apply inputs and save cell
-  const handleSaveStudentGrade = async () => {
-    if (readOnly) return;
-    if (!activeStudentId || !assignment) return;
-
-    const points = Number(editPoints);
-    if (isNaN(points) || points < 0 || points > assignment.maxPoints) {
-      setValidationError(
-        `Grade points must be a valid number between 0.00 and ${assignment.maxPoints.toFixed(2)}.`
-      );
-      return;
-    }
-
-    try {
-      // Direct write mutation for SpeedGrader (focused instant submit to draft)
-      const request = {
-        cells: [
-          {
-            studentId: activeStudentId,
-            assignmentId: assignmentId,
-            points,
-            comment: editComment || undefined,
-          },
-        ],
-      };
-
-      await updateCellsMutation.mutateAsync(request);
-      
-      // Clear local unsaved edit tracking for this key
-      const key = `${activeStudentId}_${assignmentId}`;
-      setUnsavedEdits((prev) => {
-        const updated = { ...prev };
-        delete updated[key];
-        return updated;
-      });
-
-      setValidationError(null);
-      showToast(`Saved evaluation draft for ${activeStudent?.displayName || 'student'}!`);
-    } catch (err) {
-      const error = err as { message?: string };
-      setValidationError(error.message || 'Failed to save grade. Please check connectivity.');
-    }
-  };
-
-  // Keep local draft edits as backup
   const handleLocalChange = (pts: string, cmt: string) => {
     if (readOnly) return;
     setEditPoints(pts);
     setEditComment(cmt);
-
     if (!activeStudentId) return;
     const key = `${activeStudentId}_${assignmentId}`;
-
     const points = Number(pts);
     if (!isNaN(points) && points >= 0 && points <= (assignment?.maxPoints || 100)) {
-      setUnsavedEdits((prev) => ({
-        ...prev,
-        [key]: { points, comment: cmt },
-      }));
+      setUnsavedEdits((prev) => ({ ...prev, [key]: { points, comment: cmt } }));
     }
   };
 
-  // Traversal triggers
-  const handlePrevStudent = () => {
-    if (activeIndex > 0) {
-      setActiveStudentId(filteredStudents[activeIndex - 1].id);
+  const saveGrade = async (): Promise<boolean> => {
+    if (readOnly || !activeStudentId || !assignment) return false;
+    const points = Number(editPoints);
+    if (editPoints === '' || isNaN(points) || points < 0 || points > assignment.maxPoints) {
+      setValidationError(`Enter a score between 0 and ${assignment.maxPoints} points.`);
+      return false;
+    }
+    try {
+      await updateCellsMutation.mutateAsync({
+        cells: [{ studentId: activeStudentId, assignmentId, points, comment: editComment || undefined }],
+      });
+      const key = `${activeStudentId}_${assignmentId}`;
+      setUnsavedEdits((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      setValidationError(null);
+      return true;
+    } catch (err) {
+      const error = err as { message?: string };
+      setValidationError(error.message || 'Failed to save grade. Please check connectivity.');
+      return false;
     }
   };
 
-  const handleNextStudent = () => {
-    if (activeIndex < filteredStudents.length - 1) {
-      setActiveStudentId(filteredStudents[activeIndex + 1].id);
+  const goTo = (delta: number) => {
+    const next = activeIndex + delta;
+    if (next >= 0 && next < filteredStudents.length) {
+      setActiveStudentId(filteredStudents[next].id);
     }
+  };
+
+  const handleSaveDraft = async () => {
+    const ok = await saveGrade();
+    if (ok) showToast(`Saved draft for ${activeStudent?.displayName ?? 'student'}.`);
+  };
+
+  const handleSaveAndNext = async () => {
+    const ok = await saveGrade();
+    if (!ok) return;
+    showToast(`Saved draft for ${activeStudent?.displayName ?? 'student'}.`);
+    if (activeIndex < filteredStudents.length - 1) goTo(1);
   };
 
   if (!assignment) {
     return (
       <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-8 text-center text-xs text-[var(--text-faint)]">
-        Could not resolve details for assignment "{assignmentId}".
+        Could not resolve details for assignment &ldquo;{assignmentId}&rdquo;.
       </div>
     );
   }
 
-  // Calculate grading stats for this assignment
   const totalCount = students.length;
-  const gradedCount = grades.filter(
-    (g) =>
-      g.assignmentId === assignmentId &&
-      ((g.draftPoints !== null && g.draftPoints !== undefined) ||
-        (g.publishedPoints !== null && g.publishedPoints !== undefined))
-  ).length;
+  const gradedCount = students.filter((s) => {
+    const state = cellState(gradeFor(s.id));
+    return state === 'graded' || state === 'draft';
+  }).length;
+  const progressPct = totalCount ? (gradedCount / totalCount) * 100 : 0;
 
   return (
-    <div className="space-y-6 animate-fade-in pb-12">
-      {readOnly && (
-        <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] p-3 text-xs font-semibold text-[var(--text-secondary)]">
-          This archived course is read-only. Grade edits and AI grading actions are disabled.
-        </div>
-      )}
-
-      {/* Top Header Deck */}
-      <header className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
+    <div
+      className="flex flex-col overflow-hidden rounded-2xl border border-[var(--border-default)] bg-[var(--bg-base)] animate-fade-in"
+      style={{ height: 'calc(100vh - 13rem)', minHeight: 560 }}
+    >
+      {/* Header */}
+      <header className="flex shrink-0 items-center gap-3 border-b border-[var(--border-default)] bg-[var(--bg-surface)] px-4 py-2.5">
+        <button
+          onClick={onBackToOverview}
+          className="grid h-7 w-7 place-items-center rounded-md text-[var(--text-muted)] transition hover:bg-[var(--bg-active)] hover:text-[var(--text-primary)]"
+          aria-label="Back to course grades"
+        >
+          <ArrowLeftIcon className="h-4 w-4" />
+        </button>
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <button
-              onClick={onBackToOverview}
-              className="btn btn-secondary btn-sm flex items-center gap-1.5 cursor-pointer"
-            >
-              <ArrowLeftIcon className="h-4 w-4" />
-              <span>Back to Overview</span>
-            </button>
-            <span className="badge">Focused Grading Deck</span>
-            {readOnly && <span className="badge">READ ONLY</span>}
+            <span className="truncate text-sm font-semibold text-[var(--text-primary)]">{assignment.title}</span>
+            <span className="badge shrink-0 font-mono">{assignment.maxPoints} pts</span>
+            {readOnly && <span className="badge shrink-0">READ ONLY</span>}
           </div>
-          <h1 className="text-lg font-extrabold text-[var(--text-primary)] pt-1 truncate max-w-xl">
-            SpeedGrader: <span className="text-[var(--text-secondary)] font-semibold">{assignment.title}</span>
-          </h1>
-          <div className="flex items-center gap-2 text-[10px] text-[var(--text-faint)] font-bold uppercase tracking-wider">
-            <span>Type: {assignment.type}</span>
-            <span>•</span>
-            <span>Max Score: {assignment.maxPoints} pts</span>
-            <span>•</span>
-            <span>Progress: {gradedCount} / {totalCount} Graded</span>
+          <div className="font-mono text-[10px] uppercase tracking-wider text-[var(--text-faint)]">
+            {assignment.type} · SpeedGrader
           </div>
+        </div>
+        <div className="flex-1" />
+        <div className="hidden items-center gap-2 text-xs text-[var(--text-muted)] sm:flex">
+          <span className="font-mono tabular-nums">
+            {gradedCount} of {totalCount} graded
+          </span>
+          <div className="h-[3px] w-[90px] overflow-hidden rounded-full bg-[var(--bg-overlay)]">
+            <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: `${progressPct}%` }} />
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => goTo(-1)}
+            disabled={activeIndex <= 0}
+            className="grid h-7 w-7 place-items-center rounded-md border border-[var(--border-default)] text-[var(--text-secondary)] transition hover:bg-[var(--bg-active)] disabled:opacity-40"
+            aria-label="Previous submission"
+          >
+            <ChevronLeftIcon className="h-4 w-4" />
+          </button>
+          <span className="min-w-[44px] text-center font-mono text-xs tabular-nums text-[var(--text-muted)]">
+            {filteredStudents.length ? activeIndex + 1 : 0} / {filteredStudents.length}
+          </span>
+          <button
+            onClick={() => goTo(1)}
+            disabled={activeIndex >= filteredStudents.length - 1}
+            className="grid h-7 w-7 place-items-center rounded-md border border-[var(--border-default)] text-[var(--text-secondary)] transition hover:bg-[var(--bg-active)] disabled:opacity-40"
+            aria-label="Next submission"
+          >
+            <ChevronRightIcon className="h-4 w-4" />
+          </button>
         </div>
       </header>
 
-      {/* Main Split-Pane Workspace */}
-      <div className="grid gap-6 lg:grid-cols-4">
-        {/* Left Sidebar Pane: Student Directory */}
-        <aside className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 shadow-xs space-y-4 flex flex-col h-[550px]">
-          <div className="space-y-1.5 shrink-0">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Student Directory</h3>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Filter students..."
-                value={studentSearch}
-                onChange={(e) => setStudentSearch(e.target.value)}
-                className="input pl-8 text-[11px]"
-              />
-              <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--text-faint)]" />
-            </div>
+      <div className="flex min-h-0 flex-1">
+        {/* Left: submission list */}
+        <aside className="flex w-[244px] shrink-0 flex-col border-r border-[var(--border-default)] bg-[var(--bg-surface)]">
+          <div className="flex items-center justify-between border-b border-[var(--border-default)] px-3 py-2.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Submissions</span>
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as typeof filter)}
+              className="input h-6 w-24 py-0 pl-2 pr-6 text-[11px]"
+            >
+              <option value="all">All</option>
+              <option value="ungraded">Ungraded</option>
+              <option value="graded">Graded</option>
+            </select>
           </div>
-
-          {/* Student scrolling stack */}
-          <div className="overflow-y-auto divide-y divide-[var(--border-subtle)] pr-1 flex-1">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             {filteredStudents.length === 0 ? (
-              <div className="p-6 text-center text-[10px] text-[var(--text-faint)]">No profiles matched filters.</div>
+              <div className="p-6 text-center text-[11px] text-[var(--text-faint)]">No submissions match this filter.</div>
             ) : (
-              filteredStudents.map((student, sIdx) => {
-                const sGrade = grades.find(
-                  (g) => g.studentId === student.id && g.assignmentId === assignmentId
-                );
+              filteredStudents.map((student) => {
+                const grade = gradeFor(student.id);
+                const state = cellState(grade);
                 const isActive = student.id === activeStudentId;
-                const hasSubmission = Boolean(sGrade?.submissionId);
-
-                let statusBadge = 'Ungraded';
-                let badgeClass = 'text-[var(--text-faint)]';
-
-                if (sGrade) {
-                  if (sGrade.draftPoints !== null && sGrade.draftPoints !== undefined && sGrade.draftPoints !== sGrade.publishedPoints) {
-                    statusBadge = 'Draft';
-                    badgeClass = 'text-[var(--fn-warning)] font-bold';
-                  } else if (sGrade.publishedPoints !== null && sGrade.publishedPoints !== undefined) {
-                    statusBadge = 'Graded';
-                    badgeClass = 'text-[var(--fn-success)] font-bold';
-                  } else if (hasSubmission) {
-                    statusBadge = 'Submitted';
-                    badgeClass = 'text-[var(--fn-warning)] font-bold';
-                  } else if (sGrade.status === 'MISSING') {
-                    statusBadge = 'Missing';
-                    badgeClass = 'text-[var(--fn-error)] font-bold';
-                  }
-                }
-
+                const score = grade?.draftPoints ?? grade?.publishedPoints;
                 return (
                   <button
                     key={student.id}
                     onClick={() => setActiveStudentId(student.id)}
-                    className={`w-full flex items-center justify-between p-2.5 rounded-lg text-left transition text-xs border ${
-                      isActive
-                        ? 'bg-[var(--bg-active)] border-[var(--border-strong)] font-bold text-[var(--text-primary)] shadow-2xs'
-                        : 'border-transparent hover:bg-[var(--bg-base)]/50 text-[var(--text-secondary)]'
-                    } cursor-pointer`}
+                    className="flex w-full items-center gap-2.5 border-b border-[var(--border-subtle)] px-3 py-2.5 text-left transition"
+                    style={{
+                      background: isActive ? 'var(--bg-active)' : 'transparent',
+                      borderLeft: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+                    }}
                   >
-                    <div className="min-w-0 pr-2">
-                      <p className="truncate font-semibold text-xs leading-snug">{student.displayName}</p>
-                      <p className="truncate text-[9px] text-[var(--text-faint)] mt-0.5">{student.email || 'No email'}</p>
-                    </div>
-                    <span className={`text-[8.5px] uppercase tracking-wider shrink-0 ${badgeClass}`}>
-                      {statusBadge}
+                    <StatusDot state={state} />
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[var(--border-default)] bg-[var(--bg-elevated)] text-[9px] font-semibold uppercase text-[var(--text-secondary)]">
+                      {initials(student.displayName)}
                     </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-xs font-medium text-[var(--text-primary)]">{student.displayName}</div>
+                      <div className="truncate text-[10px] capitalize text-[var(--text-faint)]">
+                        {state === 'missing' ? 'No submission' : state}
+                      </div>
+                    </div>
+                    {score !== null && score !== undefined && (
+                      <span
+                        className="font-mono text-[11px] tabular-nums"
+                        style={{ color: state === 'draft' ? 'var(--fn-warning)' : 'var(--text-secondary)' }}
+                      >
+                        {score}
+                      </span>
+                    )}
                   </button>
                 );
               })
@@ -333,209 +399,358 @@ export function SpeedGrader({
           </div>
         </aside>
 
-        {/* Right/Center Pane: Focused Grading Deck */}
-        <main className="lg:col-span-3 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-xs flex flex-col justify-between min-h-[550px]">
-          {activeStudent ? (
-            <div className="space-y-6 flex-1 flex flex-col justify-between">
-              <div className="space-y-6">
-                {/* Active Student Card Profile */}
-                <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-default)] text-[var(--text-secondary)] flex items-center justify-center font-bold text-sm uppercase shrink-0">
-                      {activeStudent.displayName.substring(0, 2)}
-                    </div>
-                    <div>
-                      <h2 className="text-sm font-extrabold text-[var(--text-primary)]">{activeStudent.displayName}</h2>
-                      <p className="text-[10px] text-[var(--text-faint)] font-medium leading-none mt-0.5">{activeStudent.email || 'No email registered'}</p>
-                    </div>
-                  </div>
-
-                  {/* Submission detail reference card */}
-                  <div className="text-right">
-                    {activeGrade?.submissionId ? (
-                      <span className="rounded-md border border-[var(--border-default)] bg-[var(--bg-elevated)] px-2 py-0.8 text-[9px] font-bold text-[var(--fn-success)] uppercase tracking-wider">
-                        ✓ Submitted Attachment Present
-                      </span>
-                    ) : (
-                      <span className="rounded-md border border-[var(--border-default)] bg-[var(--bg-elevated)] px-2 py-0.8 text-[9px] font-bold text-[var(--text-faint)] uppercase tracking-wider">
-                        No Submission Attachment
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Grading Panel Form Card */}
-                <div className="grid gap-6 sm:grid-cols-2 bg-[var(--bg-base)] p-5 border border-[var(--border-subtle)] rounded-xl">
-                  {/* Left: Input Score */}
-                  <div className="space-y-2">
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                      Grade Points (Max: {assignment.maxPoints.toFixed(2)} pts)
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        max={assignment.maxPoints}
-                        value={editPoints}
-                        onChange={(e) => handleLocalChange(e.target.value, editComment)}
-                        readOnly={readOnly}
-                        placeholder="0.0"
-                        className="input pr-20 font-bold text-sm bg-[var(--bg-surface)] focus:ring-1 focus:ring-[var(--border-strong)]"
-                      />
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--text-faint)]">
-                        / {assignment.maxPoints.toFixed(1)} pts
-                      </span>
-                    </div>
-                    <div className="text-[9px] text-[var(--text-faint)] leading-relaxed">
-                      💡 Standard inputs are saved instantly as drafts on submit and released subsequently.
-                    </div>
-                  </div>
-
-                  {/* Right: Comments */}
-                  <div className="space-y-2">
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                      Instructor Feedback Comments
-                    </label>
-                    <textarea
-                      rows={4}
-                      value={editComment}
-                      onChange={(e) => handleLocalChange(editPoints, e.target.value)}
-                      readOnly={readOnly}
-                      placeholder="Type written notes or feedback details..."
-                      className="input min-h-24 resize-none text-xs bg-[var(--bg-surface)] focus:ring-1 focus:ring-[var(--border-strong)]"
-                    />
-                  </div>
-                </div>
-
-                {/* Action Errors bounds */}
-                {validationError && (
-                  <p className="rounded-lg border p-2.5 text-xs font-semibold" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-elevated)', color: 'var(--fn-error)' }}>
-                    ⚠️ {validationError}
-                  </p>
-                )}
-
-                {!readOnly && showAiPanel && (
-                  <AiFeatureGate compact>
-                    <div className="rounded-lg border p-4 bg-[var(--bg-base)]">
-                      <AiErrorDisplay error={suggestGradeTask.error} />
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-bold">AI Grade Suggestion</h4>
-                        <button type="button" onClick={() => { setShowAiPanel(false); suggestGradeTask.reset(); }} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">Cancel</button>
-                      </div>
-                      
-                      {!suggestGradeTask.data ? (
-                        <>
-                          <p className="text-xs text-[var(--text-secondary)] mb-3">
-                            The AI will analyze the student's submission against the assignment instructions and suggest a grade and feedback.
-                          </p>
-                          <button 
-                            type="button"
-                            className="btn btn-primary btn-sm" 
-                            onClick={async () => {
-                              if (!activeGrade?.submissionId) {
-                                setValidationError('Cannot suggest grade without a submission.');
-                                return;
-                              }
-                              await suggestGradeTask.executeTask({
-                                type: 'SUGGEST_GRADE',
-                                context: { courseId },
-                                input: { 
-                                  assignmentId,
-                                  studentId: activeStudentId,
-                                  submissionId: activeGrade.submissionId,
-                                }
-                              });
-                            }}
-                            disabled={suggestGradeTask.isLoading || !activeGrade?.submissionId}
-                          >
-                            {suggestGradeTask.isLoading ? 'Analyzing...' : 'Analyze Submission & Suggest Grade'}
-                          </button>
-                        </>
-                      ) : (
-                        <div className="space-y-3 mt-2">
-                          <AiGenerationPreview
-                            data={suggestGradeTask.data.output}
-                            onAccept={() => {
-                              const out = suggestGradeTask.data!.output;
-                              const feedbackText = richContentToPlainText(out?.feedbackJson);
-                              const nextPoints = out?.suggestedScore !== undefined ? String(out.suggestedScore) : editPoints;
-                              const nextComment = feedbackText || editComment;
-                              if (out?.suggestedScore !== undefined || feedbackText) {
-                                handleLocalChange(nextPoints, nextComment);
-                              }
-                              setShowAiPanel(false);
-                              suggestGradeTask.reset();
-                            }}
-                            onReject={() => { suggestGradeTask.reset(); }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </AiFeatureGate>
-                )}
+        {/* Center: submission content */}
+        <div className="flex min-w-0 flex-1 justify-center overflow-y-auto bg-[var(--bg-base)]">
+          {!activeStudent ? (
+            <div className="flex flex-1 items-center justify-center p-12 text-center text-xs text-[var(--text-faint)]">
+              Select a submission from the list to begin grading.
+            </div>
+          ) : activeState === 'missing' || !activeGrade?.submissionId ? (
+            <div className="flex max-w-md flex-col items-center justify-center px-8 text-center">
+              <div className="mb-3 grid h-11 w-11 place-items-center rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-faint)]">
+                <InformationCircleIcon className="h-5 w-5" />
               </div>
-
-              {/* Deck Navigation & Save Commands footer */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-[var(--border-subtle)] pt-4 mt-6">
-                {/* Previous/Next student navigation */}
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={handlePrevStudent}
-                    disabled={activeIndex <= 0}
-                    className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-bold hover:bg-[var(--bg-base)] text-[var(--text-secondary)] disabled:opacity-40 transition flex items-center gap-1 cursor-pointer"
-                  >
-                    <ChevronLeftIcon className="h-4 w-4" />
-                    <span>Previous</span>
-                  </button>
-                  <span className="text-[10px] font-bold text-[var(--text-faint)] px-2">
-                    Student {activeIndex + 1} of {filteredStudents.length}
-                  </span>
-                  <button
-                    onClick={handleNextStudent}
-                    disabled={activeIndex >= filteredStudents.length - 1}
-                    className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-bold hover:bg-[var(--bg-base)] text-[var(--text-secondary)] disabled:opacity-40 transition flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>Next</span>
-                    <ChevronRightIcon className="h-4 w-4" />
-                  </button>
-                </div>
-
-                {!readOnly && (
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowAiPanel((current) => !current)}
-                      className="btn btn-secondary text-xs"
-                    >
-                      AI suggest grade
-                    </button>
-                    <button
-                      onClick={handleSaveStudentGrade}
-                      disabled={updateCellsMutation.isPending}
-                      className="btn btn-primary text-xs flex items-center gap-1.5 self-end sm:self-center cursor-pointer"
-                    >
-                      <CheckIcon className="h-4 w-4" />
-                      <span>{updateCellsMutation.isPending ? 'Saving...' : 'Submit Grade Draft'}</span>
-                    </button>
-                  </div>
-                )}
-              </div>
+              <h4 className="mb-1 text-sm font-semibold text-[var(--text-primary)]">No submission</h4>
+              <p className="text-xs leading-relaxed text-[var(--text-muted)]">
+                {activeStudent.displayName} has not submitted this assignment. You can still enter a score (e.g. 0) and
+                leave feedback.
+              </p>
             </div>
           ) : (
-            <div className="p-12 text-center text-xs text-[var(--text-faint)]">
-              Select a student from the directory sidebar to start grading.
+            <div className="w-full max-w-[660px] px-10 pb-20 pt-8">
+              <div className="mb-6 flex items-center gap-3 border-b border-[var(--border-default)] pb-4">
+                <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full border border-[var(--border-default)] bg-[var(--bg-elevated)] text-[11px] font-semibold uppercase text-[var(--text-secondary)]">
+                  {initials(activeStudent.displayName)}
+                </span>
+                <div className="flex-1">
+                  <div className="text-sm font-semibold text-[var(--text-primary)]">{activeStudent.displayName}</div>
+                  <div className="text-[11px] text-[var(--text-faint)]">
+                    {activeStudent.email || 'No email registered'}
+                    {wordCount > 0 && <span> · {wordCount} words</span>}
+                  </div>
+                </div>
+              </div>
+
+              {reviewQuery.isLoading ? (
+                <div className="space-y-3">
+                  <div className="skeleton h-4 w-3/4 rounded" />
+                  <div className="skeleton h-4 w-full rounded" />
+                  <div className="skeleton h-4 w-5/6 rounded" />
+                </div>
+              ) : reviewQuery.isError ? (
+                <p className="text-xs text-[var(--fn-error)]">Could not load this submission&apos;s content.</p>
+              ) : submissionText ? (
+                <div
+                  className="text-[var(--text-primary)]"
+                  style={{ fontFamily: 'var(--font-body)', fontSize: 16.5, lineHeight: 1.7 }}
+                >
+                  {submissionText.split(/\n{2,}/).map((para, i) => (
+                    <p key={i} className="mb-4 whitespace-pre-wrap">
+                      {para}
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs leading-relaxed text-[var(--text-muted)]">
+                  This submission has no inline text content. Open the assignment to review attached files or external
+                  links.
+                </p>
+              )}
             </div>
           )}
-        </main>
+        </div>
+
+        {/* Right: grade + feedback panel */}
+        <aside className="flex w-[322px] shrink-0 flex-col border-l border-[var(--border-default)] bg-[var(--bg-surface)]">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+            {/* Score */}
+            <div className="space-y-1.5">
+              <div className="flex items-center">
+                <label className="flex-1 text-xs font-medium text-[var(--text-secondary)]">Score</label>
+                {activeState === 'draft' && (
+                  <span className="badge badge-draft">
+                    <span className="status-dot" />
+                    Draft
+                  </span>
+                )}
+                {activeState === 'graded' && (
+                  <span className="badge badge-published">
+                    <span className="status-dot" />
+                    Published
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2.5">
+                <input
+                  type="number"
+                  step="0.1"
+                  min={0}
+                  max={assignment.maxPoints}
+                  value={editPoints}
+                  onChange={(e) => handleLocalChange(e.target.value, editComment)}
+                  readOnly={readOnly}
+                  placeholder="—"
+                  className="input w-[92px] text-center font-mono text-lg font-semibold"
+                />
+                <span className="font-mono text-[15px] text-[var(--text-faint)]">/ {assignment.maxPoints}</span>
+              </div>
+            </div>
+
+            {validationError && (
+              <p className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] p-2.5 text-xs font-medium text-[var(--fn-error)]">
+                {validationError}
+              </p>
+            )}
+
+            {/* AI suggest */}
+            {!readOnly && (
+              <>
+                {!showAiPanel ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowAiPanel(true)}
+                    disabled={activeState === 'missing' || !activeGrade?.submissionId}
+                    className="btn btn-secondary btn-sm flex items-center justify-center gap-2 disabled:opacity-40"
+                  >
+                    <SparklesIcon className="h-4 w-4 text-[var(--accent)]" />
+                    Suggest grade with AI
+                  </button>
+                ) : (
+                  <AiFeatureGate compact>
+                    <AiSuggestPanel
+                      courseId={courseId}
+                      assignmentId={assignmentId}
+                      studentId={activeStudentId}
+                      submissionId={activeGrade?.submissionId ?? undefined}
+                      maxPoints={assignment.maxPoints}
+                      onClose={() => setShowAiPanel(false)}
+                      onApply={({ score, feedback }) => {
+                        handleLocalChange(String(score), feedback || editComment);
+                        setShowAiPanel(false);
+                      }}
+                    />
+                  </AiFeatureGate>
+                )}
+              </>
+            )}
+
+            {/* Feedback */}
+            <div className="flex flex-1 flex-col space-y-1.5">
+              <label className="text-xs font-medium text-[var(--text-secondary)]">Feedback</label>
+              <textarea
+                value={editComment}
+                onChange={(e) => handleLocalChange(editPoints, e.target.value)}
+                readOnly={readOnly}
+                placeholder="Write feedback for the student…"
+                className="input min-h-[150px] flex-1 resize-none"
+                style={{ fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.55 }}
+              />
+            </div>
+          </div>
+
+          {!readOnly && (
+            <div className="shrink-0 space-y-2 border-t border-[var(--border-default)] bg-[var(--bg-elevated)] p-3">
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSaveDraft}
+                  disabled={updateCellsMutation.isPending}
+                  className="btn btn-secondary btn-sm flex-1 disabled:opacity-50"
+                >
+                  Save draft
+                </button>
+                <button
+                  onClick={handleSaveAndNext}
+                  disabled={updateCellsMutation.isPending}
+                  className="btn btn-primary btn-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  style={{ flex: 1.4 }}
+                >
+                  <PaperAirplaneIcon className="h-3.5 w-3.5" />
+                  {updateCellsMutation.isPending ? 'Saving…' : 'Save & next'}
+                </button>
+              </div>
+              <p className="text-center text-[10px] text-[var(--text-faint)]">
+                Drafts stay private until released from the gradebook.
+              </p>
+            </div>
+          )}
+        </aside>
       </div>
 
-      {/* Floating Toast Message */}
-      {todoToast && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-lg border px-5 py-3.5 text-xs font-semibold shadow-2xl animate-fade-in" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>
-          {todoToast}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] px-5 py-3.5 text-xs font-medium text-[var(--text-primary)] shadow-2xl animate-fade-in">
+          {toast}
         </div>
       )}
+    </div>
+  );
+}
+
+interface AiSuggestResult {
+  suggestedScore?: number;
+  feedbackJson?: unknown;
+  reasoningSummary?: string[];
+  rubricBreakdown?: Array<{
+    criterion?: string;
+    suggestedPoints?: number;
+    maxPoints?: number;
+    comment?: string;
+  }>;
+}
+
+function AiSuggestPanel({
+  courseId,
+  assignmentId,
+  studentId,
+  submissionId,
+  maxPoints,
+  onClose,
+  onApply,
+}: {
+  courseId: string;
+  assignmentId: string;
+  studentId: string;
+  submissionId?: string;
+  maxPoints: number;
+  onClose: () => void;
+  onApply: (result: { score: number; feedback: string }) => void;
+}) {
+  const task = useAiTask<AiSuggestResult>();
+  const output = task.data?.output;
+
+  // Auto-run the suggestion when the panel opens
+  useEffect(() => {
+    if (!submissionId) return;
+    void task.executeTask({
+      type: 'SUGGEST_GRADE',
+      context: { courseId },
+      input: { assignmentId, studentId, submissionId },
+    }).catch(() => {
+      /* surfaced via task.error */
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const suggestedScore = output?.suggestedScore;
+  const feedbackText = richContentToPlainText(output?.feedbackJson);
+  const pct = suggestedScore !== undefined && maxPoints ? (suggestedScore / maxPoints) * 100 : 0;
+  const rubric = output?.rubricBreakdown ?? [];
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-[var(--accent-line)] bg-[var(--bg-elevated)] animate-fade-in">
+      <div className="flex items-center gap-2 border-b border-[var(--border-default)] px-3 py-2.5">
+        <SparklesIcon className="h-4 w-4 text-[var(--accent)]" />
+        <span className="text-xs font-semibold text-[var(--text-primary)]">AI suggested grade</span>
+        <span className="badge font-mono text-[9.5px]">Gemini</span>
+        <button
+          onClick={() => {
+            task.reset();
+            onClose();
+          }}
+          className="ml-auto grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] transition hover:bg-[var(--bg-active)] hover:text-[var(--text-primary)]"
+          aria-label="Close AI suggestion"
+        >
+          <XMarkIcon className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {task.isLoading ? (
+        <div className="flex items-center gap-3 px-3.5 py-6 text-xs text-[var(--text-secondary)]">
+          <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[var(--border-strong)] border-t-[var(--accent)]" />
+          Reading the submission against the rubric…
+        </div>
+      ) : task.error ? (
+        <div className="p-3">
+          <AiErrorDisplay error={task.error} />
+        </div>
+      ) : output ? (
+        <div className="p-3">
+          <div className="mb-3 flex items-baseline gap-2">
+            <span className="font-mono text-3xl font-semibold tracking-tight text-[var(--text-primary)]">
+              {suggestedScore ?? '—'}
+            </span>
+            <span className="font-mono text-sm text-[var(--text-faint)]">/ {maxPoints} suggested</span>
+            {suggestedScore !== undefined && (
+              <span className="ml-auto text-lg text-[var(--accent)]" style={{ fontFamily: 'var(--font-body)' }}>
+                {letterGrade(pct)}
+              </span>
+            )}
+          </div>
+
+          {rubric.length > 0 && (
+            <>
+              <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                Rubric breakdown
+              </div>
+              <div className="mb-3 flex flex-col gap-2.5">
+                {rubric.map((row, i) => {
+                  const rowMax = row.maxPoints ?? 0;
+                  const rowScore = row.suggestedPoints ?? 0;
+                  const rowPct = rowMax ? (rowScore / rowMax) * 100 : 0;
+                  return (
+                    <div key={i}>
+                      <div className="mb-1 flex justify-between text-[11.5px]">
+                        <span className="text-[var(--text-secondary)]">{row.criterion ?? `Criterion ${i + 1}`}</span>
+                        <span className="font-mono text-[var(--text-faint)]">
+                          {rowScore}/{rowMax}
+                        </span>
+                      </div>
+                      <div className="h-[3px] overflow-hidden rounded-full bg-[var(--bg-overlay)]">
+                        <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${rowPct}%` }} />
+                      </div>
+                      {row.comment && (
+                        <div className="mt-1 text-[11px] leading-snug text-[var(--text-faint)]">{row.comment}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {feedbackText && (
+            <>
+              <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                Draft feedback
+              </div>
+              <p
+                className="mb-3 text-[var(--text-secondary)]"
+                style={{ fontFamily: 'var(--font-body)', fontSize: 13, lineHeight: 1.5 }}
+              >
+                {feedbackText}
+              </p>
+            </>
+          )}
+
+          <div className="mb-3 flex items-start gap-2 rounded-md border border-[var(--border-default)] bg-[var(--bg-base)] p-2.5 text-[11px] text-[var(--text-muted)]">
+            <InformationCircleIcon className="h-3.5 w-3.5 shrink-0" />
+            <span>A suggestion only. Applying fills the fields — nothing is saved or published until you choose to.</span>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              className="btn btn-primary btn-sm flex flex-1 items-center justify-center gap-1.5"
+              onClick={() =>
+                onApply({
+                  score: suggestedScore ?? 0,
+                  feedback: feedbackText,
+                })
+              }
+            >
+              <CheckIcon className="h-3.5 w-3.5" />
+              Apply to fields
+            </button>
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                task.reset();
+                onClose();
+              }}
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -550,8 +765,9 @@ function richContentToPlainText(document: unknown) {
       if (!block || typeof block !== 'object') return '';
       const data = (block as { data?: Record<string, unknown> }).data;
       if (!data) return '';
-      const values = [data.text, data.content, data.caption]
-        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+      const values = [data.text, data.content, data.caption].filter(
+        (value): value is string => typeof value === 'string' && value.trim().length > 0
+      );
       return values.join(' ');
     })
     .filter(Boolean)

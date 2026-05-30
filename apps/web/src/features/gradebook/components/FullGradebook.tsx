@@ -222,7 +222,7 @@ export function FullGradebook({
             className="btn btn-secondary btn-sm flex items-center gap-1.5 cursor-pointer"
           >
             <ArrowLeftIcon className="h-4 w-4" />
-            <span>Overview Dashboard</span>
+            <span>Back to grades</span>
           </button>
           <span className="text-lg font-bold text-[var(--text-primary)]">Full Spreadsheet Grid</span>
         </div>
