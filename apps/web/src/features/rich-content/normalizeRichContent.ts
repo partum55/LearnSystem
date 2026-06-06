@@ -118,6 +118,10 @@ function normalizeBlockData(type: RichBlockType, data: Record<string, unknown>):
     return {
       url: stringValue(data.url),
       filename: stringValue(data.filename),
+      fileKey: stringValue(data.fileKey),
+      fileSize: numberValue(data.fileSize),
+      contentType: stringValue(data.contentType),
+      uploadedBy: stringValue(data.uploadedBy),
     };
   }
 
@@ -134,4 +138,8 @@ function normalizeBlockData(type: RichBlockType, data: Record<string, unknown>):
 
 function stringValue(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function numberValue(value: unknown) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }

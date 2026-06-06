@@ -18,6 +18,7 @@ import {
   useRemoveEnrollmentGroupMember,
 } from '@/features/courses/hooks/useCourseQueries';
 import { Loading } from '@/components/Loading';
+import type { EnrollmentGroupDto } from '@/features/courses/api/canonical.types';
 
 export function EnrollmentGroupsTab() {
   const { data: groups, isLoading: isGroupsLoading } = useEnrollmentGroups();
@@ -169,7 +170,7 @@ export function EnrollmentGroupsTab() {
   );
 }
 
-function GroupDetailsPanel({ group }: { group: any }) {
+function GroupDetailsPanel({ group }: { group: EnrollmentGroupDto }) {
   const { data: members, isLoading: isMembersLoading } = useEnrollmentGroupMembers(group.id);
   const addMemberMutation = useAddEnrollmentGroupMember(group.id);
   const removeMemberMutation = useRemoveEnrollmentGroupMember(group.id);

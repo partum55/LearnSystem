@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useCallback, useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   useCanonicalAssignment,
@@ -24,6 +24,9 @@ import type {
   SeminarAttendanceOverviewDto,
 } from '../api/canonical.types';
 import { seminarAttendanceApi } from '../api/assignments.api';
+import { extractErrorMessage } from '@/api/client';
+import { UploadDropzone } from '@/lib/uploadthing';
+import { deleteUploadThingFile } from '@/lib/uploadthing-client';
 
 interface AssignmentDetailPageProps {
   assignmentId: string;
@@ -31,11 +34,19 @@ interface AssignmentDetailPageProps {
 
 type TabId = 'instructions' | 'answer' | 'history';
 
-const parseDocument = (content: any): RichContentDocument => {
+interface SubmissionVersionRow {
+  id: string;
+  version_number: number;
+  created_at?: string | null;
+  submitted_at?: string | null;
+  content_json?: RichContentDocument | string | Record<string, unknown> | null;
+}
+
+const parseDocument = (content: unknown): RichContentDocument => {
   if (!content) return { version: 1, blocks: [] };
   if (typeof content === 'object') return content as RichContentDocument;
   try {
-    return JSON.parse(content) as RichContentDocument;
+    return JSON.parse(String(content)) as RichContentDocument;
   } catch {
     // Wrap simple text in a paragraph block
     return {
@@ -43,6 +54,27 @@ const parseDocument = (content: any): RichContentDocument => {
       blocks: [{ id: 'init', type: 'paragraph', data: { text: String(content) } }],
     };
   }
+};
+
+const formatFileSize = (size?: number) => {
+  if (!size || size < 1) return '';
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(size < 10 * 1024 * 1024 ? 1 : 0)} MB`;
+};
+
+const fileMatchesAllowedTypes = (file: File, allowedTypes: string[]) => {
+  if (allowedTypes.length === 0) return true;
+
+  const fileName = file.name.toLowerCase();
+  const mimeType = file.type.toLowerCase();
+
+  return allowedTypes.some((rawType) => {
+    const type = rawType.trim().toLowerCase();
+    if (!type) return false;
+    if (type.startsWith('.')) return fileName.endsWith(type);
+    return mimeType.includes(type) || fileName.endsWith(`.${type}`);
+  });
 };
 
 export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps) {
@@ -68,17 +100,20 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
   });
   const [vplCode, setVplCode] = useState('');
   const [fileList, setFileList] = useState<SubmissionFileItem[]>([]);
-  const [newFileName, setNewFileName] = useState('');
-  const [newFileUrl, setNewFileUrl] = useState('');
 
   // Submission Versions History
-  const [versions, setVersions] = useState<any[]>([]);
+  const [versions, setVersions] = useState<SubmissionVersionRow[]>([]);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
 
   const [isEditing, setIsEditing] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const { studentState, settings, type: assignmentType } = assignment || {};
+  const fileSettings = settings as FileAssignmentSettings | undefined;
+  const maxUploadFiles = fileSettings?.maxFiles ?? 1;
+  const maxUploadSizeMb = fileSettings?.maxFileSizeMb ?? 10;
+  const allowedUploadTypes = fileSettings?.allowedFileTypes ?? [];
+  const remainingUploadSlots = Math.max(maxUploadFiles - fileList.length, 0);
 
   // Seminar Attendance state
   const [attendanceOverview, setAttendanceOverview] = useState<SeminarAttendanceOverviewDto | null>(null);
@@ -98,7 +133,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
   const canSubmitAssignment = !hasStaffAccess && !isArchivedCourse;
   const canMutateAttendance = hasStaffAccess && canMutateArchivedCourse;
 
-  const fetchAttendance = async () => {
+  const fetchAttendance = useCallback(async () => {
     if (assignmentType !== 'SEMINAR') return;
     try {
       const res = await seminarAttendanceApi.getOverview(assignmentId);
@@ -106,7 +141,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
     } catch (err) {
       console.error('Failed to fetch attendance overview', err);
     }
-  };
+  }, [assignmentId, assignmentType]);
 
   useEffect(() => {
     if (assignmentType === 'SEMINAR') {
@@ -114,7 +149,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
       const interval = setInterval(fetchAttendance, 5000); // Polling every 5 seconds for live check-in updates
       return () => clearInterval(interval);
     }
-  }, [assignmentId, assignmentType]);
+  }, [assignmentId, assignmentType, fetchAttendance]);
 
   useEffect(() => {
     if (!attendanceOverview?.activeSession) {
@@ -133,7 +168,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
     updateTimer();
     const timerInterval = setInterval(updateTimer, 1000);
     return () => clearInterval(timerInterval);
-  }, [attendanceOverview?.activeSession]);
+  }, [attendanceOverview?.activeSession, fetchAttendance]);
 
   const formatTimer = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -152,9 +187,8 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
       setRawToken(res.rawToken || null);
       setStatusMessage({ type: 'success', text: 'Seminar check-in session started successfully!' });
       void fetchAttendance();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Failed to start check-in';
-      setStatusMessage({ type: 'error', text: msg });
+    } catch (err: unknown) {
+      setStatusMessage({ type: 'error', text: extractErrorMessage(err) || 'Failed to start check-in' });
     }
   };
 
@@ -170,9 +204,8 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
       setRawToken(null);
       setStatusMessage({ type: 'success', text: 'Seminar check-in session closed.' });
       void fetchAttendance();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Failed to close session';
-      setStatusMessage({ type: 'error', text: msg });
+    } catch (err: unknown) {
+      setStatusMessage({ type: 'error', text: extractErrorMessage(err) || 'Failed to close session' });
     }
   };
 
@@ -190,7 +223,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
           .eq('id', subId)
           .single();
         
-        const subData = data as any;
+        const subData = data as { content_json?: unknown } | null;
         if (subData?.content_json) {
           setSubmissionValue(parseDocument(subData.content_json));
         }
@@ -202,7 +235,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
           .eq('submission_id', subId)
           .order('version_number', { ascending: false });
 
-        const verData = verDataList as any[] | null;
+        const verData = verDataList as SubmissionVersionRow[] | null;
         if (verData) {
           setVersions(verData);
           if (verData.length > 0) {
@@ -213,7 +246,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
       
       fetchSubmissionData();
     }
-  }, [studentState?.submissionId, assignmentType]);
+  }, [studentState?.submissionId, assignment?.type]);
 
   const selectedVersion = useMemo(() => {
     if (!versions || !selectedVersionId) return null;
@@ -256,20 +289,24 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
     }
   };
 
-  const handleAddFile = () => {
+  const handleRemoveFile = async (index: number) => {
     if (isArchivedCourse) return;
-    if (!newFileName.trim()) return;
-    const item: SubmissionFileItem = {
-      fileName: newFileName.trim(),
-      fileUrl: newFileUrl.trim() || 'https://example.com/mock-upload/' + encodeURIComponent(newFileName.trim()),
-    };
-    setFileList((prev) => [...prev, item]);
-    setNewFileName('');
-    setNewFileUrl('');
-  };
+    const file = fileList[index];
+    if (!file) return;
 
-  const handleRemoveFile = (index: number) => {
-    if (isArchivedCourse) return;
+    if (file.fileKey) {
+      try {
+        setStatusMessage(null);
+        await deleteUploadThingFile(file.fileKey);
+      } catch (err) {
+        setStatusMessage({
+          type: 'error',
+          text: err instanceof Error ? err.message : 'Failed to delete uploaded file.',
+        });
+        return;
+      }
+    }
+
     setFileList((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -416,7 +453,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
         {assignmentType !== 'TEXT_SUBMISSION' && (
           <div className="prose max-w-none text-xs">
             <span className="text-3xs uppercase font-extrabold text-[var(--text-faint)] block mb-1">Instructions</span>
-            <RichContentRenderer document={assignment.instructionsJson as any} />
+            <RichContentRenderer document={parseDocument(assignment.instructionsJson)} />
           </div>
         )}
 
@@ -527,7 +564,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
           {/* TAB 1: INSTRUCTIONS */}
           {activeTab === 'instructions' && (
             <div>
-              <RichContentRenderer document={assignment.instructionsJson as any} />
+              <RichContentRenderer document={parseDocument(assignment.instructionsJson)} />
             </div>
           )}
 
@@ -608,7 +645,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
                     >
                       {versions.map((v) => (
                         <option key={v.id} value={v.id}>
-                          Attempt #{v.version_number} - {new Date(v.created_at || v.submitted_at).toLocaleString()}
+                          Attempt #{v.version_number} - {new Date(v.created_at || v.submitted_at || Date.now()).toLocaleString()}
                         </option>
                       ))}
                     </select>
@@ -619,7 +656,7 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
                       <span className="text-3xs uppercase font-extrabold text-[var(--text-faint)] block mb-3">
                         Attempt #{selectedVersion.version_number} Content
                       </span>
-                      <RichContentRenderer document={selectedVersion.content_json} />
+                      <RichContentRenderer document={parseDocument(selectedVersion.content_json)} />
                     </div>
                   )}
                 </div>
@@ -675,36 +712,98 @@ export function AssignmentDetailPage({ assignmentId }: AssignmentDetailPageProps
               </div>
 
               <div className="space-y-3">
-                <label className="block text-xs font-bold text-[var(--text-secondary)]">Mock File Attachment Upload</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    className="flex-1 rounded-lg border border-[var(--border-default)] px-3 py-1.5 text-xs focus:outline-none bg-[var(--bg-base)] text-[var(--text-primary)]"
-                    placeholder="e.g. document.pdf"
-                    value={newFileName}
-                    onChange={(e) => setNewFileName(e.target.value)}
+                <label className="block text-xs font-bold text-[var(--text-secondary)]">File Attachments</label>
+
+                {remainingUploadSlots > 0 ? (
+                  <UploadDropzone
+                    endpoint="assignmentFileUploader"
+                    onBeforeUploadBegin={(files) => {
+                      const validFiles = files.filter((file) => {
+                        if (file.size > maxUploadSizeMb * 1024 * 1024) return false;
+                        return fileMatchesAllowedTypes(file, allowedUploadTypes);
+                      });
+
+                      if (validFiles.length !== files.length) {
+                        setStatusMessage({
+                          type: 'error',
+                          text: `Some files were skipped because they do not match the ${maxUploadSizeMb} MB size limit or allowed formats.`,
+                        });
+                      }
+
+                      if (validFiles.length > remainingUploadSlots) {
+                        setStatusMessage({
+                          type: 'error',
+                          text: `Only ${remainingUploadSlots} more file${remainingUploadSlots === 1 ? '' : 's'} can be attached.`,
+                        });
+                      }
+
+                      return validFiles.slice(0, remainingUploadSlots);
+                    }}
+                    onClientUploadComplete={(files) => {
+                      const uploadedFiles = files.slice(0, remainingUploadSlots).map((file) => ({
+                        fileName: file.serverData?.name ?? file.name,
+                        fileUrl: file.serverData?.ufsUrl ?? file.ufsUrl,
+                        fileKey: file.serverData?.key ?? file.key,
+                        fileSize: file.serverData?.size ?? file.size,
+                        contentType: file.serverData?.type ?? file.type,
+                      }));
+
+                      if (uploadedFiles.length === 0) return;
+
+                      setStatusMessage(null);
+                      setFileList((prev) => [...prev, ...uploadedFiles]);
+                    }}
+                    onUploadError={(err) => {
+                      setStatusMessage({ type: 'error', text: err.message });
+                    }}
+                    appearance={{
+                      container: {
+                        minHeight: '160px',
+                        border: '1px dashed var(--border-default)',
+                        background: 'var(--bg-base)',
+                        borderRadius: '12px',
+                        padding: '18px',
+                      },
+                      label: {
+                        color: 'var(--text-secondary)',
+                        fontSize: '12px',
+                        fontWeight: 800,
+                      },
+                      allowedContent: {
+                        color: 'var(--text-faint)',
+                        fontSize: '11px',
+                      },
+                      button: {
+                        background: 'var(--text-primary)',
+                        color: 'var(--bg-base)',
+                        fontSize: '12px',
+                        fontWeight: 800,
+                      },
+                    }}
+                    content={{
+                      label: 'Drop assignment files here or choose files',
+                      allowedContent: `${remainingUploadSlots} slot${remainingUploadSlots === 1 ? '' : 's'} remaining`,
+                      button: 'Upload files',
+                    }}
                   />
-                  <input
-                    type="text"
-                    className="flex-1 rounded-lg border border-[var(--border-default)] px-3 py-1.5 text-xs focus:outline-none bg-[var(--bg-base)] text-[var(--text-primary)]"
-                    placeholder="Mock URL (optional)"
-                    value={newFileUrl}
-                    onChange={(e) => setNewFileUrl(e.target.value)}
-                  />
-                  <button type="button" onClick={handleAddFile} className="btn btn-secondary text-xs py-1.5 px-4 font-bold cursor-pointer">
-                    Add File
-                  </button>
-                </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-[var(--border-default)] bg-[var(--bg-base)] p-5 text-center text-xs font-semibold text-[var(--text-muted)]">
+                    Maximum file count reached.
+                  </div>
+                )}
 
                 {fileList.length > 0 && (
                   <div className="divide-y rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)]">
                     {fileList.map((file, idx) => (
                       <div key={idx} className="flex items-center justify-between px-4 py-2 text-xs font-bold">
-                        <div>
+                        <div className="min-w-0">
                           <span>{file.fileName}</span>
-                          <span className="ml-2 text-3xs text-[var(--text-faint)] font-mono">({file.fileUrl})</span>
+                          {file.fileSize && (
+                            <span className="ml-2 text-3xs text-[var(--text-faint)]">{formatFileSize(file.fileSize)}</span>
+                          )}
+                          <span className="ml-2 text-3xs text-[var(--text-faint)] font-mono break-all">({file.fileUrl})</span>
                         </div>
-                        <button type="button" onClick={() => handleRemoveFile(idx)} className="text-xs font-bold text-[var(--fn-error)] cursor-pointer">
+                        <button type="button" onClick={() => { void handleRemoveFile(idx); }} className="ml-3 shrink-0 text-xs font-bold text-[var(--fn-error)] cursor-pointer">
                           Remove
                         </button>
                       </div>

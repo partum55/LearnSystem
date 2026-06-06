@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Input, Button } from '@/components';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { extractErrorMessage } from '@/api/client';
 
 interface DeleteConfirmationModalProps {
   isOpen: boolean;
@@ -42,8 +43,8 @@ export function DeleteConfirmationModal({
       setError(null);
       await onConfirm();
       onClose();
-    } catch (err: any) {
-      setError(err?.message || 'Failed to complete delete operation.');
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err) || 'Failed to complete delete operation.');
     }
   };
 

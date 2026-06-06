@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { AssignmentDetailDto, AssignmentRequest } from '@/features/assignments/api/canonical.types';
+import type { AssignmentRequest } from '@/features/assignments/api/canonical.types';
 import type { AssignmentType } from '@/features/courses/api/canonical.types';
 import { RichContentEditor } from '@/features/rich-content/components/RichContentEditor';
 import { RichContentRenderer } from '@/features/rich-content/components/RichContentRenderer';
 import { normalizeRichContentDocument } from '@/features/rich-content/normalizeRichContent';
+import type { RichContentDocument } from '@/features/rich-content/rich-content.types';
 import { 
   useCanonicalAssignment, 
   useCreateCanonicalAssignment, 
@@ -17,6 +18,7 @@ import { AiFeatureGate } from '@/features/ai/components/AiFeatureGate';
 import { useAiTask } from '@/features/ai/hooks/useAiTask';
 import { AiGenerationPreview } from '@/features/ai/components/AiGenerationPreview';
 import { AiErrorDisplay } from '@/features/ai/components/AiErrorDisplay';
+import { extractErrorMessage } from '@/api/client';
 
 interface AssignmentWizardProps {
   courseId: string;
@@ -77,7 +79,7 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
   const [visible, setVisible] = useState(true);
 
   // Instructions RichContentDocument state
-  const [instructionsJson, setInstructionsJson] = useState<any>({
+  const [instructionsJson, setInstructionsJson] = useState<RichContentDocument>({
     version: 1,
     type: 'RICH_CONTENT',
     blocks: [{ id: 'init', type: 'paragraph', data: { text: '' } }],
@@ -122,7 +124,7 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
         });
       }
 
-      const settings = (initialData.settings as any) || {};
+      const settings = (initialData.settings as Record<string, unknown>) || {};
       const currentType = initialData.type.toUpperCase();
 
       if (currentType === 'FILE_SUBMISSION') {
@@ -179,7 +181,7 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
     try {
       const payload: AssignmentRequest = {
         title: title.trim(),
-        instructionsJson,
+        instructionsJson: instructionsJson as unknown as Record<string, unknown>,
         type,
         maxPoints: Number(maxPoints),
         dueDate: dueDate ? new Date(dueDate).toISOString() : null,
@@ -235,8 +237,8 @@ export function AssignmentWizard({ courseId }: AssignmentWizardProps) {
       setTimeout(() => {
         router.push(`/courses/${courseId}`);
       }, 1500);
-    } catch (err: any) {
-      setError(err?.message || err?.response?.data?.message || 'An error occurred during submission.');
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err) || 'An error occurred during submission.');
     }
   };
 

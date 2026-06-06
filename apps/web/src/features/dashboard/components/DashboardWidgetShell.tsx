@@ -25,7 +25,6 @@ interface DashboardWidgetShellProps {
 }
 
 export function DashboardWidgetShell({
-  id,
   title,
   w,
   h,

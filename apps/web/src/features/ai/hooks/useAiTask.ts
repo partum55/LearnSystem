@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { apiClient, ApiError } from '@/api/client';
 
 export type AiTaskType = 
@@ -28,7 +28,7 @@ export function useAiTask<T = unknown>() {
   const [error, setError] = useState<ApiError | null>(null);
   const [data, setData] = useState<AiTaskResponse<T> | null>(null);
 
-  const executeTask = async (request: AiTaskRequest) => {
+  const executeTask = useCallback(async (request: AiTaskRequest) => {
     setIsLoading(true);
     setError(null);
     setData(null);
@@ -48,18 +48,18 @@ export function useAiTask<T = unknown>() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setData(null);
     setError(null);
-  };
+  }, []);
 
-  return {
+  return useMemo(() => ({
     executeTask,
     reset,
     isLoading,
     error,
     data,
-  };
+  }), [data, error, executeTask, isLoading, reset]);
 }

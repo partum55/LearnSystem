@@ -35,9 +35,9 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
         // Parse and validate code syntactically
         try {
           await mermaid.parse(code);
-        } catch (err: any) {
+        } catch (err: unknown) {
           if (isMounted) {
-            setError(err?.message || 'Mermaid syntax error.');
+            setError(err instanceof Error ? err.message : 'Mermaid syntax error.');
             return;
           }
         }
@@ -46,9 +46,9 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
         if (isMounted) {
           setSvg(renderedSvg);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (isMounted) {
-          setError(err?.message || 'Mermaid rendering error.');
+          setError(err instanceof Error ? err.message : 'Mermaid rendering error.');
         }
       }
     };

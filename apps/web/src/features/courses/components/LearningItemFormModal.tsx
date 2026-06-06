@@ -9,6 +9,7 @@ import { useAiTask } from '@/features/ai/hooks/useAiTask';
 import { AiGenerationPreview } from '@/features/ai/components/AiGenerationPreview';
 import { AiErrorDisplay } from '@/features/ai/components/AiErrorDisplay';
 import { normalizeRichContentDocument } from '@/features/rich-content/normalizeRichContent';
+import { extractErrorMessage } from '@/api/client';
 
 interface LearningItemFormModalProps {
   isOpen: boolean;
@@ -61,6 +62,7 @@ export function LearningItemFormModal({
   const [aiPrompt, setAiPrompt] = useState('');
 
   const aiTask = useAiTask<{ title: string; contentJson: unknown }>();
+  const resetAiTask = aiTask.reset;
 
   const isEditorType = type === 'RTE' || type === 'LESSON';
   const needsUrl = ['LINK', 'VIDEO', 'PDF', 'FILE'].includes(type);
@@ -84,8 +86,18 @@ export function LearningItemFormModal({
     setRedirecting(false);
     setShowAiPanel(false);
     setAiPrompt('');
-    aiTask.reset();
-  }, [initialData, isOpen]);
+    resetAiTask();
+  }, [initialData, isOpen, resetAiTask]);
+
+  const buildRteTextContent = () => {
+    if (type !== 'RTE') return undefined;
+
+    if (aiTask.data?.output) {
+      return JSON.stringify(normalizeRichContentDocument(aiTask.data.output.contentJson));
+    }
+
+    return isEditing ? undefined : JSON.stringify(normalizeRichContentDocument(undefined));
+  };
 
   const buildPayload = (): LearningItemRequest => ({
     title: title.trim(),
@@ -93,9 +105,7 @@ export function LearningItemFormModal({
     visible,
     url: needsUrl ? url.trim() : undefined,
     downloadable: ['PDF', 'FILE'].includes(type) ? downloadable : undefined,
-    textContent: (aiTask.data?.output && type === 'RTE')
-      ? JSON.stringify(normalizeRichContentDocument((aiTask.data.output as any).contentJson))
-      : undefined,
+    textContent: buildRteTextContent(),
   });
 
   const buildAiDraftPayload = (): LearningItemRequest | null => {
@@ -128,9 +138,9 @@ export function LearningItemFormModal({
 
       await onSubmit(buildPayload());
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setRedirecting(false);
-      setError(err?.message || err?.response?.data?.message || 'Failed to save material.');
+      setError(extractErrorMessage(err) || 'Failed to save material.');
     }
   };
 
@@ -204,9 +214,9 @@ export function LearningItemFormModal({
                             const newId = await onCreateEditorItem(payload);
                             onClose();
                             router.push(`/learning-items/${newId}${courseId ? `?courseId=${courseId}` : ''}`);
-                          } catch (err: any) {
+                          } catch (err: unknown) {
                             setRedirecting(false);
-                            setError(err?.message || err?.response?.data?.message || 'Failed to save AI material draft.');
+                            setError(extractErrorMessage(err) || 'Failed to save AI material draft.');
                           }
                         }}
                         onReject={() => { aiTask.reset(); setAiPrompt(''); }}

@@ -22,6 +22,10 @@ export interface RichBlock {
     language?: string;
     url?: string;
     filename?: string;
+    fileKey?: string;
+    fileSize?: number;
+    contentType?: string;
+    uploadedBy?: string;
     rows?: string[][];
   };
 }

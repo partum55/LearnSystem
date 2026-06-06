@@ -1,4 +1,4 @@
-import { RichBlock, RichContentDocument } from './rich-content.types';
+import { RichContentDocument } from './rich-content.types';
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 

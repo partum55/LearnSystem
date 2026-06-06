@@ -20,8 +20,6 @@ import {
   useDeleteLearningItem,
 } from '@/features/learning-items/hooks/useLearningItemQueries';
 import {
-  useCreateCanonicalAssignment,
-  useUpdateCanonicalAssignment,
   useDeleteCanonicalAssignment,
 } from '@/features/assignments/hooks/useAssignmentQueries';
 import { useStudentGradebook } from '@/features/gradebook/hooks/useGradebookQueries';
@@ -30,12 +28,11 @@ import { useCurrentUser } from '@/features/users/hooks/useUserQueries';
 // Type Interfaces
 import type {
   CourseModuleDto,
+  CourseMemberDto,
   LearningItemDto,
   LearningItemRequest,
   ModuleRequest,
-  AssignmentListItemDto,
 } from '@/features/courses/api/canonical.types';
-import type { AssignmentRequest } from '@/features/assignments/api/canonical.types';
 
 // Modals
 import { ModuleFormModal } from './ModuleFormModal';
@@ -70,7 +67,7 @@ const tabs: Array<{ id: TabId; label: string; icon: typeof BookOpenIcon }> = [
 ];
 
 const emptyModules: CourseModuleDto[] = [];
-const emptyMembers: any[] = [];
+const emptyMembers: CourseMemberDto[] = [];
 
 function userRole(role?: string | null, globalRole?: string | null) {
   return String(globalRole ?? role ?? '').toUpperCase();
@@ -120,8 +117,6 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
   const updateLearningItemMutation = useUpdateLearningItem();
   const deleteLearningItemMutation = useDeleteLearningItem();
 
-  const createAssignmentMutation = useCreateCanonicalAssignment();
-  const updateAssignmentMutation = useUpdateCanonicalAssignment();
   const deleteAssignmentMutation = useDeleteCanonicalAssignment();
 
   const globalRole = userRole(currentUser?.role, currentUser?.globalRole);
@@ -262,7 +257,7 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
       moduleId: activeModuleId,
       request,
     });
-    return (created as any).id as string;
+    return created.id;
   };
 
   const handleDeleteLearningItem = (learningItemId: string) => {

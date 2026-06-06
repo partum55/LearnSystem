@@ -21,10 +21,17 @@ import {
   useBulkEnrollPreview,
   useBulkEnrollConfirm,
 } from '@/features/courses/hooks/useCourseQueries';
+import type {
+  BulkPreviewResponse,
+  BulkPreviewResult,
+  CourseMemberDto,
+  CourseMemberRequest,
+} from '@/features/courses/api/canonical.types';
+import type { CourseRole, UserProfileDto } from '@/features/users/api/users.types';
 
 interface MembersPanelProps {
   courseId: string;
-  currentUser: any;
+  currentUser: UserProfileDto | null | undefined;
   permissions: {
     canManageStudents: boolean;
     canManageStaff: boolean;
@@ -33,6 +40,8 @@ interface MembersPanelProps {
   };
 }
 
+type AddMemberRole = 'TEACHER' | 'TA' | 'STUDENT';
+
 function formatDate(value?: string | null) {
   if (!value) return 'No date';
   return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value));
@@ -40,7 +49,6 @@ function formatDate(value?: string | null) {
 
 export function MembersPanel({
   courseId,
-  currentUser,
   permissions: { canManageStudents, canManageStaff },
 }: MembersPanelProps) {
   const { data: membersPage, isLoading: isMembersLoading } = useCourseMembers(courseId, { size: 200 });
@@ -64,11 +72,11 @@ export function MembersPanel({
   const [isBulkOpen, setIsBulkOpen] = useState(false);
 
   const [addEmail, setAddEmail] = useState('');
-  const [addRole, setAddRole] = useState<'TEACHER' | 'TA' | 'STUDENT'>('STUDENT');
+  const [addRole, setAddRole] = useState<AddMemberRole>('STUDENT');
 
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [csvText, setCsvText] = useState('');
-  const [bulkPreview, setBulkPreview] = useState<any | null>(null);
+  const [bulkPreview, setBulkPreview] = useState<BulkPreviewResponse | null>(null);
 
   const canManageAny = canManageStaff;
 
@@ -92,7 +100,7 @@ export function MembersPanel({
       await addMemberMutation.mutateAsync({
         email: addEmail.trim(),
         roleInCourse: addRole,
-      } as any);
+      } as unknown as CourseMemberRequest);
       setAddEmail('');
       setIsAddOpen(false);
       alert('Member enrolled successfully.');
@@ -101,7 +109,7 @@ export function MembersPanel({
     }
   };
 
-  const handleRoleChange = async (member: any, newRole: string) => {
+  const handleRoleChange = async (member: CourseMemberDto, newRole: CourseRole) => {
     if (member.roleInCourse === 'OWNER' && !confirm('Are you sure you want to change the owner role? This will transfer ownership.')) {
       return;
     }
@@ -110,7 +118,7 @@ export function MembersPanel({
         userId: member.userId,
         request: {
           userId: member.userId,
-          roleInCourse: newRole as any,
+          roleInCourse: newRole,
         },
       });
       alert('Role updated successfully.');
@@ -119,7 +127,7 @@ export function MembersPanel({
     }
   };
 
-  const handleRemoveMember = async (member: any) => {
+  const handleRemoveMember = async (member: CourseMemberDto) => {
     if (!confirm(`Are you sure you want to remove ${member.userName || 'this member'} from the course?`)) {
       return;
     }
@@ -187,10 +195,9 @@ export function MembersPanel({
 
   const handleBulkConfirm = async () => {
     if (!bulkPreview || bulkPreview.validRows.length === 0) return;
-    const enrollments = bulkPreview.validRows.map((r: any) => ({
-      userId: r.userId,
-      role: r.role,
-    }));
+    const enrollments = bulkPreview.validRows.flatMap((r) =>
+      r.userId ? [{ userId: r.userId, role: r.role }] : []
+    );
     try {
       await bulkConfirmMutation.mutateAsync(enrollments);
       alert(`Successfully enrolled ${enrollments.length} members.`);
@@ -291,7 +298,7 @@ export function MembersPanel({
                     {m.roleInCourse !== 'OWNER' && (
                       <select
                         value={m.roleInCourse}
-                        onChange={(e) => handleRoleChange(m, e.target.value)}
+                        onChange={(e) => handleRoleChange(m, e.target.value as CourseRole)}
                         className="input text-[11px] py-0.5 px-1 bg-transparent border rounded"
                       >
                         <option value="TEACHER">TEACHER</option>
@@ -352,7 +359,7 @@ export function MembersPanel({
                         <td className="px-4 py-2.5 text-right flex items-center justify-end gap-2">
                           <select
                             value={s.roleInCourse}
-                            onChange={(e) => handleRoleChange(s, e.target.value)}
+                            onChange={(e) => handleRoleChange(s, e.target.value as CourseRole)}
                             className="input text-[11px] py-0.5 px-1 bg-transparent border rounded"
                           >
                             <option value="STUDENT">STUDENT</option>
@@ -456,7 +463,7 @@ export function MembersPanel({
                 <label className="text-xs font-semibold block" style={{ color: 'var(--text-secondary)' }}>Course Role</label>
                 <select
                   value={addRole}
-                  onChange={(e) => setAddRole(e.target.value as any)}
+                  onChange={(e) => setAddRole(e.target.value as AddMemberRole)}
                   className="input text-xs"
                 >
                   <option value="STUDENT">STUDENT</option>
@@ -574,7 +581,7 @@ export function MembersPanel({
                     <div className="space-y-1.5">
                       <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Ready for Enrollment ({bulkPreview.validRows.length})</p>
                       <div className="divide-y rounded-md border" style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-base)' }}>
-                        {bulkPreview.validRows.map((r: any, idx: number) => (
+                        {bulkPreview.validRows.map((r: BulkPreviewResult, idx: number) => (
                           <div key={idx} className="p-2 flex items-center justify-between text-xs gap-3">
                             <span className="font-semibold truncate">{r.userName || r.email}</span>
                             <div className="flex items-center gap-2">
@@ -592,7 +599,7 @@ export function MembersPanel({
                     <div className="space-y-1.5 pt-2">
                       <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider">Invalid Rows ({bulkPreview.invalidRows.length})</p>
                       <div className="divide-y rounded-md border" style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-base)' }}>
-                        {bulkPreview.invalidRows.map((r: any, idx: number) => (
+                        {bulkPreview.invalidRows.map((r: BulkPreviewResult, idx: number) => (
                           <div key={idx} className="p-2 flex items-center justify-between text-xs gap-3">
                             <span className="font-semibold truncate" style={{ color: 'var(--text-muted)' }}>{r.email}</span>
                             <div className="flex items-center gap-2">

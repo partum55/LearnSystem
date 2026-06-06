@@ -1,13 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import type { ComponentType, SVGProps } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import {
   AcademicCapIcon,
   ArchiveBoxIcon,
   Cog6ToothIcon,
-  CpuChipIcon,
   EyeIcon,
   PencilSquareIcon,
   TrashIcon,
@@ -170,20 +168,6 @@ function ServicesPanel({
         ) : (
           <EmptyState title="No service data" description="No services were returned by the gateway." compact />
         )}
-      </div>
-    </section>
-  );
-}
-
-function OperationalPanel() {
-  return (
-    <section className="rounded-lg border" style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-base)' }}>
-      <SectionHeader title="Admin operations" />
-      <div className="card-body grid gap-3 sm:grid-cols-2">
-        <AdminShortcut href="/dashboard" icon={UserGroupIcon} label="Users" description="Search users, review roles, and inspect account status." />
-        <AdminShortcut href="/dashboard" icon={AcademicCapIcon} label="Courses" description="Review published, draft, and archived course state." />
-        <AdminShortcut href="/dashboard" icon={ServerIcon} label="Services" description="Watch gateway service health and degraded dependencies." />
-        <AdminShortcut href="/dashboard" icon={CpuChipIcon} label="System info" description="Track JVM/runtime details from the gateway health payload." />
       </div>
     </section>
   );
@@ -397,24 +381,4 @@ function MiniMetric({ label, value, tone = 'default' }: { label: string; value: 
 function StatusBadge({ status }: { status: string }) {
   const className = status === 'UP' ? 'badge badge-success' : status === 'DOWN' ? 'badge badge-error' : 'badge badge-warning';
   return <span className={className}>{status.toLowerCase()}</span>;
-}
-
-function AdminShortcut({
-  href,
-  icon: Icon,
-  label,
-  description,
-}: {
-  href: string;
-  icon: ComponentType<SVGProps<SVGSVGElement>>;
-  label: string;
-  description: string;
-}) {
-  return (
-    <Link href={href} className="rounded-md border p-3" style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-surface)' }}>
-      <Icon className="h-5 w-5" style={{ color: 'var(--text-secondary)' }} />
-      <p className="mt-2 text-sm font-medium">{label}</p>
-      <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>{description}</p>
-    </Link>
-  );
 }

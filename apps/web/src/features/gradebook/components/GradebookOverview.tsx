@@ -6,7 +6,6 @@ import {
   CheckBadgeIcon,
   ArrowDownTrayIcon,
   ArrowRightIcon,
-  ExclamationCircleIcon,
   DocumentCheckIcon,
 } from '@heroicons/react/24/outline';
 import type { TeacherGradebookDto } from '../api/gradebook.types';
@@ -30,7 +29,6 @@ interface GradebookOverviewProps {
 }
 
 export function GradebookOverview({
-  courseId,
   gradebook,
   modules,
   courseRole,

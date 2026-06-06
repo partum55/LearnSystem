@@ -22,6 +22,13 @@ import type {
 } from '@/features/courses/api/canonical.types';
 import { StatusBadge } from './CoursesPage';
 
+const LEARNING_ITEM_ICONS: Record<string, typeof DocumentTextIcon> = {
+  VIDEO: FilmIcon,
+  LINK: LinkIcon,
+  FILE: PaperClipIcon,
+  QUIZ: ClipboardDocumentCheckIcon,
+};
+
 interface ModulesPanelProps {
   modules: CourseModuleDto[];
   courseId: string;
@@ -327,7 +334,7 @@ function LearningItemRow({
   onDelete: (id: string) => void;
 }) {
   const type = String(item.type).toUpperCase();
-  const Icon = learningItemIcon(type);
+  const Icon = LEARNING_ITEM_ICONS[type] ?? DocumentTextIcon;
   const isHidden = item.visibilityStatus === 'HIDDEN' || item.visibilityStatus === 'LOCKED';
 
   return (
@@ -466,16 +473,6 @@ function AssignmentRow({
       )}
     </div>
   );
-}
-
-function learningItemIcon(type: string) {
-  switch (type) {
-    case 'VIDEO': return FilmIcon;
-    case 'LINK': return LinkIcon;
-    case 'FILE': return PaperClipIcon;
-    case 'QUIZ': return ClipboardDocumentCheckIcon;
-    default: return DocumentTextIcon;
-  }
 }
 
 function formatDue(dateStr: string) {

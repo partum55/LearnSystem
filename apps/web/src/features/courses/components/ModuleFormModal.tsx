@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import type { CourseModuleDto, ModuleRequest } from '../api/canonical.types';
 import { Modal, Input, Button } from '@/components';
+import { extractErrorMessage } from '@/api/client';
 
 interface ModuleFormModalProps {
   isOpen: boolean;
@@ -69,8 +70,8 @@ export function ModuleFormModal({
         visible: formData.visible,
       });
       onClose();
-    } catch (err: any) {
-      setError(err?.message || err?.response?.data?.message || 'An error occurred while saving the module.');
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err) || 'An error occurred while saving the module.');
     }
   };
 

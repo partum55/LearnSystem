@@ -22,8 +22,8 @@ export function MathRenderer({ code, block = true }: MathRendererProps) {
         throwOnError: true,
       });
       containerRef.current.innerHTML = html;
-    } catch (err: any) {
-      setError(err?.message || 'KaTeX parsing error.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'KaTeX parsing error.');
     }
   }, [code, block]);
 

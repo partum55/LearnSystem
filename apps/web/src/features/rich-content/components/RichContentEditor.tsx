@@ -5,14 +5,24 @@ import React, {
   useRef,
   useEffect,
   useCallback,
+  useMemo,
   KeyboardEvent,
 } from 'react';
 import type { RichContentDocument, RichBlock, RichBlockType } from '../rich-content.types';
 import { markdownToRichContent } from '../markdown-parser';
 import { MermaidRenderer } from './MermaidRenderer';
 import { MathRenderer } from './MathRenderer';
+import { UploadDropzone } from '@/lib/uploadthing';
+import { deleteUploadThingFile } from '@/lib/uploadthing-client';
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
+
+const formatFileSize = (size?: number) => {
+  if (!size || size < 1) return '';
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(size < 10 * 1024 * 1024 ? 1 : 0)} MB`;
+};
 
 // ─── Block type definitions ───────────────────────────────────────────────────
 
@@ -91,12 +101,13 @@ export function RichContentEditor({
   const [slashMenu, setSlashMenu] = useState<{ blockId: string; query: string } | null>(null);
   const [slashMenuFlatIndex, setSlashMenuFlatIndex] = useState(0);
   const [selectionBlockId, setSelectionBlockId] = useState<string | null>(null);
+  const [fileOperationError, setFileOperationError] = useState<string | null>(null);
 
   const blockRefs = useRef<Map<string, HTMLElement>>(new Map());
   const inputRefs = useRef<Map<string, HTMLTextAreaElement | HTMLInputElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const filteredSlashItems: SlashItem[] = slashMenu
+  const filteredSlashItems: SlashItem[] = useMemo(() => slashMenu
     ? ALL_SLASH_ITEMS.filter(
         (item) =>
           allowedTypes.includes(item.type) &&
@@ -104,7 +115,7 @@ export function RichContentEditor({
             item.label.toLowerCase().includes(slashMenu.query.toLowerCase()) ||
             item.type.includes(slashMenu.query.toLowerCase()))
       )
-    : [];
+    : [], [allowedTypes, slashMenu]);
 
   useEffect(() => {
     setSlashMenuFlatIndex((i) => Math.min(i, Math.max(filteredSlashItems.length - 1, 0)));
@@ -137,8 +148,23 @@ export function RichContentEditor({
   }, []);
 
   const deleteBlock = useCallback(
-    (id: string) => {
+    async (id: string) => {
       const idx = value.blocks.findIndex((b) => b.id === id);
+      if (idx === -1) return;
+
+      const block = value.blocks[idx];
+      const fileKey = block.type === 'file' ? block.data.fileKey : undefined;
+      setFileOperationError(null);
+
+      if (fileKey) {
+        try {
+          await deleteUploadThingFile(fileKey);
+        } catch (err) {
+          setFileOperationError(err instanceof Error ? err.message : 'Failed to delete uploaded file.');
+          return;
+        }
+      }
+
       updateBlocks(value.blocks.filter((b) => b.id !== id));
       if (idx > 0) focusBlock(value.blocks[idx - 1].id, true);
     },
@@ -308,7 +334,7 @@ export function RichContentEditor({
           (!block.data.code || block.data.code === '') &&
           (!block.data.url  || block.data.url  === '') &&
           (!block.data.items || block.data.items.every((i) => i === ''));
-        if (isEmpty) { e.preventDefault(); deleteBlock(block.id); return; }
+        if (isEmpty) { e.preventDefault(); void deleteBlock(block.id); return; }
       }
 
       if (e.key === 'ArrowUp' && idx > 0) {
@@ -472,6 +498,7 @@ export function RichContentEditor({
                 onKeyDown={handleKeyDown}
                 onPaste={handlePaste}
                 onUpdateData={updateBlockData}
+                onDeleteBlock={(blockId) => { void deleteBlock(blockId); }}
                 onActivate={() => { setFocusedBlockId(block.id); focusBlock(block.id, false); }}
                 registerInput={(blockId, el) => {
                   if (el) inputRefs.current.set(blockId, el);
@@ -481,7 +508,7 @@ export function RichContentEditor({
 
               {/* Delete button */}
               {isHovered && value.blocks.length > 1 && (
-                <button type="button" onClick={() => deleteBlock(block.id)} title="Delete block"
+                <button type="button" onClick={() => { void deleteBlock(block.id); }} title="Delete block"
                   style={{
                     position: 'absolute', right: '-24px', top: '6px',
                     background: 'none', border: 'none', cursor: 'pointer',
@@ -532,6 +559,12 @@ export function RichContentEditor({
           <p style={{ fontSize: '10px', color: 'var(--text-faint)', marginTop: '4px', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
             {value.blocks.length} / {maxBlocks}
             {isLimitReached && <span style={{ color: 'var(--fn-warning)', marginLeft: '6px' }}>limit reached</span>}
+          </p>
+        )}
+
+        {fileOperationError && (
+          <p style={{ marginTop: '8px', fontSize: '12px', color: 'var(--fn-error)', fontWeight: 600 }}>
+            {fileOperationError}
           </p>
         )}
       </div>
@@ -711,6 +744,7 @@ interface BlockEditorProps {
   onKeyDown: (e: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>, block: RichBlock) => void;
   onPaste: (e: React.ClipboardEvent, blockId: string) => void;
   onUpdateData: (blockId: string, data: Partial<RichBlock['data']>) => void;
+  onDeleteBlock: (blockId: string) => void;
   /** Called when clicking an inactive rendered block to switch it into edit mode. */
   onActivate: () => void;
   registerInput: (blockId: string, el: HTMLTextAreaElement | HTMLInputElement | null) => void;
@@ -738,9 +772,10 @@ const BASE_IN: React.CSSProperties = {
 
 function BlockEditor({
   block, isFocused, onFocus, onBlur, onSelect,
-  onTextChange, onKeyDown, onPaste, onUpdateData, onActivate, registerInput,
+  onTextChange, onKeyDown, onPaste, onUpdateData, onDeleteBlock, onActivate, registerInput,
 }: BlockEditorProps) {
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => { autoResize(taRef.current); }, [block.data.text]);
 
@@ -762,7 +797,7 @@ function BlockEditor({
           value={block.data.text ?? ''}
           placeholder={`Heading ${level}`}
           onChange={(e) => onTextChange(block.id, e.target.value)}
-          onKeyDown={(e) => onKeyDown(e as any, block)}
+          onKeyDown={(e) => onKeyDown(e, block)}
           onPaste={(e) => onPaste(e, block.id)}
           onFocus={onFocus} onBlur={onBlur}
           onSelect={handleSelect}
@@ -1096,6 +1131,9 @@ function BlockEditor({
   if (block.type === 'file') {
     const url = block.data.url ?? '';
     const filename = block.data.filename ?? '';
+    const fileKey = block.data.fileKey ?? '';
+    const fileSize = formatFileSize(block.data.fileSize);
+    const contentType = block.data.contentType ?? '';
 
     if (!isFocused && url) {
       return (
@@ -1111,12 +1149,72 @@ function BlockEditor({
         >
           <span style={{ fontSize: '14px', opacity: 0.6 }}>↓</span>
           <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}>{filename || url}</span>
+          {fileSize && (
+            <span style={{ fontSize: '11px', color: 'var(--text-faint)' }}>{fileSize}</span>
+          )}
         </div>
       );
     }
 
     return (
-      <div style={{ margin: '4px 0' }}>
+      <div style={{ margin: '6px 0' }}>
+        {!url && (
+          <div style={{ marginBottom: '8px' }}>
+            <UploadDropzone
+              endpoint="richTextFileUploader"
+              onClientUploadComplete={(files) => {
+                const uploaded = files[0];
+                if (!uploaded) return;
+
+                setUploadError(null);
+                onUpdateData(block.id, {
+                  filename: uploaded.serverData?.name ?? uploaded.name,
+                  url: uploaded.serverData?.ufsUrl ?? uploaded.ufsUrl,
+                  fileKey: uploaded.serverData?.key ?? uploaded.key,
+                  fileSize: uploaded.serverData?.size ?? uploaded.size,
+                  contentType: uploaded.serverData?.type ?? uploaded.type,
+                  uploadedBy: uploaded.serverData?.uploadedBy,
+                });
+              }}
+              onUploadError={(err) => setUploadError(err.message)}
+              appearance={{
+                container: {
+                  minHeight: '132px',
+                  border: '1px dashed var(--border-default)',
+                  background: 'var(--bg-base)',
+                  borderRadius: '8px',
+                  padding: '14px',
+                },
+                label: {
+                  color: 'var(--text-secondary)',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                },
+                allowedContent: {
+                  color: 'var(--text-faint)',
+                  fontSize: '11px',
+                },
+                button: {
+                  background: 'var(--text-primary)',
+                  color: 'var(--bg-base)',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                },
+              }}
+              content={{
+                label: 'Drop a file here or choose one',
+                allowedContent: 'Files up to 64 MB',
+                button: 'Upload file',
+              }}
+            />
+            {uploadError && (
+              <p style={{ marginTop: '6px', fontSize: '12px', color: 'var(--fn-error)', fontWeight: 600 }}>
+                {uploadError}
+              </p>
+            )}
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: '8px', padding: '3px 0' }}>
           <input
             ref={(el) => registerInput(block.id, el)}
@@ -1138,9 +1236,37 @@ function BlockEditor({
           />
         </div>
         {url && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: '6px', marginTop: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: '6px', marginTop: '6px', maxWidth: '100%' }}>
             <span style={{ fontSize: '12px', opacity: 0.6 }}>↓</span>
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{filename || url}</span>
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {filename || url}
+            </span>
+            {fileSize && (
+              <span style={{ fontSize: '11px', color: 'var(--text-faint)', flexShrink: 0 }}>{fileSize}</span>
+            )}
+            {contentType && (
+              <span style={{ fontSize: '11px', color: 'var(--text-faint)', flexShrink: 0 }}>{contentType}</span>
+            )}
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onDeleteBlock(block.id);
+              }}
+              style={{
+                marginLeft: 'auto',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--fn-error)',
+                cursor: 'pointer',
+                fontSize: '11px',
+                fontWeight: 800,
+                flexShrink: 0,
+              }}
+              title={fileKey ? 'Delete uploaded file' : 'Remove file block'}
+            >
+              Remove
+            </button>
           </div>
         )}
       </div>

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useCurrentUser } from '@/features/users/hooks/useUserQueries';
 import { seminarAttendanceApi } from '@/features/assignments/api/assignments.api';
 import { Loading } from '@/components/Loading';
+import { normalizeApiError } from '@/api/client';
 
 function SeminarCheckInInner() {
   const router = useRouter();
@@ -46,10 +47,10 @@ function SeminarCheckInInner() {
         const res = await seminarAttendanceApi.checkIn(token);
         setCheckInTime(new Date(res.checkedInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         setStatus('success');
-      } catch (err: any) {
-        const responseData = err?.response?.data || err?.data;
-        const code = responseData?.code || err?.code;
-        const msg = responseData?.message || err?.message || 'Check-in failed';
+      } catch (err: unknown) {
+        const apiError = normalizeApiError(err);
+        const code = apiError.code;
+        const msg = apiError.message || 'Check-in failed';
 
         if (code === 'ALREADY_CHECKED_IN') {
           setStatus('already');

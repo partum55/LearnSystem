@@ -44,7 +44,7 @@ export function CourseAiWizard() {
       } else {
         router.push('/courses');
       }
-    } catch (error) {
+    } catch {
       // handled by hook
     }
   };

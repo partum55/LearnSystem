@@ -44,6 +44,13 @@ function parseInlineElements(text: string): React.ReactNode[] {
   return rendered;
 }
 
+function formatFileSize(size?: number) {
+  if (!size || size < 1) return '';
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(size < 10 * 1024 * 1024 ? 1 : 0)} MB`;
+}
+
 export function RichContentRenderer({ document }: RichContentRendererProps) {
   let parsedDoc: RichContentDocument | null = null;
   if (typeof document === 'string') {
@@ -170,6 +177,7 @@ export function RichContentRenderer({ document }: RichContentRendererProps) {
           case 'file': {
             const url = block.data.url || '';
             const filename = block.data.filename || url || 'File';
+            const fileSize = formatFileSize(block.data.fileSize);
             if (!url) return null;
             return (
               <a
@@ -181,6 +189,7 @@ export function RichContentRenderer({ document }: RichContentRendererProps) {
               >
                 <span className="text-lg flex-shrink-0">↓</span>
                 <span className="text-sm font-medium text-[var(--text-primary)] truncate flex-1">{filename}</span>
+                {fileSize && <span className="text-xs text-[var(--text-faint)] flex-shrink-0">{fileSize}</span>}
                 <span className="text-xs text-[var(--text-faint)] flex-shrink-0">Open →</span>
               </a>
             );

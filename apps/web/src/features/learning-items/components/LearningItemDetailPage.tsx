@@ -19,7 +19,8 @@ import { RichContentEditor } from '@/features/rich-content/components/RichConten
 import { RichContentRenderer } from '@/features/rich-content/components/RichContentRenderer';
 import { markdownToRichContent } from '@/features/rich-content/markdown-parser';
 import { normalizeRichContentDocument } from '@/features/rich-content/normalizeRichContent';
-import type { RichContentDocument } from '@/features/rich-content/rich-content.types';
+import type { RichBlockType, RichContentDocument } from '@/features/rich-content/rich-content.types';
+import { extractErrorMessage } from '@/api/client';
 
 interface LearningItemDetailPageProps {
   learningItemId: string;
@@ -192,8 +193,8 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
         courseId: courseId || undefined,
       });
       showToast('Document saved successfully.');
-    } catch (err: any) {
-      showToast(err?.message || 'Failed to save document.');
+    } catch (err: unknown) {
+      showToast(extractErrorMessage(err) || 'Failed to save document.');
     }
   };
 
@@ -210,7 +211,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
       });
       showToast('New page added.');
       setActivePageId(newPage.id);
-    } catch (err: any) {
+    } catch {
       showToast('Failed to create page.');
     }
   };
@@ -260,8 +261,8 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
         },
       });
       showToast('Lesson page saved successfully.');
-    } catch (err: any) {
-      showToast(err?.message || 'Failed to save lesson page.');
+    } catch (err: unknown) {
+      showToast(extractErrorMessage(err) || 'Failed to save lesson page.');
     }
   };
 
@@ -272,7 +273,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
       await deletePageMutation.mutateAsync({ learningItemId, pageId });
       showToast('Page deleted.');
       setActivePageId(null);
-    } catch (err: any) {
+    } catch {
       showToast('Failed to delete page.');
     }
   };
@@ -298,7 +299,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
         request,
       });
       showToast('Page order updated.');
-    } catch (err: any) {
+    } catch {
       showToast('Failed to reorder pages.');
     }
   };
@@ -731,7 +732,7 @@ export function LearningItemDetailPage({ learningItemId }: LearningItemDetailPag
                             value={localRteValue}
                             onChange={setLocalRteValue}
                             maxBlocks={1}
-                            allowedTypes={[localType.toLowerCase() as any]}
+                            allowedTypes={[localType.toLowerCase() as RichBlockType]}
                             placeholder={`Type / to insert a ${localType.toLowerCase()} block…`}
                             sidePanel={false}
                           />

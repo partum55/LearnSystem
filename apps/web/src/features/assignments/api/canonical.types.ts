@@ -121,6 +121,7 @@ export interface SubmissionFileItem {
   fileUrl: string;
   contentType?: string;
   fileSize?: number;
+  fileKey?: string;
 }
 
 export interface SubmissionRequest {
@@ -191,4 +192,3 @@ export interface SeminarAttendanceOverviewDto {
   checkedInCount: number;
   records: SeminarAttendanceRecordDto[];
 }
-
